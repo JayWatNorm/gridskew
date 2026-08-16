@@ -29,9 +29,9 @@ Pending. This entry is completed once the test has been run.
 
 ### Consequences
 
-- Skew present → the mechanism is supported and the README states it as the
+- Skew present > the mechanism is supported and the README states it as the
   motivating hypothesis.
-- Skew absent → the thesis is restated as a decomposition question rather than
+- Skew absent > the thesis is restated as a decomposition question rather than
   a directional claim. The pipeline and the modelling work are unaffected
   either way; only the framing changes.
 
@@ -150,7 +150,9 @@ as that period approached.
 - The `actual` field is stored even though it is always null in this table,
   because the raw layer records what the source returned. Actual outturn is
   permanently re-fetchable and is ingested by a separate job.
-
+- **Table Structure raw.carbon_intensity_forecast**
+  forecast is not nullable as this is a required field for the job to fail
+  intesity index is nullable as this is not a trusted field when bands change. 
 ### Consequences
 
 - A poll is identifiable as a poll. If `retrieved_at` were generated per row,
