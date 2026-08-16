@@ -1,0 +1,24 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# --- Secrets / environment ---
+.env
+*.env
+!.env.example
+
+# --- dbt ---
+target/
+dbt_packages/
+logs/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
