@@ -1,0 +1,8 @@
+# Development dependencies. Installing this file also installs the runtime
+# dependencies, so `pip install -r requirements-dev.txt` sets up a full
+# working environment in one command.
+
+-r requirements.txt
+
+pytest==9.1.1
+ruff

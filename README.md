@@ -24,15 +24,35 @@ Three steps, in order:
 Unit-level grain throughout. Aggregating to fuel type first washes out the
 signal.
 
+Running alongside those three, and independent of them, is a fourth question
+that only this repository's own data can answer: **how does a forecast for a
+given half-hour change as that half-hour approaches?** It needs no Elexon data
+and no settlement lag, so it is the first question here that will have an
+answer.
+
 ## The mechanism being tested
 
 Suppliers commit to output ahead of time, some fail to deliver, and gas peaking
 plants are dispatched at short notice to fill the gap. Gas is dirtier than
 most of what it replaces.
 
-If that is what happens, then **carbon intensity forecast error should skew
-positive** — actual intensity above forecast more often than below. That is a
-falsifiable prediction and it is the core of the project.
+If that is what happens, two things follow. Both are falsifiable, and together
+they are the core of the project.
+
+1. **Forecast error should skew positive** — actual carbon intensity above
+   forecast more often than below.
+2. **Forecasts should revise upward as the settlement period approaches.**
+   Short-notice gas dispatch is information the model does not have 48 hours
+   ahead and does have 30 minutes ahead. So the sequence of forecasts issued
+   for a single period should drift upward as that period nears, and the size
+   of that drift measures how much unforecast dirty generation arrived late.
+
+The second prediction is the stronger test, for two reasons. It is measurable
+from this repository's archive alone — no per-unit Elexon data, no five-day
+settlement lag — so it produces results as soon as the archive has a few weeks
+of depth. And it is not attenuated: prediction 1 has to be measured against a
+published forecast that was itself revised late, which corrects part of the
+effect out of the number before it can be seen.
 
 
 ## Why this repository archives forecasts
@@ -52,12 +72,24 @@ alongside the timestamp of the request. **That archive only extends forwards
 from the day it starts. The past is not recoverable.** It is the first thing
 built here for exactly that reason.
 
+What the archive holds that nothing else does is the **revision path**: for one
+settlement period, every forecast ever issued for it, from roughly 48 hours out
+to minutes before. That sequence is what prediction 2 above is tested against,
+and it is deleted by the source as it is produced.
+
 ## Honest limitations
 
 Stated up front rather than buried at the bottom:
 
-- **The archived carbon "forecast" is a late revision.** True 48-hour-ahead
-  error is only measurable from this project's own archive onwards.
+- **Published forecast error is attenuated.** The API's stored forecast is a
+  late revision, made when the model had already observed much of what it was
+  predicting. True 48-hour-ahead error is only measurable from this project's
+  own archive, forwards from the day it started.
+- **A forecast revision has several causes, not one.** The model reruns on
+  fresh weather and interconnector schedules as well as on late dispatch. An
+  upward revision shows that new information moved the number; attributing that
+  movement to unplanned shortfalls specifically is what the per-unit Elexon
+  join exists to do.
 - **Analysis trails real time by roughly a week.** Per-unit actual generation
   is first published about five working days after the event, then restated by
   later settlement runs.
@@ -107,7 +139,8 @@ docs/           Decision log
 **Phase 0 — gates**
 
 - [x] Development and production databases provisioned
-- [ ] Forecast archive running
+- [x] Forecast poller written, with tests
+- [ ] Forecast archive running on a schedule
 - [ ] Endpoint shapes confirmed against the live API
 - [ ] Hour-zero asymmetry test
 - [ ] dbt project initialised

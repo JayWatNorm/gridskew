@@ -1,11 +1,7 @@
-# Direct dependencies only. Pin these once the environment is working:
-#   pip freeze > requirements.txt
-# NOTE for PowerShell: `pip freeze > file` writes UTF-16 with a BOM on
-# Windows PowerShell 5.1, which pip cannot then read back. Use
-#   pip freeze | Out-File -Encoding utf8 requirements.txt
-# (UK-Crime-Pipeline/requirements.txt currently carries that BOM.)
+# Runtime dependencies — everything the poller needs to run in production.
+# Direct dependencies only; pip resolves the transitive ones (certifi, idna,
+# urllib3, charset-normalizer) itself.
 
-requests
-psycopg2-binary
-python-dotenv
-pytest
+psycopg2-binary==2.9.12
+python-dotenv==1.2.3
+requests==2.34.2
