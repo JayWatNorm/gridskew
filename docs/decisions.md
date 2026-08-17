@@ -244,3 +244,105 @@ that drift is directional rather than noise.
   already stored per #005 and horizon is derived from them, so the archive as
   specified already collects everything this question needs. This is a use
   found for existing data, not a reason to change it.
+
+---
+
+## 007 — Airflow Connections are declared in compose, not created in the UI
+
+**Date:** 2026-08-17 · **Status:** ✅ Accepted
+
+### Context
+
+Decision #003 committed to per-project Airflow Connections rather than more
+namespaced environment variables on the shared container. That leaves a second
+choice which #003 did not settle: *how* the connection comes into existence.
+
+Airflow accepts both. A connection created through **Admin → Connections** is
+stored in Airflow's metadata database and encrypted with its Fernet key. A
+connection declared as an `AIRFLOW_CONN_<ID>` environment variable is read from
+the process environment at run time. The DAG cannot tell the difference — it
+references `gridskew_prod` either way.
+
+During deployment the UI form was used first, because it needs no container
+restart and no URI encoding.
+
+### Decision
+
+The declared form is authoritative: `AIRFLOW_CONN_GRIDSKEW_PROD` lives in
+`homelab-platform/docker-compose.yml`, its value supplied from
+`GRIDSKEW_PROD_CONN_URI` in the gitignored `.env` on the homelab.
+
+### Consequences
+
+- **It survives a rebuild.** A UI connection exists only in the Airflow
+  metadata database; recreating that database silently loses it, and the
+  failure appears later as `The conn_id 'gridskew_prod' isn't defined`.
+- **The deployment is reproducible from the repository.** Which connections
+  a project needs is visible in the compose file rather than being knowledge
+  held by whoever clicked the form.
+- **Credentials are not in the repository.** Only the variable *name* is
+  committed; the URI is in `.env`, which is gitignored.
+- **The password must be percent-encoded**, because it sits inside a URI and
+  these passwords come from `openssl rand -base64`, which emits `+`, `/` and
+  `=`. Getting this wrong produces an authentication error that appears to
+  implicate the host or database name. The UI form takes a raw password and
+  has no such trap — that convenience is what is being traded away.
+- UK Crime Pipeline is not migrated. `ingest.py` reads plain `DB_*` names via
+  `os.getenv` at import time, so moving it means changing that module's
+  interface, not just the compose file. Recorded in the compose comments so
+  the divergence reads as deliberate.
+
+---
+
+## 008 — Raw DDL is applied by hand, and that is a known temporary position
+
+**Date:** 2026-08-17 · **Status:** 🟡 Open
+
+### Context
+
+Decision #005 has raw-layer DDL applied manually per database. Deploying to
+`gridskew_prod` showed two ways that fails quietly.
+
+The schema and the table already existed, created during provisioning by the
+`homelab_admin` superuser rather than the scoped `gridskew` role. So
+`CREATE SCHEMA IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` **skipped and
+reported success**, while `COMMENT` and `CREATE INDEX` failed on ownership.
+Had the pre-existing table differed from the current DDL, nothing would have
+said so — the schema would simply have been wrong, and the first evidence
+would have been an insert failing at 3am.
+
+Separately this contradicts #002: each database is supposed to be owned by its
+scoped role. That was true of `gridskew_dev` and not of `gridskew_prod`.
+
+### Decision
+
+Pending on one remaining item.
+
+1. ~~**Reconcile ownership across both databases.**~~ ✅ **Done 2026-08-17.**
+   Audited with `\dn+` and a `pg_tables` owner check against both databases.
+   Result — identical and correct:
+
+   | | `gridskew_dev` | `gridskew_prod` |
+   |---|---|---|
+   | `raw` schema owner | `gridskew` | `gridskew` |
+   | `carbon_intensity_forecast` owner | `gridskew` | `gridskew` |
+
+   `public` is owned by `pg_database_owner` in both, which is the PostgreSQL
+   15+ default and resolves to the database owner — not a violation. The drift
+   was confined to prod and was corrected by `ALTER SCHEMA raw OWNER TO
+   gridskew` and `ALTER TABLE raw.carbon_intensity_forecast OWNER TO
+   gridskew`. #002 now holds in both databases.
+2. **Choose a migration tool** — Alembic or Flyway — before Phase 1 adds dbt.
+   Still open.
+
+### Consequences
+
+- `IF NOT EXISTS` infers "has this migration run?" from "does this object
+  exist?". Those are different questions, and the gap is silent. A migration
+  tool records which migrations have been applied, so a divergence is an error
+  rather than a shrug.
+- The ownership drift matters more once dbt is creating objects: a role that
+  cannot create in `raw` surfaces as a confusing dbt failure rather than a
+  clear permissions one.
+- Until this closes, applying DDL by hand is acceptable **only because the
+  schema is one table**. That stops being true in Phase 1.
