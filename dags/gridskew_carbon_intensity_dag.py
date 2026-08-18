@@ -30,8 +30,10 @@ def gridskew_carbon_intensity_dag():
     @task
     def poll_forecast():
         from airflow.providers.postgres.hooks.postgres import PostgresHook
+
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.carbon_intensity.forecast_poller import run
+
         # Credentials come from the Airflow Connection.
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
