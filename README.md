@@ -1,10 +1,16 @@
 # gridskew
-
 Measuring GB electricity grid shortfalls and their effect on carbon intensity
 forecast error.
 
-> **Phase 0 — infrastructure and data collection only.** No analysis results
-> yet, and no conclusions are claimed.
+# Why it exists
+Recently passed PCEP, working on dbt knowledge, this is a learning project and 
+to keep me sharp subjects and expand my knowledge. I have over a 
+decade of SQL, data pipelines and analysis experience but I wish to
+push my technical skills around data engineering. 
+
+# AI Disclaimer
+AI is used for documentation, coaching, scaffolding, code review & best practice.
+Examples may be generated on new subjects to assit with understanding
 
 ---
 
