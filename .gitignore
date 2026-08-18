@@ -17,6 +17,9 @@ target/
 dbt_packages/
 logs/
 
+# --- Working notes, kept outside the repository ---
+docs/
+
 # --- Editors / OS ---
 .vscode/
 .idea/
