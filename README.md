@@ -24,7 +24,7 @@ Examples may be generated on new subjects to assit with understanding
 3. **Explain them.** Planned versus unplanned outages (`REMIT`), demand
    forecast error, market stress signals.
 
-Unit-level grain throughout — aggregating to fuel type first washes out the
+Unit-level grain throughout. Aggregating to fuel type first washes out the
 signal.
 
 A fourth question runs alongside and independent of those three: **how does a
@@ -35,20 +35,27 @@ will have an answer.
 ## The mechanism being tested
 
 Suppliers commit to output ahead of time, some fail to deliver, and gas peakers
-are dispatched at short notice to fill the gap. Gas is dirtier than most of
-what it replaces.
+fill the gap at short notice. Gas is dirtier than most of what it replaces.
 
-Two falsifiable predictions follow:
+Two predictions follow.
 
-1. **Forecast error should skew positive** — actual intensity above forecast
-   more often than below.
-2. **Forecasts should revise upward as the period approaches.** Short-notice
-   gas dispatch is information the model lacks 48 hours out and holds 30
-   minutes out.
+**1. Forecast error should skew positive.** Actual intensity above forecast
+more often than below.
 
-The second is the stronger test. It is measurable from this repository's
-archive alone, and it is not attenuated — prediction 1 has to be measured
-against a published forecast that was itself revised late.
+**Tested 2026-08-19. Not supported.** Over a year of half-hourly periods
+(n = 17,522) the median error is -1 gCO2/kWh, and actual comes in above
+forecast 47.5% of the time excluding ties. If anything the forecast is
+slightly conservative.
+
+It's a weak test though. The API's stored forecast is a late revision, made
+when the model already knew most of the answer, so it says little about the
+48-hour case.
+
+**2. Forecasts should revise upward as the period approaches.** Short-notice
+gas is information the model lacks 48 hours out and has 30 minutes out.
+
+Untested. This is what the archive is for: it measures the mechanism directly,
+without the attenuation that weakens prediction 1.
 
 ## Why this repository archives forecasts
 
@@ -60,7 +67,7 @@ minutes before the event, when the model already had most of the answer.
 So there is no public record of how a forecast changed as it approached. This
 project polls every 30 minutes and stores every revision with the timestamp of
 the request. **The archive only extends forwards from the day it starts. The
-past is not recoverable** — which is why it was the first thing built.
+past is not recoverable**, which is why it was the first thing built.
 
 ## Honest limitations
 
@@ -86,8 +93,8 @@ past is not recoverable** — which is why it was the first thing built.
 | **Elexon Insights** | Physical notifications, per-unit generation, outage notices, balancing actions, demand, imbalance prices |
 | **NESO Carbon Intensity API** | National carbon intensity forecast and outturn, half-hourly |
 
-Both public and free. Phase 1 uses these two only — no cross-organisation
-joins, deliberately.
+Both public and free. Phase 1 deliberately uses these two only, with no
+cross-organisation joins.
 
 ## Stack
 
@@ -132,7 +139,7 @@ tests/          pytest suite for the ingestion code
 
 ## Status
 
-**Phase 0 — gates**
+**Phase 0: gates**
 
 - [x] Development and production databases provisioned
 - [x] Forecast poller written, with tests
