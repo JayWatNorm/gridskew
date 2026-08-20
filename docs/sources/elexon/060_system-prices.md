@@ -103,6 +103,13 @@ firmed up later. Not yet confirmed how often they change.
 **Use `numeric`, not `float`, in the table.** These are money and volume
 figures that get aggregated.
 
+**Nearly everything after the prices is nullable.** The table above marks three
+fields "or null"; the spec marks **fourteen** nullable — every adjustment,
+volume and system-tagged field, plus `priceDerivationCode` and
+`reserveScarcityPrice`. Only the identifiers, `startTime`, `createdDateTime`,
+the two prices, `bsadDefaulted` and `netImbalanceVolume` are non-nullable.
+Build the table with nullable columns as the default, not the exception.
+
 ## Observed live, 2026-08-20
 
 One settlement period fetched

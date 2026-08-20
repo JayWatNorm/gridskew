@@ -59,21 +59,29 @@ stream variants of NDF and TSDF take `publishDateTimeFrom` / `publishDateTimeTo`
 (optional), unlike PN and B1610 whose streams take `from`/`to`. Omit the
 parameters and you get the latest published forecast.
 
+**Corrected 2026-08-20: every documented cap sits on the base endpoint only.**
+A sweep of the spec found no `/stream` endpoint carrying a cap sentence — for
+these datasets or any other. The developer portal describes stream endpoints as
+having no restrictions on data return. Whether that holds in practice for large
+publish windows is untested.
+
 | Endpoint | Documented max range | Notes |
 |---|---|---|
-| `/datasets/NDF` and `/stream` | **1 day** | |
-| `/datasets/TSDF` and `/stream` | **1 day** | Optional `boundary` parameter |
-| `/datasets/NDFD/stream` | 92 days | |
-| `/datasets/TSDFD/stream` | 92 days | |
-| `/datasets/NDFW/stream` | 366 days | |
-| `/datasets/TSDFW/stream` | 366 days | |
-| `/datasets/INDO` | not documented | `publishDateTimeFrom` / `To` |
-| `/datasets/ITSDO` | not documented | `publishDateTimeFrom` / `To` |
+| `/datasets/NDF` | **1 day** | Cap on the base endpoint. `/stream`: none documented |
+| `/datasets/TSDF` | **1 day** | As above. Optional `boundary` parameter on the stream |
+| `/datasets/NDFD` | 92 days | `/stream`: none documented |
+| `/datasets/TSDFD` | 92 days | As above |
+| `/datasets/NDFW` | 366 days | As above |
+| `/datasets/TSDFW` | 366 days | As above |
+| `/datasets/INDO` | not documented | `publishDateTimeFrom` / `To`. No stream variant |
+| `/datasets/ITSDO` | not documented | As above |
 
-Since the parameters are publish times, the 1 day cap presumably applies to the
-**publish window**, though the description does not say so explicitly. On that
-reading, **a year of NDF history is roughly 365 requests** rather than 13, a
-very different ingestion shape from B1610.
+Since the parameters are publish times, the base endpoint's 1 day cap
+presumably applies to the **publish window**, though the description does not
+say so explicitly. Through the base endpoint, **a year of NDF history is
+roughly 365 requests**. Through the stream, with no documented cap, it may be
+far fewer — worth one test with a multi-day publish window before building the
+S8 ingestion, since the difference is 365 requests against a handful.
 
 `INDO` and `ITSDO` did not appear with stream variants.
 
@@ -104,7 +112,7 @@ Same shape across all of them:
 | `startTime` | `str` | Period start |
 | `settlementDate` | `str` | Local time date |
 | `settlementPeriod` | `int` | 1 to 50 |
-| `boundary` | `str` | `TSDF` only. Absent from `INDO` and `ITSDO` |
+| `boundary` | `str` | On `NDF` and `TSDF`; `NDF` returns `"N"` (national) on every observed row, see the fixture. Absent from `INDO` and `ITSDO` |
 
 `INDO` and `ITSDO` are described as **updated at 15 minute intervals**.
 

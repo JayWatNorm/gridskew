@@ -66,9 +66,9 @@ an append-only feed wants.
 | `affectedArea` | `str` | |
 | `biddingZone` | `str` | e.g. `10YGB----------A` |
 | `fuelType` | `str` | e.g. `Fossil Gas` |
-| `normalCapacity` | `int` | MW when fully available |
-| `availableCapacity` | `int` | MW still available during the outage |
-| `unavailableCapacity` | `int` | MW lost |
+| `normalCapacity` | `float` | MW when fully available. Spec type is `number`, not integer, so parse as float even though observed values are whole |
+| `availableCapacity` | `float` | MW still available during the outage |
+| `unavailableCapacity` | `float` | MW lost |
 | `eventStatus` | `str` | `Active` and `Dismissed` observed live; `Inactive` in the spec. Not enumerated |
 | `eventStartTime` | `str` | Outage start |
 | `eventEndTime` | `str` | Outage end |
@@ -134,3 +134,7 @@ confirmed several things at once:
   suggests not always.)
 - Which fields are guaranteed present versus optional. Observed so far:
   `outageProfile`, `durationUncertainty` and `relatedInformation` are optional.
+  The spec is blunter: it marks **every field nullable except
+  `revisionNumber`, `publishTime`, `createdTime` and `eventStartTime`** —
+  including `eventEndTime` and all three capacities. Parse defensively
+  throughout, not just on the three observed absentees.

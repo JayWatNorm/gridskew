@@ -17,6 +17,7 @@ which is the point.
 | File | Source | Captured | Notes |
 |---|---|---|---|
 | `pn_stream.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Bare array. Descending period order as returned |
+| `qpn_stream.json` | `/datasets/QPN/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Same schema as PN, confirmed live. All levels zero: units submit QPN rows even with nothing to deduct |
 | `b1610_stream.json` | `/datasets/B1610/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Naive `halfHourEndTime`, run type `II` |
 | `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | One mrid at revisions 4, 5, 6. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
 | `mels_stream.json` | `/datasets/MELS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
