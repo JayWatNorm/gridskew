@@ -113,12 +113,16 @@ pip install -r requirements-dev.txt
 python -m pytest tests/ -v
 ```
 
-To run the poller itself, apply `sql/init/001_carbon_intensity_forecast.sql` to
-any PostgreSQL database, copy `.env.example` to `.env` and fill it in, then:
+To run the pollers themselves, apply both files in `sql/init/` to any PostgreSQL
+database, copy `.env.example` to `.env` and fill it in, then:
 
 ```bash
-python -m ingestion.carbon_intensity.forecast_poller
+python -m ingestion.carbon_intensity.forecast_poller   # 48h ahead forecast, every 30 min
+python -m ingestion.carbon_intensity.outturn_poller    # settled actuals, daily
 ```
+
+The outturn poller detects its own window. On an empty table it backfills from
+the API's earliest data; otherwise it catches up from the last period stored.
 
 ## Repository layout
 
@@ -140,11 +144,23 @@ docs/           Source and dataset documentation
 
 ## Status
 
-**Phase 0: gates**
+**Phase 0: gates, complete**
 
 - [x] Development and production databases provisioned
 - [x] Forecast poller written, with tests
 - [x] Forecast archive running on a schedule
-- [ ] Endpoint shapes confirmed against the live API
-- [ ] Hour-zero asymmetry test
+- [x] Outturn poller written, with tests
+- [x] Endpoint shapes confirmed against the live API
+- [x] Elexon rate behaviour measured empirically
+- [x] Dataset documentation, with a captured fixture per dataset
+- [x] CI running on every pull request
+- [x] Hour-zero asymmetry test, pre-registered and demoted on its own rule
+
+**Phase 1: the spine**
+
+- [ ] Elexon raw ingestion: `PN`, `B1610`, BM unit registry
 - [ ] dbt project initialised
+- [ ] Sources with `freshness` on every raw table
+- [ ] Staging models, 1:1 with sources
+- [ ] Settlement-period macro, with unit tests
+- [ ] Incremental generation and commitment facts
