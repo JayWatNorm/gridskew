@@ -73,6 +73,7 @@ Numbered in build order, not alphabetically.
 | Page | Dataset | In a phrase | Priority |
 |---|---|---|---|
 | [010_pn.md](010_pn.md) | `PN` | The promise | Phase 1, first |
+| [015_qpn.md](015_qpn.md) | `QPN` | The part of the promise that does not count | Phase 1, first |
 | [020_b1610.md](020_b1610.md) | `B1610` | The receipt | Phase 1, first |
 | [030_remit.md](030_remit.md) | `REMIT` | The excuse note, planned or unplanned | Phase 1, step 3 |
 | [040_boalf.md](040_boalf.md) | `BOALF` | The intervention | Phase 1, step 3 |
@@ -82,7 +83,8 @@ Numbered in build order, not alphabetically.
 | [080_mels-mils.md](080_mels-mils.md) | `MELS` `MILS` | The headroom | Optional |
 
 **Steps 1 and 3** refer to the thesis in the project README: find the
-shortfalls, then explain them. Only `PN` and `B1610` are needed to find them.
+shortfalls, then explain them. Only `PN`, `QPN` and `B1610` are needed to find
+them.
 
 ## Use the `/stream` variants
 
@@ -113,10 +115,13 @@ array, but the tooling used for these checks collapsed repeated query keys, so
 multi-unit filtering has not been observed working. Test before relying on it;
 ingestion does not filter by unit anyway.
 
-**Window caps vary by endpoint and are documented per endpoint.** There is no
-single platform-wide rule. Examples from the spec:
+**Window caps vary by endpoint, are documented per endpoint, and sit on the
+BASE endpoints only.** There is no single platform-wide rule, and — verified
+against the full spec 2026-08-20 — **no `/stream` endpoint documents a cap at
+all**. The portal describes streams as having no restrictions on data return.
+Base-endpoint examples from the spec:
 
-| Endpoint | Documented maximum range |
+| Base endpoint | Documented maximum range |
 |---|---|
 | `NDF`, `TSDF`, `INDGEN`, `INDDEM`, `MELNGC`, `IMBALNGC` | **1 day** |
 | `AGWS`, `ATL`, `DATL`, `DGWS`, `OCNMFD` | 7 days |
@@ -126,7 +131,8 @@ single platform-wide rule. Examples from the spec:
 | `IGCA`, `IGCPU` | 731 days |
 | `PN`, `B1610`, `REMIT`, `BOALF`, `MELS`, `MILS` | **not documented** |
 
-**Always check the endpoint description before assuming a range is safe.**
+**Always check the endpoint description before assuming a range is safe**, and
+treat an undocumented stream cap as untested rather than absent.
 
 For the undocumented ones, a 92 day B1610 request returned the full range,
 4,417 rows for one BM unit, with no truncation. Note that 92 days is also the

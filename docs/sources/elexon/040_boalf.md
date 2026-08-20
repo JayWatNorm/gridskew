@@ -30,7 +30,7 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream
 | Parameter | Required |
 |---|---|
 | `from`, `to` | yes |
-| `settlementPeriodFrom`, `settlementPeriodTo` | no, did not filter when tested |
+| `settlementPeriodFrom`, `settlementPeriodTo` | no. Documented as switching `from`/`to` to settlement-date filtering; see below. Untested on this dataset — the no-effect observation was on B1610, not BOALF |
 | `bmUnit` | no |
 
 ## Response fields
@@ -52,12 +52,13 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream
 | `amendmentFlag` | `str` | `ORI` in the spec's example, suggesting original versus amended |
 | `storFlag` | `bool` | Short Term Operating Reserve |
 | `rrFlag` | `bool` | Replacement Reserve |
-
-**None of the flag fields carry descriptions in the API spec.** The readings
-below are industry convention and inference from the names, not documented
-behaviour. Verify against live data before the analysis depends on any of them.
 | `nationalGridBmUnit` | `str` | |
 | `bmUnit` | `str` | |
+
+**None of the flag fields carry descriptions in the API spec** — verified: no
+field on this schema has one. The readings above are industry convention and
+inference from the names, not documented behaviour. Verify against live data
+before the analysis depends on any of them.
 
 ## Things to know before modelling it
 
