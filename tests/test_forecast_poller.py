@@ -4,7 +4,12 @@ from datetime import datetime, timedelta, timezone
 
 from ingestion.carbon_intensity.forecast_poller import parse
 
-FIXTURE_PATH = pathlib.Path(__file__).parent / "fixtures" / "fw48h_sample.json"
+FIXTURE_PATH = (
+    pathlib.Path(__file__).parent
+    / "fixtures"
+    / "carbon_intensity"
+    / "forecast_fw48h.json"
+)
 
 # Deliberately not on a period boundary, and distinct from every other value in
 # the golden tuple, so that a positional swap cannot pass unnoticed.

@@ -18,7 +18,7 @@ dbt_packages/
 logs/
 
 # --- Working notes, kept outside the repository ---
-docs/
+docs/decisions.md
 
 # --- Editors / OS ---
 .vscode/

@@ -1,0 +1,35 @@
+[
+  {
+    "dataset": "B1610",
+    "psrType": "Generation",
+    "bmUnit": "T_DRAXX-1",
+    "nationalGridBmUnitId": "DRAXX-1",
+    "settlementDate": "2026-08-01",
+    "settlementPeriod": 3,
+    "halfHourEndTime": "2026-08-01T00:30:00",
+    "settlementRunType": "II",
+    "quantity": 0.000
+  },
+  {
+    "dataset": "B1610",
+    "psrType": "Generation",
+    "bmUnit": "T_DRAXX-1",
+    "nationalGridBmUnitId": "DRAXX-1",
+    "settlementDate": "2026-08-01",
+    "settlementPeriod": 4,
+    "halfHourEndTime": "2026-08-01T01:00:00",
+    "settlementRunType": "II",
+    "quantity": 0.000
+  },
+  {
+    "dataset": "B1610",
+    "psrType": "Generation",
+    "bmUnit": "T_DRAXX-1",
+    "nationalGridBmUnitId": "DRAXX-1",
+    "settlementDate": "2026-08-01",
+    "settlementPeriod": 5,
+    "halfHourEndTime": "2026-08-01T01:30:00",
+    "settlementRunType": "II",
+    "quantity": 0.000
+  }
+]

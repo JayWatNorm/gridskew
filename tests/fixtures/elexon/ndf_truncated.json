@@ -1,0 +1,58 @@
+{
+  "data": [
+    {
+      "dataset": "NDF",
+      "demand": 22700,
+      "publishTime": "2026-08-19T10:49:00Z",
+      "startTime": "2026-08-19T11:00:00Z",
+      "settlementDate": "2026-08-19",
+      "settlementPeriod": 25,
+      "boundary": "N"
+    },
+    {
+      "dataset": "NDF",
+      "demand": 22694,
+      "publishTime": "2026-08-19T10:49:00Z",
+      "startTime": "2026-08-19T11:30:00Z",
+      "settlementDate": "2026-08-19",
+      "settlementPeriod": 26,
+      "boundary": "N"
+    },
+    {
+      "dataset": "NDF",
+      "demand": 21930,
+      "publishTime": "2026-08-19T10:49:00Z",
+      "startTime": "2026-08-19T23:00:00Z",
+      "settlementDate": "2026-08-20",
+      "settlementPeriod": 1,
+      "boundary": "N"
+    },
+    {
+      "dataset": "NDF",
+      "demand": 21464,
+      "publishTime": "2026-08-19T10:49:00Z",
+      "startTime": "2026-08-19T23:30:00Z",
+      "settlementDate": "2026-08-20",
+      "settlementPeriod": 2,
+      "boundary": "N"
+    },
+    {
+      "dataset": "NDF",
+      "demand": 22939,
+      "publishTime": "2026-08-19T10:16:00Z",
+      "startTime": "2026-08-19T10:30:00Z",
+      "settlementDate": "2026-08-19",
+      "settlementPeriod": 24,
+      "boundary": "N"
+    },
+    {
+      "dataset": "NDF",
+      "demand": 22700,
+      "publishTime": "2026-08-19T10:16:00Z",
+      "startTime": "2026-08-19T11:00:00Z",
+      "settlementDate": "2026-08-19",
+      "settlementPeriod": 25,
+      "boundary": "N"
+    }
+  ]
+}

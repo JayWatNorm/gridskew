@@ -1,0 +1,46 @@
+[
+  {
+    "dataset": "PN",
+    "settlementDate": "2026-08-01",
+    "settlementPeriod": 5,
+    "timeFrom": "2026-08-01T01:00:00Z",
+    "timeTo": "2026-08-01T01:30:00Z",
+    "levelFrom": 0,
+    "levelTo": 0,
+    "nationalGridBmUnit": "DRAXX-1",
+    "bmUnit": "T_DRAXX-1"
+  },
+  {
+    "dataset": "PN",
+    "settlementDate": "2026-08-01",
+    "settlementPeriod": 4,
+    "timeFrom": "2026-08-01T00:30:00Z",
+    "timeTo": "2026-08-01T01:00:00Z",
+    "levelFrom": 0,
+    "levelTo": 0,
+    "nationalGridBmUnit": "DRAXX-1",
+    "bmUnit": "T_DRAXX-1"
+  },
+  {
+    "dataset": "PN",
+    "settlementDate": "2026-08-01",
+    "settlementPeriod": 3,
+    "timeFrom": "2026-08-01T00:00:00Z",
+    "timeTo": "2026-08-01T00:30:00Z",
+    "levelFrom": 0,
+    "levelTo": 0,
+    "nationalGridBmUnit": "DRAXX-1",
+    "bmUnit": "T_DRAXX-1"
+  },
+  {
+    "dataset": "PN",
+    "settlementDate": "2026-08-01",
+    "settlementPeriod": 2,
+    "timeFrom": "2026-07-31T23:30:00Z",
+    "timeTo": "2026-08-01T00:00:00Z",
+    "levelFrom": 0,
+    "levelTo": 0,
+    "nationalGridBmUnit": "DRAXX-1",
+    "bmUnit": "T_DRAXX-1"
+  }
+]
