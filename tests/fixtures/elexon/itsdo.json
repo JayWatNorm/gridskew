@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "dataset": "ITSDO",
+      "publishTime": "2026-08-19T11:00:00Z",
+      "startTime": "2026-08-19T10:30:00Z",
+      "settlementDate": "2026-08-19",
+      "settlementPeriod": 24,
+      "demand": 24258
+    },
+    {
+      "dataset": "ITSDO",
+      "publishTime": "2026-08-19T10:30:00Z",
+      "startTime": "2026-08-19T10:00:00Z",
+      "settlementDate": "2026-08-19",
+      "settlementPeriod": 23,
+      "demand": 24377
+    },
+    {
+      "dataset": "ITSDO",
+      "publishTime": "2026-08-19T10:00:00Z",
+      "startTime": "2026-08-19T09:30:00Z",
+      "settlementDate": "2026-08-19",
+      "settlementPeriod": 22,
+      "demand": 24586
+    }
+  ]
+}

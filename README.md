@@ -129,6 +129,7 @@ sql/            Raw-layer DDL, applied manually per database
 dbt/            dbt project (from Phase 1)
 dbt_profiles/   dbt connection profile, credentials via env_var()
 tests/          pytest suite for the ingestion code
+docs/           Source and dataset documentation
 .github/        CI workflow
 ```
 

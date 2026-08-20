@@ -7,7 +7,9 @@ import pytest
 
 from ingestion.carbon_intensity.outturn_poller import chunker, parse
 
-FIXTURE_PATH = pathlib.Path(__file__).parent / "fixtures" / "outturn_sample.json"
+FIXTURE_PATH = (
+    pathlib.Path(__file__).parent / "fixtures" / "carbon_intensity" / "outturn.json"
+)
 
 # Deliberately not on a period boundary and distinct from every other value in
 # the golden tuple, so a positional swap cannot pass unnoticed.
