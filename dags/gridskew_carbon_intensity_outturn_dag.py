@@ -8,8 +8,8 @@ from datetime import datetime, timedelta, timezone
 
 from airflow.decorators import dag, task
 
-# Namespaced per project, matching the bind-mount in
-# homelab-platform/docker-compose.yml. Deliberately not a global PYTHONPATH:
+# Namespaced per project, matching the bind-mount declared in the Airflow
+# compose file. Deliberately not a global PYTHONPATH:
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 
 

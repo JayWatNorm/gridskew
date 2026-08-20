@@ -207,4 +207,45 @@ quirk. It is the shape of this entire domain.
 
 ## Rate limits
 
-Not documented and not yet established. Gate 0.3.
+Not documented anywhere in the spec or the developer portal.
+
+### Tested 2026-08-20
+
+50 sequential requests to `/datasets/PN/stream`, unthrottled, small window, one
+BM unit.
+
+| | Result |
+|---|---|
+| Status codes | **50 of 50 returned 200.** No 429, no errors |
+| Rows returned | Constant at 3 throughout. No silent degradation |
+| Latency | Median about 28 ms, no upward trend. Three spikes (86, 92, 288 ms) that returned immediately to baseline, so network noise rather than throttling |
+| Rate achieved | Roughly **30 requests per second**, sustained |
+
+**No rate-limit headers are returned.** No `X-RateLimit-Remaining`, no
+`Retry-After`, nothing. A client cannot see how close it is to a limit, so
+backing off gracefully is impossible; you would simply be blocked.
+
+Response headers show `Cache-Control: no-store, must-revalidate, no-cache`, so
+nothing is cacheable, and `Request-Context: appId=cid-v1:...`, indicating Azure
+hosting with Application Insights.
+
+### Policy that follows
+
+**Nothing observed pushed back at 30 req/s across 50 requests.** But the test is
+small: a year of PN at daily chunks is 365 requests, seven times larger, and the
+terms state a limit exists and that applications making many calls may be
+blocked.
+
+So:
+
+- **Daily scheduled jobs**: one or two requests. No delay needed.
+- **Backfills**: use `time.sleep(0.2)` between requests. It turns a 365 request
+  backfill from 12 seconds into 90, which costs nothing and removes a risk you
+  have no way to monitor.
+- **Assert on row counts, not just status codes.** `raise_for_status()` catches
+  4xx and 5xx. With no rate-limit headers, a future throttle could arrive in a
+  shape not seen here, and a 200 with an empty body would otherwise look like a
+  successful run that wrote nothing.
+- **Identify yourself.** The terms prohibit concealing an application's
+  identity, and a descriptive `User-Agent` means an operator can contact you
+  rather than simply blocking the address.
