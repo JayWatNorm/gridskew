@@ -102,6 +102,10 @@ Python ingestion → PostgreSQL → dbt → Airflow, on a self-hosted Linux serv
 Separate development and production databases; scheduled runs write to
 production only.
 
+Two DAGs are live in production: the forecast archive every 30 minutes, and the
+outturn poller daily. The outturn poller detects its own window, so it backfills
+on an empty table and catches up from the last stored period thereafter.
+
 ## Run the tests
 
 The parsing logic is a pure function tested against a captured API response, so
@@ -148,8 +152,8 @@ docs/           Source and dataset documentation
 
 - [x] Development and production databases provisioned
 - [x] Forecast poller written, with tests
-- [x] Forecast archive running on a schedule
 - [x] Outturn poller written, with tests
+- [x] Both pollers deployed to Airflow, running on schedule against production
 - [x] Endpoint shapes confirmed against the live API
 - [x] Elexon rate behaviour measured empirically
 - [x] Dataset documentation, with a captured fixture per dataset
