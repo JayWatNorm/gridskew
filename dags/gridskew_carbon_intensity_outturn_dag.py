@@ -1,5 +1,5 @@
 """gridskew's carbon intensity outturn DAG.
-Polls the NESO Carbon Intensity API every 30 minutes and appends every
+Polls the NESO Carbon Intensity API daily
 revision to raw.carbon_intensity_outturn in gridskew_prod.
 """
 

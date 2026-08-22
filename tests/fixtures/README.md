@@ -16,6 +16,7 @@ which is the point.
 
 | File | Source | Captured | Notes |
 |---|---|---|---|
+| `pn_stream.json` | `/datasets/PN/stream`, two windows, **5 units** | 2026-08-22 | **Composite** — see note below. 28 rows: five unit types, segments of 1 to 30 minutes, four multi-segment periods, five rows where `levelFrom != levelTo`, a negative level, three `nationalGridBmUnit` naming shapes. **Periods 32–35 are absent** |
 | `pn_stream.json` | `/datasets/PN/stream`, two windows, **4 units** | 2026-08-22 | **Composite** — see note below. 24 rows: four unit types, segments of 1 to 30 minutes, four multi-segment periods, five rows where `levelFrom != levelTo`, three `nationalGridBmUnit` naming shapes. **Periods 32–35 are absent** |
 | `qpn_stream.json` | `/datasets/QPN/stream`, two windows, **same 5 units as `pn_stream.json`** | 2026-08-22 | **Composite.** 24 rows, deliberately the same units and windows as the PN fixture so the two are directly comparable. **Every segment is 30 minutes** — QPN does not mirror PN's sub-period segmentation. Includes `T_WILCT-1` at −60 MW, the **only** unit in the entire market with a non-zero QPN |
 | `pn_stream_ramp.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for the S2 ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
@@ -34,26 +35,27 @@ them for row-count assertions against the API.
 
 ## The one composite fixture
 
-`pn_stream.json` is **assembled from five single-unit requests over two windows**
-on 2026-08-21 — four units across `17:00Z–18:00Z`, plus `T_DRAXX-1` across
-`13:00Z–14:00Z` for the start-up ramp. Every row is verbatim; the payload is not.
+`pn_stream.json` is **assembled from six single-unit requests over two windows**
+on 2026-08-21 — five units across `16:30Z–18:30Z`, plus `T_DRAXX-1` again across
+`12:30Z–14:30Z` for the start-up ramp. Every row is verbatim; the payload is not.
 
 > **Settlement periods 32 to 35 are missing**, because the two source windows are
 > two hours apart. Segments are contiguous *within* each period, which is the
 > invariant worth testing. **A contiguity test across periods will fail** — that
 > is the fixture, not the parser.
 
-This is deliberate. A genuine market-wide response for that window is about
-5,400 rows across ~2,700 units, which is far too large to commit, and the
+This is deliberate. A genuine market-wide response for that window is roughly
+11,000 rows across ~2,700 units, which is far too large to commit, and the
 previous single-unit capture was four identical rows of a flat baseload plant —
 it would pass a parser that ignored half the fields.
 
-The four units were chosen for variety:
+The five units were chosen for variety:
 
 | Unit | Type | What it contributes |
 |---|---|---|
-| `T_DRAXX-1` | transmission, biomass | flat baseload, 660 MW, 30-minute segments |
+| `T_DRAXX-1` | transmission, biomass | flat baseload, 660 MW, 30-minute segments, plus the start-up ramp |
 | `T_ABRBO-1` | transmission, offshore wind | **15-minute segments**, two per period, varying levels 47 → 41 |
+| `T_WILCT-1` | transmission | **the only negative level**, −14 MW in PN and −60 MW in QPN |
 | `V__BADEL001` | virtual lead party | zeros, and a `nationalGridBmUnit` of `AG-ADL00B` that shares no stem with the Elexon id |
 | `E_ABERDARE` | embedded | zeros, `ABERU-1` — a third naming shape |
 

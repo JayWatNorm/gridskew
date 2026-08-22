@@ -27,6 +27,7 @@ They import from `ingestion/`, so they need the repo root on the path.
 | Script | Question it answered | Result |
 |---|---|---|
 | `pn_checks.py` | Are `bmUnit` and `nationalGridBmUnit` ever null? How many PN rows are zero-to-zero? | 2,450 of 132,728 rows have a null `bmUnit` and none has a null `nationalGridBmUnit`, which is why the primary key uses the National Grid identifier. 72% of rows are zero-to-zero, and 63% of units are zero all day. See `docs/sources/elexon/010_pn.md` |
+| `qpn_checks.py` | Does QPN share PN's null pattern, and how often is it actually non-zero? | Same 2,450 null `bmUnit` rows, same zero nulls on `nationalGridBmUnit`, so the same key holds. **50 of 119,600 rows are non-zero — 0.04% — and all 50 belong to `T_WILCT-1`**, at a constant −60 MW. See `docs/sources/elexon/015_qpn.md` |
 
 ## Why keep them
 
