@@ -112,27 +112,9 @@ belongs in a dbt test on the staging model, not a constraint on raw.
 
 ## Ingestion
 
-`ingestion/carbon_intensity/outturn_poller.py`, scheduled daily by the
-`gridskew_carbon_intensity_outturn` DAG.
-
-**One function, window taken from the database.** `data_checker` reads the
-existing min and max `period_start`; an empty or short table triggers a 365 day
-backfill, otherwise a 7 day look-back. Backfill and catch-up are the same code
-path with different dates, which is what stops them drifting apart.
-
-The 7 day look-back exists to pick up revisions. Airflow's own `catchup` would
-fetch each day exactly once and never look back, which is why it is off.
+See [021_outturn_ingestion.md](021_outturn_ingestion.md).
 
 ## Traps
-
-**Chunk boundaries overlap by one period.** Each chunk starts where the last
-ended, and the API returns the period containing that instant. With
-`retrieved_at` constant across a run, that is a guaranteed primary key
-violation, so the insert carries `ON CONFLICT DO NOTHING`.
-
-This only bites when a window starts exactly on a half-hour, which is precisely
-when scheduled runs fire. A manual run starting mid-period will not reproduce
-it.
 
 **Every downstream read must deduplicate.** Append-only plus repeated polls
 means one period can have several rows. Use `DISTINCT ON (period_start)` with

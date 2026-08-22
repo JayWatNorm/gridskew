@@ -16,8 +16,9 @@ which is the point.
 
 | File | Source | Captured | Notes |
 |---|---|---|---|
-| `pn_stream.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Bare array. Descending period order as returned |
+| `pn_stream.json` | `/datasets/PN/stream`, two windows, **4 units** | 2026-08-22 | **Composite** — see note below. 24 rows: four unit types, segments of 1 to 30 minutes, four multi-segment periods, five rows where `levelFrom != levelTo`, three `nationalGridBmUnit` naming shapes. **Periods 32–35 are absent** |
 | `qpn_stream.json` | `/datasets/QPN/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Same schema as PN, confirmed live. All levels zero: units submit QPN rows even with nothing to deduct |
+| `pn_stream_ramp.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for the S2 ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
 | `b1610_stream.json` | `/datasets/B1610/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Naive `halfHourEndTime`, run type `II` |
 | `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | One mrid at revisions 4, 5, 6. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
 | `mels_stream.json` | `/datasets/MELS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
@@ -30,3 +31,43 @@ which is the point.
 
 Truncated extracts preserve verbatim rows but not the full payload; do not use
 them for row-count assertions against the API.
+
+## The one composite fixture
+
+`pn_stream.json` is **assembled from five single-unit requests over two windows**
+on 2026-08-21 — four units across `17:00Z–18:00Z`, plus `T_DRAXX-1` across
+`13:00Z–14:00Z` for the start-up ramp. Every row is verbatim; the payload is not.
+
+> **Settlement periods 32 to 35 are missing**, because the two source windows are
+> two hours apart. Segments are contiguous *within* each period, which is the
+> invariant worth testing. **A contiguity test across periods will fail** — that
+> is the fixture, not the parser.
+
+This is deliberate. A genuine market-wide response for that window is about
+5,400 rows across ~2,700 units, which is far too large to commit, and the
+previous single-unit capture was four identical rows of a flat baseload plant —
+it would pass a parser that ignored half the fields.
+
+The four units were chosen for variety:
+
+| Unit | Type | What it contributes |
+|---|---|---|
+| `T_DRAXX-1` | transmission, biomass | flat baseload, 660 MW, 30-minute segments |
+| `T_ABRBO-1` | transmission, offshore wind | **15-minute segments**, two per period, varying levels 47 → 41 |
+| `V__BADEL001` | virtual lead party | zeros, and a `nationalGridBmUnit` of `AG-ADL00B` that shares no stem with the Elexon id |
+| `E_ABERDARE` | embedded | zeros, `ABERU-1` — a third naming shape |
+
+The `T_DRAXX-1` ramp rows are what make `levelFrom != levelTo` testable at all.
+Without them **every row in the fixture had identical from and to levels**, so a
+parse written as `result["levelFrom"], result["levelFrom"]` — ignoring `levelTo`
+entirely — passed every assertion. Five rows now differ.
+
+**Known gap: no negative levels.** Five units were checked for an importing
+(negative) PN and none was found; pumped storage and battery units were all at
+zero. A parser mishandling negatives would not be caught by this fixture. Worth
+capturing one if a negative is ever observed.
+
+`pn_stream_ramp.json` is retained as the **verbatim single-request capture** of
+those ramp rows. Its contents are now a subset of `pn_stream.json`; it is kept
+because provenance matters and every other fixture here is a real single
+response. Tests should use `pn_stream.json`.

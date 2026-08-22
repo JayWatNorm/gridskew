@@ -1,8 +1,8 @@
 CREATE SCHEMA IF NOT EXISTS raw;
 
 CREATE TABLE IF NOT EXISTS raw.elexon_b1610 (
-    bm_unit                     text NOT NULL,
-    national_grid_bm_unit_id    text,   
+    bm_unit                     text,
+    national_grid_bm_unit_id    text NOT NULL,   
     psr_type                    text,
     settlement_date             date NOT NULL,
     settlement_period           smallint NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS raw.elexon_b1610 (
     settlement_run_type         text,
     quantity                    numeric NOT NULL,
     retrieved_at                TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (bm_unit, settlement_date, settlement_period, settlement_run_type, retrieved_at)
+    PRIMARY KEY (national_grid_bm_unit_id, settlement_date, settlement_period, settlement_run_type, retrieved_at)
 );
 COMMENT ON TABLE raw.elexon_b1610 IS
   'Metered output, MWh per settlement period. One row per unit, period and

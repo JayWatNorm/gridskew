@@ -70,17 +70,21 @@ the thesis and can follow.
 
 Numbered in build order, not alphabetically.
 
-| Page | Dataset | In a phrase | Priority |
-|---|---|---|---|
-| [010_pn.md](010_pn.md) | `PN` | The promise | Phase 1, first |
-| [015_qpn.md](015_qpn.md) | `QPN` | An internal process netted off the promise | Phase 1, first |
-| [020_b1610.md](020_b1610.md) | `B1610` | The receipt | Phase 1, first |
-| [030_remit.md](030_remit.md) | `REMIT` | The excuse note, planned or unplanned | Phase 1, step 3 |
-| [040_boalf.md](040_boalf.md) | `BOALF` | The intervention | Phase 1, step 3 |
-| [050_demand.md](050_demand.md) | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | Phase 1, step 3 |
-| [060_system-prices.md](060_system-prices.md) | system prices | What it cost to fix the imbalance | Phase 1, step 3 |
-| [070_bmunits.md](070_bmunits.md) | `/reference/bmunits/all` | The address book | Phase 1, S4 |
-| [080_mels-mils.md](080_mels-mils.md) | `MELS` `MILS` | The headroom | Optional |
+| Page | Ingestion | Dataset | In a phrase | Priority |
+|---|---|---|---|---|
+| [010_pn.md](010_pn.md) | [011](011_pn_ingestion.md) | `PN` | The promise | Phase 1, first |
+| [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | An internal process netted off the promise | Phase 1, first |
+| [020_b1610.md](020_b1610.md) | — | `B1610` | The receipt | Phase 1, first |
+| [030_remit.md](030_remit.md) | — | `REMIT` | The excuse note, planned or unplanned | Phase 1, step 3 |
+| [040_boalf.md](040_boalf.md) | — | `BOALF` | The intervention | Phase 1, step 3 |
+| [050_demand.md](050_demand.md) | — | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | Phase 1, step 3 |
+| [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Phase 1, step 3 |
+| [070_bmunits.md](070_bmunits.md) | — | `/reference/bmunits/all` | The address book | Phase 1, S4 |
+| [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
+
+An ingestion page exists only once a dataset is actually being loaded. The
+patterns behind them are in
+[../ingestion-patterns.md](../ingestion-patterns.md).
 
 **Steps 1 and 3** refer to the thesis in the project README: find the
 shortfalls, then explain them. Only `PN`, `QPN` and `B1610` are needed to find

@@ -18,10 +18,14 @@ granularity, for the GB electricity system as a whole.
 
 ## Datasets ingested
 
-| Page | Endpoint | Table |
-|---|---|---|
-| [010_forecast.md](010_forecast.md) | `/intensity/{from}/fw48h` | `raw.carbon_intensity_forecast` |
-| [020_outturn.md](020_outturn.md) | `/intensity/{from}/{to}` | `raw.carbon_intensity_outturn` |
+| Dataset | Ingestion | Endpoint | Table |
+|---|---|---|---|
+| [010_forecast.md](010_forecast.md) | [011](011_forecast_ingestion.md) | `/intensity/{from}/fw48h` | `raw.carbon_intensity_forecast` |
+| [020_outturn.md](020_outturn.md) | [021](021_outturn_ingestion.md) | `/intensity/{from}/{to}` | `raw.carbon_intensity_outturn` |
+
+Both are **running in production**. The patterns behind them, and why the two
+pollers differ from each other and from the Elexon ones, are in
+[../ingestion-patterns.md](../ingestion-patterns.md).
 
 ## Shared behaviour
 
