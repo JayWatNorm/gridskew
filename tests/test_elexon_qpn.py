@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from ingestion.elexon.pn_poller import parse
 
-FIXTURE_PATH = pathlib.Path(__file__).parent / "fixtures" / "elexon" / "pn_stream.json"
+FIXTURE_PATH = pathlib.Path(__file__).parent / "fixtures" / "elexon" / "qpn_stream.json"
 
 # Deliberately not on a period boundary, and distinct from every other value in
 # the golden tuple, so that a positional swap cannot pass unnoticed.
@@ -25,15 +25,15 @@ def test_parse():
     # Golden value. The expected side is written by hand from the fixture, not
     # derived from it, so it independently verifies both the string-to-datetime
     # conversion and the position of every column in the tuple.
-    assert parsed_results[22] == (
+    assert parsed_results[16] == (
         date(2026, 8, 21),
-        31,
-        datetime(2026, 8, 21, 14, 0, tzinfo=timezone.utc),
-        datetime(2026, 8, 21, 14, 30, tzinfo=timezone.utc),
-        250,
-        474,
-        "DRAXX-1",
-        "T_DRAXX-1",
+        36,
+        datetime(2026, 8, 21, 16, 30, tzinfo=timezone.utc),
+        datetime(2026, 8, 21, 17, 00, tzinfo=timezone.utc),
+        -60,
+        -60,
+        "WILCT-1",
+        "T_WILCT-1",
         RETRIEVED_AT,
     )
 
@@ -53,9 +53,10 @@ def test_parse():
     # no duplicates
     key = [(row[6], row[2]) for row in parsed_results]
     assert len(set(key)) == len(key), "duplicate key in batch"
-    # ramp still exists
-    ramp = [(row[4] - row[5]) for row in parsed_results]
-    assert len(set(ramp)) > 1, "ramp still presnet"
+    # negatives exist
+    assert any(row[4] < 0 for row in parsed_results)
+    # qpn shouldnt sub-divide a peroid
+    assert all(row[3] - row[2] == timedelta(minutes=30) for row in parsed_results)
 
     # more than one BM unit
     assert len({row[6] for row in parsed_results}) > 1
