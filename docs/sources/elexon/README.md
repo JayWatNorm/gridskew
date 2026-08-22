@@ -73,7 +73,7 @@ Numbered in build order, not alphabetically.
 | Page | Dataset | In a phrase | Priority |
 |---|---|---|---|
 | [010_pn.md](010_pn.md) | `PN` | The promise | Phase 1, first |
-| [015_qpn.md](015_qpn.md) | `QPN` | The part of the promise that does not count | Phase 1, first |
+| [015_qpn.md](015_qpn.md) | `QPN` | An internal process netted off the promise | Phase 1, first |
 | [020_b1610.md](020_b1610.md) | `B1610` | The receipt | Phase 1, first |
 | [030_remit.md](030_remit.md) | `REMIT` | The excuse note, planned or unplanned | Phase 1, step 3 |
 | [040_boalf.md](040_boalf.md) | `BOALF` | The intervention | Phase 1, step 3 |
