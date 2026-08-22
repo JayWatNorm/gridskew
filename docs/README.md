@@ -30,9 +30,9 @@ docs/sources/
     021_outturn_ingestion.md    daily, 7-day look-back, 30-day chunks
   elexon/
     README.md                 API level, plus how the GB market works
-    010_pn.md                 The promise                              [table built]
+    010_pn.md                 The promise                              [running]
     011_pn_ingestion.md         daily, catchup=True, 1-day chunks
-    015_qpn.md                An internal process netted off it        [table built]
+    015_qpn.md                An internal process netted off it        [running]
     016_qpn_ingestion.md        as PN
     020_b1610.md              The receipt                              [table built]
     030_remit.md              The excuse note                          [planned]
