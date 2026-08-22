@@ -1,8 +1,8 @@
 CREATE SCHEMA IF NOT EXISTS raw;
 
 CREATE TABLE IF NOT EXISTS raw.elexon_qpn (
-    bm_unit                 text NOT NULL,
-    national_grid_bm_unit   text,   
+    bm_unit                 text,
+    national_grid_bm_unit   text NOT NULL,   
     settlement_date         date NOT NULL,
     settlement_period       smallint NOT NULL,
     time_from               TIMESTAMPTZ NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS raw.elexon_qpn (
     level_from              int NOT NULL,
     level_to                int NOT NULL,
     retrieved_at            TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (bm_unit, time_from, retrieved_at)
+    PRIMARY KEY (national_grid_bm_unit, time_from, retrieved_at)
 );
 COMMENT ON TABLE raw.elexon_qpn IS
   'MW used by an internal process inside the unit, netted off the PN. Not output.

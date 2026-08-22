@@ -95,12 +95,7 @@ records what the source returned. Outturn is ingested separately into
 
 ## Ingestion
 
-`ingestion/carbon_intensity/forecast_poller.py`, scheduled by the
-`gridskew_carbon_intensity` DAG every 30 minutes, writing to `gridskew_prod`.
-
-`catchup=False` is load-bearing rather than cosmetic. A backfilled run cannot
-retrieve the forecast that existed during its interval; it would fetch current
-data and stamp it with a misleading `retrieved_at`.
+See [011_forecast_ingestion.md](011_forecast_ingestion.md).
 
 ## Traps
 

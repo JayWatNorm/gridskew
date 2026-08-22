@@ -117,16 +117,23 @@ pip install -r requirements-dev.txt
 python -m pytest tests/ -v
 ```
 
-To run the pollers themselves, apply both files in `sql/init/` to any PostgreSQL
+To run the pollers themselves, apply the files in `sql/init/` to any PostgreSQL
 database, copy `.env.example` to `.env` and fill it in, then:
 
 ```bash
 python -m ingestion.carbon_intensity.forecast_poller   # 48h ahead forecast, every 30 min
 python -m ingestion.carbon_intensity.outturn_poller    # settled actuals, daily
+python -m ingestion.elexon.pn_poller                   # physical notifications, one day
 ```
 
-The outturn poller detects its own window. On an empty table it backfills from
-the API's earliest data; otherwise it catches up from the last period stored.
+The two carbon intensity pollers detect their own window. The Elexon poller takes
+its window as arguments and defaults to yesterday, because Airflow supplies the
+window per run — see
+[docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) for why
+the two approaches differ.
+
+**One Elexon day is about 132,000 rows**, so expect it to take a minute rather
+than a second.
 
 ## Repository layout
 
@@ -136,15 +143,41 @@ dags/           Airflow DAG definitions
 sql/            Raw-layer DDL, applied manually per database
 dbt/            dbt project (from Phase 1)
 dbt_profiles/   dbt connection profile, credentials via env_var()
-tests/          pytest suite for the ingestion code
+tests/          pytest suite, captured fixtures, and ad-hoc data checks
 docs/           Source and dataset documentation
 .github/        CI workflow
 ```
+
+`tests/adhoc/` holds exploratory scripts that call the live API. They are
+excluded from pytest deliberately — see
+[tests/adhoc/README.md](tests/adhoc/README.md).
 
 ## Working practice
 
 - Every change arrives as a pull request, with CI passing.
 - The raw layer is append-only. Nothing in it is updated or deleted.
+
+## Deploying an Elexon DAG
+
+The Elexon DAGs use `catchup=True`, so **unpausing one starts a backfill**. Their
+`start_date` is a fixed literal defining how much history to load, currently one
+year.
+
+1. Apply the relevant file from `sql/init/` to **both** databases.
+2. Push, then pull on the Airflow host.
+3. **Create the DAG paused.** Trigger one run manually and check the row count —
+   a PN day is about 132,000 rows across ~2,500 units.
+4. Unpause. Runs execute one at a time at `max_active_runs=1`, roughly 1.4
+   requests per minute, and a year takes about four hours.
+
+Pausing mid-backfill is safe: the run in flight finishes and unpausing resumes
+where it left off.
+
+**`start_date` is not maintenance-free.** Standing a DAG up on a fresh Airflow
+instance years later re-backfills from that same date, so the window grows with
+time. Change the literal deliberately if that is not wanted — **never compute it
+from `datetime.now()`**, which breaks Airflow's scheduling. Reasoning in
+[docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md).
 
 ## Status
 
@@ -162,9 +195,18 @@ docs/           Source and dataset documentation
 
 **Phase 1: the spine**
 
-- [ ] Elexon raw ingestion: `PN`, `B1610`, BM unit registry
+- [x] `PN` raw table, poller and tests
+- [x] `PN` Airflow DAG, `catchup=True` over a year
+- [ ] `PN` deployed and backfilling
+- [ ] `QPN` and `B1610` ingestion
+- [ ] BM unit registry snapshot
 - [ ] dbt project initialised
 - [ ] Sources with `freshness` on every raw table
 - [ ] Staging models, 1:1 with sources
 - [ ] Settlement-period macro, with unit tests
 - [ ] Incremental generation and commitment facts
+
+`QPN` was added to the plan after reconnaissance found it declares MW netted off
+the `PN`. Whether that deduction belongs in the shortfall calculation is an open
+question rather than an assumption — see
+[docs/sources/elexon/015_qpn.md](docs/sources/elexon/015_qpn.md).
