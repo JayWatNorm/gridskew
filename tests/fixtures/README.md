@@ -17,7 +17,7 @@ which is the point.
 | File | Source | Captured | Notes |
 |---|---|---|---|
 | `pn_stream.json` | `/datasets/PN/stream`, two windows, **4 units** | 2026-08-22 | **Composite** — see note below. 24 rows: four unit types, segments of 1 to 30 minutes, four multi-segment periods, five rows where `levelFrom != levelTo`, three `nationalGridBmUnit` naming shapes. **Periods 32–35 are absent** |
-| `qpn_stream.json` | `/datasets/QPN/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Same schema as PN, confirmed live. All levels zero: units submit QPN rows even with nothing to deduct |
+| `qpn_stream.json` | `/datasets/QPN/stream`, two windows, **same 5 units as `pn_stream.json`** | 2026-08-22 | **Composite.** 24 rows, deliberately the same units and windows as the PN fixture so the two are directly comparable. **Every segment is 30 minutes** — QPN does not mirror PN's sub-period segmentation. Includes `T_WILCT-1` at −60 MW, the **only** unit in the entire market with a non-zero QPN |
 | `pn_stream_ramp.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for the S2 ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
 | `b1610_stream.json` | `/datasets/B1610/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Naive `halfHourEndTime`, run type `II` |
 | `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | One mrid at revisions 4, 5, 6. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
@@ -62,10 +62,14 @@ Without them **every row in the fixture had identical from and to levels**, so a
 parse written as `result["levelFrom"], result["levelFrom"]` — ignoring `levelTo`
 entirely — passed every assertion. Five rows now differ.
 
-**Known gap: no negative levels.** Five units were checked for an importing
-(negative) PN and none was found; pumped storage and battery units were all at
-zero. A parser mishandling negatives would not be caught by this fixture. Worth
-capturing one if a negative is ever observed.
+**Negative levels are covered**, by `T_WILCT-1` at −14 MW in the PN fixture and
+−60 MW in the QPN one. It was found by scanning a full market-wide day rather
+than by guessing at unit names — five hand-picked candidates, including pumped
+storage and a battery aggregator, were all at zero.
+
+That unit is also the entire `PN - QPN` question in one row: **−14 minus −60 is
++46**, so applying the deduction flips it from importing to exporting. See
+`docs/sources/elexon/015_qpn.md`.
 
 `pn_stream_ramp.json` is retained as the **verbatim single-request capture** of
 those ramp rows. Its contents are now a subset of `pn_stream.json`; it is kept
