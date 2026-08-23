@@ -3,14 +3,16 @@ Measuring GB electricity grid shortfalls and their effect on carbon intensity
 forecast error.
 
 # Why it exists
-Recently passed PCEP, working on dbt knowledge, this is a learning project and 
-to keep me sharp subjects and expand my knowledge. I have over a 
-decade of SQL, data pipelines and analysis experience but I wish to
-push my technical skills around data engineering. 
+
+A working data platform built around a real question rather than a tutorial
+dataset. Over a decade of SQL, data pipelines and analysis sits behind it; the
+deliberate focus here is the engineering - orchestration, testing, dimensional
+modelling and deployment — against live public APIs with all the awkwardness
+that implies.
 
 # AI Disclaimer
 AI is used for documentation, coaching, scaffolding, code review & best practice.
-Examples may be generated on new subjects to assit with understanding
+Examples may be generated on new subjects to assit with understanding.
 
 ---
 
@@ -137,8 +139,8 @@ window per run — see
 [docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) for why
 the two approaches differ.
 
-**One Elexon day is about 132,000 rows for `PN` and 120,000 for `QPN`**, so expect
-either to take a minute rather than a second.
+**One Elexon day averages about 126,000 rows for `PN` and 113,000 for `QPN`**, so
+expect either to take a minute rather than a second.
 
 ## Repository layout
 
@@ -162,51 +164,17 @@ excluded from pytest deliberately — see
 - Every change arrives as a pull request, with CI passing.
 - The raw layer is append-only. Nothing in it is updated or deleted.
 
-## Deploying an Elexon DAG
+## Deployment
 
-The Elexon DAGs use `catchup=True`, so **unpausing one starts a backfill**. Their
-`start_date` is a fixed literal defining how much history to load, currently one
-year.
+The DAGs are written to run on an Airflow instance that lives outside this
+repository and is shared with other projects, so deploying them is not a `git
+pull`. DAG files are copied into the scheduler's folder; the `ingestion/`
+package is bind-mounted from a checkout.
 
-1. Apply the relevant file from `sql/init/` to **both** databases. Confirm the
-   key with `\d raw.elexon_pn` — a wrong key surfaces as a constraint violation
-   on the first real load, not at deploy time.
-2. Push, then pull on the Airflow host. **A pull is not enough on its own.**
-   Airflow lives in the separate `homelab-platform` repository and reads DAGs
-   from its own shared `dags/` folder, so the DAG file has to be **copied** there:
+The Elexon DAGs use `catchup=True`, so unpausing one starts a backfill of
+whatever history its `start_date` defines.
 
-   ```bash
-   cp ~/gridskew/dags/gridskew_elexon_pn_dag.py ~/homelab-platform/dags/
-   ```
-
-   The `ingestion/` package is different — Airflow **bind-mounts** it from this
-   repository, so a pull is sufficient for poller changes and no copy is needed.
-   That asymmetry is the thing to remember: **DAGs are copies, ingestion is
-   mounted.**
-3. **Wait for the scheduler to notice.** New files are picked up on
-   `dag_dir_list_interval` (300s by default), and each file is parsed
-   independently rather than as a batch, so two DAGs copied in the same second
-   can appear minutes apart and in no particular order. If one is still missing
-   after ten minutes, run `airflow dags list-import-errors` in the scheduler
-   container.
-4. **Leave the DAG paused.** Trigger one run manually and check the row count —
-   a PN day is about 132,000 rows across ~2,500 units, of which ~2,450 have a
-   null `bm_unit`.
-5. Unpause. Runs execute one at a time at `max_active_runs=1`, roughly 1.4
-   requests per minute, and a year takes about four hours.
-
-Pausing mid-backfill is safe: the run in flight finishes and unpausing resumes
-where it left off. Each run is addressed to a specific day, so nothing is lost.
-
-**Unpause one DAG at a time.** There is no shared Airflow Pool throttling Elexon
-requests across DAGs yet, so two concurrent backfills would double the request
-rate with nothing coordinating them.
-
-**`start_date` is not maintenance-free.** Standing a DAG up on a fresh Airflow
-instance years later re-backfills from that same date, so the window grows with
-time. Change the literal deliberately if that is not wanted — **never compute it
-from `datetime.now()`**, which breaks Airflow's scheduling. Reasoning in
-[docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md).
+Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)**.
 
 ## Status
 
@@ -224,12 +192,11 @@ from `datetime.now()`**, which breaks Airflow's scheduling. Reasoning in
 
 **Phase 1: the spine**
 
-- [x] `PN` raw table, poller and tests
-- [x] `PN` Airflow DAG, `catchup=True` over a year
+- [x] `PN` raw table, poller, tests and DAG
 - [x] `QPN` raw table, poller, tests and DAG
 - [x] Both Elexon DAGs deployed to production
-- [ ] `PN` backfill complete
-- [ ] `QPN` backfill complete
+- [x] `PN` backfill complete
+- [x] `QPN` backfill complete
 - [ ] `B1610` ingestion
 - [ ] BM unit registry snapshot
 - [ ] dbt project initialised
@@ -243,7 +210,7 @@ the `PN`. Whether that deduction belongs in the shortfall calculation is an open
 question rather than an assumption — see
 [docs/sources/elexon/015_qpn.md](docs/sources/elexon/015_qpn.md).
 
-Counting a full day settled most of it: **50 of 119,600 QPN rows are non-zero,
-and they all belong to a single BM unit.** The open question is real but affects
-one unit in the market, so it does not block the models. It is ingested anyway,
-because the question cannot be answered later without the data.
+A full year of data bounds it: **18,300 of 41.5M QPN rows are non-zero — 0.04% —
+and every one belongs to a single BM unit.** The question is real but cannot
+affect more than one unit's figures, so it does not block the models. QPN is
+ingested regardless, because the question is unanswerable without the data.

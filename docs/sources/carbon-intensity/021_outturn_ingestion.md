@@ -38,12 +38,17 @@ The 7 day look-back re-fetches every period seven times.
 | Source | Rows/day | Cost of a 7-day look-back |
 |---|---|---|
 | **This table** | 48 | **336 rows/day — free** |
-| Elexon PN | ~130,000 | 908,579 rows/day — 51 GB/year |
+| Elexon PN | 126,203 | 883,421 rows/day — **~57 GB/year** |
 
 **At forty-eight rows a day there is no reason to separate the two jobs.** At a
-hundred and thirty thousand, the same design would consume a tenth of the disk
-per year, which is why the Elexon pollers split "load history" from "check for
-revisions" and this one does not.
+hundred and twenty-six thousand, the same design would consume most of a
+terabyte within a few years, which is why the Elexon pollers split "load history"
+from "check for revisions" and this one does not.
+
+> The PN figures above were **estimates until 2026-08-23** and are now counted:
+> 126,203 rows per run against an assumed 130,000, and **177 bytes per row
+> against an assumed 154**. The density error made the look-back look 15% cheaper
+> than it is. Working in [../elexon/011_pn_ingestion.md](../elexon/011_pn_ingestion.md).
 
 > If asked why the DAGs are inconsistent: they are not picking different patterns
 > for the same problem. This one merges two jobs because the volume makes the

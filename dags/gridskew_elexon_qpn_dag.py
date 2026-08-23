@@ -1,4 +1,4 @@
-"""gridskew's elexon qpns dag, retrieves self cusumption to subtract from commitments."""
+"""gridskew's elexon qpns dag, retrieves self consumption to subtract from commitments."""
 
 import sys
 from datetime import datetime, timedelta, timezone
