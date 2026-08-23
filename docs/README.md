@@ -20,6 +20,8 @@ Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.
 
 ```
+docs/
+  deployment.md               Getting the DAGs onto an external Airflow
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
   carbon-intensity/

@@ -63,10 +63,15 @@ exceptional.
 | Source | Rows/day | Cost of a 7-day overlap |
 |---|---|---|
 | Carbon intensity outturn | 48 | 336 rows/day — free |
-| Elexon PN | ~130,000 | 908,579 rows/day — 51 GB/year |
+| Elexon PN | 126,203 | 883,421 rows/day — **~57 GB/year** |
 
 At forty-eight rows a day nobody would separate the two jobs. At a hundred and
-thirty thousand, the same design is ruinous.
+twenty-six thousand, the same design is ruinous.
+
+Both PN figures are **counted, not estimated** — see
+[elexon/011_pn_ingestion.md](elexon/011_pn_ingestion.md). The earlier version of
+this table used 130,000 rows a day at 154 bytes each; the measured values are
+126,203 and 177, which made the overlap look 15% cheaper than it is.
 
 > **Load history once. Re-poll only where something is known to change, and only
 > over the window where it changes.**

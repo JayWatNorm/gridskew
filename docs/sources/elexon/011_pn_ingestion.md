@@ -4,8 +4,8 @@ How `raw.elexon_pn` is loaded. For what the data means and what the columns are,
 see [010_pn.md](010_pn.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: built and tested, not yet deployed.** Poller, tests and DAG are
-written; the table exists in dev; prod and the backfill are outstanding.
+**Status: deployed, backfill complete 2026-08-23.** 366 runs covering
+2025-08-22 to 2026-08-23, 46,190,258 rows, no failures.
 
 | | |
 |---|---|
@@ -18,8 +18,8 @@ written; the table exists in dev; prod and the backfill are outstanding.
 | `start_date` | 2025-08-22 |
 | `catchup` | **`True`** |
 
-Verified against a full day on dev, 2026-08-22: **132,728 rows**, matching the
-~130,000 estimate below.
+Verified against a full day on dev, 2026-08-22: **132,728 rows**. The full year
+since loaded averages **126,203 rows per run** — see Volume below.
 
 ## `run` takes its window as arguments
 
@@ -64,14 +64,41 @@ Market-wide requests, no `bmUnit` filter:
 a single response, so the constraint on chunk size is client memory rather than
 the API.
 
-## Volume, measured
+## Volume, counted
 
-**About 130,000 rows per day market-wide**, or roughly **2,700 rows per
-settlement period**. Against a registry of 3,055 units that is about 89 percent
-of all registered units filing every period — consistent with units submitting
-even when their level is zero.
+**Counted across the completed backfill, 2026-08-23** — a full census of
+`raw.elexon_pn`, not a sample:
 
-**47M rows and about 7 GB per year**, and the same again for QPN.
+| | |
+|---|---|
+| Rows | **46,190,258** |
+| Runs | 366 |
+| Rows per run | **126,203** average |
+| Rows per settlement period | ~2,600 |
+| Distinct units | **2,552** |
+| On disk, table and index | **7,780 MB** |
+| Density | **177 bytes per row** |
+
+Composition of those rows:
+
+| | Rows | Share |
+|---|---|---|
+| Zero to zero | 32,492,793 | **70.3%** |
+| Ramps, `level_from <> level_to` | 3,525,386 | **7.6%** |
+| Negative levels | 5,508,814 | **11.9%** |
+| Null `bm_unit` | 657,743 | **1.4%** |
+
+Three of those matter downstream. The **7.6% ramp share** is what the settlement
+period integration macro exists for — naive endpoint integration is wrong on
+roughly one row in thirteen, which is common enough to be a correctness problem
+rather than an edge case. The **11.9% negative share** rules out any check
+constraint assuming generation is positive. The **70.3% zero share** is why
+filtering happens at the registry join downstream rather than at ingest.
+
+**Single-day samples run about 5% high.** The 132,728 measured on 2026-08-22 sits
+above the 126,203 yearly mean, so any figure extrapolated from one day inherits
+that day's weather and market conditions. Volumes stated as annual totals in this
+repository should be counted, not multiplied.
 
 > Earlier figures in this repository of ~13,000 rows per day were wrong by a
 > factor of ten. They were inferred from the byte size of a response that had
@@ -80,9 +107,50 @@ even when their level is zero.
 > [../ingestion-patterns.md](../ingestion-patterns.md) insist on asserting row
 > counts rather than status codes.
 
+## Backfill verification
+
+Two queries confirm a backfill landed intact. Neither can use an index — the
+primary key leads on `national_grid_bm_unit` — so both are full scans, and
+questions should be batched into as few passes as possible.
+
+The second is the useful one, because **its answer is predictable from a
+calendar before it runs**:
+
+```sql
+SELECT settlement_date, count(DISTINCT settlement_period) AS periods
+FROM raw.elexon_pn
+GROUP BY settlement_date
+HAVING count(DISTINCT settlement_period) <> 48
+ORDER BY settlement_date;
+```
+
+Result for the 2025-08-22 backfill:
+
+| Date | Periods | Why |
+|---|---|---|
+| 2025-08-22 | 47 | first run, partial — see below |
+| 2025-10-26 | **50** | clocks go back, 25-hour local day |
+| 2026-03-29 | **46** | clocks go forward, 23-hour local day |
+| 2026-08-23 | 3 | most recent run, still in progress |
+
+Anything else appearing in that list is a failed run or a gap.
+
+**The 50 is the load-bearing one.** On the October clock change, local 01:30
+occurs twice. Because `time_from` is built from the API's UTC string, those
+become 00:30Z and 01:30Z — distinct key values. Had the key used a naive local
+timestamp, `ON CONFLICT DO NOTHING` would have discarded the second hour
+silently and the day would have loaded as 48 periods.
+
+**The first day is a partial by design.** A UTC window opens an hour after the
+BST settlement day starts, so period 1 falls before the earliest run and no
+earlier run exists to collect it. Period 2 survives only because the API includes
+the period containing the requested `from`. Two half-hours at the far edge of the
+history window; not worth engineering around, but worth not rediscovering as a
+bug.
+
 ## Chunking
 
-**One day per request.** 365 requests for a year, ~34 MB and ~130,000 rows each,
+**One day per request.** 366 requests for a year, ~34 MB and ~126,000 rows each,
 roughly 150 MB once materialised in Python.
 
 Larger windows work at the API but not on a shared Airflow worker: 7 days is
@@ -126,10 +194,11 @@ Against the **30 requests per second** measured with no throttling, that is abou
 **Pausing mid-backfill is safe.** The in-flight run finishes, queued runs stop,
 and unpausing resumes where it left off — each run is independent and idempotent.
 
-**When QPN and B1610 join, use an Airflow Pool.** `max_active_runs` limits one
-DAG; three DAGs backfilling would make three concurrent requests. A pool with one
-slot, shared by all three tasks, holds the whole project to one Elexon request at
-a time.
+**An Airflow Pool is still outstanding.** `max_active_runs` limits one DAG; two
+DAGs backfilling make two concurrent requests. QPN is now live and B1610 will
+follow, so the current mitigation is sequencing by hand — unpause one, let it
+finish, unpause the next. A pool with a single slot shared by every Elexon task
+would enforce this properly and should exist before a third DAG lands.
 
 ### `start_date` is the history window, and it is deliberately static
 
