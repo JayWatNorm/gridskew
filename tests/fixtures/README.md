@@ -19,7 +19,7 @@ which is the point.
 | `pn_stream.json` | `/datasets/PN/stream`, two windows, **5 units** | 2026-08-22 | **Composite** — see note below. 28 rows: five unit types, segments of 1 to 30 minutes, four multi-segment periods, five rows where `levelFrom != levelTo`, a negative level, three `nationalGridBmUnit` naming shapes. **Periods 32–35 are absent** |
 | `qpn_stream.json` | `/datasets/QPN/stream`, two windows, **same 5 units as `pn_stream.json`** | 2026-08-22 | **Composite.** 24 rows, deliberately the same units and windows as the PN fixture so the two are directly comparable. **Every segment is 30 minutes** — QPN does not mirror PN's sub-period segmentation. Includes `T_WILCT-1` at −60 MW, the **only** unit in the entire market with a non-zero QPN |
 | `pn_stream_ramp.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for the S2 ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
-| `b1610_stream.json` | `/datasets/B1610/stream`, 1h, `T_DRAXX-1` | 2026-08-20 | Naive `halfHourEndTime`, run type `II` |
+| `b1610_stream.json` | `/datasets/B1610/stream`, 4h straddling a settlement-day boundary, **3 units** | 2026-08-23 | **Composite**, built by `tests/adhoc/b1610_capture_fixture.py`. 27 rows, two settlement dates, **periods 1 and 2 both present** — period 1 is the only period where `settlementDate` disagrees with the UTC date of `halfHourEndTime`. Naive `halfHourEndTime`, run type `II` only |
 | `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | One mrid at revisions 4, 5, 6. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
 | `mels_stream.json` | `/datasets/MELS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
 | `mils_stream.json` | `/datasets/MILS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
@@ -71,6 +71,36 @@ storage and a battery aggregator, were all at zero.
 That unit is also the entire `PN - QPN` question in one row: **−14 minus −60 is
 +46**, so applying the deduction flips it from importing to exporting. See
 `docs/sources/elexon/015_qpn.md`.
+
+## The second composite fixture
+
+`b1610_stream.json` is **assembled from one real four-hour request** straddling a
+settlement-day boundary, keeping every row of three units chosen to cover the
+traits the tests need:
+
+| Unit | `nationalGridBmUnitId` | Quantity range | What it contributes |
+|---|---|---|---|
+| `T_CARR-1` | `CARR-1` | 109.500 to 199.300 | transmission, positive, real magnitude |
+| `E__MDRX001` | `DRAXD-1` | −17.183 to −14.198 | embedded, **negative throughout** |
+| `2__ACOUL004` | **null** | −3.886 to 4.222 | supplier, **null NG id**, crosses zero |
+
+Three identifier shapes, both null and non-null National Grid ids, positive,
+negative and zero quantities, and every value at three decimal places.
+
+**Periods 1 and 2 are the point.** Period 1 ends at 23:30Z the previous day, so
+its `settlementDate` is a day ahead of its `halfHourEndTime` date. Period 2 ends
+at exactly 00:00Z on the settlement date, so they agree. A test asserting both is
+the only way to prove local-versus-UTC handling rather than assume it — one alone
+could pass by accident.
+
+The selection is done by `tests/adhoc/b1610_capture_fixture.py`, which reports
+trait coverage. **Do not hand-edit this file**; recapture it, or the fixture stops
+recording what the API returned and starts recording what someone assumed.
+
+Only run type `II` appears, and it cannot be otherwise: the API serves one run
+per settlement day and discards superseded ones. So a parse that ignored
+`settlementRunType` entirely would pass — the one gap the suite cannot close, and
+noted in the test.
 
 `pn_stream_ramp.json` is retained as the **verbatim single-request capture** of
 those ramp rows. Its contents are now a subset of `pn_stream.json`; it is kept

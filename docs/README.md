@@ -36,7 +36,7 @@ docs/sources/
     011_pn_ingestion.md         daily, catchup=True, 1-day chunks
     015_qpn.md                An internal process netted off it        [running]
     016_qpn_ingestion.md        as PN
-    020_b1610.md              The receipt                              [table built]
+    020_b1610.md              The receipt                              [built, not deployed]
     030_remit.md              The excuse note                          [planned]
     040_boalf.md              The intervention                         [planned]
     050_demand.md             Expected versus actual usage             [planned]

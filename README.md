@@ -197,7 +197,8 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [x] Both Elexon DAGs deployed to production
 - [x] `PN` backfill complete
 - [x] `QPN` backfill complete
-- [ ] `B1610` ingestion
+- [x] `B1610` raw table, poller and tests
+- [ ] `B1610` DAGs and backfill
 - [ ] BM unit registry snapshot
 - [ ] dbt project initialised
 - [ ] Sources with `freshness` on every raw table
