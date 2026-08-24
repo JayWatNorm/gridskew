@@ -25,7 +25,7 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
 )
 def gridskew_elexon_pn():
 
-    @task
+    @task(pool="elexon")  
     def poll_pn(data_interval_start=None, data_interval_end=None):
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
