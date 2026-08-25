@@ -1,12 +1,18 @@
+# Local development only. The homelab deployment uses its own separate
+# profiles.yml in homelab-platform/dbt/, per the house pattern.
+#
+# Points at the PROD database deliberately: dev holds only test loads, and
+# models need real data. Safety comes from the role, not the config -
+# gridskew_dbt has SELECT on raw and owns dbt_dev, nothing more.
 gridskew:
   target: dev
   outputs:
     dev:
       type: postgres
-      host: "{{ env_var('DB_HOST') }}"
-      port: "{{ env_var('DB_PORT') | int }}"
-      user: "{{ env_var('DB_USER') }}"
-      password: "{{ env_var('DB_PASSWORD') }}"
-      dbname: "{{ env_var('DB_NAME') }}"
-      schema: analytics
+      host: "{{ env_var('DBT_HOST') }}"
+      port: "{{ env_var('DBT_PORT') | as_number }}"
+      user: "{{ env_var('DBT_USER') }}"
+      password: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: gridskew_prod
+      schema: dbt_dev
       threads: 4
