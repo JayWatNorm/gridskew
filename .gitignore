@@ -16,6 +16,7 @@ venv/
 target/
 dbt_packages/
 logs/
+.user.yml
 
 # --- Working notes, kept outside the repository ---
 docs/decisions.md
