@@ -1,0 +1,123 @@
+models:
+  - name: stg_elexon__b1610
+    description: >
+      One row per BM unit, settlement period and settlement run, containing
+      metered import or export energy. Every settlement run is retained so
+      revisions remain visible.
+    columns:
+      - name: bm_unit
+        description: >
+          Elexon identifier. Never null here, which is why this table
+          keys on it — the inverse of PN and QPN. Part of the key
+      - name: national_grid_bm_unit_id
+        description: >
+          National Grid identifier. Null on 71.8% of rows, because this
+          dataset meters embedded and secondary units that have no
+          National Grid registration. Note the Id suffix, which PN and
+          QPN do not have
+      - name: psr_type
+        description: Resource type. Only Generation observed to date
+      - name: settlement_date
+        description: >
+          British local time, no timezone attached. Never derive this
+          from half_hour_end_time. Part of the key
+      - name: settlement_period
+        description: >
+          Half-hour window within the settlement date. Normally 1–48;
+          clock-change days have 46 or 50. Part of the key
+      - name: half_hour_end_time
+        description: >
+          Period END, UTC — naive in the source, unlike PN's time_from.
+          Will not align with PN and QPN segment boundaries, which split
+          within a period
+      - name: settlement_run_type
+        description: >
+          Which settlement run produced this quantity, in order
+          II, SF, R1, R2, R3, RF. Each supersedes the last. Part of the
+          key, so a revision lands as a new row. Not filterable in
+          practice — the API serves only the run currently in force, so
+          which run you receive is decided by the poll offset
+      - name: quantity
+        description: >
+          MWh for the whole period, not MW. Negative for units that
+          consume. Numeric rather than float because these get summed
+      - name: retrieved_at
+        description: >
+          When this settlement run was first seen. Deliberately NOT part
+          of the key here — a re-poll finding no new run inserts nothing,
+          which makes re-polls idempotent and absorbs the one period of
+          overlap between consecutive daily chunks.
+  - name: stg_elexon__qpn
+    description: >
+      One row per declared QPN segment, per unit, per poll. QPN segment
+      boundaries are independent of PN. Zero is valid; a missing row means
+      that the unit did not submit a QPN.
+    columns:
+      - name: bm_unit
+        description: >
+          Elexon identifier. Nullable, and null on exactly the same rows
+          as in PN. This is the identifier B1610 keys on
+      - name: national_grid_bm_unit
+        description: National Grid identifier. Never null. Part of the key
+      - name: settlement_date
+        description: >
+          British local time, no timezone attached. Never derive this
+          from time_from
+      - name: settlement_period
+        description: >
+          Half-hour window within the settlement date. Normally 1–48;
+          clock-change days have 46 or 50
+      - name: time_from
+        description: >
+          Segment start, UTC. QPN segment boundaries are independent of
+          PN's — the two cannot be joined row to row. Part of the key
+      - name: time_to
+        description: Segment end, UTC
+      - name: level_from
+        description: MW to deduct at time_from
+      - name: level_to
+        description: MW to deduct at time_to
+      - name: retrieved_at
+        description: When this poll ran. Part of the key.
+  - name: stg_elexon__pn
+    description: >
+      One row per declared PN segment, per unit, per poll. Segment endpoints
+      describe a linear MW ramp, and every poll is retained so resubmissions
+      remain visible.
+    columns:
+      - name: bm_unit
+        description: >
+          Elexon identifier for the unit. Nullable here, and null on
+          1.4% of rows — units known to National Grid but not registered
+          with Elexon. This is the identifier B1610 keys on
+      - name: national_grid_bm_unit
+        description: National Grid identifier. Never null. Part of the key
+      - name: settlement_date
+        description: >
+          British local time, no timezone attached. Never derive this
+          from time_from — it is wrong for an hour of every summer day
+      - name: settlement_period
+        description: >
+          Half-hour window within the settlement date. Normally 1–48;
+          clock-change days have 46 or 50
+      - name: time_from
+        description: >
+          Segment start, UTC. Segments can be shorter than a settlement
+          period to describe a ramp. Part of the key.
+        tests:
+          - not_null
+      - name: time_to
+        description: Segment end, UTC.
+        tests:
+          - not_null
+      - name: level_from
+        description: >
+          MW at time_from. The value moves in a straight line to
+          level_to across the segment; it is not an average
+      - name: level_to
+        description: MW at time_to. See level_from
+      - name: retrieved_at
+        description: >
+          When this poll ran. Part of the key, so a re-poll of the same
+          window lands as new rows rather than conflicting — which is
+          what makes a resubmitted notification visible.

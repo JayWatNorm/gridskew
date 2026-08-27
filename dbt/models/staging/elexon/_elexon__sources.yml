@@ -116,7 +116,7 @@ sources:
             description: MW to deduct at time_to.
 
           - name: retrieved_at
-            description: When this poll ran. Part of the key, as PN.
+            description: When this poll ran. Part of the key.
 
       # ------------------------------------------------------------------
       - name: elexon_b1610

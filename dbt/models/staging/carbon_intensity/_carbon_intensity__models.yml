@@ -1,0 +1,59 @@
+ models:
+  - name: stg_carbon_intensity__forecast
+    description: >
+      One row per future settlement period, per poll, from the API's rolling
+      48-hour carbon intensity forecast. Every forecast run is retained.
+    columns:
+      - name: period_start
+        description: >
+          Start of the settlement period, UTC. Part of the key
+      - name: period_end
+        description: >
+          End of the settlement period, UTC
+      - name: retrieved_at
+        description: >
+          UTC timestamp captured once when the poll starts. Identifies the
+          run and forms part of the key
+      - name: forecast
+        description: >
+          Forecast carbon intensity for the settlement period, in
+          gCO2/kWh
+      - name: actual
+        description: >
+          Observed carbon intensity for the settlement period, in gCO2/kWh.
+          Always null in this model because the forecast endpoint returns
+          future periods
+      - name: intensity_index
+        description: >
+          API-defined qualitative band for the forecast intensity.
+          Expected to be non-null. Band thresholds may change over time,
+          so long-term comparisons require care
+  - name: stg_carbon_intensity__outturn
+    description: >
+      One row per completed settlement period, per poll, containing observed
+      carbon intensity and the final-revision forecast. Values may be revised,
+      so every poll is retained.
+    columns:
+      - name: period_start
+        description: >
+          Start of the settlement period, UTC. Part of the key
+      - name: period_end
+        description: >
+          End of the settlement period, UTC
+      - name: retrieved_at
+        description: >
+          UTC timestamp captured once when the poll starts. Identifies the
+          run and forms part of the key
+      - name: forecast_final
+        description: >
+          Final-revision forecast for the settlement period, in gCO2/kWh.
+          Expected to be non-null in outturn ingestion
+      - name: actual
+        description: >
+          Observed carbon intensity for the settlement period, in
+          gCO2/kWh. Expected to be non-null in outturn ingestion
+      - name: intensity_index
+        description: >
+          API-defined qualitative band for the observed intensity.
+          Expected to be non-null. Band thresholds may change over time,
+          so long-term comparisons require care.
