@@ -80,10 +80,10 @@ measured 177 bytes each. See
 Where re-polling is needed at depth, sample at fixed lags rather than dragging a
 window behind the present.
 
-A rolling 90-day window on PN would be 4.3 billion rows and 655 GB a year.
-Sampling at 1, 8, 30 and 90 days reaches the same depth for 29 GB — the same
-coverage at 4% of the cost, because a rolling window re-fetches every day in
-between for no reason.
+A rolling 90-day window on PN would be 4.15 billion rows and about 734 GB a
+year. Sampling at 1, 8, 30 and 90 days reaches the same depth for about 32.6 GB
+— the same coverage at 4% of the cost, because a rolling window re-fetches
+every day in between for no reason.
 
 Ladders belong in configuration, not hard-coded, because the whole point is that
 they change once evidence arrives about where revisions actually land.
@@ -92,11 +92,12 @@ they change once evidence arrives about where revisions actually land.
 
 Where a dataset publishes its own revision marker, use it. B1610 carries
 `settlementRunType` in every row, so detecting a restatement does not require
-comparing 130,000 values — it requires seeing whether a new run type appeared.
+comparing about 450,000 values — it requires seeing whether a new run type
+appeared.
 
 | Approach | Rows fetched |
 |---|---|
-| Blind re-fetch of a day | 129,797 |
+| Blind re-fetch of a day | 449,673 |
 | Probe one BM unit, then decide | 48, plus the full day only if it changed |
 
 **0.04% of the cost on the days nothing changed**, which will be most of them,
@@ -144,19 +145,16 @@ you would simply be blocked.
   response can return 200 with a short body, which looks like a successful run
   that wrote nothing.
 
-That last point is not theoretical. During reconnaissance a truncated response
-was measured as though it were complete, and produced a volume estimate that was
-wrong by a factor of ten.
+## How `retrieved_at` participates in raw identity
 
-## Why `retrieved_at` is in every primary key
+Every raw table records `retrieved_at`, but it is not part of every primary
+key. It is part of the key when the source has no revision marker: PN, QPN and
+both carbon intensity tables. Each poll can then store a new observation of the
+same source row.
 
-The raw layer is append-only: nothing is updated, nothing is deleted. Every poll
-writes a new generation of rows, and `retrieved_at` is what keeps them apart.
-
-For most datasets this preserves a revision history the source also exposes
-through its own marker. For PN and QPN it is the **only** revision axis that
-exists — neither carries a marker of its own, unlike `settlementRunType` on
-B1610, `revisionNumber` on REMIT or `notificationSequence` on MELS.
+B1610 carries `settlementRunType`, so its primary key uses that source revision
+marker instead. Excluding `retrieved_at` makes a re-poll of the same settlement
+run idempotent while still recording when that run was first seen.
 
 It also means backfill rows and daily rows need no flag to tell apart:
 
@@ -169,13 +167,14 @@ job. **Do not store what can be derived** — and note that a backfill produces 
 *range* of lags, from a year down to nearly zero, so "backfill" is a property of
 a run rather than of a row.
 
-## The three patterns in use
+## The patterns in use
 
 | DAG | Setting | Why |
 |---|---|---|
 | Carbon intensity forecast | `catchup=False`, poll now | Source not addressable. History does not exist |
 | Carbon intensity outturn | `catchup=False`, rolling 7-day window | Addressable, but actuals arrive late for every period. Volume so small the overlap is free |
-| Elexon PN, QPN, B1610 | `catchup=True`, daily chunks, lag ladder | Addressable, high volume, so per-run intervals and targeted sweeps matter |
+| Elexon PN, QPN and B1610 II | `catchup=True`, daily chunks | Addressable, high volume, and responsible for the historical load |
+| Elexon B1610 SF | `catchup=False`, fixed 35-day lag | Runs forwards only to capture SF while it is available |
 
-Three behaviours, three justifications. The inconsistency is deliberate, and the
-reasoning is above rather than in anyone's memory.
+Four behaviours, four justifications. The differences follow from source
+behaviour, volume and whether the DAG must load history.

@@ -12,7 +12,7 @@ that implies.
 
 # AI Disclaimer
 AI is used for documentation, coaching, scaffolding, code review & best practice.
-Examples may be generated on new subjects to assit with understanding.
+Examples may be generated on new subjects to assist with understanding.
 
 ---
 
@@ -127,12 +127,13 @@ Separate development and production databases; scheduled runs write to
 production only.
 
 Six DAGs are live in production: the carbon intensity forecast archive every 30
-minutes, the carbon intensity outturn poller daily, and the Elexon `PN`, `QPN`
-and `B1610` pollers daily. The outturn poller detects its own window, so it backfills on an
-empty table and catches up from the last stored period thereafter. The two Elexon
-DAGs take their window from Airflow and backfill through `catchup=True` instead —
+minutes, the carbon intensity outturn poller daily, `PN` and `QPN` daily, and
+two daily `B1610` DAGs that sample the II and SF settlement runs. An empty
+outturn table triggers a 365-day backfill; later runs fetch a rolling seven-day
+window. `PN`, `QPN` and the `B1610` II DAG take their windows from Airflow and
+use `catchup=True`. The `B1610` SF DAG runs forwards only with `catchup=False`.
 [docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) explains
-why the two sources cannot share one approach.
+why these sources use different approaches.
 
 ## Run the tests
 
@@ -153,11 +154,12 @@ python -m ingestion.carbon_intensity.forecast_poller   # 48h ahead forecast, eve
 python -m ingestion.carbon_intensity.outturn_poller    # settled actuals, daily
 python -m ingestion.elexon.pn_poller                   # physical notifications, one day
 python -m ingestion.elexon.qpn_poller                  # quiescent physical notifications, one day
+python -m ingestion.elexon.b1610_poller                # metered volumes, one day
 ```
 
-The two carbon intensity pollers detect their own window. The Elexon pollers take
-their window as arguments and default to yesterday, because Airflow supplies the
-window per run — see
+The two carbon intensity pollers detect their own window. The Elexon pollers
+accept their window as arguments and provide a manual-run default. Airflow
+supplies the window and, for B1610, the settlement lag per run — see
 [docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) for why
 the two approaches differ.
 
@@ -193,8 +195,9 @@ repository and is shared with other projects, so deploying them is not a `git
 pull`. DAG files are copied into the scheduler's folder; the `ingestion/`
 package is bind-mounted from a checkout.
 
-The Elexon DAGs use `catchup=True`, so unpausing one starts a backfill of
-whatever history its `start_date` defines.
+The PN, QPN and B1610 II DAGs use `catchup=True`, so unpausing one starts a
+backfill of whatever history its `start_date` defines. The B1610 SF DAG uses
+`catchup=False` and runs forwards only.
 
 Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)**.
 
@@ -216,14 +219,14 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 
 - [x] `PN` raw table, poller, tests and DAG
 - [x] `QPN` raw table, poller, tests and DAG
-- [x] Both Elexon DAGs deployed to production
+- [x] `PN` and `QPN` DAGs deployed to production
 - [x] `PN` backfill complete
 - [x] `QPN` backfill complete
-- [x] `B1610` raw table, poller and tests
-- [ ] `B1610` DAGs and backfill
+- [x] `B1610` raw table, poller, tests and DAGs
+- [x] `B1610` II backfill complete; SF running forwards
 - [ ] BM unit registry snapshot
-- [ ] dbt project initialised
-- [ ] Sources with `freshness` on every raw table
+- [x] dbt project initialised
+- [x] Sources declared for all five raw tables, with freshness checks
 - [ ] Staging models, 1:1 with sources
 - [ ] Settlement-period macro, with unit tests
 - [ ] Incremental generation and commitment facts

@@ -45,10 +45,9 @@ hundred and twenty-six thousand, the same design would consume most of a
 terabyte within a few years, which is why the Elexon pollers split "load history"
 from "check for revisions" and this one does not.
 
-> The PN figures above were **estimates until 2026-08-23** and are now counted:
-> 126,203 rows per run against an assumed 130,000, and **177 bytes per row
-> against an assumed 154**. The density error made the look-back look 15% cheaper
-> than it is. Working in [../elexon/011_pn_ingestion.md](../elexon/011_pn_ingestion.md).
+> The PN figures are measured across the completed backfill: 126,203 rows per
+> run at 177 bytes per row. See
+> [../elexon/011_pn_ingestion.md](../elexon/011_pn_ingestion.md).
 
 > If asked why the DAGs are inconsistent: they are not picking different patterns
 > for the same problem. This one merges two jobs because the volume makes the
@@ -93,5 +92,4 @@ A backfill is 13 requests; a daily run is one. No throttling needed.
 
 The hour-zero asymmetry test ran against a year of it on 2026-08-19. Median of
 `actual - forecast_final` was -1 gCO2/kWh over 17,522 periods, with actual above
-forecast 47.5% of the time excluding ties, deduplicated with `DISTINCT ON`. The
-pre-registered demotion rule was followed rather than rewritten.
+forecast 47.5% of the time excluding ties, deduplicated with `DISTINCT ON`.

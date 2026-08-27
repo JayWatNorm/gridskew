@@ -113,8 +113,9 @@ volumes are on each dataset's ingestion page.
 
 ## Backfills
 
-The Elexon DAGs use `catchup=True`, so **unpausing one starts a backfill**. Their
-`start_date` is a fixed literal that defines how much history to load.
+The PN, QPN and B1610 II DAGs use `catchup=True`, so **unpausing one starts a
+backfill**. Their `start_date` is a fixed literal that defines how much history
+to load. The B1610 SF DAG uses `catchup=False` and runs forwards only.
 
 Runs execute one at a time under `max_active_runs=1`. For a daily-chunked Elexon
 DAG that works out at roughly 1.4 requests per minute, and a year of history
