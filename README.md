@@ -227,7 +227,7 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [ ] BM unit registry snapshot
 - [x] dbt project initialised
 - [x] Sources declared for all five raw tables, with freshness checks
-- [ ] Staging models, 1:1 with sources
+- [x] Staging models, 1:1 with sources
 - [ ] Settlement-period macro, with unit tests
 - [ ] Incremental generation and commitment facts
 

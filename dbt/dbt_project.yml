@@ -16,4 +16,5 @@ clean-targets:
 
 models:
   gridskew:
-    +materialized: view
+    staging:
+      +materialized: view
