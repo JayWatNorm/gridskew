@@ -41,10 +41,10 @@ A failed insert must raise, so Airflow marks the task failed and the three
 configured retries fire. Catching and logging would leave the task **green with
 an empty table**.
 
-This is not hypothetical: the first real load failed on a `NotNullViolation`
-that revealed `bmUnit` can be null. A `try/except` around `load` would have
-swallowed it, and the design error would have surfaced weeks later as missing
-data rather than immediately as a red task.
+This matters most for constraint violations. A `NotNullViolation` raised on the
+first load is information — it says the table's assumptions and the source's
+behaviour disagree, and it says so immediately. Swallowed, the same violation
+surfaces weeks later as missing data with no obvious cause.
 
 Row counts are logged either side of the load, which is the cheapest form of
 "assert on row counts, not status codes" — a day returning 3,000 rows instead of
@@ -100,12 +100,11 @@ above the 126,203 yearly mean, so any figure extrapolated from one day inherits
 that day's weather and market conditions. Volumes stated as annual totals in this
 repository should be counted, not multiplied.
 
-> Earlier figures in this repository of ~13,000 rows per day were wrong by a
-> factor of ten. They were inferred from the byte size of a response that had
-> been truncated by the measuring tool rather than by the API, and reported as
-> though they were a count. This is why the politeness rules in
-> [../ingestion-patterns.md](../ingestion-patterns.md) insist on asserting row
-> counts rather than status codes.
+> **Count, do not infer.** A response's byte size is not a row count — measuring
+> tools truncate, and a truncated response looks like a small one. Every volume
+> on this page comes from `count(*)`, which is also why
+> [../ingestion-patterns.md](../ingestion-patterns.md) asserts on row counts
+> rather than status codes.
 
 ## Backfill verification
 

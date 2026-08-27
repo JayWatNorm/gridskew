@@ -68,10 +68,9 @@ exceptional.
 At forty-eight rows a day nobody would separate the two jobs. At a hundred and
 twenty-six thousand, the same design is ruinous.
 
-Both PN figures are **counted, not estimated** — see
-[elexon/011_pn_ingestion.md](elexon/011_pn_ingestion.md). The earlier version of
-this table used 130,000 rows a day at 154 bytes each; the measured values are
-126,203 and 177, which made the overlap look 15% cheaper than it is.
+Both PN figures are **counted, not estimated** — 126,203 rows per run at a
+measured 177 bytes each. See
+[elexon/011_pn_ingestion.md](elexon/011_pn_ingestion.md).
 
 > **Load history once. Re-poll only where something is known to change, and only
 > over the window where it changes.**

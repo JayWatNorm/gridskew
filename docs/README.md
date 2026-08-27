@@ -36,7 +36,8 @@ docs/sources/
     011_pn_ingestion.md         daily, catchup=True, 1-day chunks
     015_qpn.md                An internal process netted off it        [running]
     016_qpn_ingestion.md        as PN
-    020_b1610.md              The receipt                              [built, not deployed]
+    020_b1610.md              The receipt                              [running]
+    021_b1610_ingestion.md      II at 14d, SF at 35d, catchup=True on II
     030_remit.md              The excuse note                          [planned]
     040_boalf.md              The intervention                         [planned]
     050_demand.md             Expected versus actual usage             [planned]
@@ -58,9 +59,14 @@ than overwriting, so revisions stay visible and every downstream read collapses
 to one row per key.
 
 **`retrieved_at` on every table.** Captured once per run, immediately before
-the first HTTP request, and written identically to every row in that batch. It
-is part of the primary key, which is what makes a batch identifiable as a batch
-and a revision distinguishable from the original.
+the first HTTP request, and written identically to every row in that batch.
+
+**It is part of the primary key where the source carries no revision marker** —
+`PN`, `QPN` and both carbon intensity tables — because there it is the only way
+to tell a revision from the original. Where the source labels its own revisions
+it is not: `raw.elexon_b1610` keys on `settlement_run_type` instead, so a
+re-poll finding nothing new inserts nothing and `retrieved_at` records when a
+run was first seen. Each dataset's page states which applies.
 
 **Never Airflow's logical date.** A retried task would be stamped with its
 scheduled time rather than its actual execution time, corrupting anything
@@ -94,10 +100,19 @@ get tested.
 - measured volumes
 - any pre-registered experiment running against the table, and its result
 
+## House style
+
+**State what is true, not how it came to be known.** These pages describe a
+system; they are not a changelog of the thinking behind it. A reader needs to
+know that `bm_unit` is null on 1.4% of rows and that the key therefore uses the
+National Grid identifier — not the reasoning that led there.
+
+Design justification belongs here: *why* a key is shaped a certain way, *why*
+two pollers differ, *why* a chunk size is what it is. The history of a
+correction does not.
+
 ## A note on the numbers in these pages
 
-Several figures in this documentation were **wrong by an order of magnitude**
-before being measured directly, because they were inferred from response sizes
-rather than counted. Where a page states a volume, it says whether the figure was
-counted or estimated. Where it was corrected, the correction is left visible
-rather than quietly overwritten.
+**Volumes are counted, not inferred.** Where a page states a row count or a size,
+it says whether the figure was measured directly or estimated, and against what
+window. An estimate extrapolated from a single day is labelled as one.

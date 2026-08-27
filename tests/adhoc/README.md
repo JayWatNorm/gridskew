@@ -41,9 +41,8 @@ coverage as it goes.
 Re-run it rather than hand-editing the fixture. The moment a fixture is edited by
 hand it stops recording what the API returned.
 
-Several figures in the documentation were wrong before being measured, because
-they were inferred rather than counted. A script that produced a number is
-better evidence than a number in a sentence, and it can be re-run when the
-answer might have changed.
+A script that produced a number is better evidence than a number in a sentence,
+and it can be re-run when the answer might have changed. Anything quoted as a
+volume or a proportion in the documentation should be traceable to one of these.
 
 If a script's finding stops being relevant, delete the script.

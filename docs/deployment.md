@@ -54,11 +54,35 @@ rather than the application role will fail on write, again only at run time:
 SELECT tablename, tableowner FROM pg_tables WHERE schemaname = 'raw';
 ```
 
-**2. Copy the DAG file to the Airflow instance's DAG folder.**
+**2. Commit the DAG into the Airflow repository, then pull on the host.**
 
-Pull this repository on the Airflow host so the bind-mounted `ingestion/`
-package is current, then copy the DAG itself into place. Both steps are
-required; neither is sufficient alone.
+The copy is made **on your development machine and committed**, not made by hand
+on the server. Copy the file into `homelab-platform/dags/`, commit and push
+there, then on the host:
+
+```bash
+cd ~/gridskew && git pull            # bind-mounted ingestion/
+cd ~/homelab-platform && git pull    # the DAG copy
+```
+
+Both repositories, because the two artefacts travel separately.
+
+Copying by hand on the server also works, but leaves a file Git has no record
+of — which blocks the next pull and lets the deployed DAG drift from the
+repository invisibly. Committing the copy keeps the deployed version reviewable.
+
+The duplication itself is unavoidable in this model: the file exists in two
+repositories and drifts if you edit one and forget the other. Git makes that
+drift **visible**; it cannot prevent it.
+
+**The server should only ever pull.** Worth enforcing rather than remembering:
+
+```bash
+cd ~/homelab-platform && git config pull.ff only
+```
+
+Any divergence then fails loudly instead of offering three ways to merge around
+it — which is what happens if you ever commit on the server by mistake.
 
 **3. Wait for the scheduler to pick it up.**
 
@@ -100,11 +124,22 @@ takes about four hours.
 and unpausing resumes where it left off. Each run is addressed to a specific
 interval, so nothing is lost and nothing is repeated.
 
-**Unpause one DAG at a time.** `max_active_runs` throttles a single DAG. Two DAGs
-backfilling concurrently make two concurrent requests to the same API with
-nothing coordinating them. An Airflow Pool with one slot, shared across every
-task that calls a given source, is the mechanism that fixes this properly —
-until one exists, sequencing by hand is the substitute.
+**An `elexon` pool with one slot now enforces this** — created 2026-08-25. Every
+Elexon task carries `@task(pool="elexon")`, so only one runs at a time across all
+four DAGs regardless of schedule. Carbon intensity is deliberately excluded:
+different API, tiny payloads, no reason to queue behind an Elexon backfill.
+
+```bash
+docker compose exec airflow airflow pools list
+```
+
+The constraint it protects is **worker memory**, not the API. Each poller
+materialises its whole response in Python before inserting — B1610 alone is
+~450,000 rows — and several at once on a single `LocalExecutor` is a plausible
+OOM. An OOM mid-backfill kills a run that then has to be cleared by hand.
+
+**A task pointing at a pool that does not exist will not run**, so create the
+pool before deploying a DAG that references it.
 
 ### `start_date` is a deployment decision
 
@@ -142,9 +177,18 @@ with a `LocalExecutor`, shared between several projects, defined in a separate
 `homelab-platform` repository. Each project contributes DAG files into one
 shared `dags/` folder and has its own repository bind-mounted for code.
 
+Run `docker compose` commands from `~/homelab-platform` so Compose resolves the
+short **service** names from the compose file rather than the auto-generated
+container names:
+
 ```bash
-cp ~/gridskew/dags/gridskew_elexon_pn_dag.py ~/homelab-platform/dags/
+cd ~/homelab-platform
+docker compose exec airflow airflow dags list-import-errors
+docker compose exec postgres-prod psql -U gridskew -d gridskew_prod
 ```
+
+`docker exec` works from anywhere but needs the full name —
+`homelab-platform-airflow-1`, `homelab-platform-postgres-prod-1`.
 
 Database credentials come from an Airflow Connection rather than the `.env` file
 the pollers use when run directly, so nothing secret is copied anywhere. Each
