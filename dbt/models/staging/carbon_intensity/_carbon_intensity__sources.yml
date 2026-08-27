@@ -1,87 +1,101 @@
-sources: 
-    - name: intensity
-      description: Raw intensity data from the National Energy System Operator (NESO)
-      database: gridskew_prod
-      schema: raw
-      loaded_at_field: retrieved_at
+sources:
+  - name: intensity
+    description: >
+      Raw carbon intensity data from the National Energy System Operator
+      (NESO).
+    database: gridskew_prod
+    schema: raw
+    loaded_at_field: retrieved_at
 
-      tables:
-       - name: carbon_intensity_outturn
-         description: One row per settlement period, per poll. Actuals are null until settled and may be revised.
-         freshness:
-           warn_after: {count: 26, period: hour}
-           error_after: {count: 48, period: hour}
-         columns:
+    tables:
+
+      # ------------------------------------------------------------------
+      - name: carbon_intensity_outturn
+        description: >
+          One row per settlement period, per poll. Actuals are null until
+          settled and may be revised.
+        freshness:
+          warn_after: {count: 26, period: hour}
+          error_after: {count: 48, period: hour}
+        columns:
+
           - name: period_start
-            description: start of a forecast window, part of key, never null
-            tests:
-             - not_null
+            description: >
+              Start of the settlement period, UTC. Part of the key.
 
           - name: period_end
-            description: end of a forecast window, never null
-            tests:
-             - not_null            
+            description: >
+              End of the settlement period, UTC.
+
           - name: retrieved_at
-            description: datetime stamp popualted based on the pollers runtime, 
-                         can be used to identify a run, never null, part of key.
-            tests:
-             - not_null
+            description: >
+              UTC timestamp captured once when the poll starts. Identifies the
+              run and forms part of the key.
+
           - name: forecast_final
-            description: The forecasted carbon intensity value, this is the near 
-                         term forecast for the settlement period, proves to be close
-                         to the actuals
+            description: >
+              Final-revision forecast for the settlement period, in gCO2/kWh.
+              Expected to be non-null in outturn ingestion.
             tests:
-             - not_null
+              - not_null
+
           - name: actual
-            description: Actual values for the forecasted value, never null in the actuals
-            tests: 
-             - not_null
+            description: >
+              Observed carbon intensity for the settlement period, in
+              gCO2/kWh. Expected to be non-null in outturn ingestion.
+            tests:
+              - not_null
 
           - name: intensity_index
-            description: Simple description of the carbon intensity, here it
-                         describes the actual. never null. uncertainty around
-                         this data due to potential band changes over time.
+            description: >
+              API-defined qualitative band for the observed intensity.
+              Expected to be non-null. Band thresholds may change over time,
+              so long-term comparisons require care.
             tests:
-             - accepted_values:
-                arguments:
-                 values: ['very high', 'high', 'moderate', 'low', 'very low']
-             - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['very high', 'high', 'moderate', 'low', 'very low']
+              - not_null
 
-       - name: carbon_intensity_forecast
-         description: Next 48 hours worth of carbon intensity forecast data on each poll.
-         freshness:
-           warn_after: {count: 90, period: minute}
-           error_after: {count: 180, period: minute}
-         columns:
+      # ------------------------------------------------------------------
+      - name: carbon_intensity_forecast
+        description: >
+          Next 48 hours worth of carbon intensity forecast data on each poll.
+        freshness:
+          warn_after: {count: 90, period: minute}
+          error_after: {count: 180, period: minute}
+        columns:
+
           - name: period_start
-            description: start of a forecast window, part of key, never null.
-            tests:
-             - not_null
+            description: >
+              Start of the forecast settlement period, UTC. Part of the key.
 
           - name: period_end
-            description: end of a forecast window, never null.
-            tests:
-             - not_null            
+            description: >
+              End of the forecast settlement period, UTC.
+
           - name: retrieved_at
-            description: datetime stamp populated based on the pollers runtime, 
-                         can be used to identify a run, never null, part of key.
-            tests:
-             - not_null
+            description: >
+              UTC timestamp captured once when the poll starts. Identifies the
+              forecast run and forms part of the key.
+
           - name: forecast
-            description: The forecasted carbon intensity value
-                         for this settlement peroid, never null.
-            tests:
-             - not_null
+            description: >
+              Forecast carbon intensity for the settlement period, in
+              gCO2/kWh.
+
           - name: actual
-            description: Actual values for the forecasted value, always null in 
-                         in the forecast data set.
+            description: >
+              Observed carbon intensity. Always null on this endpoint because
+              every returned settlement period is in the future.
 
           - name: intensity_index
-            description: laymans description of the carbon intensity, here it
-                         describes the forecast. never null. uncertainty around
-                         this data due to potential band changes over time.
+            description: >
+              API-defined qualitative band for the forecast intensity.
+              Expected to be non-null. Band thresholds may change over time,
+              so long-term comparisons require care.
             tests:
-             - accepted_values:
-                arguments:
-                 values: ['very high', 'high', 'moderate', 'low', 'very low']
-             - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['very high', 'high', 'moderate', 'low', 'very low']
+              - not_null

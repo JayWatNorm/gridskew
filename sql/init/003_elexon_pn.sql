@@ -13,9 +13,10 @@ CREATE TABLE IF NOT EXISTS raw.elexon_pn (
   PRIMARY KEY (national_grid_bm_unit, time_from, retrieved_at)
 );
 COMMENT ON TABLE raw.elexon_pn IS
-  'What each unit said it would generate. One row per unit per declared segment,
- per poll, so a unit can have several rows in one settlement period. PN must be 
- checked against QPN for the cost of internal processes';
+  'What each unit said it would export or import. One row per unit per declared
+ segment, per poll, so a unit can have several rows in one settlement period.
+ QPN is a separate declaration and must be considered before applying PN in a
+ settlement comparison.';
 
 COMMENT ON COLUMN raw.elexon_pn.settlement_date IS
   'British local time. Never derive this from time_from.';

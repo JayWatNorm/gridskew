@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS raw.elexon_qpn (
     PRIMARY KEY (national_grid_bm_unit, time_from, retrieved_at)
 );
 COMMENT ON TABLE raw.elexon_qpn IS
-  'MW used by an internal process inside the unit, netted off the PN. Not output.
+  'MW generated or consumed by an underlying process inside the unit. QPN is
+ deducted from PN to establish the operating level to which Dynamic Data apply.
  Zero is normal; a missing row means the unit does not submit QPN. Optional and
  not used in Settlement - see docs/sources/elexon/015_qpn.md.';
 

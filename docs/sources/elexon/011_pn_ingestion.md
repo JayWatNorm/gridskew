@@ -193,11 +193,11 @@ Against the **30 requests per second** measured with no throttling, that is abou
 **Pausing mid-backfill is safe.** The in-flight run finishes, queued runs stop,
 and unpausing resumes where it left off — each run is independent and idempotent.
 
-**An Airflow Pool is still outstanding.** `max_active_runs` limits one DAG; two
-DAGs backfilling make two concurrent requests. QPN is now live and B1610 will
-follow, so the current mitigation is sequencing by hand — unpause one, let it
-finish, unpause the next. A pool with a single slot shared by every Elexon task
-would enforce this properly and should exist before a third DAG lands.
+**A one-slot Airflow Pool serialises all Elexon work.** `max_active_runs` limits
+one DAG but does not prevent another Elexon DAG from running at the same time.
+Every Elexon task uses the `elexon` pool, so only one of the four DAGs can
+materialise a response on the shared worker at once. See
+[../../deployment.md](../../deployment.md).
 
 ### `start_date` is the history window, and it is deliberately static
 
@@ -278,10 +278,10 @@ GROUP BY 1 ORDER BY 1;
   appear, drop the rest, and record which.
 
 **The ladder is the experiment, not the design.** Four weeks costs about 7.3M
-extra rows and 1.1 GB, one-off. Running `1, 8, 30, 90` permanently would cost 4×
-storage — 29 GB a year for PN, 58 GB with QPN — to monitor something with no
-evidence it happens. A rolling 90-day window would cost 655 GB a year for the
-same reach.
+extra rows and 1.3 GB, one-off. Running `1, 8, 30, 90` permanently would cost 4×
+storage — about 32.6 GB a year for PN and 61.9 GB with QPN — to monitor
+something with no evidence it happens. A rolling 90-day PN window would cost
+about 734 GB a year for the same reach.
 
 ## Result
 
