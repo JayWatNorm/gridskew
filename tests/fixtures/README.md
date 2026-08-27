@@ -58,15 +58,14 @@ The five units were chosen for variety:
 | `V__BADEL001` | virtual lead party | zeros, and a `nationalGridBmUnit` of `AG-ADL00B` that shares no stem with the Elexon id |
 | `E_ABERDARE` | embedded | zeros, `ABERU-1` — a third naming shape |
 
-The `T_DRAXX-1` ramp rows are what make `levelFrom != levelTo` testable at all.
-Without them **every row in the fixture had identical from and to levels**, so a
-parse written as `result["levelFrom"], result["levelFrom"]` — ignoring `levelTo`
-entirely — passed every assertion. Five rows now differ.
+**The `T_DRAXX-1` ramp rows are what make `levelFrom != levelTo` testable.** With
+every row flat, a parse written as `result["levelFrom"], result["levelFrom"]` —
+ignoring `levelTo` entirely — passes every assertion. Five rows differ, so it
+cannot.
 
-**Negative levels are covered**, by `T_WILCT-1` at −14 MW in the PN fixture and
-−60 MW in the QPN one. It was found by scanning a full market-wide day rather
-than by guessing at unit names — five hand-picked candidates, including pumped
-storage and a battery aggregator, were all at zero.
+**Negative levels are covered** by `T_WILCT-1`, at −14 MW in the PN fixture and
+−60 MW in the QPN one. Non-zero units are rare enough that picking candidates by
+name does not work; this one came from scanning a full market-wide day.
 
 That unit is also the entire `PN - QPN` question in one row: **−14 minus −60 is
 +46**, so applying the deduction flips it from importing to exporting. See

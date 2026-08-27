@@ -98,15 +98,37 @@ past is not recoverable**, which is why it was the first thing built.
 Both public and free. Phase 1 deliberately uses these two only, with no
 cross-organisation joins.
 
+## Architecture
+
+Medallion, in a database rather than a lake:
+
+| Layer | Here | Contains |
+|---|---|---|
+| **Bronze** | `raw` schema | What each API published, unmodified. Append-only, `retrieved_at` on every row |
+| **Silver** | dbt `staging/` then `intermediate/` | Cleaned and conformed, then joined and given business logic |
+| **Gold** | dbt `marts/` | Facts, dimensions and aggregates at business grain. Terminal — no mart reads another |
+
+Two departures from the canonical description, both deliberate. **Bronze is a
+Postgres schema, not files on object storage**, because there is no lake and
+227M rows do not need one. And **silver is split in two** — `staging` is
+strictly 1:1 with a source, `intermediate` is where joins live — which is dbt
+convention rather than medallion convention, and the more useful distinction.
+
+The bronze rule that everything else depends on: **nothing in `raw` is ever
+updated or deleted.** A revision arrives as a new row. That is what makes
+restatement observable, and it is why a source that overwrites in place —
+carbon intensity forecasts, Elexon settlement runs — can only be captured
+going forwards.
+
 ## Stack
 
 Python ingestion → PostgreSQL → dbt → Airflow, on a self-hosted Linux server.
 Separate development and production databases; scheduled runs write to
 production only.
 
-Four DAGs are live in production: the carbon intensity forecast archive every 30
-minutes, the carbon intensity outturn poller daily, and the Elexon `PN` and `QPN`
-pollers daily. The outturn poller detects its own window, so it backfills on an
+Six DAGs are live in production: the carbon intensity forecast archive every 30
+minutes, the carbon intensity outturn poller daily, and the Elexon `PN`, `QPN`
+and `B1610` pollers daily. The outturn poller detects its own window, so it backfills on an
 empty table and catches up from the last stored period thereafter. The two Elexon
 DAGs take their window from Airflow and backfill through `catchup=True` instead —
 [docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) explains
