@@ -31,8 +31,8 @@ ingested today. Modelling rests on II and SF. Rungs can be added later at any
 time — the schema does not change.
 
 **`start_date` is the earliest wanted settlement day plus the offset.** 2025-09-05
-minus 14 days is 2025-08-22, which aligns B1610 with PN's history. Get this wrong
-and the two tables do not line up for the join the thesis depends on.
+minus 14 days is 2025-08-22, which aligns B1610 with PN's history. A different
+calculation would misalign the two tables used by the thesis join.
 
 ### Why 14 days rather than 7
 
@@ -120,9 +120,10 @@ updated, nothing deleted — but each row costs an index lookup on insert instea
 of a blind append, and storage collapses to the initial load plus genuine
 changes.
 
-**Deferred rather than rejected, because the change rate is unmeasured** and
-cannot be measured from history. The first II-to-SF diff becomes available around
-**13 September 2026**; the decision should wait for it.
+**Deferred rather than rejected, because the change rate cannot be measured from
+history.** The II and SF DAGs now run daily and preserve both positions. Once the
+same unit-periods have been captured at both run types, their measured difference
+will determine whether change-only append is worthwhile.
 
 **Both designs share the same table and key**, so switching later needs no
 migration — only a change to the poller's insert.

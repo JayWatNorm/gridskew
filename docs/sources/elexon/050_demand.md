@@ -15,8 +15,8 @@ filled the gap. Another, entirely different reason is that the country simply
 used more electricity than expected, so more had to be generated.
 
 Without demand data you cannot separate those two stories, and the thesis would
-be claiming a mechanism it had not isolated. This is the honest-limitations
-dataset.
+be claiming a mechanism it had not isolated. This is the control dataset for
+that competing explanation.
 
 ---
 
@@ -59,11 +59,10 @@ stream variants of NDF and TSDF take `publishDateTimeFrom` / `publishDateTimeTo`
 (optional), unlike PN and B1610 whose streams take `from`/`to`. Omit the
 parameters and you get the latest published forecast.
 
-**Corrected 2026-08-20: every documented cap sits on the base endpoint only.**
-A sweep of the spec found no `/stream` endpoint carrying a cap sentence — for
-these datasets or any other. The developer portal describes stream endpoints as
-having no restrictions on data return. Whether that holds in practice for large
-publish windows is untested.
+Every documented cap sits on the base endpoint only. The spec contains no
+equivalent cap sentence for these `/stream` endpoints, and the developer portal
+describes streams as having no restrictions on data return. Whether that holds
+in practice for large publish windows remains untested.
 
 | Endpoint | Documented max range | Notes |
 |---|---|---|

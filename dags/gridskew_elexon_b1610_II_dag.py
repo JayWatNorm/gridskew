@@ -1,6 +1,8 @@
-"""gridskew's elexon B1610 Type II dag, retrieves actuals, theres a 5 day wait before the availability
-but on testing ive found its 7, 14 days has been set as the lag to account for unusual  holiday peroids
-II is the first actual it is followed by the first set of revision in the SF Type"""
+"""Load the B1610 Interim Information settlement position each day.
+
+II is published after five working days. The 14-day offset also covers weekends
+and holiday periods while the source position is still available.
+"""
 
 import sys
 from datetime import datetime, timedelta, timezone

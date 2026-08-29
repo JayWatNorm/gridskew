@@ -62,10 +62,3 @@ plausible.
 
 The terms state a rate limit exists but do not publish it, and prohibit
 concealing an application's identity. Two requests an hour is not a concern.
-
-## Known history
-
-The table was truncated once, deliberately, on 2026-08-17, twelve minutes after
-the first row landed. It held three deployment-artefact polls and nothing of
-analytical value. **Append-only applies from the first scheduled poll after that,
-and there is no second exception.**

@@ -107,10 +107,3 @@ exists to record.
 **Two columns are `integer` and two are `timestamptz`**, so a positional swap in
 the parse tuple is accepted silently by Postgres. `tests/test_forecast_poller.py`
 pins every column position with a golden value for exactly this reason.
-
-## Known history
-
-The table was truncated once, deliberately, on 2026-08-17, twelve minutes after
-the first row landed. It held three deployment-artefact polls and nothing of
-analytical value. Append-only applies from the first scheduled poll after that,
-and there is no second exception.

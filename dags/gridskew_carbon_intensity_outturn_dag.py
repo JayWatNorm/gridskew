@@ -1,6 +1,6 @@
-"""gridskew's carbon intensity outturn DAG.
-Polls the NESO Carbon Intensity API daily
-revision to raw.carbon_intensity_outturn in gridskew_prod.
+"""Load carbon-intensity outturn and final-revision forecasts each day.
+
+Rows are appended to raw.carbon_intensity_outturn in gridskew_prod.
 """
 
 import sys

@@ -1,4 +1,8 @@
-"""gridskew's elexon B1610 Type SF dag, retrieves actuals, 35 day lag, no catchup as the backfill will catch"""
+"""Load the B1610 Settlement Final position at a 35-day offset.
+
+This DAG runs forwards only because superseded settlement positions cannot be
+recovered retrospectively.
+"""
 
 import sys
 from datetime import datetime, timedelta, timezone

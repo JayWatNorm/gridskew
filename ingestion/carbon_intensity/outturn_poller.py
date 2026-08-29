@@ -25,18 +25,6 @@ def fetch(from_date, to_date):
     return response.json()
 
 
-# def chunker(now_time, from_date, to_date,  rows, chunk_size=30):
-# rows = rows + [[from_date, to_date]]
-# gap = to_date - now_time
-# if gap.days < 30:
-# chunk_size = gap.days
-# chunker(now_time, to_date, to_date + timedelta(days=chunk_size), rows, chunk_size)
-# if chunk_size <= 0:
-# return rows
-# return(rows)
-
-
-# doing a loop instead of recusion, although that was fun it wasnt the right way to do it.
 def chunker(yest_date, from_date, to_date, chunk_size=30):
     rows = []
     while from_date < yest_date:

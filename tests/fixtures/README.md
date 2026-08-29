@@ -17,8 +17,8 @@ which is the point.
 | File | Source | Captured | Notes |
 |---|---|---|---|
 | `pn_stream.json` | `/datasets/PN/stream`, two windows, **5 units** | 2026-08-22 | **Composite** — see note below. 28 rows: five unit types, segments of 1 to 30 minutes, four multi-segment periods, five rows where `levelFrom != levelTo`, a negative level, three `nationalGridBmUnit` naming shapes. **Periods 32–35 are absent** |
-| `qpn_stream.json` | `/datasets/QPN/stream`, two windows, **same 5 units as `pn_stream.json`** | 2026-08-22 | **Composite.** 24 rows, deliberately the same units and windows as the PN fixture so the two are directly comparable. **Every segment is 30 minutes** — QPN does not mirror PN's sub-period segmentation. Includes `T_WILCT-1` at −60 MW, the **only** unit in the entire market with a non-zero QPN |
-| `pn_stream_ramp.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for the S2 ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
+| `qpn_stream.json` | `/datasets/QPN/stream`, two windows, **same 5 units as `pn_stream.json`** | 2026-08-22 | **Composite.** 24 rows, deliberately the same units and windows as the PN fixture so the two are directly comparable. **Every segment is 30 minutes** — QPN does not mirror PN's sub-period segmentation. Includes `T_WILCT-1` at −60 MW, the only unit with a non-zero QPN in the completed one-year backfill |
+| `pn_stream_ramp.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for the planned PN ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
 | `b1610_stream.json` | `/datasets/B1610/stream`, 4h straddling a settlement-day boundary, **3 units** | 2026-08-23 | **Composite**, built by `tests/adhoc/b1610_capture_fixture.py`. 27 rows, two settlement dates, **periods 1 and 2 both present** — period 1 is the only period where `settlementDate` disagrees with the UTC date of `halfHourEndTime`. Naive `halfHourEndTime`, run type `II` only |
 | `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | One mrid at revisions 4, 5, 6. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
 | `mels_stream.json` | `/datasets/MELS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
@@ -44,9 +44,8 @@ on 2026-08-21 — five units across `16:30Z–18:30Z`, plus `T_DRAXX-1` again ac
 > is the fixture, not the parser.
 
 This is deliberate. A genuine market-wide response for that window is roughly
-11,000 rows across ~2,700 units, which is far too large to commit, and the
-previous single-unit capture was four identical rows of a flat baseload plant —
-it would pass a parser that ignored half the fields.
+11,000 rows across ~2,700 units, which is far too large to commit. The selected
+rows vary across the fields and segment shapes that the parser must preserve.
 
 The five units were chosen for variety:
 

@@ -45,8 +45,9 @@ This is the same rule as mutable default arguments — **the expression is
 evaluated when the module executes**, and a DAG module executes constantly.
 
 The consequence to accept: redeploying onto a fresh Airflow instance years later
-re-backfills from that date. That is a documented property of the design, not a
-bug, and the fix is to edit the literal deliberately rather than to compute it.
+re-backfills from that date. That is a documented property of the design. If the
+required history changes, edit the literal explicitly rather than computing it
+at parse time.
 
 ## The second question: load once, or keep re-checking?
 
@@ -137,8 +138,9 @@ client cannot see how close it is to one. Backing off gracefully is impossible;
 you would simply be blocked.
 
 - **Scheduled daily runs**: one or two requests. No delay needed.
-- **Backfills**: `time.sleep(0.2)` between requests. It costs seconds and removes
-  a risk with no warning signal.
+- **Backfills**: Airflow runs daily intervals one at a time through the one-slot
+  `elexon` pool. The measured PN backfill averaged about 1.4 requests per minute,
+  so no additional client-side delay is required.
 - **Identify yourself.** Both sets of terms prohibit concealing an application's
   identity. `gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
 - **Assert on row counts, not just status codes.** A truncated or throttled
