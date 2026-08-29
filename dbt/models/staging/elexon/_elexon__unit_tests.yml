@@ -19,9 +19,302 @@ unit_tests:
             level_to: 0
             retrieved_at: '2026-01-15 01:00:00+00'
 
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-01-15'
+            settlement_period: 48
+            time_from: '2026-01-15 23:30:00+00'
+            time_to: '2026-01-16 00:00:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-16 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-01-15'
+            settlement_period: 49
+            time_from: null
+            time_to: null
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-16 01:00:00+00'
+
     expect:
       format: dict
       rows:
         - settlement_date: '2026-01-15'
           settlement_period: 1
           period_start_utc: '2026-01-15 00:00:00+00'
+
+        - settlement_date: '2026-01-15'
+          settlement_period: 48
+          period_start_utc: '2026-01-15 23:30:00+00'
+
+        - settlement_date: '2026-01-15'
+          settlement_period: 49
+          period_start_utc: null
+
+  - name: test_stg_elexon__pn_period_start_utc_invalid_inputs
+    description: >
+      Confirms that zero and null settlement inputs return a null UTC instant.
+    model: stg_elexon__pn
+
+    given:
+      - input: source('elexon', 'elexon_pn')
+        format: dict
+        rows:
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-01-15'
+            settlement_period: 0
+            time_from: null
+            time_to: null
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: null
+            settlement_period: 1
+            time_from: null
+            time_to: null
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-01-15'
+            settlement_period: null
+            time_from: null
+            time_to: null
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+    expect:
+      format: dict
+      rows:
+        - settlement_date: '2026-01-15'
+          settlement_period: 0
+          period_start_utc: null
+
+        - settlement_date: null
+          settlement_period: 1
+          period_start_utc: null
+
+        - settlement_date: '2026-01-15'
+          settlement_period: null
+          period_start_utc: null
+
+  - name: test_stg_elexon__pn_period_start_utc_spring_clock_change
+    description: >
+      Confirms that a settlement period effected by the spring clock change starts with the expected UTC
+      instant.
+    model: stg_elexon__pn
+
+    given:
+      - input: source('elexon', 'elexon_pn')
+        format: dict
+        rows:
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-03-29'
+            settlement_period: 2
+            time_from: '2026-03-29 00:30:00+00'
+            time_to: '2026-03-29 01:00:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-03-29'
+            settlement_period: 3
+            time_from: '2026-03-29 01:00:00+00'
+            time_to: '2026-03-29 01:30:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-03-29'
+            settlement_period: 46
+            time_from: '2026-03-29 22:30:00+00'
+            time_to: '2026-03-29 23:00:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-03-29'
+            settlement_period: 47
+            time_from: null
+            time_to: null
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2027-03-28'
+            settlement_period: 46
+            time_from: '2027-03-28 22:30:00+00'
+            time_to: '2027-03-28 23:00:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2027-03-28 23:30:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2027-03-28'
+            settlement_period: 47
+            time_from: null
+            time_to: null
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2027-03-28 23:30:00+00'
+
+    expect:
+      format: dict
+      rows:
+        - settlement_date: '2026-03-29'
+          settlement_period: 2
+          period_start_utc: '2026-03-29 00:30:00+00'
+
+        - settlement_date: '2026-03-29'
+          settlement_period: 3
+          period_start_utc: '2026-03-29 01:00:00+00'
+
+        - settlement_date: '2026-03-29'
+          settlement_period: 46
+          period_start_utc: '2026-03-29 22:30:00+00'
+
+        - settlement_date: '2026-03-29'
+          settlement_period: 47
+          period_start_utc: null
+
+        - settlement_date: '2027-03-28'
+          settlement_period: 46
+          period_start_utc: '2027-03-28 22:30:00+00'
+
+        - settlement_date: '2027-03-28'
+          settlement_period: 47
+          period_start_utc: null
+
+
+
+  - name: test_stg_elexon__pn_period_start_utc_autumn_clock_change
+    description: >
+      Confirms that a settlement period effected by the autumn clock change starts with the expected UTC
+      instant.
+    model: stg_elexon__pn
+
+    given:
+      - input: source('elexon', 'elexon_pn')
+        format: dict
+        rows:
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-10-25'
+            settlement_period: 1
+            time_from: '2026-10-24 23:00:00+00'
+            time_to: '2026-10-24 23:30:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-10-25'
+            settlement_period: 3
+            time_from: '2026-10-25 00:00:00+00'
+            time_to: '2026-10-25 00:30:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-10-25'
+            settlement_period: 4
+            time_from: '2026-10-25 00:30:00+00'
+            time_to: '2026-10-25 01:00:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-10-25'
+            settlement_period: 5
+            time_from: '2026-10-25 01:00:00+00'
+            time_to: '2026-10-25 01:30:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-10-25'
+            settlement_period: 6
+            time_from: '2026-10-25 01:30:00+00'
+            time_to: '2026-10-25 02:00:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-10-25'
+            settlement_period: 50
+            time_from: '2026-10-25 23:30:00+00'
+            time_to: '2026-10-26 00:00:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-10-25'
+            settlement_period: 51
+            time_from: null
+            time_to: null
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+
+    expect:
+      format: dict
+      rows:
+        - settlement_date: '2026-10-25'
+          settlement_period: 1
+          period_start_utc: '2026-10-24 23:00:00+00'
+
+        - settlement_date: '2026-10-25'
+          settlement_period: 3
+          period_start_utc: '2026-10-25 00:00:00+00'
+
+        - settlement_date: '2026-10-25'
+          settlement_period: 4
+          period_start_utc: '2026-10-25 00:30:00+00'
+
+        - settlement_date: '2026-10-25'
+          settlement_period: 5
+          period_start_utc: '2026-10-25 01:00:00+00'
+
+        - settlement_date: '2026-10-25'
+          settlement_period: 6
+          period_start_utc: '2026-10-25 01:30:00+00'
+
+        - settlement_date: '2026-10-25'
+          settlement_period: 50
+          period_start_utc: '2026-10-25 23:30:00+00'
+
+        - settlement_date: '2026-10-25'
+          settlement_period: 51
+          period_start_utc: null

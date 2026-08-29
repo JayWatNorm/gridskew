@@ -149,6 +149,22 @@ pip install -r requirements-dev.txt
 python -m pytest tests/ -v
 ```
 
+The dbt unit tests use small inline fixtures to exercise model logic without
+reading the production source rows. Run them from the `dbt/` directory:
+
+```powershell
+dbt test --select "test_type:unit" --profiles-dir ..\dbt_profiles
+```
+
+Four PN staging tests cover normal 48-period days, the spring clock change in
+2026 and 2027, the repeated autumn hour, valid day boundaries, out-of-range
+periods and null inputs.
+
+PN is the test harness for the shared settlement-period macro. QPN and B1610
+pass the same `settlement_date` and `settlement_period` arguments, so repeating
+the full fixture matrix would test identical logic. The combined three-model
+build verifies that each staging model integrates the macro successfully.
+
 To run the pollers themselves, apply the files in `sql/init/` to any PostgreSQL
 database, copy `.env.example` to `.env` and fill it in, then:
 
@@ -175,7 +191,7 @@ expect either to take a minute rather than a second.
 ingestion/      Python ingestion package (bind-mounted by Airflow)
 dags/           Airflow DAG definitions
 sql/            Raw-layer DDL, applied manually per database
-dbt/            dbt sources, staging models, tests and reusable macros
+dbt/            dbt sources, staging models, inline unit tests and reusable macros
 dbt_profiles/   dbt connection profile, credentials via env_var()
 tests/          pytest suite, captured fixtures, and ad-hoc data checks
 docs/           Source and dataset documentation
@@ -231,8 +247,10 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [x] dbt project initialised
 - [x] Sources declared for all five raw tables, with freshness checks
 - [x] Staging models preserve source grain
-- [ ] Settlement-period conversion: macros implemented; staging integration
-      and fixture-backed unit tests remain
+- [x] Settlement-period conversion integrated into `PN`, `QPN` and `B1610`
+      staging as `period_start_utc`
+- [x] Settlement-period unit-test coverage: four fixture-backed PN tests cover
+      normal, spring, autumn, invalid-period, null-input and future-date cases
 - [ ] Incremental generation and commitment facts
 
 `QPN` was added to the plan after reconnaissance found it declares MW netted off

@@ -198,8 +198,14 @@ and 50 settlement periods rather than 48.
 The dbt project centralises the conversion in
 `dbt/macros/settlement_period.sql`. It interprets British local midnight with
 PostgreSQL's `Europe/London` rules, then advances by real half-hour intervals.
-The macro is implemented; staging integration and clock-change unit tests are
-the next build step.
+The `PN`, `QPN` and `B1610` staging models expose the result as
+`period_start_utc`. Four fixture-backed PN unit tests cover normal 48-period
+days, the 2026 and 2027 spring boundaries, the repeated autumn hour, valid day
+limits, out-of-range periods and null inputs.
+
+PN provides the test harness for this shared macro. QPN and B1610 pass the same
+date and period arguments, so the full fixture matrix is not duplicated; the
+combined three-model build verifies that each staging model integrates it.
 
 ## Timestamp formats differ between datasets
 

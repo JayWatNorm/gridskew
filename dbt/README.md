@@ -13,7 +13,7 @@ build stages. dbt reads `gridskew_prod.raw` through the restricted
 | `models/intermediate/` | Joins, grain changes and reusable business logic |
 | `models/marts/` | Facts, dimensions and final aggregates |
 | `macros/` | Reusable SQL expressions, including settlement-period conversion |
-| `tests/fixtures/` | Mock inputs and expected results for dbt unit tests |
+| `models/staging/*/_*__unit_tests.yml` | Inline mock inputs and expected results for dbt unit tests |
 | `../dbt_profiles/` | Local profile; credentials come from environment variables |
 
 Models are materialised as views unless a model defines a different strategy.
@@ -21,9 +21,17 @@ Staging models must not join, aggregate or deduplicate source rows.
 
 `macros/settlement_period.sql` converts a British-local settlement date and
 period into a UTC instant using PostgreSQL's `Europe/London` timezone rules. It
-also derives whether the date contains 46, 48 or 50 periods. The macros parse
-successfully; staging-model integration and fixture-backed unit tests are the
-next build step.
+also derives whether the date contains 46, 48 or 50 periods. `PN`, `QPN` and
+`B1610` staging expose the result as `period_start_utc`. Four fixture-backed PN
+unit tests cover normal 48-period days, the 2026 and 2027 spring boundaries,
+the 2026 repeated autumn hour, valid day limits, out-of-range periods and null
+inputs.
+
+PN is the test harness for the shared macro. QPN and B1610 call it with the
+same `settlement_date` and `settlement_period` arguments, so they do not repeat
+the same fixture matrix. The combined three-model build verifies their macro
+integration. A consumer-specific unit test belongs with either model if its
+input handling later diverges through casting, renaming or filtering.
 
 ## Local setup
 
@@ -64,6 +72,12 @@ Run tests attached to all declared sources:
 
 ```powershell
 dbt test --select "source:*"
+```
+
+Run only the fixture-backed unit tests:
+
+```powershell
+dbt test --select "test_type:unit"
 ```
 
 Build and test the selected models together:
