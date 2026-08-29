@@ -1,0 +1,27 @@
+unit_tests:
+  - name: test_stg_elexon__pn_period_start_utc_normal_day
+    description: >
+      Confirms that a normal settlement period starts at the expected UTC
+      instant.
+    model: stg_elexon__pn
+
+    given:
+      - input: source('elexon', 'elexon_pn')
+        format: dict
+        rows:
+          - bm_unit: TEST_BMU
+            national_grid_bm_unit: TEST_NG_BMU
+            settlement_date: '2026-01-15'
+            settlement_period: 1
+            time_from: '2026-01-15 00:00:00+00'
+            time_to: '2026-01-15 00:30:00+00'
+            level_from: 0
+            level_to: 0
+            retrieved_at: '2026-01-15 01:00:00+00'
+
+    expect:
+      format: dict
+      rows:
+        - settlement_date: '2026-01-15'
+          settlement_period: 1
+          period_start_utc: '2026-01-15 00:00:00+00'

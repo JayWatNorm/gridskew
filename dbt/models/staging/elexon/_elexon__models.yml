@@ -25,6 +25,12 @@ models:
         description: >
           Half-hour window within the settlement date. Normally 1–48;
           clock-change days have 46 or 50. Part of the key
+      - name: period_start_utc
+        description: >
+          UTC start of the settlement period, calculated from settlement_date
+          and settlement_period by the settlement_period_start_utc macro. The
+          settlement date is interpreted in Europe/London, preserving the
+          correct period sequence across clock-change days.
       - name: half_hour_end_time
         description: >
           Period END, UTC — naive in the source, unlike PN's time_from.
@@ -67,6 +73,12 @@ models:
         description: >
           Half-hour window within the settlement date. Normally 1–48;
           clock-change days have 46 or 50
+      - name: period_start_utc
+        description: >
+          UTC start of the settlement period, calculated from settlement_date
+          and settlement_period by the settlement_period_start_utc macro. The
+          settlement date is interpreted in Europe/London, preserving the
+          correct period sequence across clock-change days.
       - name: time_from
         description: >
           Segment start, UTC. QPN segment boundaries are independent of
@@ -100,6 +112,12 @@ models:
         description: >
           Half-hour window within the settlement date. Normally 1–48;
           clock-change days have 46 or 50
+      - name: period_start_utc
+        description: >
+          UTC start of the settlement period, calculated from settlement_date
+          and settlement_period by the settlement_period_start_utc macro. The
+          settlement date is interpreted in Europe/London, preserving the
+          correct period sequence across clock-change days.
       - name: time_from
         description: >
           Segment start, UTC. Segments can be shorter than a settlement
