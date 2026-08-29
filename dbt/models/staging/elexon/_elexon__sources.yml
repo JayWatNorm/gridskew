@@ -15,8 +15,10 @@ sources:
         description: >
           Physical Notifications — what each unit said it would export or
           import.
-          Check against QPN, which declares an internal process load netted
-          off this figure for some units.
+          Check against QPN, which declares an underlying-process MW quantity
+          netted off this figure to establish the operating level to which
+          Dynamic Data apply. Whether that deduction belongs in the B1610
+          shortfall comparison remains an analytical question.
         freshness:
           warn_after: {count: 25, period: hour}
           error_after: {count: 48, period: hour}
@@ -72,8 +74,9 @@ sources:
         description: >
           Quiescent Physical Notifications — an underlying process quantity
           deducted from PN to establish the operating level to which Dynamic
-          Data apply. Optional, and almost always zero: 18,300 of 41.5M rows
-          are non-zero, all belonging to one unit.
+          Data apply. Optional, and almost always zero: in the completed
+          2025-08-22 to 2026-08-23 backfill, 18,300 of 41.5M rows are non-zero,
+          all belonging to one unit.
         freshness:
           warn_after: {count: 25, period: hour}
           error_after: {count: 48, period: hour}

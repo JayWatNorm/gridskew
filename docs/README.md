@@ -38,7 +38,7 @@ docs/sources/
     016_qpn_ingestion.md        as PN
     020_b1610.md              The receipt                              [running]
     021_b1610_ingestion.md      II at 14d, SF at 35d, catchup=True on II
-    030_remit.md              The excuse note                          [planned]
+    030_remit.md              The outage notice                        [planned]
     040_boalf.md              The intervention                         [planned]
     050_demand.md             Expected versus actual usage             [planned]
     060_system-prices.md      The cost of fixing the imbalance         [planned]

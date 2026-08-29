@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 def fetch(timestamp):
     response = requests.get(
-        f"https://api.carbonintensity.org.uk/intensity/{timestamp}/fw48h", timeout=10
+        f"https://api.carbonintensity.org.uk/intensity/{timestamp}/fw48h",
+        headers={
+            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
+        },
+        timeout=10,
     )
     response.raise_for_status()
     return response.json()

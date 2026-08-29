@@ -24,12 +24,11 @@ QPN shares an OpenAPI schema object with PN (`PhysicalNotificationData`), the
 same parameters, the same grain and the same timestamp formats. **Everything in
 [011_pn_ingestion.md](011_pn_ingestion.md) applies unchanged**: one day per
 chunk, `catchup=True` a year back, `timeout=30`, `page_size=1000`,
-`sleep(0.2)` on backfill.
+and serialization through the one-slot `elexon` Airflow pool.
 
 ## Volume, counted
 
-**The assumption that QPN matched PN was close but not exact.** Counted across
-the completed backfill, 2026-08-23:
+Counted across the completed backfill, 2026-08-23:
 
 | | QPN | PN |
 |---|---|---|
@@ -45,9 +44,8 @@ QPN** — the optional submission from the BSC glossary, visible in the data.
 Two figures are worth more than the totals.
 
 **Null `bm_unit` is 657,743 rows — identical to PN, to the row.** The same units
-are missing an Elexon identifier in both datasets. That was a key design forced
-by a constraint violation during the first load; it is now a measured property of
-the source rather than an inference from one dataset to the other.
+are missing an Elexon identifier in both datasets, so both raw tables key on the
+National Grid identifier.
 
 **18,300 rows are non-zero — 0.044%.** That works out at exactly **50 per run,
 every run, for a year.** Zero variance. See [015_qpn.md](015_qpn.md), where that
@@ -55,15 +53,10 @@ number turns out to describe a single BM unit.
 
 ## Built as a separate module, deliberately
 
-Decided 2026-08-21. A single parameterised module taking the dataset name would
-be defensible — the API's own spec treats the two as one shape — but two files
-were chosen so each reads start to finish with no indirection, and so divergence
-later costs nothing.
-
-**The accepted cost is that a parse bug has to be fixed twice.** The tests exist
-partly to make that visible: both modules are tested against their own captured
-fixture, so a fix applied to one and not the other shows up as a failure rather
-than as quietly wrong data.
+A single parameterised module taking the dataset name would also fit the API's
+shared schema. Separate files keep each ingestion path readable and allow the
+sources to diverge later. Both modules are tested against paired captured
+fixtures so their shared fields remain aligned.
 
 ## Zero rows are normal
 

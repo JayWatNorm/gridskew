@@ -60,9 +60,10 @@ Market-wide requests, no `bmUnit` filter:
 | 7 days | 897,839 | 128,263 | 6.73 |
 | 18 days | 2,299,340 | 127,741 | 17.24 |
 
-**Linear. No truncation, no cap.** The 18 day request returned roughly 626 MB in
-a single response, so the constraint on chunk size is client memory rather than
-the API.
+**Linear, with no truncation observed through 18 days.** The 18-day request
+returned roughly 626 MB in a single response. Client memory is therefore the
+binding constraint at the tested depths; the existence of a higher undocumented
+cap remains unknown.
 
 ## Volume, counted
 
@@ -143,9 +144,8 @@ silently and the day would have loaded as 48 periods.
 **The first day is a partial by design.** A UTC window opens an hour after the
 BST settlement day starts, so period 1 falls before the earliest run and no
 earlier run exists to collect it. Period 2 survives only because the API includes
-the period containing the requested `from`. Two half-hours at the far edge of the
-history window; not worth engineering around, but worth not rediscovering as a
-bug.
+the period containing the requested `from`. The documented history therefore
+starts with this expected partial day.
 
 ## Chunking
 
@@ -161,7 +161,6 @@ Settings that follow:
   carbon intensity pollers fetch.
 - `page_size=1000` on `execute_values`. The default of 100 means 1,300 round
   trips per daily chunk.
-- `time.sleep(0.2)` between backfill requests.
 
 ## Backfill
 

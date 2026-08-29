@@ -23,7 +23,7 @@ Of the two, **the volume is the more direct measure** for this project. Price
 is the market's reaction to scarcity and is affected by bidding behaviour;
 volume is the scarcity itself.
 
-If the thesis holds, periods with large negative imbalance volumes and high buy
+If the thesis holds, periods with large positive imbalance volumes and high buy
 prices should be the periods where carbon intensity overshot its forecast.
 
 ---
@@ -48,8 +48,9 @@ From the endpoint description:
 > For each settlement period within the range, **only messages generated for
 > the latest settlement run are returned.**
 
-This is a meaningful limitation and it differs from B1610, where every run is
-retrievable via `settlementRunType`.
+This is the same archive-it-forwards constraint found in B1610: both endpoints
+serve the latest applicable settlement position rather than a recoverable
+history of superseded runs.
 
 Prices are produced by the SAA (Settlement Administration Agent) per settlement
 run, and this endpoint hands back only the most recent. **Price revisions
@@ -132,9 +133,7 @@ One settlement period fetched
 
 - How often does `systemBuyPrice` differ from `systemSellPrice`, if ever, under
   the current single-price arrangements?
-- Sign convention on `netImbalanceVolume`: positive alongside offer-heavy
-  volumes here suggests positive means the system was short, but one
-  observation is not a convention. Confirm against a period with the opposite
-  imbalance.
+- Sign convention on `netImbalanceVolume`: [Elexon defines positive as a short
+  system and negative as a long system](https://www.elexon.co.uk/bsc/settlement/imbalance-pricing/).
 - Are these figures revised as settlement runs advance? Only the latest run is
   served, so revision would be invisible without polling.

@@ -2,8 +2,8 @@ models:
   - name: stg_elexon__b1610
     description: >
       One row per BM unit, settlement period and settlement run, containing
-      metered import or export energy. Every settlement run is retained so
-      revisions remain visible.
+      metered import or export energy. Every captured settlement run is retained
+      so revisions remain visible.
     columns:
       - name: bm_unit
         description: >

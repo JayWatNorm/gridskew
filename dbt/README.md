@@ -1,20 +1,29 @@
 # gridskew dbt project
 
-This project transforms the five production `raw` tables into the Silver and
-Gold layers. dbt reads `gridskew_prod.raw` through the restricted
+This project transforms the five production `raw` tables. The Silver staging
+models are in place; intermediate models and the Gold layer follow in later
+build stages. dbt reads `gridskew_prod.raw` through the restricted
 `gridskew_dbt` role and writes development objects to `dbt_dev`.
 
 ## Project structure
 
 | Path | Purpose |
 |---|---|
-| `models/staging/` | One-to-one source models with explicit columns and standard names and types |
+| `models/staging/` | Source-grain models with explicit columns, standard names and row-level normalisation |
 | `models/intermediate/` | Joins, grain changes and reusable business logic |
 | `models/marts/` | Facts, dimensions and final aggregates |
+| `macros/` | Reusable SQL expressions, including settlement-period conversion |
+| `tests/fixtures/` | Mock inputs and expected results for dbt unit tests |
 | `../dbt_profiles/` | Local profile; credentials come from environment variables |
 
 Models are materialised as views unless a model defines a different strategy.
 Staging models must not join, aggregate or deduplicate source rows.
+
+`macros/settlement_period.sql` converts a British-local settlement date and
+period into a UTC instant using PostgreSQL's `Europe/London` timezone rules. It
+also derives whether the date contains 46, 48 or 50 periods. The macros parse
+successfully; staging-model integration and fixture-backed unit tests are the
+next build step.
 
 ## Local setup
 

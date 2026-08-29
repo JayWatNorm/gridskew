@@ -4,9 +4,10 @@
 
 ## In plain terms
 
-**The excuse note.** When a power station breaks down or goes offline for
-maintenance, it is legally required to say so publicly, along with how much
-capacity is lost and for how long.
+**The outage notice.** When an outage or availability change qualifies as
+inside information under REMIT, the market participant must publish it in a
+timely and effective manner. The resulting notices record expected capacity
+impact and duration. See [Ofgem's Article 4 guidance](https://www.ofgem.gov.uk/policy/publishing-inside-information-under-remit-article-4).
 
 Crucially it also says whether the outage was **planned** or **unplanned**.
 
@@ -18,8 +19,8 @@ ahead and should already be in the forecast.
 REMIT stands for the Regulation on Wholesale Energy Markets Integrity and
 Transparency, an EU regulation aimed at preventing market abuse. This endpoint
 returns information participants publish to comply with **Article 4 of
-Regulation (EU) 1227/2011**. The name is not worth remembering; the planned
-versus unplanned split is.
+Regulation (EU) 1227/2011**. The planned-versus-unplanned split is the field
+used by this project.
 
 **Caveat before building on it:** the API does not enumerate the values of
 `unavailabilityType`. Both `Planned` (spec example) and `Unplanned` (live,

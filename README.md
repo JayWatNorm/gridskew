@@ -10,9 +10,11 @@ deliberate focus here is the engineering - orchestration, testing, dimensional
 modelling and deployment — against live public APIs with all the awkwardness
 that implies.
 
-# AI Disclaimer
-AI is used for documentation, coaching, scaffolding, code review & best practice.
-Examples may be generated on new subjects to assist with understanding.
+## AI assistance
+
+AI-assisted tools support coaching, documentation, scaffolding and code review.
+The repository owner makes and verifies the design, implementation and analysis
+decisions represented here.
 
 ---
 
@@ -90,9 +92,9 @@ past is not recoverable**, which is why it was the first thing built.
 
 ## Data sources
 
-| Source | Used for |
+| Source | Role in the project |
 |---|---|
-| **Elexon Insights** | Physical notifications, per-unit generation, outage notices, balancing actions, demand, imbalance prices |
+| **Elexon Insights** | Physical notifications and per-unit generation are ingested; outage notices, balancing actions, demand and imbalance prices are planned explanatory inputs |
 | **NESO Carbon Intensity API** | National carbon intensity forecast and outturn, half-hourly |
 
 Both public and free. Phase 1 deliberately uses these two only, with no
@@ -110,9 +112,10 @@ Medallion, in a database rather than a lake:
 
 Two departures from the canonical description, both deliberate. **Bronze is a
 Postgres schema, not files on object storage**, because there is no lake and
-227M rows do not need one. And **silver is split in two** — `staging` is
-strictly 1:1 with a source, `intermediate` is where joins live — which is dbt
-convention rather than medallion convention, and the more useful distinction.
+227M rows do not need one. And **silver is split in two** — `staging` preserves
+source grain and performs only source-conformed, row-level standardisation;
+`intermediate` is where joins and grain changes live. This is dbt convention
+rather than medallion convention, and the more useful distinction.
 
 The bronze rule that everything else depends on: **nothing in `raw` is ever
 updated or deleted.** A revision arrives as a new row. That is what makes
@@ -172,7 +175,7 @@ expect either to take a minute rather than a second.
 ingestion/      Python ingestion package (bind-mounted by Airflow)
 dags/           Airflow DAG definitions
 sql/            Raw-layer DDL, applied manually per database
-dbt/            dbt project (from Phase 1)
+dbt/            dbt sources, staging models, tests and reusable macros
 dbt_profiles/   dbt connection profile, credentials via env_var()
 tests/          pytest suite, captured fixtures, and ad-hoc data checks
 docs/           Source and dataset documentation
@@ -227,8 +230,9 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [ ] BM unit registry snapshot
 - [x] dbt project initialised
 - [x] Sources declared for all five raw tables, with freshness checks
-- [x] Staging models, 1:1 with sources
-- [ ] Settlement-period macro, with unit tests
+- [x] Staging models preserve source grain
+- [ ] Settlement-period conversion: macros implemented; staging integration
+      and fixture-backed unit tests remain
 - [ ] Incremental generation and commitment facts
 
 `QPN` was added to the plan after reconnaissance found it declares MW netted off

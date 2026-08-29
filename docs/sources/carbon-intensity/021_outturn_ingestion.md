@@ -49,9 +49,9 @@ from "check for revisions" and this one does not.
 > run at 177 bytes per row. See
 > [../elexon/011_pn_ingestion.md](../elexon/011_pn_ingestion.md).
 
-> If asked why the DAGs are inconsistent: they are not picking different patterns
-> for the same problem. This one merges two jobs because the volume makes the
-> merge free.
+> The DAGs use different patterns because the source volumes and revision
+> behaviour differ. This poller combines the historical and recent-data paths
+> because the repeated volume is negligible.
 
 ## Window cap: 30 days, partially tested
 
@@ -62,8 +62,8 @@ is 13 requests.
 beyond 30 is unconfirmed. Silent truncation is the dangerous case — it returns
 200 and looks healthy. Worth establishing before the chunk size is ever raised.
 
-Contrast with Elexon, where the equivalent question *was* tested and the answer
-was no cap at all.
+Contrast with Elexon PN, where no truncation was observed in requests up to 18
+days. Neither result proves an unlimited range.
 
 ## Chunk boundaries overlap by one period
 

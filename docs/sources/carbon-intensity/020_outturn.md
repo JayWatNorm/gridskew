@@ -19,7 +19,7 @@ What carbon intensity actually was, per settlement period, alongside the
 forecast as it stood at settlement time.
 
 Unlike the forecast archive, this data is **permanently re-fetchable**, which
-changes how much care it warrants: a mistake here is a truncate and a reload.
+means errors are recoverable through a truncate and reload.
 
 ## Endpoint
 

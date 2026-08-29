@@ -69,9 +69,9 @@ nulls and blanks.
 
 ## Observed live, 2026-08-20
 
-A partial pull of the registry (120 units visible before the response was cut
-off by tooling; see `tests/fixtures/elexon/bmunits_truncated.json` for the
-first 10) changed the picture on two fields this project planned to lean on:
+An alphabetical sample of 120 units, with the first 10 retained in
+`tests/fixtures/elexon/bmunits_truncated.json`, establishes the following
+properties:
 
 - **`fuelType` was null on 112 of 120 units.** It is sparsely populated, at
   least across this alphabetical slice, which was dominated by supplier and
@@ -84,17 +84,19 @@ first 10) changed the picture on two fields this project planned to lean on:
   from the identifier prefixes, not documentation.
 - **Even identity fields can be null.** One unit had null `elexonBmUnit` and
   null `bmUnitType`. `eic` is frequently null.
-- The full unit count remains unestablished; the response is large enough that
-  it needs proper handling rather than a browser peek.
+- The sample is not suitable for a market-wide unit count or null-rate
+  estimate. Those require loading the complete response.
 
 ## Why a snapshot rather than a table
 
 The registry is a **current-state** view. Ask it today and you get today's
 answer, with no history.
 
-Ingesting it as a dbt snapshot on a timestamp strategy records what it said on
-each run, so a join from a two-year-old settlement period picks up the fuel type
-as it was recorded then, not as it is now. That is the S4 build.
+The endpoint has no reliable updated-at field, so the dbt snapshot uses the
+`check` strategy. It compares the descriptive attributes on each poll and
+records a new version when one changes. A historical settlement-period join can
+then use the registry version that was current at that time. That is the S4
+build.
 
 ## Relevance to the README's limitations
 

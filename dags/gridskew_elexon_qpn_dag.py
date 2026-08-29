@@ -1,4 +1,9 @@
-"""gridskew's elexon qpns dag, retrieves self consumption to subtract from commitments."""
+"""Load Quiescent Physical Notifications from Elexon each day.
+
+Elexon deducts QPN from PN to derive the net operating level to which Dynamic
+Data apply. QPN is not used in Settlement, so whether the shortfall model should
+compare B1610 with PN or PN minus QPN remains an analytical question.
+"""
 
 import sys
 from datetime import datetime, timedelta, timezone

@@ -30,7 +30,7 @@ so supply still has to be adjusted constantly to follow demand.
 **2. Everything happens in half hours.** The market is settled in
 **settlement periods**, normally 48 per day. Every dataset here is stamped with
 a settlement date and period. Clock-change days have 46 or 50, which is why the
-API accepts a period as high as 50 and why this is a recurring source of bugs.
+API accepts a period as high as 50 and why this is a recurring source of implementation errors.
 
 **3. Generators declare, then deliver, and the operator fixes the difference.**
 
@@ -63,10 +63,10 @@ Unit counts quoted in these pages are approximate. To get the current figure:
 (Invoke-RestMethod "https://data.elexon.co.uk/bmrs/api/v1/reference/bmunits/all").Count
 ```
 
-## Datasets planned
+## Datasets
 
-Phase 1 needs the first two. The rest support the decomposition in step 3 of
-the thesis and can follow.
+Phase 1 needs PN, QPN and B1610 to measure shortfalls. The remaining datasets
+support the decomposition in step 3 of the thesis and can follow.
 
 Numbered in build order, not alphabetically.
 
@@ -74,8 +74,8 @@ Numbered in build order, not alphabetically.
 |---|---|---|---|---|
 | [010_pn.md](010_pn.md) | [011](011_pn_ingestion.md) | `PN` | The promise | Phase 1, first |
 | [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | An internal process netted off the promise | Phase 1, first |
-| [020_b1610.md](020_b1610.md) | — | `B1610` | The receipt | Phase 1, first |
-| [030_remit.md](030_remit.md) | — | `REMIT` | The excuse note, planned or unplanned | Phase 1, step 3 |
+| [020_b1610.md](020_b1610.md) | [021](021_b1610_ingestion.md) | `B1610` | The receipt | Phase 1, first |
+| [030_remit.md](030_remit.md) | — | `REMIT` | Outage notice, planned or unplanned | Phase 1, step 3 |
 | [040_boalf.md](040_boalf.md) | — | `BOALF` | The intervention | Phase 1, step 3 |
 | [050_demand.md](050_demand.md) | — | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | Phase 1, step 3 |
 | [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Phase 1, step 3 |
@@ -147,10 +147,9 @@ than "no limit"**. Worth retesting at 100 days or more before relying on it.
 is the period containing the requested `from`. Chunks overlap by one, same as
 the Carbon Intensity API.
 
-**Chunk by day for all-unit pulls.** One day of B1610 across several hundred BM
-units is on the order of 19,000 rows; a month would be over half a million.
-Daily chunks also match the settlement day grain and sidestep the cap question
-entirely.
+**Chunk by day for all-unit pulls.** At the 14-day polling offset, a measured
+UTC-day B1610 request returned 449,673 rows across 9,177 units. Daily chunks
+keep responses manageable and sidestep the undocumented-cap question.
 
 **Do not filter by `bmUnit` in ingestion.** Pull every unit. There is no unit
 list to maintain, no risk of missing one that appears mid-year, and raw records
@@ -195,6 +194,12 @@ UTC.
 **Never derive a settlement date from the date part of a UTC timestamp.** It is
 wrong for an hour of every summer day, and it is why clock-change days have 46
 and 50 settlement periods rather than 48.
+
+The dbt project centralises the conversion in
+`dbt/macros/settlement_period.sql`. It interprets British local midnight with
+PostgreSQL's `Europe/London` rules, then advances by real half-hour intervals.
+The macro is implemented; staging integration and clock-change unit tests are
+the next build step.
 
 ## Timestamp formats differ between datasets
 
@@ -249,9 +254,9 @@ blocked.
 So:
 
 - **Daily scheduled jobs**: one or two requests. No delay needed.
-- **Backfills**: use `time.sleep(0.2)` between requests. It turns a 365 request
-  backfill from 12 seconds into 90, which costs nothing and removes a risk you
-  have no way to monitor.
+- **Backfills**: daily Airflow intervals are serialised through the one-slot
+  `elexon` pool. The completed PN backfill averaged about 1.4 requests per
+  minute, so the current implementation needs no additional client-side delay.
 - **Assert on row counts, not just status codes.** `raise_for_status()` catches
   4xx and 5xx. With no rate-limit headers, a future throttle could arrive in a
   shape not seen here, and a 200 with an empty body would otherwise look like a
