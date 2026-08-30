@@ -3,20 +3,27 @@ from datetime import datetime, timedelta, timezone
 
 from ingestion.elexon.pn_poller import fetch
 
-# null bm units
+# Distinguish an omitted bmUnit key from an explicit JSON null. Using only
+# r.get("bmUnit") would return None for both cases and hide the difference.
 
 to_d = datetime(2026, 8, 22, tzinfo=timezone.utc)
 rows = fetch(to_d - timedelta(days=1), to_d)
 
-no_bm = [r for r in rows if not r["bmUnit"]]
+missing_bm = [r for r in rows if "bmUnit" not in r]
+null_bm = [r for r in rows if "bmUnit" in r and r["bmUnit"] is None]
+empty_bm = [r for r in rows if r.get("bmUnit") == ""]
+no_bm = missing_bm + null_bm + empty_bm
 no_ng = [r for r in rows if not r["nationalGridBmUnit"]]
 
 print(f"total rows          : {len(rows):,}")
-print(f"null bmUnit         : {len(no_bm):,}")
+print(f"omitted bmUnit key  : {len(missing_bm):,}")
+print(f"explicit null bmUnit: {len(null_bm):,}")
+print(f"empty bmUnit string : {len(empty_bm):,}")
+print(f"unavailable bmUnit  : {len(no_bm):,}")
 print(f"  distinct NG units : {sorted({r['nationalGridBmUnit'] for r in no_bm})}")
 print(f"null nationalGrid   : {len(no_ng):,}")
 print(
-    f"both null           : {sum(1 for r in rows if not r['bmUnit'] and not r['nationalGridBmUnit']):,}"
+    f"both unavailable    : {sum(1 for r in rows if not r.get('bmUnit') and not r['nationalGridBmUnit']):,}"
 )
 
 
