@@ -138,6 +138,15 @@ use `catchup=True`. The `B1610` SF DAG runs forwards only with `catchup=False`.
 [docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) explains
 why these sources use different approaches.
 
+## Endpoint validation
+
+PN, QPN and B1610 have explicit field contracts and a shared offline validator.
+It checks required fields, nullability and exact Python types, and returns
+row-level errors and warnings. Formal validator pytest coverage and live
+poller/quarantine integration are the next steps; production ingestion is
+unchanged. See [endpoint validation](docs/sources/endpoint-validation.md) for
+the interfaces, completed checks and integration boundary.
+
 ## Run the tests
 
 The parsing logic is a pure function tested against a captured API response, so

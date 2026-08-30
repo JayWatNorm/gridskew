@@ -16,6 +16,9 @@ actually being ingested** — the rest have one page until something reads them.
 The reasoning that would otherwise be repeated across every ingestion page lives
 once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
 
+[Endpoint validation](sources/endpoint-validation.md) describes the shared
+offline validator, Elexon contracts and planned row-level quarantine path.
+
 Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.
 
@@ -24,6 +27,7 @@ docs/
   deployment.md               Getting the DAGs onto an external Airflow
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
+  endpoint-validation.md      Contracts, offline checks and planned row quarantine
   carbon-intensity/
     README.md                 API level: base URL, auth, licence, shared gotchas
     010_forecast.md           Every version of the forecast            [running]
