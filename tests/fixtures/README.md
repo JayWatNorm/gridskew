@@ -5,6 +5,15 @@ source to mirror `ingestion/` and `docs/sources/`. Hand-written fixtures encode
 what you think an API returns; captured ones record what it actually returned,
 which is the point.
 
+## Validator test usage
+
+[test_validation.py](../test_validation.py) loads `elexon/pn_stream.json` and
+copies its first row for PN contract and mixed-batch tests. Deliberate key/value
+changes are made in memory; the captured fixture file is unchanged. The empty-input
+test uses an empty list instead. These tests need no live API or database access.
+See [endpoint validation](../../docs/sources/endpoint-validation.md) for coverage
+and the test command.
+
 ## carbon_intensity/
 
 | File | Source | Captured | Notes |
