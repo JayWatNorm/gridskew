@@ -142,20 +142,27 @@ why these sources use different approaches.
 
 PN, QPN and B1610 have explicit field contracts and a shared offline validator.
 It checks required fields, nullability and exact Python types, and returns
-row-level errors and warnings. Formal validator pytest coverage and live
-poller/quarantine integration are the next steps; production ingestion is
-unchanged. See [endpoint validation](docs/sources/endpoint-validation.md) for
+row-level errors and warnings. Twelve pytest tests cover PN contract rules and
+batch findings, including original-row references and empty input. Wider
+contract coverage and live poller/quarantine integration remain planned;
+production ingestion is unchanged. See [endpoint validation](docs/sources/endpoint-validation.md) for
 the interfaces, completed checks and integration boundary.
 
 ## Run the tests
 
-The parsing logic is a pure function tested against a captured API response, so
-this needs no database:
+The Python tests cover parsing and source-contract validation using captured
+API fixtures and controlled input changes. They need no database or live API calls:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 python -m pytest tests/ -v
+```
+
+To run only the PN contract and batch-validator tests:
+
+```bash
+python -m pytest tests/test_validation.py -v
 ```
 
 The dbt unit tests use small inline fixtures to exercise model logic without
