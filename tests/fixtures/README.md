@@ -7,10 +7,13 @@ which is the point.
 
 ## Validator test usage
 
-[test_validation.py](../test_validation.py) loads `elexon/pn_stream.json` and
-copies its first row for PN contract and mixed-batch tests. Deliberate key/value
-changes are made in memory; the captured fixture file is unchanged. The empty-input
-test uses an empty list instead. These tests need no live API or database access.
+[test_validation.py](../test_validation.py) loads the PN, QPN and B1610 fixtures.
+PN rows cover individual contract rules and mixed-batch behaviour; the complete
+QPN and B1610 fixtures are checked against their independent contracts. B1610
+numbers are decoded with `Decimal` as they are in the poller, with additional
+integer and rejected-float cases. Deliberate changes are made in memory, and an
+explicit test proves that validation leaves its source input unchanged. These
+tests need no live API or database access.
 See [endpoint validation](../../docs/sources/endpoint-validation.md) for coverage
 and the test command.
 

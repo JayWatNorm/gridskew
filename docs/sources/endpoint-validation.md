@@ -3,7 +3,8 @@
 ## Status
 
 PN, QPN and B1610 have field contracts and a shared, offline row validator.
-Twelve pytest tests cover PN contract rules and basic batch behaviour.
+Eighteen pytest tests cover PN contract rules and batch behaviour, input
+non-mutation, QPN and B1610 fixture compatibility, and B1610 quantity types.
 The pollers still use their existing fetch, parse and load paths; they do not
 call the validator or write rejected rows to quarantine yet. This is a tested
 foundation for integration, not an enabled production control.
@@ -14,7 +15,7 @@ foundation for integration, not an enabled production control.
 |---|---|
 | [contracts.py](../../ingestion/elexon/contracts.py) | Independent `PN_SPEC`, `QPN_SPEC` and `B1610_SPEC` definitions |
 | [validation.py](../../ingestion/validation.py) | Source-independent checks over already-fetched Python dictionaries |
-| [test_validation.py](../../tests/test_validation.py) | PN contract tests, mixed-batch findings and empty-input behaviour |
+| [test_validation.py](../../tests/test_validation.py) | Cross-source contract tests, mixed-batch findings and input non-mutation |
 | [006_endpoint_quarantine.sql](../../sql/init/006_endpoint_quarantine.sql) | Fixed quarantine-table definition for the planned rejected-row path |
 
 The validator makes no HTTP requests, imports no poller and performs no database
@@ -74,13 +75,9 @@ the data into load and quarantine batches.
 
 ## Validation performed
 
-Earlier offline checks exercised the three captured fixtures: 28 PN, 24 QPN and
-27 B1610 rows. Additional checks covered missing keys, nullable values,
-incompatible types, boolean rejection, B1610 integer/decimal handling,
-unexpected fields, missing optional fields, mixed batches and empty input.
-
-Those exploratory checks are separate from the repeatable pytest coverage in
-[test_validation.py](../../tests/test_validation.py). Its 12 tests cover:
+The repeatable pytest coverage in
+[test_validation.py](../../tests/test_validation.py) exercises the three
+captured fixtures: 28 PN, 24 QPN and 27 B1610 rows. Its 18 tests cover:
 
 - A valid PN row and missing required fields, including required-but-nullable
   `bmUnit`.
@@ -91,12 +88,15 @@ Those exploratory checks are separate from the repeatable pytest coverage in
 - Mixed valid/invalid batch findings: count, zero-based indexes, errors,
   warnings and references to the original input dictionaries.
 - An empty input list returning an empty findings list.
+- Source input remaining unchanged after batch validation.
+- Complete QPN and B1610 fixtures matching their independent contracts.
+- B1610 accepting integer and `Decimal` quantities while rejecting `float`.
 
-The tests import `PN_SPEC` and use independent expected findings. Row-based
-cases load the captured PN fixture and copy its first dictionary before any
-deliberate changes; the empty-input test needs no fixture. They make no live
-API calls or database connections. Checking original-row references is distinct
-from proving that validation leaves all input values unchanged.
+The tests import the production `PN_SPEC`, `QPN_SPEC` and `B1610_SPEC` contracts
+and use independent expected findings. Deliberate row changes happen only in
+memory. They make no live API calls or database connections. Checking
+original-row references is distinct from proving that validation leaves all
+input values unchanged; both behaviours now have explicit coverage.
 
 Run from the repository root with the development dependencies installed:
 
@@ -104,10 +104,9 @@ Run from the repository root with the development dependencies installed:
 python -m pytest tests/test_validation.py -v
 ```
 
-The full Python suite passed with **25 tests on 31 August 2026**, including these
-12 validator tests. QPN/B1610-specific validator coverage and an explicit
-input-non-mutation test remain follow-up work; the earlier exploratory checks
-are not a substitute for those tests.
+The full Python suite passed with **31 tests on 2 September 2026**, including
+these 18 validator tests. Repository-wide Ruff lint and formatting checks also
+passed.
 
 ## Integration boundary
 
@@ -122,8 +121,6 @@ verified in development. This does not yet prove the Python row-routing path.
 
 Before live integration, the remaining work includes:
 
-- QPN/B1610-specific validator tests, including B1610 integer/Decimal
-  alternatives, and explicit input-non-mutation coverage.
 - Tests and handling for unexpected response containers or non-dictionary
   rows. Current functions expect flat row dictionaries.
 - Routing date-parsing failures and other row-specific parse failures.
