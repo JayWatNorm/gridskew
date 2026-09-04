@@ -106,7 +106,7 @@ Medallion, in a database rather than a lake:
 
 | Layer | Here | Contains |
 |---|---|---|
-| **Bronze** | `raw` schema | What each API published, unmodified. Append-only, `retrieved_at` on every row |
+| **Bronze** | `raw` schema | Source-grain typed records for contracted fields, plus complete rejected payloads in endpoint quarantine. Append-only, with retrieval context |
 | **Silver** | dbt `staging/` then `intermediate/` | Cleaned and conformed, then joined and given business logic |
 | **Gold** | dbt `marts/` | Facts, dimensions and aggregates at business grain. Terminal — no mart reads another |
 
@@ -142,10 +142,16 @@ why these sources use different approaches.
 
 PN, QPN and B1610 have explicit field contracts and a shared offline validator.
 It checks required fields, nullability and exact Python types, and returns
-row-level errors and warnings. Eighteen pytest tests cover PN contract rules and
-batch behaviour, input non-mutation, QPN and B1610 fixture compatibility, and
-B1610 integer/Decimal quantity handling. Live poller/quarantine integration
-remains planned; production ingestion is unchanged. See
+row-level errors and warnings. The PN poller now validates every fetched row in
+the local branch: compatible and warning-only rows continue to typed parsing,
+while rejected rows are excluded and passed to the fixed quarantine writer with
+their source index, request context and complete payload. Tests exercise both
+the routing and the writer boundary without a live API or database.
+
+This PN integration is not deployed. QPN and B1610 do not yet call the
+validator, and the PN slice does not yet emit bounded warning evidence or fail
+a mixed/all-rejected run after its writes commit. Accepted typed rows retain the
+contracted fields rather than a blanket copy of every source field. See
 [endpoint validation](docs/sources/endpoint-validation.md) for the interfaces,
 completed checks and integration boundary.
 

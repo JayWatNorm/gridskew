@@ -1,3 +1,5 @@
+"""Fetch, validate, quarantine and load Elexon Physical Notifications."""
+
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
@@ -13,8 +15,9 @@ from ingestion.validation import run as validate_rows
 logger = logging.getLogger(__name__)
 
 
-# fetching the data from the API
 def fetch(from_date, to_date):
+    """Fetch decoded PN rows for a UTC datetime window."""
+
     response = requests.get(
         "https://data.elexon.co.uk/bmrs/api/v1/datasets/PN/stream",
         params={
@@ -30,14 +33,18 @@ def fetch(from_date, to_date):
     return response.json()
 
 
-# dag will be handling catchup and batches, default set to yesterday for manual runs
 def run(conn, from_date=None, to_date=None):
+    """Validate one PN window, quarantine rejected rows and load compatible rows.
+
+    If either window boundary is absent, use the previous UTC day. Rows with
+    warnings but no errors remain compatible with the typed load.
+    """
+
     retrieved_at = datetime.now(timezone.utc)
     retrieved_at_day_start = retrieved_at.replace(
         hour=0, minute=0, second=0, microsecond=0
     )
 
-    # if either of the dates are missing, pass yesterday, also protects against accidently running 1 year of data.
     if to_date is None or from_date is None:
         from_date = retrieved_at_day_start - timedelta(days=1)
         to_date = retrieved_at_day_start
@@ -63,6 +70,8 @@ def run(conn, from_date=None, to_date=None):
 
 
 def parse(results, retrieved_at):
+    """Convert compatible source dictionaries to typed PN insert tuples."""
+
     rows = [
         (
             date.fromisoformat(result["settlementDate"]),
@@ -85,6 +94,8 @@ def parse(results, retrieved_at):
 
 
 def quarantine_rows(rows, conn, retrieved_at, request_context):
+    """Insert rejected PN findings into the endpoint quarantine and commit."""
+
     quarantined_at = datetime.now(timezone.utc)
 
     insert_sql = (
@@ -118,6 +129,8 @@ def quarantine_rows(rows, conn, retrieved_at, request_context):
 
 
 def load(results, conn):
+    """Insert typed PN rows, ignoring existing target keys, and commit."""
+
     insert_sql = (
         "INSERT INTO raw.elexon_pn (settlement_date, settlement_period, time_from, time_to, level_from, "
         "level_to, national_grid_bm_unit, bm_unit, retrieved_at) VALUES %s ON CONFLICT (national_grid_bm_unit, time_from, retrieved_at) DO NOTHING"
