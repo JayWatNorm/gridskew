@@ -7,6 +7,10 @@ see [010_pn.md](010_pn.md). For the reasoning behind these patterns, see
 **Status: deployed, backfill complete 2026-08-23.** 366 runs covering
 2025-08-22 to 2026-08-23, 46,190,258 rows, no failures.
 
+The deployed job predates the local endpoint-validation change described
+below. The validation and quarantine path is tested in the development branch
+but is not deployed.
+
 | | |
 |---|---|
 | Module | `ingestion/elexon/pn_poller.py` |
@@ -35,6 +39,19 @@ a DAG file is re-parsed constantly.
 That single signature is why there is no separate backfill mode: the same
 function serves 365 historical runs and every future daily one.
 
+## Validation and quarantine
+
+The local PN poller validates every fetched row before typed parsing. Rows with
+no validation errors continue, including warning-only rows. Rejected findings
+are excluded from `raw.elexon_pn` and passed to `raw.endpoint_quarantine` with
+their request window, retrieval time, zero-based source index, observed fields,
+validation errors and complete source payload.
+
+The routing and writer boundary are covered without a live API or database.
+This is not yet a production control: warning evidence, fail-after-commit
+behaviour for mixed/all-rejected runs and malformed response-container handling
+remain outstanding. See [../endpoint-validation.md](../endpoint-validation.md).
+
 ## `load` does not catch exceptions, deliberately
 
 A failed insert must raise, so Airflow marks the task failed and the three
@@ -46,9 +63,9 @@ first load is information — it says the table's assumptions and the source's
 behaviour disagree, and it says so immediately. Swallowed, the same violation
 surfaces weeks later as missing data with no obvious cause.
 
-Row counts are logged either side of the load, which is the cheapest form of
-"assert on row counts, not status codes" — a day returning 3,000 rows instead of
-132,000 is visible in the log.
+Row-count assertions and logging remain outstanding. `raise_for_status()`
+catches HTTP failures, but the current path does not distinguish a successful
+empty or unexpectedly small response from an ordinary run.
 
 ## Window cap: tested and closed, 2026-08-21
 

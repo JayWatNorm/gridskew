@@ -17,8 +17,8 @@ The reasoning that would otherwise be repeated across every ingestion page lives
 once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
 
 [Endpoint validation](sources/endpoint-validation.md) describes the shared
-offline validator, Elexon contracts, cross-source pytest coverage and planned
-row-level quarantine path.
+offline validator, Elexon contracts, cross-source pytest coverage and the local
+PN row-routing and quarantine path.
 
 Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.
@@ -28,7 +28,7 @@ docs/
   deployment.md               Getting the DAGs onto an external Airflow
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
-  endpoint-validation.md      Contracts, cross-source tests and planned row quarantine
+  endpoint-validation.md      Contracts, cross-source tests and PN row quarantine
   carbon-intensity/
     README.md                 API level: base URL, auth, licence, shared gotchas
     010_forecast.md           Every version of the forecast            [running]
@@ -77,11 +77,14 @@ run was first seen. Each dataset's page states which applies.
 scheduled time rather than its actual execution time, corrupting anything
 derived from it.
 
-**Raw records what the source returned.** Fields are stored even when they are
-always null, names are kept close to the source, and value-level expectations
-are tested in dbt rather than enforced as constraints. A `NOT NULL` on a value
-column rejects the row and destroys the evidence that the source sent something
-unexpected.
+**Raw retains source grain and contracted fields.** Accepted records are stored
+in typed tables with names kept close to the source. They do not carry a blanket
+copy of every source field, so a new warning-only field can be reported without
+being retained in the typed row. Rejected rows retain their complete source
+payload in `raw.endpoint_quarantine` before typed loading. Value-level
+expectations are tested in dbt rather than enforced as constraints. A `NOT NULL`
+on a value column can reject the row and destroy evidence that the source sent
+something unexpected.
 
 **Structural constraints only.** Primary keys, types, and not-null on identity
 columns. Those define what a row is. Everything else is a belief, and beliefs
