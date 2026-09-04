@@ -5,7 +5,10 @@ from datetime import date, datetime, timedelta, timezone
 import psycopg2
 import requests
 from dotenv import load_dotenv
-from psycopg2.extras import execute_values
+from psycopg2.extras import Json, execute_values
+
+from ingestion.elexon.contracts import PN_SPEC
+from ingestion.validation import run as validate_rows
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +36,28 @@ def run(conn, from_date=None, to_date=None):
     retrieved_at_day_start = retrieved_at.replace(
         hour=0, minute=0, second=0, microsecond=0
     )
+
     # if either of the dates are missing, pass yesterday, also protects against accidently running 1 year of data.
     if to_date is None or from_date is None:
         from_date = retrieved_at_day_start - timedelta(days=1)
         to_date = retrieved_at_day_start
+    request_context = {
+        "from": from_date.isoformat(),
+        "to": to_date.isoformat(),
+    }
     result = fetch(from_date, to_date)
-    par_result = parse(result, retrieved_at)
+    validation_findings = validate_rows(result, spec=PN_SPEC)
+    error_rows = []
+    valid_rows = []
+    for finding in validation_findings:
+        if finding["errors"]:
+            error_rows.append(finding)
+        else:
+            valid_rows.append(finding["row"])
+
+    if error_rows:
+        quarantine_rows(error_rows, conn, retrieved_at, request_context)
+    par_result = parse(valid_rows, retrieved_at)
     load(par_result, conn)
     return
 
@@ -63,6 +82,39 @@ def parse(results, retrieved_at):
         for result in results
     ]
     return rows
+
+
+def quarantine_rows(rows, conn, retrieved_at, request_context):
+    quarantined_at = datetime.now(timezone.utc)
+
+    insert_sql = (
+        "INSERT INTO raw.endpoint_quarantine (dataset, retrieved_at, request_context,"
+        "validation_errors, observed_fields, payload, quarantined_at) VALUES %s"
+    )
+
+    insert_values = [
+        (
+            "PN",
+            retrieved_at,
+            Json(request_context),
+            Json(
+                {
+                    "source_index": finding["index"],
+                    "errors": finding["errors"],
+                }
+            ),
+            Json(
+                list(finding["row"].keys()) if isinstance(finding["row"], dict) else []
+            ),
+            Json(finding["row"]),
+            quarantined_at,
+        )
+        for finding in rows
+    ]
+
+    with conn.cursor() as cursor:
+        execute_values(cursor, insert_sql, insert_values, page_size=1000)
+    conn.commit()
 
 
 def load(results, conn):

@@ -34,7 +34,12 @@ def validate_row(row, spec):
 def run(results, spec):
     findings = []
     for index, row in enumerate(results):
-        errors, warnings = validate_row(row, spec)
+        if not isinstance(row, dict):
+            errors = ["Invalid row type: expected dictionary"]
+            warnings = []
+        else:
+            errors, warnings = validate_row(row, spec)
+
         findings.append(
             {
                 "index": index,

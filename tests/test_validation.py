@@ -26,6 +26,22 @@ def test_valid_pn_row():
     assert warnings == []
 
 
+def test_pn_run_reports_non_dictionary_row():
+    with open(PN_FIXTURE_PATH, "r", encoding="utf-8") as f:
+        results = json.load(f)
+    row_valid_1 = results[0].copy()
+    row_valid_2 = results[1].copy()
+
+    findings = run([row_valid_1, None, row_valid_2], PN_SPEC)
+    assert len(findings) == 3
+    assert findings[0]["errors"] == []
+    assert findings[1]["index"] == 1
+    assert findings[1]["row"] is None
+    assert findings[1]["errors"] == ["Invalid row type: expected dictionary"]
+    assert findings[1]["warnings"] == []
+    assert findings[2]["errors"] == []
+
+
 def test_pn_missing_required_field():
     with open(PN_FIXTURE_PATH, "r", encoding="utf-8") as f:
         results = json.load(f)
@@ -150,7 +166,7 @@ def test_pn_run_does_not_mutate_results():
     assert results == original_results
 
 
-# QPN Test, contract is identical to PN, but we I to test that the validation works for QPN as well
+# QPN Test, contract is identical to PN, but to test that the validation works for QPN as well
 
 
 def test_qpn_fixture_matches_contract():
