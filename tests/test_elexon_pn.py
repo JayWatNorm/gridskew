@@ -151,3 +151,89 @@ def test_quarantine_rows():
         }
         conn.commit.assert_called_once_with()
         assert insert_values[0][5].adapted == expected_rejected_finding["row"]
+
+
+def test_run_logs_grouped_warning_rows(caplog):
+    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+        results = json.load(f)
+
+    warning_row = results[1].copy()
+    warning_row["newPublisherField"] = "observed"
+    valid_row = results[0].copy()
+    warning_row2 = results[1].copy()
+    del warning_row2["dataset"]
+    warning_row3 = results[3].copy()
+    warning_row3["newPublisherField"] = "observed"
+    warning_row3["newPublisherField2"] = "observed2"
+    del warning_row3["dataset"]
+    fetched_rows = [valid_row, warning_row, warning_row2, warning_row3]
+
+    # "Optional field is missing: dataset"      index: 2, 3 / Expected 2
+    # "Unexpected field: newPublisherField"     index: 1, 3 /  Expeected 2
+    # "Unexpected field: newPublisherField2"    index: 3    / Expected 1
+
+    conn = Mock()
+    from_date = datetime(2026, 8, 20, tzinfo=timezone.utc)
+    to_date = datetime(2026, 8, 21, tzinfo=timezone.utc)
+    parsed_rows = object()
+
+    with (
+        patch("ingestion.elexon.pn_poller.fetch", return_value=fetched_rows),
+        patch(
+            "ingestion.elexon.pn_poller.parse",
+            return_value=parsed_rows,
+        ) as mock_parse,
+        patch("ingestion.elexon.pn_poller.quarantine_rows") as mock_quarantine,
+        patch("ingestion.elexon.pn_poller.load") as mock_load,
+    ):
+        run_poller(conn, from_date, to_date)
+
+        mock_parse.assert_called_once_with(fetched_rows, ANY)
+        mock_load.assert_called_once_with(parsed_rows, conn)
+        mock_quarantine.assert_not_called()
+
+        assert len(caplog.records) == 3
+
+        payloads = [json.loads(record.getMessage()) for record in caplog.records]
+        payloads_by_group = {
+            (payload["reason"], payload["field"]): payload for payload in payloads
+        }
+        assert (
+            payloads_by_group[("Optional field is missing", "dataset")][
+                "affected_row_count"
+            ]
+            == 2
+        )
+        assert (
+            payloads_by_group[("Unexpected field", "newPublisherField")][
+                "affected_row_count"
+            ]
+            == 2
+        )
+        assert (
+            payloads_by_group[("Unexpected field", "newPublisherField2")][
+                "affected_row_count"
+            ]
+            == 1
+        )
+        assert payloads_by_group[("Optional field is missing", "dataset")][
+            "sample_source_indexes"
+        ] == [2, 3]
+        assert payloads_by_group[("Unexpected field", "newPublisherField")][
+            "sample_source_indexes"
+        ] == [1, 3]
+        assert payloads_by_group[("Unexpected field", "newPublisherField2")][
+            "sample_source_indexes"
+        ] == [3]
+        assert all(record.levelname == "WARNING" for record in caplog.records)
+
+        actual_retrieved_at = mock_parse.call_args.args[1]
+
+        for payload in payloads:
+            assert payload["dataset"] == "PN"
+            assert payload["severity"] == "warning"
+            assert payload["request_context"] == {
+                "from": from_date.isoformat(),
+                "to": to_date.isoformat(),
+            }
+            assert payload["retrieved_at"] == actual_retrieved_at.isoformat()

@@ -7,8 +7,10 @@ Nineteen validator tests cover PN contract rules and batch behaviour, input
 non-mutation, QPN and B1610 fixture compatibility, and B1610 quantity types.
 The local PN poller now validates every fetched row before parsing. It sends
 compatible and warning-only rows to the typed load and rejected findings to a
-fixed-table quarantine writer. PN routing and writer tests are complete, but
-this branch is not deployed. QPN and B1610 integration remains planned.
+fixed-table quarantine writer. Warning-only findings also produce grouped,
+bounded JSON warning logs. PN routing, warning-evidence and writer tests are
+complete, but this branch is not deployed. QPN and B1610 integration remains
+planned.
 
 ## Components
 
@@ -17,8 +19,8 @@ this branch is not deployed. QPN and B1610 integration remains planned.
 | [contracts.py](../../ingestion/elexon/contracts.py) | Independent `PN_SPEC`, `QPN_SPEC` and `B1610_SPEC` definitions |
 | [validation.py](../../ingestion/validation.py) | Source-independent checks over already-fetched Python dictionaries |
 | [test_validation.py](../../tests/test_validation.py) | Cross-source contract tests, mixed-batch findings and input non-mutation |
-| [pn_poller.py](../../ingestion/elexon/pn_poller.py) | PN validation routing, typed loading and the current PN quarantine writer |
-| [test_elexon_pn.py](../../tests/test_elexon_pn.py) | PN parsing, routing and quarantine-writer boundary tests |
+| [pn_poller.py](../../ingestion/elexon/pn_poller.py) | PN validation routing, grouped warning logs, typed loading and the current PN quarantine writer |
+| [test_elexon_pn.py](../../tests/test_elexon_pn.py) | PN parsing, routing, warning-evidence and quarantine-writer boundary tests |
 | [006_endpoint_quarantine.sql](../../sql/init/006_endpoint_quarantine.sql) | Fixed quarantine-table definition for rejected source rows |
 
 The validator makes no HTTP requests, imports no poller and performs no database
@@ -113,9 +115,9 @@ Run from the repository root with the development dependencies installed:
 python -m pytest tests/test_validation.py -v
 ```
 
-The full Python suite passed with **34 tests on 4 September 2026**, including
-these 19 validator tests and the PN routing/writer coverage. Repository-wide
-Ruff lint and formatting checks also passed.
+The full Python suite passed with **35 tests on 5 September 2026**, including
+these 19 validator tests and the PN routing, warning-evidence and writer
+coverage. Repository-wide Ruff lint and formatting checks also passed.
 
 ## Integration boundary
 
@@ -127,13 +129,20 @@ loading. Warning-only rows remain compatible and do not enter quarantine.
 Existing target-key duplicates retain `ON CONFLICT ... DO NOTHING`; they are
 not quarantine events.
 
+Warning-only findings produce one warning-level JSON log per `(reason, field)`
+group. Each record contains the dataset, source retrieval time, request window,
+severity, reason, affected field, complete affected-row count and up to five
+zero-based source indexes. A row with multiple warnings contributes to each
+matching group. The full count preserves impact while the fixed-size sample
+keeps Airflow logs bounded. No warning table or duplicate error-summary table
+is used.
+
 The quarantine DDL and a standalone insert/commit/read-back check were verified
 in development. The Python tests now prove PN routing and the values sent to the
 writer with mocks; they do not constitute a live database integration test.
 
 Before live integration, the remaining work includes:
 
-- Emitting structured, bounded evidence for warning-only findings.
 - Making mixed and all-rejected runs fail only after compatible and quarantine
   rows commit.
 - Handling malformed outer response containers as response-level failures.
