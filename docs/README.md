@@ -18,7 +18,7 @@ once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
 
 [Endpoint validation](sources/endpoint-validation.md) describes the shared
 offline validator, Elexon contracts, cross-source pytest coverage and the local
-PN row-routing and quarantine path.
+PN row-routing, grouped warning-evidence and quarantine path.
 
 Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.
@@ -28,7 +28,7 @@ docs/
   deployment.md               Getting the DAGs onto an external Airflow
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
-  endpoint-validation.md      Contracts, cross-source tests and PN row quarantine
+  endpoint-validation.md      Contracts, tests, PN warning logs and quarantine
   carbon-intensity/
     README.md                 API level: base URL, auth, licence, shared gotchas
     010_forecast.md           Every version of the forecast            [running]

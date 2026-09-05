@@ -145,13 +145,16 @@ It checks required fields, nullability and exact Python types, and returns
 row-level errors and warnings. The PN poller now validates every fetched row in
 the local branch: compatible and warning-only rows continue to typed parsing,
 while rejected rows are excluded and passed to the fixed quarantine writer with
-their source index, request context and complete payload. Tests exercise both
-the routing and the writer boundary without a live API or database.
+their source index, request context and complete payload. Warning-only findings
+also produce warning-level JSON logs grouped by reason and affected field, with
+the complete affected-row count and up to five source indexes. Tests exercise
+the routing, grouped warning evidence and writer boundary without a live API or
+database.
 
 This PN integration is not deployed. QPN and B1610 do not yet call the
-validator, and the PN slice does not yet emit bounded warning evidence or fail
-a mixed/all-rejected run after its writes commit. Accepted typed rows retain the
-contracted fields rather than a blanket copy of every source field. See
+validator, and the PN slice does not yet fail a mixed/all-rejected run after its
+writes commit. Accepted typed rows retain the contracted fields rather than a
+blanket copy of every source field. See
 [endpoint validation](docs/sources/endpoint-validation.md) for the interfaces,
 completed checks and integration boundary.
 

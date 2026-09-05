@@ -1,5 +1,6 @@
 """Fetch, validate, quarantine and load Elexon Physical Notifications."""
 
+import json
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
@@ -56,12 +57,42 @@ def run(conn, from_date=None, to_date=None):
     validation_findings = validate_rows(result, spec=PN_SPEC)
     error_rows = []
     valid_rows = []
+    warning_findings = []
+    warning_grouped = {}
+
     for finding in validation_findings:
         if finding["errors"]:
             error_rows.append(finding)
         else:
             valid_rows.append(finding["row"])
+            if finding["warnings"]:
+                warning_findings.append(finding)
 
+    for finding in warning_findings:
+        for warning in finding["warnings"]:
+            reason, field = warning.split(": ", 1)
+            key = (reason, field)
+            if key not in warning_grouped:
+                warning_grouped[key] = {
+                    "reason": reason,
+                    "field": field,
+                    "source_indexes": [finding["index"]],
+                }
+            else:
+                warning_grouped[key]["source_indexes"].append(finding["index"])
+
+    for group in warning_grouped.values():
+        payload = {
+            "dataset": "PN",
+            "retrieved_at": retrieved_at.isoformat(),
+            "request_context": request_context,
+            "severity": "warning",
+            "reason": group["reason"],
+            "field": group["field"],
+            "affected_row_count": len(group["source_indexes"]),
+            "sample_source_indexes": group["source_indexes"][:5],
+        }
+        logger.warning("%s", json.dumps(payload))
     if error_rows:
         quarantine_rows(error_rows, conn, retrieved_at, request_context)
     par_result = parse(valid_rows, retrieved_at)
