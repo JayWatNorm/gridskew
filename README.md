@@ -2,7 +2,7 @@
 Measuring GB electricity grid shortfalls and their effect on carbon intensity
 forecast error.
 
-# Why it exists
+## Why it exists
 
 A working data platform built around a real question rather than a tutorial
 dataset. Over a decade of SQL, data pipelines and analysis sits behind it; the
@@ -152,9 +152,10 @@ the routing, grouped warning evidence and writer boundary without a live API or
 database.
 
 This PN integration is not deployed. QPN and B1610 do not yet call the
-validator, and the PN slice does not yet fail a mixed/all-rejected run after its
-writes commit. Accepted typed rows retain the contracted fields rather than a
-blanket copy of every source field. See
+validator. A mixed PN response commits its compatible rows and rejected-row
+evidence before failing the run; an all-rejected response commits quarantine
+evidence, skips typed parsing and loading, then fails. Accepted typed rows retain
+the contracted fields rather than a blanket copy of every source field. See
 [endpoint validation](docs/sources/endpoint-validation.md) for the interfaces,
 completed checks and integration boundary.
 
@@ -269,6 +270,8 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [x] `QPN` backfill complete
 - [x] `B1610` raw table, poller, tests and DAGs
 - [x] `B1610` II backfill complete; SF running forwards
+- [x] Local PN validation routing, warning evidence, quarantine and
+      fail-after-commit task status (not deployed)
 - [ ] BM unit registry snapshot
 - [x] dbt project initialised
 - [x] Sources declared for all five raw tables, with freshness checks

@@ -49,34 +49,34 @@ an append-only feed wants.
 
 | Field | Type | Notes |
 |---|---|---|
-| `dataset` | `str` | Always `REMIT` |
-| `mrid` | `str` | Message identifier, stable across revisions |
+| `dataset` | `str or null` | Always `REMIT` when present |
+| `mrid` | `str or null` | Message identifier, stable across revisions |
 | `revisionNumber` | `int` | **Messages are revised.** Take the latest per `mrid` |
 | `publishTime` | `str` | When this revision was published |
 | `createdTime` | `str` | When the message was created |
-| `messageType` | `str` | e.g. `UnavailabilitiesOfElectricityFacilities` |
-| `messageHeading` | `str` | e.g. `Planned Unavailability of Generation Unit` |
-| `eventType` | `str` | e.g. `Production unavailability` |
-| **`unavailabilityType`** | `str` | The field that matters. `Planned` seen in the spec's example. **Values are not enumerated in the API**, so confirm the full set against live data before relying on a two-way split |
-| `participantId` | `str` | Market participant |
-| `registrationCode` | `str` | |
-| `assetId` | `str` | e.g. `T_DIDCB5`, matches the BM unit identifier |
-| `assetType` | `str` | e.g. `Production` |
-| `affectedUnit` | `str` | e.g. `DIDCB5` |
-| `affectedUnitEIC` | `str` | European identifier |
-| `affectedArea` | `str` | |
-| `biddingZone` | `str` | e.g. `10YGB----------A` |
-| `fuelType` | `str` | e.g. `Fossil Gas` |
-| `normalCapacity` | `float` | MW when fully available. Spec type is `number`, not integer, so parse as float even though observed values are whole |
-| `availableCapacity` | `float` | MW still available during the outage |
-| `unavailableCapacity` | `float` | MW lost |
-| `eventStatus` | `str` | `Active` and `Dismissed` observed live; `Inactive` in the spec. Not enumerated |
+| `messageType` | `str or null` | e.g. `UnavailabilitiesOfElectricityFacilities` |
+| `messageHeading` | `str or null` | e.g. `Planned Unavailability of Generation Unit` |
+| `eventType` | `str or null` | e.g. `Production unavailability` |
+| **`unavailabilityType`** | `str or null` | The field that matters. `Planned` seen in the spec's example. **Values are not enumerated in the API**, so confirm the full set against live data before relying on a two-way split |
+| `participantId` | `str or null` | Market participant |
+| `registrationCode` | `str or null` | |
+| `assetId` | `str or null` | e.g. `T_DIDCB5`, matches the BM unit identifier |
+| `assetType` | `str or null` | e.g. `Production` |
+| `affectedUnit` | `str or null` | e.g. `DIDCB5` |
+| `affectedUnitEIC` | `str or null` | European identifier |
+| `affectedArea` | `str or null` | |
+| `biddingZone` | `str or null` | e.g. `10YGB----------A` |
+| `fuelType` | `str or null` | e.g. `Fossil Gas` |
+| `normalCapacity` | `float or null` | MW when fully available. Spec type is `number`, not integer, so parse as float even though observed values are whole |
+| `availableCapacity` | `float or null` | MW still available during the outage |
+| `unavailableCapacity` | `float or null` | MW lost |
+| `eventStatus` | `str or null` | `Active` and `Dismissed` observed live; `Inactive` in the spec. Not enumerated |
 | `eventStartTime` | `str` | Outage start |
-| `eventEndTime` | `str` | Outage end |
-| `durationUncertainty` | `str` | Free text, e.g. `+- 1 day`. **Optional, often absent** |
-| `cause` | `str` | Free text, e.g. `Other`, `Unknown` |
-| `relatedInformation` | `str` | Free text. **Optional** |
-| `outageProfile` | `list` | **Nested array, optional and often absent.** See below |
+| `eventEndTime` | `str or null` | Outage end |
+| `durationUncertainty` | `str or null` | Free text, e.g. `+- 1 day`. **Optional, often absent** |
+| `cause` | `str or null` | Free text, e.g. `Other`, `Unknown` |
+| `relatedInformation` | `str or null` | Free text. **Optional** |
+| `outageProfile` | `list or null` | **Nested array, optional and often absent.** See below |
 
 ### The nested bit
 
@@ -100,8 +100,8 @@ Three complications at once, which is why it is not the first dataset to build:
 - **Event-shaped, not period-shaped.** Every other dataset is one row per
   settlement period. REMIT is one row per *event*, with a start and end that
   span many periods. Joining it to half-hourly data means expanding an interval.
-- **Revised.** `revisionNumber` against `mrid`, with no reliable updated-at, so
-  a `check`-strategy snapshot rather than a timestamp one.
+- **Revised.** Store each `(mrid, revisionNumber)` publication append-only, then
+  select the highest revision downstream when current state is required.
 - **Nested.** The outage profile array.
 
 That combination is what makes it the S7 build rather than an early one.

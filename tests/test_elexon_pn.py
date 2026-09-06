@@ -3,6 +3,8 @@ import pathlib
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import ANY, MagicMock, Mock, patch
 
+import pytest
+
 from ingestion.elexon.pn_poller import parse, quarantine_rows
 from ingestion.elexon.pn_poller import run as run_poller
 
@@ -88,20 +90,36 @@ def test_run_routing():
         "errors": ["Missing required field: settlementPeriod"],
         "warnings": [],
     }
+
+    event_record = []
+
+    def record_quarantine(*args, **kwargs):
+        event_record.append("quarantine")
+
+    def record_parse(*args, **kwargs):
+        event_record.append("parse")
+        return parsed_rows
+
+    def record_load(*args, **kwargs):
+        event_record.append("load")
+
     with (
         patch(
             "ingestion.elexon.pn_poller.fetch",
             return_value=fetched_rows,
         ),
         patch(
-            "ingestion.elexon.pn_poller.parse",
-            return_value=parsed_rows,
+            "ingestion.elexon.pn_poller.parse", side_effect=record_parse
         ) as mock_parse,
-        patch("ingestion.elexon.pn_poller.quarantine_rows") as mock_quarantine,
-        patch("ingestion.elexon.pn_poller.load") as mock_load,
+        patch(
+            "ingestion.elexon.pn_poller.quarantine_rows", side_effect=record_quarantine
+        ) as mock_quarantine,
+        patch("ingestion.elexon.pn_poller.load", side_effect=record_load) as mock_load,
     ):
-        run_poller(conn, from_date, to_date)
+        with pytest.raises(RuntimeError):
+            run_poller(conn, from_date, to_date)
 
+    assert event_record == ["quarantine", "parse", "load"]
     mock_parse.assert_called_once_with([valid_row, warning_row], ANY)
     mock_load.assert_called_once_with(parsed_rows, conn)
     mock_quarantine.assert_called_once_with(
@@ -237,3 +255,30 @@ def test_run_logs_grouped_warning_rows(caplog):
                 "to": to_date.isoformat(),
             }
             assert payload["retrieved_at"] == actual_retrieved_at.isoformat()
+
+
+def test_run_error_only_routing():
+    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+        results = json.load(f)
+    rejected_row = results[0].copy()
+    del rejected_row["settlementPeriod"]
+    fetched_rows = [rejected_row]
+    from_date = datetime(2026, 8, 20, tzinfo=timezone.utc)
+    to_date = datetime(2026, 8, 21, tzinfo=timezone.utc)
+    request_context = {
+        "from": from_date.isoformat(),
+        "to": to_date.isoformat(),
+    }
+    conn = Mock()
+
+    with (
+        patch("ingestion.elexon.pn_poller.fetch", return_value=fetched_rows),
+        patch("ingestion.elexon.pn_poller.parse") as mock_parse,
+        patch("ingestion.elexon.pn_poller.quarantine_rows") as mock_quarantine,
+        patch("ingestion.elexon.pn_poller.load") as mock_load,
+    ):
+        with pytest.raises(RuntimeError):
+            run_poller(conn, from_date, to_date)
+        mock_parse.assert_not_called()
+        mock_load.assert_not_called()
+        mock_quarantine.assert_called_once_with(ANY, conn, ANY, request_context)

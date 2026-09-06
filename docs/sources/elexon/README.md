@@ -45,10 +45,9 @@ API accepts a period as high as 50 and why this is a recurring source of impleme
 several times as better meter data arrives. A figure published today can change
 later.
 
-The run sequence is taken to be II, SF, R1, R2, R3, RF. **Only `II` and `R1`
-have been observed directly**; the rest come from the project plan and are not
-confirmed by the API, which documents `settlementRunType` as a free-text string
-with no enumerated values.
+The observed run sequence is II, SF, R1, R2, R3, RF. All six have been seen in
+age-window checks described in [020_b1610.md](020_b1610.md), although the API
+documents `settlementRunType` as a free-text string with no enumerated values.
 
 That revision behaviour is why this project's raw layer never overwrites
 anything.
@@ -263,10 +262,11 @@ So:
 - **Backfills**: daily Airflow intervals are serialised through the one-slot
   `elexon` pool. The completed PN backfill averaged about 1.4 requests per
   minute, so the current implementation needs no additional client-side delay.
-- **Assert on row counts, not just status codes.** `raise_for_status()` catches
-  4xx and 5xx. With no rate-limit headers, a future throttle could arrive in a
-  shape not seen here, and a 200 with an empty body would otherwise look like a
-  successful run that wrote nothing.
+- **Add row-count checks, not just status-code checks.** `raise_for_status()`
+  catches 4xx and 5xx. With no rate-limit headers, a future throttle could
+  arrive in a shape not seen here, and a 200 with an empty body would otherwise
+  look like a successful run that wrote nothing. The current Elexon pollers do
+  not yet implement this safeguard.
 - **Identify yourself.** The terms prohibit concealing an application's
   identity, and a descriptive `User-Agent` means an operator can contact you
   rather than simply blocking the address.

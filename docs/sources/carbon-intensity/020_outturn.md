@@ -19,7 +19,8 @@ What carbon intensity actually was, per settlement period, alongside the
 forecast as it stood at settlement time.
 
 Unlike the forecast archive, this data is **permanently re-fetchable**, which
-means errors are recoverable through a truncate and reload.
+means missing windows can be fetched again and a deliberate rebuild remains
+possible without making truncation part of the normal append-only workflow.
 
 ## Endpoint
 

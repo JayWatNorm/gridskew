@@ -18,17 +18,18 @@ rung is deployed and runs forward only.
 | Schedule | `@daily`, both |
 | `catchup` | II **`True`**, SF **`False`** |
 
-## Two rungs, not six
+## Two rungs currently implemented
 
 | Rung | Offset | `start_date` | Catches |
 |---|---|---|---|
 | **II** | `data_interval_start - 14d` | 2025-09-05 | `II` |
 | **SF** | `data_interval_start - 35d` | forward only | `SF` |
 
-`R1` through `RF` are **deliberately not polled.** RF lands at about fourteen
-months and this project is unlikely to run long enough to reach it for data
-ingested today. Modelling rests on II and SF. Rungs can be added later at any
-time — the schema does not change.
+`R1` through `RF` are not currently polled. They can be added without changing
+the schema, but only prospectively: Elexon stops serving a run after a later run
+supersedes it. Any R1, R2, R3 or RF capture already missed cannot be recovered.
+Until those schedules exist, the retained series is accurately described as
+the first and latest captured positions, not the first and final positions.
 
 **`start_date` is the earliest wanted settlement day plus the offset.** 2025-09-05
 minus 14 days is 2025-08-22, which aligns B1610 with PN's history. A different
@@ -105,7 +106,7 @@ At 48 periods per settlement day and a mean of 8,234 units across the year:
 | Strategy | Rows/year | Size |
 |---|---|---|
 | Single backfill pass | 144M | ~26 GB |
-| **II + SF, as chosen** | 321M | **~57 GB** |
+| **II + SF, as currently implemented** | 321M | **~57 GB** |
 | First and final, II + RF | 284M | ~50 GB |
 | All six rungs | 879M | ~156 GB |
 
@@ -159,9 +160,10 @@ Note the first day shows **46** here where PN's shows 47 — the two datasets
 timestamp differently (`timeFrom` versus `halfHourEndTime`), so the same `from`
 parameter lands on a different boundary.
 
-## Assert on row counts
+## Row-count safeguard is outstanding
 
 A poll returning zero rows must be visible in the log. Given the publication lag,
 an empty response is this dataset's actual failure mode — not an error, just
 silence. This is the case the rule in
-[../ingestion-patterns.md](../ingestion-patterns.md) was written for.
+[../ingestion-patterns.md](../ingestion-patterns.md) was written for. The
+current poller does not yet log or assert the returned row count.
