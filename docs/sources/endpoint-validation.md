@@ -10,9 +10,12 @@ compatible and warning-only rows to the typed load and rejected findings to a
 fixed-table quarantine writer. Warning-only findings also produce grouped,
 bounded JSON warning logs. Mixed responses commit both compatible rows and
 quarantine evidence before the task fails. All-rejected responses commit the
-quarantine evidence, skip typed parsing and loading, then fail. PN routing,
-warning-evidence, writer and final-status tests are complete, but this branch is
-not deployed. QPN and B1610 integration remains planned.
+quarantine evidence, skip typed parsing and loading, then fail. Before row
+validation, the PN poller rejects an empty response or a non-list outer
+container and raises so Airflow can retry; these response failures do not enter
+the row quarantine. PN routing, warning-evidence, writer, response-container and
+final-status tests are complete, but this branch is not deployed. QPN and B1610
+integration remains planned.
 
 ## Components
 
@@ -22,7 +25,7 @@ not deployed. QPN and B1610 integration remains planned.
 | [validation.py](../../ingestion/validation.py) | Source-independent checks over already-fetched Python dictionaries |
 | [test_validation.py](../../tests/test_validation.py) | Cross-source contract tests, mixed-batch findings and input non-mutation |
 | [pn_poller.py](../../ingestion/elexon/pn_poller.py) | PN validation routing, grouped warning logs, typed loading and the current PN quarantine writer |
-| [test_elexon_pn.py](../../tests/test_elexon_pn.py) | PN parsing, routing, warning-evidence and quarantine-writer boundary tests |
+| [test_elexon_pn.py](../../tests/test_elexon_pn.py) | PN parsing, response-container, routing, warning-evidence and quarantine-writer boundary tests |
 | [006_endpoint_quarantine.sql](../../sql/init/006_endpoint_quarantine.sql) | Fixed quarantine-table definition for rejected source rows |
 
 The validator makes no HTTP requests, imports no poller and performs no database
@@ -81,8 +84,9 @@ an empty findings list. The function reports findings; it does not itself split
 the data into load and quarantine batches.
 
 A non-dictionary item produces an indexed error finding with the original item
-and does not stop later rows from being validated. Malformed outer response
-containers are not yet handled as a separate response-level failure.
+and does not stop later rows from being validated. This generic validator still
+accepts an empty list and returns no findings. The PN poller applies its stricter
+non-empty-list response contract before calling the validator.
 
 ## Validation performed
 
@@ -117,7 +121,7 @@ Run from the repository root with the development dependencies installed:
 python -m pytest tests/test_validation.py -v
 ```
 
-The full Python suite passed with **36 tests on 6 September 2026**, including
+The full Python suite passed with **38 tests on 6 September 2026**, including
 these 19 validator tests and the PN routing, warning-evidence and writer
 coverage. Repository-wide Ruff lint and formatting checks also passed.
 
@@ -130,6 +134,11 @@ field names and complete source payload. Compatible rows continue to typed
 loading. Warning-only rows remain compatible and do not enter quarantine.
 Existing target-key duplicates retain `ON CONFLICT ... DO NOTHING`; they are
 not quarantine events.
+
+An empty PN response or a non-list outer container fails immediately before
+row validation. Nothing is parsed, loaded or quarantined. The raised exception
+allows the PN Airflow task's configured retry policy to handle a potentially
+transient publisher response without inventing source-row evidence.
 
 After both routed writes complete, any rejected row makes the task fail. A
 mixed response therefore retains its compatible rows and quarantine evidence
@@ -150,7 +159,6 @@ writer with mocks; they do not constitute a live database integration test.
 
 Before live integration, the remaining work includes:
 
-- Handling malformed outer response containers as response-level failures.
 - Routing date-parsing failures and other row-specific parse failures.
 - Moving the PN writer to a shared quarantine module before wider poller use.
 - Integrating QPN and B1610, including numeric-preserving JSON serialisation for

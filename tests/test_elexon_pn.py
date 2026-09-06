@@ -282,3 +282,47 @@ def test_run_error_only_routing():
         mock_parse.assert_not_called()
         mock_load.assert_not_called()
         mock_quarantine.assert_called_once_with(ANY, conn, ANY, request_context)
+
+
+def test_empty_fetched_rows():
+    fetched_rows = []
+    from_date = datetime(2026, 8, 20, tzinfo=timezone.utc)
+    to_date = datetime(2026, 8, 21, tzinfo=timezone.utc)
+    conn = Mock()
+
+    with (
+        patch(
+            "ingestion.elexon.pn_poller.fetch", return_value=fetched_rows
+        ) as mock_fetch,
+        patch("ingestion.elexon.pn_poller.parse") as mock_parse,
+        patch("ingestion.elexon.pn_poller.quarantine_rows") as mock_quarantine,
+        patch("ingestion.elexon.pn_poller.load") as mock_load,
+    ):
+        with pytest.raises(RuntimeError):
+            run_poller(conn, from_date, to_date)
+        mock_fetch.assert_called_once()
+        mock_parse.assert_not_called()
+        mock_load.assert_not_called()
+        mock_quarantine.assert_not_called()
+
+
+def test_malformed_response_container():
+    fetched_rows = {"data": []}
+    from_date = datetime(2026, 8, 20, tzinfo=timezone.utc)
+    to_date = datetime(2026, 8, 21, tzinfo=timezone.utc)
+    conn = Mock()
+
+    with (
+        patch(
+            "ingestion.elexon.pn_poller.fetch", return_value=fetched_rows
+        ) as mock_fetch,
+        patch("ingestion.elexon.pn_poller.parse") as mock_parse,
+        patch("ingestion.elexon.pn_poller.quarantine_rows") as mock_quarantine,
+        patch("ingestion.elexon.pn_poller.load") as mock_load,
+    ):
+        with pytest.raises(RuntimeError):
+            run_poller(conn, from_date, to_date)
+        mock_fetch.assert_called_once()
+        mock_parse.assert_not_called()
+        mock_load.assert_not_called()
+        mock_quarantine.assert_not_called()

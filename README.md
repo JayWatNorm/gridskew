@@ -149,7 +149,9 @@ their source index, request context and complete payload. Warning-only findings
 also produce warning-level JSON logs grouped by reason and affected field, with
 the complete affected-row count and up to five source indexes. Tests exercise
 the routing, grouped warning evidence and writer boundary without a live API or
-database.
+database. Before row validation, PN rejects an empty response or a non-list
+outer container and raises so Airflow can retry; nothing is parsed, loaded or
+quarantined for these response failures.
 
 This PN integration is not deployed. QPN and B1610 do not yet call the
 validator. A mixed PN response commits its compatible rows and rejected-row
@@ -270,8 +272,8 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [x] `QPN` backfill complete
 - [x] `B1610` raw table, poller, tests and DAGs
 - [x] `B1610` II backfill complete; SF running forwards
-- [x] Local PN validation routing, warning evidence, quarantine and
-      fail-after-commit task status (not deployed)
+- [x] Local PN response-container handling, validation routing, warning
+      evidence, quarantine and fail-after-commit task status (not deployed)
 - [ ] BM unit registry snapshot
 - [x] dbt project initialised
 - [x] Sources declared for all five raw tables, with freshness checks
