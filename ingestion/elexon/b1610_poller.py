@@ -12,7 +12,6 @@ from psycopg2.extras import execute_values
 logger = logging.getLogger(__name__)
 
 
-# fetching the data from the API
 def fetch(from_date, to_date):
     response = requests.get(
         "https://data.elexon.co.uk/bmrs/api/v1/datasets/B1610/stream",
@@ -29,13 +28,13 @@ def fetch(from_date, to_date):
     return json.loads(response.text, parse_float=Decimal)
 
 
-# dag will be handling catchup and batches, default set to yesterday for manual runs
 def run(conn, from_date=None, to_date=None):
+    """Load one B1610 window, defaulting to the current II publication lag."""
+
     retrieved_at = datetime.now(timezone.utc)
     retrieved_at_day_start = retrieved_at.replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    # if either of the dates are missing, pass yesterday, also protects against accidently running 1 year of data.
     if to_date is None or from_date is None:
         from_date = retrieved_at_day_start - timedelta(days=15)
         to_date = retrieved_at_day_start - timedelta(days=14)

@@ -22,7 +22,7 @@ def test_parse():
 
     parsed_results = parse(results, RETRIEVED_AT)
 
-    # One row out per entry in: parse drops nothing and duplicates nothing.
+    # Parse preserves row count.
     assert len(parsed_results) == len(results["data"])
 
     # Golden value. The expected side is written by hand from the fixture, not

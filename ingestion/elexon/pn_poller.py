@@ -54,6 +54,10 @@ def run(conn, from_date=None, to_date=None):
         "to": to_date.isoformat(),
     }
     result = fetch(from_date, to_date)
+    if (not result) or (not isinstance(result, list)):
+        raise RuntimeError(
+            "Invalid response returned from Elexon PN API: expected a non-empty list"
+        )
     validation_findings = validate_rows(result, spec=PN_SPEC)
     error_rows = []
     valid_rows = []
