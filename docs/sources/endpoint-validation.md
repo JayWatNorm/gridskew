@@ -8,9 +8,11 @@ non-mutation, QPN and B1610 fixture compatibility, and B1610 quantity types.
 The local PN poller now validates every fetched row before parsing. It sends
 compatible and warning-only rows to the typed load and rejected findings to a
 fixed-table quarantine writer. Warning-only findings also produce grouped,
-bounded JSON warning logs. PN routing, warning-evidence and writer tests are
-complete, but this branch is not deployed. QPN and B1610 integration remains
-planned.
+bounded JSON warning logs. Mixed responses commit both compatible rows and
+quarantine evidence before the task fails. All-rejected responses commit the
+quarantine evidence, skip typed parsing and loading, then fail. PN routing,
+warning-evidence, writer and final-status tests are complete, but this branch is
+not deployed. QPN and B1610 integration remains planned.
 
 ## Components
 
@@ -115,7 +117,7 @@ Run from the repository root with the development dependencies installed:
 python -m pytest tests/test_validation.py -v
 ```
 
-The full Python suite passed with **35 tests on 5 September 2026**, including
+The full Python suite passed with **36 tests on 6 September 2026**, including
 these 19 validator tests and the PN routing, warning-evidence and writer
 coverage. Repository-wide Ruff lint and formatting checks also passed.
 
@@ -128,6 +130,11 @@ field names and complete source payload. Compatible rows continue to typed
 loading. Warning-only rows remain compatible and do not enter quarantine.
 Existing target-key duplicates retain `ON CONFLICT ... DO NOTHING`; they are
 not quarantine events.
+
+After both routed writes complete, any rejected row makes the task fail. A
+mixed response therefore retains its compatible rows and quarantine evidence
+before raising. An all-rejected response retains its quarantine evidence,
+does not call typed parsing or loading with an empty list, and then raises.
 
 Warning-only findings produce one warning-level JSON log per `(reason, field)`
 group. Each record contains the dataset, source retrieval time, request window,
@@ -143,14 +150,14 @@ writer with mocks; they do not constitute a live database integration test.
 
 Before live integration, the remaining work includes:
 
-- Making mixed and all-rejected runs fail only after compatible and quarantine
-  rows commit.
 - Handling malformed outer response containers as response-level failures.
 - Routing date-parsing failures and other row-specific parse failures.
 - Moving the PN writer to a shared quarantine module before wider poller use.
 - Integrating QPN and B1610, including numeric-preserving JSON serialisation for
   rejected B1610 rows.
 - Testing retry behaviour and persistence when later processing fails.
+- Proving the five-index warning sample cap with a batch containing more than
+  five matching warnings.
 - Adding nested contracts for Carbon Intensity after the flat Elexon path is
   proven.
 

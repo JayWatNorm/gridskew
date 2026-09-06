@@ -18,7 +18,7 @@ once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
 
 [Endpoint validation](sources/endpoint-validation.md) describes the shared
 offline validator, Elexon contracts, cross-source pytest coverage and the local
-PN row-routing, grouped warning-evidence and quarantine path.
+PN row-routing, grouped warning-evidence, quarantine and fail-after-commit path.
 
 Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.

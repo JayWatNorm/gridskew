@@ -14,8 +14,9 @@ anyone who was short pays it.
 
 Two numbers matter here:
 
-- **`systemBuyPrice`** spikes when the system is short of electricity. It is a
-  stress signal: high prices mean the operator was scrambling.
+- **The system price** is exposed in both `systemBuyPrice` and
+  `systemSellPrice`. Under the current single-price arrangements the two are
+  equal. A high value is a market-stress signal.
 - **`netImbalanceVolume`** says how short or long the system actually was, in
   MWh. Positive and negative have opposite meanings.
 
@@ -75,21 +76,21 @@ than data.
 | `systemSellPrice` | `float` | GBP/MWh |
 | `systemBuyPrice` | `float` | GBP/MWh. Equal to the sell price in the spec's own example. Whether they routinely differ is an open question below |
 | `bsadDefaulted` | `bool` | Balancing Services Adjustment Data defaulted |
-| `priceDerivationCode` | `str` | How the price was arrived at, e.g. `P` |
-| `reserveScarcityPrice` | `float` | Scarcity adder |
+| `priceDerivationCode` | `str` or `null` | How the price was arrived at, e.g. `P` |
+| `reserveScarcityPrice` | `float` or `null` | Scarcity adder |
 | **`netImbalanceVolume`** | `float` | MWh. **The system length or shortness** |
-| `sellPriceAdjustment` | `float` | |
-| `buyPriceAdjustment` | `float` | |
+| `sellPriceAdjustment` | `float` or `null` | |
+| `buyPriceAdjustment` | `float` or `null` | |
 | `replacementPrice` | `float` or `null` | |
 | `replacementPriceReferenceVolume` | `float` or `null` | |
-| `totalAcceptedOfferVolume` | `float` | MWh the operator bought |
-| `totalAcceptedBidVolume` | `float` | MWh the operator sold, negative |
-| `totalAdjustmentSellVolume` | `float` | |
-| `totalAdjustmentBuyVolume` | `float` | |
-| `totalSystemTaggedAcceptedOfferVolume` | `float` | System-flagged subset |
-| `totalSystemTaggedAcceptedBidVolume` | `float` | |
+| `totalAcceptedOfferVolume` | `float` or `null` | MWh the operator bought |
+| `totalAcceptedBidVolume` | `float` or `null` | MWh the operator sold, negative |
+| `totalAdjustmentSellVolume` | `float` or `null` | |
+| `totalAdjustmentBuyVolume` | `float` or `null` | |
+| `totalSystemTaggedAcceptedOfferVolume` | `float` or `null` | System-flagged subset |
+| `totalSystemTaggedAcceptedBidVolume` | `float` or `null` | |
 | `totalSystemTaggedAdjustmentSellVolume` | `float` or `null` | |
-| `totalSystemTaggedAdjustmentBuyVolume` | `float` | |
+| `totalSystemTaggedAdjustmentBuyVolume` | `float` or `null` | |
 
 ## Things to know
 
@@ -98,14 +99,17 @@ accepted for *system* reasons (network constraints, voltage) from volume
 accepted for *energy* balancing. Same distinction as `soFlag` on BOALF, and the
 same reason it matters: constraint actions are not evidence of energy shortfall.
 
-**`createdDateTime` suggests revision.** Prices are indicative at first and
-firmed up later. Not yet confirmed how often they change.
+**The first calculation is indicative and later refreshed.** [Elexon
+publishes](https://bmrs.elexon.co.uk/system-prices) an indicative calculation
+about 15 minutes after the settlement period and refreshes it at D+1 for late
+actions or System Operator changes. This endpoint returns only the latest
+available calculation.
 
 **Use `numeric`, not `float`, in the table.** These are money and volume
 figures that get aggregated.
 
-**Nearly everything after the prices is nullable.** The table above marks three
-fields "or null"; the spec marks **fourteen** nullable — every adjustment,
+**Nearly everything after the prices is nullable.** The spec marks **fourteen**
+fields nullable — every adjustment,
 volume and system-tagged field, plus `priceDerivationCode` and
 `reserveScarcityPrice`. Only the identifiers, `startTime`, `createdDateTime`,
 the two prices, `bsadDefaulted` and `netImbalanceVolume` are non-nullable.
@@ -125,14 +129,12 @@ One settlement period fetched
   consistent with GB's single imbalance price arrangements.
 - `netImbalanceVolume` was positive (344.25 MWh) in a period where accepted
   offers exceeded accepted bids.
-- `createdDateTime` was **the day after** the settlement date, so these figures
-  are produced on roughly a T+1 schedule, not in real time.
+- `createdDateTime` was **the day after** the settlement date, so this sample
+  was the D+1 refresh rather than the earlier indicative calculation.
 - Values carry up to 18 decimal places. `numeric`, not `float`, confirmed.
 
 ## Open questions
 
-- How often does `systemBuyPrice` differ from `systemSellPrice`, if ever, under
-  the current single-price arrangements?
 - Sign convention on `netImbalanceVolume`: [Elexon defines positive as a short
   system and negative as a long system](https://www.elexon.co.uk/bsc/settlement/imbalance-pricing/).
 - Are these figures revised as settlement runs advance? Only the latest run is

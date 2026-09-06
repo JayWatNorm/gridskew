@@ -41,16 +41,16 @@ There is also `/reference/bmunits` for filtered lookups.
 
 | Field | Type | Notes |
 |---|---|---|
-| `elexonBmUnit` | `str` | e.g. `T_DRAXX-1`. The identifier used across datasets |
+| `elexonBmUnit` | `str or null` | e.g. `T_DRAXX-1`. The identifier used across datasets; null has been observed |
 | `nationalGridBmUnit` | `str` | e.g. `DRAXX-1` |
-| `eic` | `str` | European identification code |
+| `eic` | `str or null` | European identification code; frequently null in the observed sample |
 | `bmUnitName` | `str` | Human-readable name |
-| `bmUnitType` | `str` | Category of unit |
-| `fuelType` | `str` | e.g. gas, nuclear, wind, biomass |
+| `bmUnitType` | `str or null` | Category of unit; null has been observed |
+| `fuelType` | `str or null` | e.g. gas, nuclear, wind, biomass; sparsely populated in the observed sample |
 | `leadPartyName` | `str` | Operator |
 | `leadPartyId` | `str` | |
-| `demandCapacity` | `str` | MW. **Typed as string in the API** |
-| `generationCapacity` | `str` | MW, also a string |
+| `demandCapacity` | `str or null` | MW. **Typed as string in the API** |
+| `generationCapacity` | `str or null` | MW, also a string |
 | `productionOrConsumptionFlag` | `str` | |
 | `transmissionLossFactor` | `str` | |
 | `fpnFlag` | `bool` | Whether the unit submits Final Physical Notifications |

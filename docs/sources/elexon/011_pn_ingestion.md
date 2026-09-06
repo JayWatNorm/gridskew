@@ -48,9 +48,10 @@ their request window, retrieval time, zero-based source index, observed fields,
 validation errors and complete source payload.
 
 The routing and writer boundary are covered without a live API or database.
-This is not yet a production control: warning evidence, fail-after-commit
-behaviour for mixed/all-rejected runs and malformed response-container handling
-remain outstanding. See [../endpoint-validation.md](../endpoint-validation.md).
+Warning evidence and fail-after-commit behaviour for mixed and all-rejected
+runs are also covered locally. This is not yet a production control because the
+change is not deployed; malformed response-container handling remains
+outstanding. See [../endpoint-validation.md](../endpoint-validation.md).
 
 ## `load` does not catch exceptions, deliberately
 
@@ -121,8 +122,9 @@ repository should be counted, not multiplied.
 > **Count, do not infer.** A response's byte size is not a row count — measuring
 > tools truncate, and a truncated response looks like a small one. Every volume
 > on this page comes from `count(*)`, which is also why
-> [../ingestion-patterns.md](../ingestion-patterns.md) asserts on row counts
-> rather than status codes.
+> [../ingestion-patterns.md](../ingestion-patterns.md) identifies runtime
+> row-count checks as a required safeguard rather than treating status codes as
+> sufficient. That safeguard remains outstanding in this poller.
 
 ## Backfill verification
 

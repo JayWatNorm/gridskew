@@ -95,8 +95,13 @@ def run(conn, from_date=None, to_date=None):
         logger.warning("%s", json.dumps(payload))
     if error_rows:
         quarantine_rows(error_rows, conn, retrieved_at, request_context)
-    par_result = parse(valid_rows, retrieved_at)
-    load(par_result, conn)
+    if valid_rows:
+        par_result = parse(valid_rows, retrieved_at)
+        load(par_result, conn)
+    if error_rows:
+        raise RuntimeError(
+            f"Quarantined {len(error_rows)} rows due to validation errors"
+        )
     return
 
 

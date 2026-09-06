@@ -82,9 +82,9 @@ Where re-polling is needed at depth, sample at fixed lags rather than dragging a
 window behind the present.
 
 A rolling 90-day window on PN would be 4.15 billion rows and about 734 GB a
-year. Sampling at 1, 8, 30 and 90 days reaches the same depth for about 32.6 GB
-— the same coverage at 4% of the cost, because a rolling window re-fetches
-every day in between for no reason.
+year. Sampling at 1, 8, 30 and 90 days reaches the same maximum lag for about
+32.6 GB — roughly 4% of the cost, because it samples four ages instead of
+re-fetching every intervening day. It does not provide continuous coverage.
 
 Ladders belong in configuration, not hard-coded, because the whole point is that
 they change once evidence arrives about where revisions actually land.
@@ -109,9 +109,9 @@ units. Probe three or four units on the same day and check they agree.
 
 ## Chunk size is bounded by memory, not by the API
 
-Elexon imposes no window cap on the stream endpoints — PN returns 1, 7 and 18 day
-windows with linear row counts and no truncation, up to about 626 MB in a single
-response.
+Elexon documents no window cap on the stream endpoints. PN returned 1, 7 and 18
+day windows with linear row counts and no truncation, up to about 626 MB in a
+single response; a higher undocumented cap remains possible.
 
 The constraint is what happens after the response arrives:
 
@@ -143,9 +143,10 @@ you would simply be blocked.
   so no additional client-side delay is required.
 - **Identify yourself.** Both sets of terms prohibit concealing an application's
   identity. `gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
-- **Assert on row counts, not just status codes.** A truncated or throttled
-  response can return 200 with a short body, which looks like a successful run
-  that wrote nothing.
+- **Add row-count checks, not just status-code checks.** A truncated or
+  throttled response can return 200 with a short body, which looks like a
+  successful run that wrote nothing. This safeguard remains outstanding in the
+  current Elexon pollers.
 
 ## How `retrieved_at` participates in raw identity
 
