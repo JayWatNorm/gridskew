@@ -166,9 +166,6 @@ def test_pn_run_does_not_mutate_results():
     assert results == original_results
 
 
-# QPN Test, contract is identical to PN, but to test that the validation works for QPN as well
-
-
 def test_qpn_fixture_matches_contract():
     with open(QPN_FIXTURE_PATH, "r", encoding="utf-8") as f:
         results = json.load(f)

@@ -10,7 +10,6 @@ from psycopg2.extras import execute_values
 logger = logging.getLogger(__name__)
 
 
-# fetching the data from the API
 def fetch(from_date, to_date):
     from_date = from_date.strftime("%Y-%m-%dT%H:%MZ")
     to_date = to_date.strftime("%Y-%m-%dT%H:%MZ")
@@ -35,8 +34,9 @@ def chunker(yest_date, from_date, to_date, chunk_size=30):
     return rows
 
 
-# checks the backfill data for the last 365 days, and then checks the last 30 days of data every day
 def data_checker(conn):
+    """Return the stored row count and period bounds."""
+
     with conn.cursor() as cursor:
         cursor.execute(
             "SELECT count(*), min(period_start) as first_window, max(period_start) as last_window FROM raw.carbon_intensity_outturn;"
@@ -45,8 +45,9 @@ def data_checker(conn):
     return lst_data
 
 
-# runs the backfill if not populated or the last 1-7 days ago worth of actual & final forecasts
 def run(conn):
+    """Backfill one year when needed; otherwise refresh the last seven days."""
+
     chunker_run = False
     retrieved_at = datetime.now(timezone.utc)
     yest_date = datetime.now(timezone.utc) - timedelta(days=1)

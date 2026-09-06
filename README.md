@@ -142,22 +142,22 @@ why these sources use different approaches.
 
 PN, QPN and B1610 have explicit field contracts and a shared offline validator.
 It checks required fields, nullability and exact Python types, and returns
-row-level errors and warnings. The PN poller now validates every fetched row in
-the local branch: compatible and warning-only rows continue to typed parsing,
-while rejected rows are excluded and passed to the fixed quarantine writer with
-their source index, request context and complete payload. Warning-only findings
-also produce warning-level JSON logs grouped by reason and affected field, with
-the complete affected-row count and up to five source indexes. Tests exercise
-the routing, grouped warning evidence and writer boundary without a live API or
-database. Before row validation, PN rejects an empty response or a non-list
-outer container and raises so Airflow can retry; nothing is parsed, loaded or
-quarantined for these response failures.
+row-level errors and warnings. The PN and QPN pollers now validate every fetched
+row in the local branch: compatible and warning-only rows continue to typed
+parsing, while rejected rows are excluded and passed to fixed quarantine
+writers with their source index, request context and complete payload.
+Warning-only findings also produce warning-level JSON logs grouped by reason
+and affected field, with the complete affected-row count and up to five source
+indexes. Tests exercise the routing, grouped warning evidence and writer
+boundaries without a live API or database. Before row validation, both pollers
+reject an empty response or a non-list outer container and raise so Airflow can
+retry; nothing is parsed, loaded or quarantined for these response failures.
 
-This PN integration is not deployed. QPN and B1610 do not yet call the
-validator. A mixed PN response commits its compatible rows and rejected-row
+These PN and QPN integrations are not deployed. B1610 does not yet call the
+validator. A mixed response commits its compatible rows and rejected-row
 evidence before failing the run; an all-rejected response commits quarantine
-evidence, skips typed parsing and loading, then fails. Accepted typed rows retain
-the contracted fields rather than a blanket copy of every source field. See
+evidence, skips typed parsing and loading, then fails. Accepted typed rows
+retain the contracted fields rather than a blanket copy of every source field. See
 [endpoint validation](docs/sources/endpoint-validation.md) for the interfaces,
 completed checks and integration boundary.
 
@@ -272,7 +272,7 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [x] `QPN` backfill complete
 - [x] `B1610` raw table, poller, tests and DAGs
 - [x] `B1610` II backfill complete; SF running forwards
-- [x] Local PN response-container handling, validation routing, warning
+- [x] Local PN and QPN response-container handling, validation routing, warning
       evidence, quarantine and fail-after-commit task status (not deployed)
 - [ ] BM unit registry snapshot
 - [x] dbt project initialised

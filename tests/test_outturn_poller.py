@@ -33,7 +33,6 @@ def chunks():
     return chunker(WINDOW_END, WINDOW_START, WINDOW_START + timedelta(days=30))
 
 
-# chunker
 def test_chunker_covers_the_whole_window(chunks):
     """The first chunk starts where asked, the last ends where asked."""
     assert chunks[0][0] == WINDOW_START
@@ -71,7 +70,6 @@ def test_chunker_leaves_no_gaps(chunks):
         )
 
 
-# parse
 def test_parse_returns_one_row_per_entry(payload):
     """parse drops nothing and duplicates nothing."""
     assert len(parse(payload, RETRIEVED_AT)) == len(payload["data"])

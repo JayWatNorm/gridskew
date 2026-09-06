@@ -21,9 +21,8 @@ def test_parse():
 
     parsed_results = parse(results, RETRIEVED_AT)
 
-    # One row out per entry in: parse drops nothing and duplicates nothing.
+    # Parse preserves row count.
     assert len(parsed_results) == len(results)
-    # results json hasnt been cleared
     assert len(results) > 0
 
     # Golden value. The expected side is written by hand from the fixture, not
@@ -43,25 +42,22 @@ def test_parse():
 
     # Rules that must hold for every row.
     for i, row in enumerate(parsed_results, start=1):
-        assert row[2] < row[3]  # ends after starts
+        assert row[2] < row[3]
         assert row[8] == RETRIEVED_AT, (
             f"row {i}: retrieved_at is {row[2]}, expected {RETRIEVED_AT}"
         )
-        assert (row[1] >= 1) & (row[1] <= 50)  # settlement peroids are valid
-        assert type(row[0]) is date  # typecheck
-        assert type(row[2]) is datetime  # typecheck
-        assert type(row[3]) is datetime  # typecheck
+        assert (row[1] >= 1) & (row[1] <= 50)
+        assert type(row[0]) is date
+        assert type(row[2]) is datetime
+        assert type(row[3]) is datetime
         assert row[2].utcoffset() == timedelta(0)
         assert row[3].utcoffset() == timedelta(0)
 
-    # no duplicates
+    # Fixture breadth and target-key uniqueness.
     key = [(row[6], row[2]) for row in parsed_results]
     assert len(set(key)) == len(key), "duplicate key in batch"
-    # ramp still exists
     ramp = [(row[4] - row[5]) for row in parsed_results]
-    assert len(set(ramp)) > 1, "ramp still presnet"
-
-    # more than one BM unit
+    assert len(set(ramp)) > 1, "ramp still present"
     assert len({row[6] for row in parsed_results}) > 1
 
 
@@ -186,9 +182,8 @@ def test_run_logs_grouped_warning_rows(caplog):
     del warning_row3["dataset"]
     fetched_rows = [valid_row, warning_row, warning_row2, warning_row3]
 
-    # "Optional field is missing: dataset"      index: 2, 3 / Expected 2
-    # "Unexpected field: newPublisherField"     index: 1, 3 /  Expeected 2
-    # "Unexpected field: newPublisherField2"    index: 3    / Expected 1
+    # Expected groups by source index: missing dataset [2, 3],
+    # newPublisherField [1, 3], and newPublisherField2 [3].
 
     conn = Mock()
     from_date = datetime(2026, 8, 20, tzinfo=timezone.utc)
@@ -255,6 +250,35 @@ def test_run_logs_grouped_warning_rows(caplog):
                 "to": to_date.isoformat(),
             }
             assert payload["retrieved_at"] == actual_retrieved_at.isoformat()
+
+
+def test_run_caps_grouped_warning_source_indexes(caplog):
+    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+        results = json.load(f)
+
+    fetched_rows = []
+    for index in range(6):
+        warning_row = results[index].copy()
+        warning_row["newPublisherField"] = "observed"
+        fetched_rows.append(warning_row)
+
+    conn = Mock()
+    from_date = datetime(2026, 8, 20, tzinfo=timezone.utc)
+    to_date = datetime(2026, 8, 21, tzinfo=timezone.utc)
+
+    with (
+        patch("ingestion.elexon.pn_poller.fetch", return_value=fetched_rows),
+        patch("ingestion.elexon.pn_poller.parse", return_value=object()),
+        patch("ingestion.elexon.pn_poller.quarantine_rows") as mock_quarantine,
+        patch("ingestion.elexon.pn_poller.load"),
+    ):
+        run_poller(conn, from_date, to_date)
+
+    assert len(caplog.records) == 1
+    payload = json.loads(caplog.records[0].getMessage())
+    assert payload["affected_row_count"] == 6
+    assert payload["sample_source_indexes"] == [0, 1, 2, 3, 4]
+    mock_quarantine.assert_not_called()
 
 
 def test_run_error_only_routing():
