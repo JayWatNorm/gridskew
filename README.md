@@ -142,8 +142,8 @@ why these sources use different approaches.
 
 PN, QPN and B1610 have explicit field contracts and a shared offline validator.
 It checks required fields, nullability and exact Python types, and returns
-row-level errors and warnings. The PN and QPN pollers now validate every fetched
-row in the local branch: compatible and warning-only rows continue to typed
+row-level errors and warnings. The deployed PN and QPN pollers validate every
+fetched row: compatible and warning-only rows continue to typed
 parsing, while rejected rows are excluded and passed to fixed quarantine
 writers with their source index, request context and complete payload.
 Warning-only findings also produce warning-level JSON logs grouped by reason
@@ -153,7 +153,7 @@ boundaries without a live API or database. Before row validation, both pollers
 reject an empty response or a non-list outer container and raise so Airflow can
 retry; nothing is parsed, loaded or quarantined for these response failures.
 
-These PN and QPN integrations are not deployed. B1610 does not yet call the
+These PN and QPN integrations are deployed. B1610 does not yet call the
 validator. A mixed response commits its compatible rows and rejected-row
 evidence before failing the run; an all-rejected response commits quarantine
 evidence, skips typed parsing and loading, then fails. Accepted typed rows
@@ -272,8 +272,8 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [x] `QPN` backfill complete
 - [x] `B1610` raw table, poller, tests and DAGs
 - [x] `B1610` II backfill complete; SF running forwards
-- [x] Local PN and QPN response-container handling, validation routing, warning
-      evidence, quarantine and fail-after-commit task status (not deployed)
+- [x] PN and QPN response-container handling, validation routing, warning
+      evidence, quarantine and fail-after-commit task status deployed
 - [ ] BM unit registry snapshot
 - [x] dbt project initialised
 - [x] Sources declared for all five raw tables, with freshness checks
