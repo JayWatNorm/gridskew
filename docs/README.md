@@ -17,8 +17,8 @@ The reasoning that would otherwise be repeated across every ingestion page lives
 once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
 
 [Endpoint validation](sources/endpoint-validation.md) describes the shared
-offline validator, Elexon contracts, cross-source pytest coverage and the local
-PN row-routing, grouped warning-evidence, quarantine and fail-after-commit path.
+offline validator, Elexon contracts, cross-source pytest coverage, the deployed
+PN/QPN controls and the B1610 validation release.
 
 Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.
@@ -28,11 +28,11 @@ docs/
   deployment.md               Getting the DAGs onto an external Airflow
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
-  endpoint-validation.md      Contracts, tests, PN warning logs and quarantine
+  endpoint-validation.md      Contracts, routing, warning logs and quarantine
   carbon-intensity/
     README.md                 API level: base URL, auth, licence, shared gotchas
     010_forecast.md           Every version of the forecast            [running]
-    011_forecast_ingestion.md   every 30 min, catchup=False, no backfill possible
+    011_forecast_ingestion.md   every 30 min, catchup=False, 35-min SLA
     020_outturn.md            What actually happened                   [running]
     021_outturn_ingestion.md    daily, 7-day look-back, 30-day chunks
   elexon/

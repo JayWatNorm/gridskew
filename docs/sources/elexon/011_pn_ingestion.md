@@ -7,9 +7,10 @@ see [010_pn.md](010_pn.md). For the reasoning behind these patterns, see
 **Status: deployed, backfill complete 2026-08-23.** 366 runs covering
 2025-08-22 to 2026-08-23, 46,190,258 rows, no failures.
 
-The deployed job predates the local endpoint-validation change described
-below. The validation and quarantine path is tested in the development branch
-but is not deployed.
+Endpoint validation and quarantine are deployed. The current poller rejects
+invalid response containers before row validation, retains compatible rows,
+quarantines rejected source rows and fails mixed or all-rejected runs after the
+applicable writes commit.
 
 | | |
 |---|---|
@@ -41,7 +42,7 @@ function serves 365 historical runs and every future daily one.
 
 ## Validation and quarantine
 
-The local PN poller validates every fetched row before typed parsing. Rows with
+The PN poller validates every fetched row before typed parsing. Rows with
 no validation errors continue, including warning-only rows. Rejected findings
 are excluded from `raw.elexon_pn` and passed to `raw.endpoint_quarantine` with
 their request window, retrieval time, zero-based source index, observed fields,
@@ -49,9 +50,10 @@ validation errors and complete source payload.
 
 The routing and writer boundary are covered without a live API or database.
 Warning evidence and fail-after-commit behaviour for mixed and all-rejected
-runs are also covered locally. This is not yet a production control because the
-change is not deployed; malformed response-container handling remains
-outstanding. See [../endpoint-validation.md](../endpoint-validation.md).
+runs are also covered. An empty response or non-list outer container raises
+before parsing, loading or quarantine so Airflow can retry without inventing a
+source-row rejection. See
+[../endpoint-validation.md](../endpoint-validation.md).
 
 ## `load` does not catch exceptions, deliberately
 
@@ -64,9 +66,12 @@ first load is information — it says the table's assumptions and the source's
 behaviour disagree, and it says so immediately. Swallowed, the same violation
 surfaces weeks later as missing data with no obvious cause.
 
-Row-count assertions and logging remain outstanding. `raise_for_status()`
-catches HTTP failures, but the current path does not distinguish a successful
-empty or unexpectedly small response from an ordinary run.
+Unexpected row-count assertions and logging remain outstanding.
+`raise_for_status()` catches HTTP failures and the response contract rejects an
+empty result. A non-empty response whose returned rows satisfy the schema but
+whose total row count is unexpectedly low is not yet distinguished from an
+ordinary run. Those returned rows would load normally; absent rows have no
+payload to quarantine.
 
 ## Window cap: tested and closed, 2026-08-21
 

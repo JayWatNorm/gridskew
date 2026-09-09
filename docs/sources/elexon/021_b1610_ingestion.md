@@ -8,6 +8,10 @@ see [../ingestion-patterns.md](../ingestion-patterns.md).
 settlement days 2025-08-22 to 2026-08-10, **139,316,985 rows**, no gaps. The SF
 rung is deployed and runs forward only.
 
+This release adds endpoint validation to the B1610 poller. The Airflow image
+includes its new Decimal-aware JSON dependency and is rolled out first, before
+the server pulls the updated poller.
+
 | | |
 |---|---|
 | Module | `ingestion/elexon/b1610_poller.py` |
@@ -17,6 +21,21 @@ rung is deployed and runs forward only.
 | DAGs | `gridskew_elexon_b1610_II_dag.py`, `..._SF_dag.py` |
 | Schedule | `@daily`, both |
 | `catchup` | II **`True`**, SF **`False`** |
+
+## Validation and quarantine
+
+The local B1610 poller rejects an empty response or non-list outer container
+before row validation. It validates every item, including non-dictionary rows,
+routes compatible and warning-only rows to the typed table, writes rejected
+rows to `raw.endpoint_quarantine`, then fails a mixed or all-rejected run after
+the applicable writes commit. Rejected Decimal quantities remain JSON numbers
+without conversion to binary floats or strings.
+
+The tests cover response containers, compatible/rejected routing,
+non-dictionary items, grouped bounded warning evidence, the quarantine writer
+and source-specific conflict-clause wiring. They use mocks and do not claim a
+live database conflict test. See
+[../endpoint-validation.md](../endpoint-validation.md).
 
 ## Two rungs currently implemented
 
@@ -78,7 +97,9 @@ long you wait, not by a parameter:
 | 450 days | `RF` |
 
 That is why this is two DAGs at fixed offsets rather than one job with an
-argument, and why **a missed poll cannot be made up later**.
+argument, and why **a missed settlement-run revision cannot be recovered
+later**. A later rung can still recover the underlying period at a more mature
+run type.
 
 ## Chunking and volumes
 
@@ -160,10 +181,12 @@ Note the first day shows **46** here where PN's shows 47 — the two datasets
 timestamp differently (`timeFrom` versus `halfHourEndTime`), so the same `from`
 parameter lands on a different boundary.
 
-## Row-count safeguard is outstanding
+## Unexpected row-count safeguard is outstanding
 
-A poll returning zero rows must be visible in the log. Given the publication lag,
-an empty response is this dataset's actual failure mode — not an error, just
-silence. This is the case the rule in
-[../ingestion-patterns.md](../ingestion-patterns.md) was written for. The
-current poller does not yet log or assert the returned row count.
+The response contract now rejects a zero-row result and raises for Airflow
+retry before parsing, loading or quarantine. It does not yet detect a non-empty
+response whose returned rows satisfy the schema but whose total row count is
+unexpectedly low. Those returned rows would load normally; absent rows have no
+payload to quarantine. Given B1610's volume, that is the remaining
+silent-truncation risk identified in
+[../ingestion-patterns.md](../ingestion-patterns.md).

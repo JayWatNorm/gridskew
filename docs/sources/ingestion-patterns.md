@@ -143,10 +143,13 @@ you would simply be blocked.
   so no additional client-side delay is required.
 - **Identify yourself.** Both sets of terms prohibit concealing an application's
   identity. `gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
-- **Add row-count checks, not just status-code checks.** A truncated or
-  throttled response can return 200 with a short body, which looks like a
-  successful run that wrote nothing. This safeguard remains outstanding in the
-  current Elexon pollers.
+- **Add expected-volume checks, not just status-code and container checks.**
+  The current Elexon pollers reject empty and malformed outer responses. A
+  truncated or throttled response could still return 200 with a non-empty list
+  whose returned rows satisfy the schema but whose total row count is
+  unexpectedly low. The pollers would load those returned rows normally;
+  absent rows have no payload to quarantine. No expected-volume check currently
+  detects and fails that case.
 
 ## How `retrieved_at` participates in raw identity
 

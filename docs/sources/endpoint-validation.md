@@ -5,17 +5,22 @@
 PN, QPN and B1610 have field contracts and a shared, offline row validator.
 Nineteen validator tests cover PN contract rules and batch behaviour, input
 non-mutation, QPN and B1610 fixture compatibility, and B1610 quantity types.
-The local PN and QPN pollers now validate every fetched row before parsing. They
-send compatible and warning-only rows to their typed loads and rejected
-findings to fixed-table quarantine writers. Warning-only findings also produce
-grouped, bounded JSON warning logs. Mixed responses commit both compatible rows
-and quarantine evidence before the task fails. All-rejected responses commit
-the quarantine evidence, skip typed parsing and loading, then fail. Before row
-validation, both pollers reject an empty response or a non-list outer container
-and raise so Airflow can retry; these response failures do not enter the row
-quarantine. PN and QPN routing, warning-evidence, writer, response-container and
-final-status tests are complete, but this branch is not deployed. B1610
-integration remains planned.
+All three pollers now validate every fetched row before parsing. They send
+compatible and warning-only rows to their typed loads and rejected findings to
+fixed-table quarantine writers. Warning-only findings also produce grouped,
+bounded JSON warning logs. Mixed responses commit both compatible rows and
+quarantine evidence before the task fails. All-rejected responses commit the
+quarantine evidence, skip typed parsing and loading, then fail. Before row
+validation, each poller rejects an empty response or a non-list outer container
+and raises so Airflow can retry; these response failures do not enter the row
+quarantine.
+
+PN and QPN validation is already running in production. This release adds the
+B1610 validation path. Its quarantine writer serialises Decimal quantities as
+JSON numbers without converting them to binary floats or strings, and its
+routing tests include a non-dictionary item beside a compatible row. Release
+order is the rebuilt Airflow image with the new runtime dependency first, then
+the updated B1610 poller.
 
 ## Components
 
@@ -26,8 +31,10 @@ integration remains planned.
 | [test_validation.py](../../tests/test_validation.py) | Cross-source contract tests, mixed-batch findings and input non-mutation |
 | [pn_poller.py](../../ingestion/elexon/pn_poller.py) | PN validation routing, grouped warning logs, typed loading and the current PN quarantine writer |
 | [qpn_poller.py](../../ingestion/elexon/qpn_poller.py) | QPN validation routing, grouped warning logs, typed loading and the current QPN quarantine writer |
+| [b1610_poller.py](../../ingestion/elexon/b1610_poller.py) | B1610 validation routing, Decimal-safe quarantine and typed loading |
 | [test_elexon_pn.py](../../tests/test_elexon_pn.py) | PN parsing, response-container, routing, warning-evidence and quarantine-writer boundary tests |
 | [test_elexon_qpn.py](../../tests/test_elexon_qpn.py) | QPN parsing, response-container, routing, warning-evidence and quarantine-writer boundary tests |
+| [test_elexon_b1610.py](../../tests/test_elexon_b1610.py) | B1610 parsing, response-container, routing, warning-evidence, Decimal-writer and non-dictionary tests |
 | [006_endpoint_quarantine.sql](../../sql/init/006_endpoint_quarantine.sql) | Fixed quarantine-table definition for rejected source rows |
 
 The validator makes no HTTP requests, imports no poller and performs no database
@@ -87,8 +94,9 @@ the data into load and quarantine batches.
 
 A non-dictionary item produces an indexed error finding with the original item
 and does not stop later rows from being validated. This generic validator still
-accepts an empty list and returns no findings. The PN and QPN pollers apply
-their stricter non-empty-list response contracts before calling the validator.
+accepts an empty list and returns no findings. The PN, QPN and B1610 pollers
+apply their stricter non-empty-list response contracts before calling the
+validator.
 
 ## Validation performed
 
@@ -123,32 +131,39 @@ Run from the repository root with the development dependencies installed:
 python -m pytest tests/test_validation.py -v
 ```
 
-The full Python suite passed with **46 tests on 6 September 2026**, including
-these 19 validator tests and the PN/QPN routing, warning-evidence and writer
-coverage. Warning-evidence coverage for both pollers includes six matching
-warnings and proves that the complete affected-row count is retained while the
-source-index sample is capped at five. Repository-wide Ruff lint and formatting
-checks also passed.
+The full Python suite passed with **58 tests on 9 September 2026**, including
+these 19 validator tests and the PN, QPN and B1610 routing, warning-evidence and
+writer coverage. Warning-evidence coverage for all three pollers includes six
+matching warnings and proves that the complete affected-row count is retained
+while the source-index sample is capped at five. Loader-wiring tests call each
+real loader twice with `execute_values()` mocked and protect the source-specific
+conflict target, batch, page size and commit calls. They do not execute a live
+PostgreSQL conflict. Repository-wide Ruff lint and formatting checks and DAG
+compilation also passed.
 
 ## Integration boundary
 
-The local PN and QPN flows are fetch, validate, route, parse and load. Rejected
+The PN, QPN and B1610 flows are fetch, validate, route, parse and load. Rejected
 source rows are prepared for `raw.endpoint_quarantine` with the dataset, request
 context, retrieval time, zero-based source index, validation errors, observed
 field names and complete source payload. Compatible rows continue to typed
 loading. Warning-only rows remain compatible and do not enter quarantine.
 Existing target-key duplicates retain `ON CONFLICT ... DO NOTHING`; they are
-not quarantine events.
+not quarantine events. B1610's psycopg2 payload adapter uses `simplejson` so a
+rejected Decimal quantity remains a JSON number with its decimal representation
+preserved.
 
-An empty PN/QPN response or a non-list outer container fails immediately before
-row validation. Nothing is parsed, loaded or quarantined. The raised exception
-allows each Airflow task's configured retry policy to handle a potentially
-transient publisher response without inventing source-row evidence.
+An empty PN, QPN or B1610 response, or a non-list outer container, fails
+immediately before row validation. Nothing is parsed, loaded or quarantined.
+The raised exception allows each Airflow task's configured retry policy to
+handle a potentially transient publisher response without inventing source-row
+evidence.
 
-After both routed writes complete, any rejected row makes the task fail. A
-mixed response therefore retains its compatible rows and quarantine evidence
-before raising. An all-rejected response retains its quarantine evidence,
-does not call typed parsing or loading with an empty list, and then raises.
+After all applicable routed writes complete, any rejected row makes the task
+fail. A mixed response therefore retains its compatible rows and quarantine
+evidence before raising. An all-rejected response retains its quarantine
+evidence, does not call typed parsing or loading with an empty list, and then
+raises.
 
 Warning-only findings produce one warning-level JSON log per `(reason, field)`
 group. Each record contains the dataset, source retrieval time, request window,
@@ -159,19 +174,24 @@ keeps Airflow logs bounded. No warning table or duplicate error-summary table
 is used.
 
 The quarantine DDL and a standalone insert/commit/read-back check were verified
-in development. The Python tests now prove PN routing and the values sent to the
-writer with mocks; they do not constitute a live database integration test.
+in development. The Python tests prove all three pollers' routing and the values
+sent to their writers with mocks; they do not constitute a live database
+integration test. The quarantine table uses a generated identity primary key
+and has no source-payload uniqueness constraint, so repeated observations can
+remain separate evidence.
 
-Before live integration, the remaining work includes:
+Remaining follow-up work includes:
 
 - Routing date-parsing failures and other row-specific parse failures.
-- Moving the duplicated PN/QPN writer to a shared quarantine module before
-  wider poller use.
-- Integrating B1610, including numeric-preserving JSON serialisation for
-  rejected rows.
-- Testing retry behaviour and persistence when later processing fails.
-- Adding nested contracts for Carbon Intensity after the flat Elexon path is
-  proven.
+- Deciding whether the repeated Elexon routing, warning-grouping and quarantine
+  code warrants a shared module after the flat and nested paths have parity
+  coverage.
+- Deploying B1610 only after its new runtime dependency is present in the
+  Airflow image.
+- Running a live database conflict test if stronger evidence than the current
+  SQL-wiring and DDL checks becomes necessary.
+- Adding nested Carbon Intensity contracts as the next separate validation
+  build after B1610 delivery.
 
 Value ranges and model-quality rules remain downstream concerns. Database
 schema-drift monitoring, automatic schema evolution and blanket retention of
