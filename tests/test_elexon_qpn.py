@@ -5,7 +5,7 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 
-from ingestion.elexon.qpn_poller import parse, quarantine_rows
+from ingestion.elexon.qpn_poller import load, parse, quarantine_rows
 from ingestion.elexon.qpn_poller import run as run_poller
 
 FIXTURE_PATH = pathlib.Path(__file__).parent / "fixtures" / "elexon" / "qpn_stream.json"
@@ -59,6 +59,26 @@ def test_parse():
     assert any(row[4] < 0 for row in parsed_results)
     assert all(row[3] - row[2] == timedelta(minutes=30) for row in parsed_results)
     assert len({row[6] for row in parsed_results}) > 1
+
+
+def test_execute_values_reqs():
+    parsed_rows = [Mock(name="parsed_row")]
+    conn = MagicMock()
+
+    with patch("ingestion.elexon.qpn_poller.execute_values") as mock_execute_values:
+        load(parsed_rows, conn)
+        load(parsed_rows, conn)
+
+    assert mock_execute_values.call_count == 2
+    for call in mock_execute_values.call_args_list:
+        compact_sql = "".join(call.args[1].split())
+        assert (
+            "ONCONFLICT(national_grid_bm_unit,time_from,retrieved_at)DONOTHING"
+            in compact_sql
+        )
+        assert call.args[2] is parsed_rows
+        assert call.kwargs["page_size"] == 1000
+    assert conn.commit.call_count == 2
 
 
 def test_run_routing():
@@ -276,7 +296,6 @@ def test_run_error_only_routing():
 
     rejected_row = results[0].copy()
     del rejected_row["settlementPeriod"]
-    fetched_rows = [rejected_row]
     from_date = datetime(2026, 8, 20, tzinfo=timezone.utc)
     to_date = datetime(2026, 8, 21, tzinfo=timezone.utc)
     request_context = {
@@ -286,7 +305,7 @@ def test_run_error_only_routing():
     conn = Mock()
 
     with (
-        patch("ingestion.elexon.qpn_poller.fetch", return_value=fetched_rows),
+        patch("ingestion.elexon.qpn_poller.fetch", return_value=[rejected_row]),
         patch("ingestion.elexon.qpn_poller.parse") as mock_parse,
         patch("ingestion.elexon.qpn_poller.quarantine_rows") as mock_quarantine,
         patch("ingestion.elexon.qpn_poller.load") as mock_load,

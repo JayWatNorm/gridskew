@@ -14,6 +14,13 @@ How `raw.carbon_intensity_forecast` is loaded. For what the data means, see
 | DAG | `dags/gridskew_carbon_intensity_forecast_dag.py`, `dag_id` `gridskew_carbon_intensity` |
 | Schedule | `*/30 * * * *` |
 | `catchup` | **`False`** |
+| Task SLA | **35 minutes**: the 30-minute interval plus five minutes to complete |
+
+This release adds the SLA to both the project DAG and its homelab deployment
+copy. Airflow records a scheduled task that misses this deadline under
+**Browse → SLA Misses**; it does not cancel, fail or retry an otherwise
+successful task. Manual runs do not exercise this check. The homelab deployment
+explicitly enables `core.check_slas`.
 
 ## `catchup=False` is load-bearing here
 
@@ -21,12 +28,14 @@ How `raw.carbon_intensity_forecast` is loaded. For what the data means, see
 minutes and overwrites the stored value in place, so a request for a past period
 returns the final revision, not the forecast that existed then.
 
-A backfilled run would therefore fetch **current** data and stamp it with a
-`retrieved_at` implying it was observed months ago — destroying the one thing the
-archive exists to record.
+A backfilled run would therefore fetch **current** data for every historical
+logical interval. The poller uses the actual execution time for `retrieved_at`,
+so those runs would create hundreds of near-identical current observations, not
+the missing historical revisions.
 
 > Setting `catchup=True` here would not backfill history. It would write today's
-> forecast 365 times with 365 different misleading timestamps.
+> forecast hundreds of times with slightly different current timestamps and
+> pollute the archive with scheduler-created duplicates of one forecast state.
 
 This is the opposite of the Elexon datasets, which are fully addressable and use
 `catchup=True`. The setting follows from the source, not from preference.

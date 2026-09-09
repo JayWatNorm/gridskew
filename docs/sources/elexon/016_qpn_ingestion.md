@@ -7,6 +7,11 @@ How `raw.elexon_qpn` is loaded. For what the data means, see
 **Status: deployed, backfill complete 2026-08-23.** 366 runs covering
 2025-08-22 to 2026-08-23, 41,533,137 rows, no failures.
 
+Endpoint validation and quarantine are deployed. QPN rejects invalid response
+containers before row validation, retains compatible and warning-only rows,
+quarantines rejected source rows and fails mixed or all-rejected runs after the
+applicable writes commit.
+
 | | |
 |---|---|
 | Module | `ingestion/elexon/qpn_poller.py` |

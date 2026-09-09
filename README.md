@@ -138,28 +138,40 @@ use `catchup=True`. The `B1610` SF DAG runs forwards only with `catchup=False`.
 [docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) explains
 why these sources use different approaches.
 
+This release adds a 35-minute SLA to the forecast task. It represents the
+30-minute data interval plus five minutes to complete, records a late scheduled
+run under Airflow's **Browse → SLA Misses**, and does not cancel or fail an
+otherwise successful task. The shared homelab Airflow configuration explicitly
+enables SLA checking. The release is operationally verified with an on-time
+scheduled run and a controlled late scheduled run after the PR is merged.
+
 ## Endpoint validation
 
 PN, QPN and B1610 have explicit field contracts and a shared offline validator.
 It checks required fields, nullability and exact Python types, and returns
-row-level errors and warnings. The deployed PN and QPN pollers validate every
-fetched row: compatible and warning-only rows continue to typed
-parsing, while rejected rows are excluded and passed to fixed quarantine
-writers with their source index, request context and complete payload.
-Warning-only findings also produce warning-level JSON logs grouped by reason
-and affected field, with the complete affected-row count and up to five source
-indexes. Tests exercise the routing, grouped warning evidence and writer
-boundaries without a live API or database. Before row validation, both pollers
-reject an empty response or a non-list outer container and raise so Airflow can
-retry; nothing is parsed, loaded or quarantined for these response failures.
+row-level errors and warnings. All three pollers validate every fetched row:
+compatible and warning-only rows continue to typed parsing, while rejected
+rows are excluded and passed to fixed quarantine writers with their source
+index, request context and complete payload. B1610 preserves rejected Decimal
+quantities as JSON numbers rather than converting them to floats or strings.
 
-These PN and QPN integrations are deployed. B1610 does not yet call the
-validator. A mixed response commits its compatible rows and rejected-row
-evidence before failing the run; an all-rejected response commits quarantine
-evidence, skips typed parsing and loading, then fails. Accepted typed rows
-retain the contracted fields rather than a blanket copy of every source field. See
+Warning-only findings produce warning-level JSON logs grouped by reason and
+affected field, with the complete affected-row count and up to five source
+indexes. A mixed response commits its compatible rows and rejected-row evidence
+before failing the run; an all-rejected response commits quarantine evidence,
+skips typed parsing and loading, then fails. Before row validation, each poller
+rejects an empty response or a non-list outer container and raises so Airflow
+can retry; nothing is parsed, loaded or quarantined for these response failures.
+
+PN and QPN validation is already running in production. This release adds the
+complete B1610 validation path and its runtime dependency. The Airflow image is
+rebuilt and deployed first, then the updated poller is pulled on the server.
+Tests exercise response routing, non-dictionary items, grouped warning evidence,
+quarantine writers and source-specific conflict-clause wiring without a live API
+or database. Accepted typed rows retain the contracted fields rather than a
+blanket copy of every source field. See
 [endpoint validation](docs/sources/endpoint-validation.md) for the interfaces,
-completed checks and integration boundary.
+completed checks and release order.
 
 ## Run the tests
 
@@ -274,6 +286,9 @@ Full sequence, settings and pitfalls: **[docs/deployment.md](docs/deployment.md)
 - [x] `B1610` II backfill complete; SF running forwards
 - [x] PN and QPN response-container handling, validation routing, warning
       evidence, quarantine and fail-after-commit task status deployed
+- [x] B1610 response-container handling, validation routing, Decimal-safe
+      quarantine and fail-after-commit task status included in this release;
+      the homelab runtime is rolled out first
 - [ ] BM unit registry snapshot
 - [x] dbt project initialised
 - [x] Sources declared for all five raw tables, with freshness checks

@@ -5,7 +5,7 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 
-from ingestion.elexon.pn_poller import parse, quarantine_rows
+from ingestion.elexon.pn_poller import load, parse, quarantine_rows
 from ingestion.elexon.pn_poller import run as run_poller
 
 FIXTURE_PATH = pathlib.Path(__file__).parent / "fixtures" / "elexon" / "pn_stream.json"
@@ -59,6 +59,26 @@ def test_parse():
     ramp = [(row[4] - row[5]) for row in parsed_results]
     assert len(set(ramp)) > 1, "ramp still present"
     assert len({row[6] for row in parsed_results}) > 1
+
+
+def test_execute_values_reqs():
+    parsed_rows = [Mock(name="parsed_row")]
+    conn = MagicMock()
+
+    with patch("ingestion.elexon.pn_poller.execute_values") as mock_execute_values:
+        load(parsed_rows, conn)
+        load(parsed_rows, conn)
+
+    assert mock_execute_values.call_count == 2
+    for call in mock_execute_values.call_args_list:
+        compact_sql = "".join(call.args[1].split())
+        assert (
+            "ONCONFLICT(national_grid_bm_unit,time_from,retrieved_at)DONOTHING"
+            in compact_sql
+        )
+        assert call.args[2] is parsed_rows
+        assert call.kwargs["page_size"] == 1000
+    assert conn.commit.call_count == 2
 
 
 def test_run_routing():

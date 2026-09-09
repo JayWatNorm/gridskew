@@ -12,10 +12,10 @@ market data.
 | Docs | https://bmrs.elexon.co.uk/api-documentation/introduction |
 | Data browser | https://bmrs.elexon.co.uk/ |
 
-The documentation site is JavaScript-rendered and cannot be fetched
-programmatically. The **OpenAPI spec** is the useful artefact: it carries every
-endpoint's parameters, response schema and worked examples, and is available in
-JSON, YAML and WADL from the developer portal.
+The developer portal publishes the **OpenAPI specification** in JSON, YAML and
+WADL. It is the reliable machine-readable source for endpoint parameters,
+response schemas and worked examples; the rendered documentation remains useful
+for browsing.
 
 ## How the GB electricity market works, briefly
 
@@ -262,11 +262,13 @@ So:
 - **Backfills**: daily Airflow intervals are serialised through the one-slot
   `elexon` pool. The completed PN backfill averaged about 1.4 requests per
   minute, so the current implementation needs no additional client-side delay.
-- **Add row-count checks, not just status-code checks.** `raise_for_status()`
-  catches 4xx and 5xx. With no rate-limit headers, a future throttle could
-  arrive in a shape not seen here, and a 200 with an empty body would otherwise
-  look like a successful run that wrote nothing. The current Elexon pollers do
-  not yet implement this safeguard.
+- **Add expected-volume checks, not just status-code and container checks.**
+  `raise_for_status()` catches 4xx and 5xx, and the current pollers reject empty
+  or malformed outer responses. With no rate-limit headers, a future throttle
+  could still return 200 with a non-empty list whose returned rows satisfy the
+  schema but whose total row count is unexpectedly low. The current pollers
+  would load those returned rows normally; absent rows have no payload to
+  quarantine. No expected-volume check currently detects and fails that case.
 - **Identify yourself.** The terms prohibit concealing an application's
   identity, and a descriptive `User-Agent` means an operator can contact you
   rather than simply blocking the address.

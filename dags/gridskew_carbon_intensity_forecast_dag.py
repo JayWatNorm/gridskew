@@ -27,7 +27,10 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
 )
 def gridskew_carbon_intensity_dag():
 
-    @task
+    # Airflow 2.10 evaluates this from the scheduled logical date. With a
+    # 30-minute data interval, 35 minutes allows five minutes for completion
+    # after the run becomes due without cancelling or failing a late task.
+    @task(sla=timedelta(minutes=35))
     def poll_forecast():
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
