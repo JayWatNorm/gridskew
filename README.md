@@ -129,21 +129,22 @@ Python ingestion → PostgreSQL → dbt → Airflow, on a self-hosted Linux serv
 Separate development and production databases; scheduled runs write to
 production only.
 
-Six DAGs are live in production: the carbon intensity forecast archive every 30
-minutes, the carbon intensity outturn poller daily, `PN` and `QPN` daily, and
-two daily `B1610` DAGs that sample the II and SF settlement runs. An empty
+Six DAGs are live in production: the carbon intensity forecast archive at five
+and 35 minutes past each hour, the carbon intensity outturn poller daily, `PN`
+and `QPN` daily, and two daily `B1610` DAGs that sample the II and SF settlement
+runs. An empty
 outturn table triggers a 365-day backfill; later runs fetch a rolling seven-day
 window. `PN`, `QPN` and the `B1610` II DAG take their windows from Airflow and
 use `catchup=True`. The `B1610` SF DAG runs forwards only with `catchup=False`.
 [docs/sources/ingestion-patterns.md](docs/sources/ingestion-patterns.md) explains
 why these sources use different approaches.
 
-This release adds a 35-minute SLA to the forecast task. It represents the
-30-minute data interval plus five minutes to complete, records a late scheduled
-run under Airflow's **Browse → SLA Misses**, and does not cancel or fail an
-otherwise successful task. The shared homelab Airflow configuration explicitly
-enables SLA checking. The release is operationally verified with an on-time
-scheduled run and a controlled late scheduled run after the PR is merged.
+The forecast DAG runs five minutes after each half-hour boundary, reducing the
+risk of polling while NESO's boundary update is still publishing. Its 35-minute
+Airflow SLA gives each scheduled run five minutes to complete and records a
+late run under Airflow's **Browse → SLA Misses**. It does not cancel or fail
+an otherwise successful task. The shared homelab Airflow configuration
+explicitly enables SLA checking.
 
 ## Endpoint validation
 
