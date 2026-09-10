@@ -12,7 +12,7 @@ How `raw.carbon_intensity_forecast` is loaded. For what the data means, see
 | Table | `raw.carbon_intensity_forecast` |
 | DDL | `sql/init/001_carbon_intensity_forecast.sql` |
 | DAG | `dags/gridskew_carbon_intensity_forecast_dag.py`, `dag_id` `gridskew_carbon_intensity` |
-| Schedule | `*/30 * * * *` |
+| Schedule | `5,35 * * * *` (five minutes after each half-hour boundary) |
 | `catchup` | **`False`** |
 | Task SLA | **35 minutes**: the 30-minute interval plus five minutes to complete |
 
@@ -21,6 +21,12 @@ copy. Airflow records a scheduled task that misses this deadline under
 **Browse → SLA Misses**; it does not cancel, fail or retry an otherwise
 successful task. Manual runs do not exercise this check. The homelab deployment
 explicitly enables `core.check_slas`.
+
+The five-minute schedule offset reduces the risk of polling while NESO is still
+publishing its boundary update. The API response has no publication timestamp
+or revision identifier, so a successful request at exactly `:00` or `:30`
+cannot prove that it received the new forecast vintage. With the offset, a run
+due at `10:05` has an SLA deadline of `10:10`.
 
 ## `catchup=False` is load-bearing here
 

@@ -15,7 +15,7 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
 
 @dag(
     dag_id="gridskew_carbon_intensity",
-    schedule="*/30 * * * *",
+    schedule="5,35 * * * *",
     start_date=datetime(2026, 8, 17, tzinfo=timezone.utc),
     catchup=False,
     max_active_runs=1,
@@ -27,9 +27,9 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
 )
 def gridskew_carbon_intensity_dag():
 
-    # Airflow 2.10 evaluates this from the scheduled logical date. With a
-    # 30-minute data interval, 35 minutes allows five minutes for completion
-    # after the run becomes due without cancelling or failing a late task.
+    # The five-minute schedule offset allows NESO's boundary update to finish.
+    # Airflow 2.10 evaluates the SLA from the scheduled logical date, so 35
+    # minutes still allows five minutes for completion after the run is due.
     @task(sla=timedelta(minutes=35))
     def poll_forecast():
         from airflow.providers.postgres.hooks.postgres import PostgresHook
