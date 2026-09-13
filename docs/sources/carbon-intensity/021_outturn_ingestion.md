@@ -4,7 +4,8 @@ How `raw.carbon_intensity_outturn` is loaded. For what the data means, see
 [020_outturn.md](020_outturn.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: deployed and running in production since 2026-08-19.**
+**Status: running in production since 2026-08-19. Runtime validation,
+quarantine and period-completeness checks are deployed.**
 
 | | |
 |---|---|
@@ -25,11 +26,30 @@ It is off because the poller has a second job that `catchup` cannot do:
 fetches its own interval and never returns, so an `actual` landing three days
 after the period would never be captured.
 
-Instead, `run` takes its window from the database. `data_checker` reads the
-existing min and max `period_start`; an empty or short table triggers a **365 day
-backfill in 30 day chunks**, otherwise a **7 day look-back**. Backfill and
-catch-up are the same code path with different dates, which is what stops them
-drifting apart.
+Instead, `run` takes its window from the database. `stored_period_summary`
+reads the existing minimum and maximum `period_start`; an empty or short table
+triggers a **365 day backfill in 30 day windows**, otherwise a **7 day
+look-back**. Backfill and catch-up use the same path with different dates.
+
+## Validation and quarantine
+
+Each request must return a dictionary containing a non-empty `data` list. Rows
+are checked against the outturn contract, which requires non-null `actual` and
+final forecast values.
+
+Rejected rows retain that chunk's `from` and `to` context in quarantine.
+Compatible rows are still loaded. During a backfill, validation-rejected chunks
+do not block later chunks; the run raises once after all requested windows. See
+[Chunk boundaries overlap by one period](#chunk-boundaries-overlap-by-one-period)
+for the target-key behavior.
+
+Each chunk must also contain unique, consecutive 30-minute periods covering the
+API's observed inclusive request boundaries. Bounds inside a period align to
+the following half-hour boundary; an exact boundary remains unchanged. A
+seven-day request therefore derives 337 periods rather than relying on a
+hard-coded count. Incomplete chunks remain stored for diagnosis, do not block
+later chunks and cause the run to fail after all requested windows have been
+attempted.
 
 ## Why it is acceptable here and would be ruinous on PN
 
@@ -55,8 +75,8 @@ from "check for revisions" and this one does not.
 
 ## Window cap: 30 days, partially tested
 
-`from`/`to` appears to cap at **30 days**, which is what the chunker uses. A year
-is 13 requests.
+`from`/`to` appears to cap at **30 days**, which is what `build_windows` uses. A
+year is 13 requests.
 
 **31 days has not been tested**, so whether the API errors or truncates silently
 beyond 30 is unconfirmed. Silent truncation is the dangerous case — it returns

@@ -42,18 +42,11 @@ function serves 365 historical runs and every future daily one.
 
 ## Validation and quarantine
 
-The PN poller validates every fetched row before typed parsing. Rows with
-no validation errors continue, including warning-only rows. Rejected findings
-are excluded from `raw.elexon_pn` and passed to `raw.endpoint_quarantine` with
-their request window, retrieval time, zero-based source index, observed fields,
-validation errors and complete source payload.
-
-The routing and writer boundary are covered without a live API or database.
-Warning evidence and fail-after-commit behaviour for mixed and all-rejected
-runs are also covered. An empty response or non-list outer container raises
-before parsing, loading or quarantine so Airflow can retry without inventing a
-source-row rejection. See
-[../endpoint-validation.md](../endpoint-validation.md).
+PN requires a non-empty list response and validates every row against its
+contract before typed parsing. Shared routing loads compatible and warning-only
+rows, quarantines rejected rows with their request window and source evidence,
+then fails the task if any rows were rejected. Invalid outer containers fail
+before routing. See [../endpoint-validation.md](../endpoint-validation.md).
 
 ## `load` does not catch exceptions, deliberately
 
@@ -194,7 +187,8 @@ time, so a historical DAG run genuinely does the work its logical date describes
 
 Each run fetches its own `data_interval`, which means:
 
-- no `data_checker`, no chunker, no branch between backfill and steady state
+- no database-state check, no window builder, no branch between backfill and
+  steady state
 - one red square in the grid view if a single day fails, retried by
   `default_args` without touching any other day
 - `max_active_runs=1` serialises the 365 runs

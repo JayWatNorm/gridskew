@@ -1,7 +1,4 @@
-"""gridskew's carbon intensity forecast archive DAG.
-Polls the NESO Carbon Intensity API every 30 minutes and appends every
-revision to raw.carbon_intensity_forecast in gridskew_prod.
-"""
+"""Archive each half-hourly NESO Carbon Intensity forecast revision."""
 
 import sys
 from datetime import datetime, timedelta, timezone

@@ -1,6 +1,5 @@
 """Fetch, validate, quarantine and load Elexon Physical Notifications."""
 
-import json
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
@@ -8,12 +7,10 @@ from datetime import date, datetime, timedelta, timezone
 import psycopg2
 import requests
 from dotenv import load_dotenv
-from psycopg2.extras import Json, execute_values
+from psycopg2.extras import execute_values
 
 from ingestion.elexon.contracts import PN_SPEC
-from ingestion.validation import run as validate_rows
-
-logger = logging.getLogger(__name__)
+from ingestion.routing import process_rows
 
 
 def fetch(from_date, to_date):
@@ -35,149 +32,72 @@ def fetch(from_date, to_date):
 
 
 def run(conn, from_date=None, to_date=None):
-    """Validate one PN window, quarantine rejected rows and load compatible rows.
-
-    If either window boundary is absent, use the previous UTC day. Rows with
-    warnings but no errors remain compatible with the typed load.
-    """
+    """Validate and load one PN window, defaulting to the previous UTC day."""
 
     retrieved_at = datetime.now(timezone.utc)
-    retrieved_at_day_start = retrieved_at.replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    day_start = retrieved_at.replace(hour=0, minute=0, second=0, microsecond=0)
+    if from_date is None or to_date is None:
+        from_date = day_start - timedelta(days=1)
+        to_date = day_start
 
-    if to_date is None or from_date is None:
-        from_date = retrieved_at_day_start - timedelta(days=1)
-        to_date = retrieved_at_day_start
-    request_context = {
-        "from": from_date.isoformat(),
-        "to": to_date.isoformat(),
-    }
-    result = fetch(from_date, to_date)
-    if (not result) or (not isinstance(result, list)):
+    rows = fetch(from_date, to_date)
+    if not isinstance(rows, list) or not rows:
         raise RuntimeError(
             "Invalid response returned from Elexon PN API: expected a non-empty list"
         )
-    validation_findings = validate_rows(result, spec=PN_SPEC)
-    error_rows = []
-    valid_rows = []
-    warning_findings = []
-    warning_grouped = {}
 
-    for finding in validation_findings:
-        if finding["errors"]:
-            error_rows.append(finding)
-        else:
-            valid_rows.append(finding["row"])
-            if finding["warnings"]:
-                warning_findings.append(finding)
-
-    for finding in warning_findings:
-        for warning in finding["warnings"]:
-            reason, field = warning.split(": ", 1)
-            key = (reason, field)
-            if key not in warning_grouped:
-                warning_grouped[key] = {
-                    "reason": reason,
-                    "field": field,
-                    "source_indexes": [finding["index"]],
-                }
-            else:
-                warning_grouped[key]["source_indexes"].append(finding["index"])
-
-    for group in warning_grouped.values():
-        payload = {
-            "dataset": "PN",
-            "retrieved_at": retrieved_at.isoformat(),
-            "request_context": request_context,
-            "severity": "warning",
-            "reason": group["reason"],
-            "field": group["field"],
-            "affected_row_count": len(group["source_indexes"]),
-            "sample_source_indexes": group["source_indexes"][:5],
-        }
-        logger.warning("%s", json.dumps(payload))
-    if error_rows:
-        quarantine_rows(error_rows, conn, retrieved_at, request_context)
-    if valid_rows:
-        par_result = parse(valid_rows, retrieved_at)
-        load(par_result, conn)
-    if error_rows:
+    rejected_count = process_rows(
+        rows,
+        spec=PN_SPEC,
+        dataset="PN",
+        conn=conn,
+        retrieved_at=retrieved_at,
+        request_context={"from": from_date.isoformat(), "to": to_date.isoformat()},
+        parse_rows=parse,
+        load_rows=load,
+    )
+    if rejected_count:
         raise RuntimeError(
-            f"Quarantined {len(error_rows)} rows due to validation errors"
+            f"Quarantined {rejected_count} rows due to validation errors"
         )
-    return
 
 
-def parse(results, retrieved_at):
+def parse(source_rows, retrieved_at):
     """Convert compatible source dictionaries to typed PN insert tuples."""
 
-    rows = [
-        (
-            date.fromisoformat(result["settlementDate"]),
-            result["settlementPeriod"],
-            datetime.strptime(result["timeFrom"], "%Y-%m-%dT%H:%M:%SZ").replace(
-                tzinfo=timezone.utc
-            ),
-            datetime.strptime(result["timeTo"], "%Y-%m-%dT%H:%M:%SZ").replace(
-                tzinfo=timezone.utc
-            ),
-            result["levelFrom"],
-            result["levelTo"],
-            result["nationalGridBmUnit"],
-            result["bmUnit"],
-            retrieved_at,
+    parsed_rows = []
+    for source_row in source_rows:
+        parsed_rows.append(
+            (
+                date.fromisoformat(source_row["settlementDate"]),
+                source_row["settlementPeriod"],
+                datetime.strptime(source_row["timeFrom"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                    tzinfo=timezone.utc
+                ),
+                datetime.strptime(source_row["timeTo"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                    tzinfo=timezone.utc
+                ),
+                source_row["levelFrom"],
+                source_row["levelTo"],
+                source_row["nationalGridBmUnit"],
+                source_row["bmUnit"],
+                retrieved_at,
+            )
         )
-        for result in results
-    ]
-    return rows
+    return parsed_rows
 
 
-def quarantine_rows(rows, conn, retrieved_at, request_context):
-    """Insert rejected PN findings into the endpoint quarantine and commit."""
-
-    quarantined_at = datetime.now(timezone.utc)
-
-    insert_sql = (
-        "INSERT INTO raw.endpoint_quarantine (dataset, retrieved_at, request_context,"
-        "validation_errors, observed_fields, payload, quarantined_at) VALUES %s"
-    )
-
-    insert_values = [
-        (
-            "PN",
-            retrieved_at,
-            Json(request_context),
-            Json(
-                {
-                    "source_index": finding["index"],
-                    "errors": finding["errors"],
-                }
-            ),
-            Json(
-                list(finding["row"].keys()) if isinstance(finding["row"], dict) else []
-            ),
-            Json(finding["row"]),
-            quarantined_at,
-        )
-        for finding in rows
-    ]
-
-    with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, insert_values, page_size=1000)
-    conn.commit()
-
-
-def load(results, conn):
+def load(parsed_rows, conn):
     """Insert typed PN rows, ignoring existing target keys, and commit."""
 
     insert_sql = (
         "INSERT INTO raw.elexon_pn (settlement_date, settlement_period, time_from, time_to, level_from, "
-        "level_to, national_grid_bm_unit, bm_unit, retrieved_at) VALUES %s ON CONFLICT (national_grid_bm_unit, time_from, retrieved_at) DO NOTHING"
+        "level_to, national_grid_bm_unit, bm_unit, retrieved_at) VALUES %s ON CONFLICT "
+        "(national_grid_bm_unit, time_from, retrieved_at) DO NOTHING"
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, results, page_size=1000)
+        execute_values(cursor, insert_sql, parsed_rows, page_size=1000)
     conn.commit()
 
 

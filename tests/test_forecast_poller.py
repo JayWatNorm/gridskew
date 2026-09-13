@@ -1,34 +1,32 @@
 import json
-import pathlib
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
-from ingestion.carbon_intensity.forecast_poller import parse
+import pytest
+
+from ingestion.carbon_intensity.contracts import FORECAST_SPEC
+from ingestion.carbon_intensity.forecast_poller import load, parse
+from ingestion.carbon_intensity.forecast_poller import run as run_poller
 
 FIXTURE_PATH = (
-    pathlib.Path(__file__).parent
-    / "fixtures"
-    / "carbon_intensity"
-    / "forecast_fw48h.json"
+    Path(__file__).parent / "fixtures" / "carbon_intensity" / "forecast_fw48h.json"
 )
-
-# Deliberately not on a period boundary, and distinct from every other value in
-# the golden tuple, so that a positional swap cannot pass unnoticed.
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)
 
 
-def test_parse():
-    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
-        results = json.load(f)
+@pytest.fixture
+def payload():
+    return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
 
-    parsed_results = parse(results, RETRIEVED_AT)
 
-    # Parse preserves row count.
-    assert len(parsed_results) == len(results["data"])
+def test_parse_maps_a_source_row_to_the_database_tuple(payload):
+    source_rows = payload["data"]
 
-    # Golden value. The expected side is written by hand from the fixture, not
-    # derived from it, so it independently verifies both the string-to-datetime
-    # conversion and the position of every column in the tuple.
-    assert parsed_results[0] == (
+    parsed_rows = parse(source_rows, RETRIEVED_AT)
+
+    assert len(parsed_rows) == len(source_rows)
+    assert parsed_rows[0] == (
         datetime(2026, 8, 17, 7, 30, tzinfo=timezone.utc),
         datetime(2026, 8, 17, 8, 0, tzinfo=timezone.utc),
         RETRIEVED_AT,
@@ -37,21 +35,114 @@ def test_parse():
         "high",
     )
 
-    # Rules that must hold for every row.
-    for i, row in enumerate(parsed_results, start=1):
-        assert row[1] - row[0] == timedelta(minutes=30), (
-            f"row {i}: period is {row[1] - row[0]}, expected 30 minutes"
-        )
-        assert row[2] == RETRIEVED_AT, (
-            f"row {i}: retrieved_at is {row[2]}, expected {RETRIEVED_AT}"
-        )
-        assert row[3] > 0, f"row {i}: forecast is {row[3]}"
-        assert row[4] is None, f"row {i}: actual is {row[4]}, expected None"
-        assert row[0].utcoffset() == timedelta(0), f"row {i}: {row[0]} is not UTC"
 
-    # Mirrors PRIMARY KEY (period_start, retrieved_at). retrieved_at is constant
-    # across a batch, so a repeated period_start is a guaranteed insert failure.
-    period_starts = [row[0] for row in parsed_results]
-    assert len(set(period_starts)) == len(period_starts), (
-        "duplicate period_start in batch"
+def test_load_uses_the_expected_columns_and_commits():
+    parsed_rows = [Mock(name="parsed_row")]
+    conn = MagicMock()
+
+    with patch(
+        "ingestion.carbon_intensity.forecast_poller.execute_values"
+    ) as mock_execute_values:
+        load(parsed_rows, conn)
+
+    sql = "".join(mock_execute_values.call_args.args[1].split())
+    assert sql == (
+        "INSERTINTOraw.carbon_intensity_forecast(period_start,period_end,"
+        "retrieved_at,forecast,actual,intensity_index)VALUES%s"
     )
+    assert mock_execute_values.call_args.args[2] == parsed_rows
+    conn.commit.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        pytest.param(None, id="none"),
+        pytest.param([], id="list"),
+        pytest.param({}, id="missing-data"),
+        pytest.param({"data": {}}, id="data-not-a-list"),
+        pytest.param({"data": []}, id="empty-data"),
+    ],
+)
+def test_run_rejects_an_invalid_response_envelope(response):
+    conn = Mock()
+
+    with (
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.fetch",
+            return_value=response,
+        ),
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.process_rows"
+        ) as mock_process_rows,
+    ):
+        with pytest.raises(RuntimeError, match="expected a non-empty data list"):
+            run_poller(conn)
+
+    mock_process_rows.assert_not_called()
+
+
+def test_run_stores_rows_before_checking_completeness(payload):
+    conn = Mock()
+    events = []
+
+    def record_storage(*args, **kwargs):
+        events.append("stored")
+        return 0
+
+    def record_completeness_check(*args, **kwargs):
+        events.append("checked")
+
+    with (
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.fetch",
+            return_value=payload,
+        ) as mock_fetch,
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.process_rows",
+            side_effect=record_storage,
+        ) as mock_process_rows,
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.validate_forecast_window",
+            side_effect=record_completeness_check,
+        ) as mock_validate_completeness,
+    ):
+        run_poller(conn)
+
+    retrieved_at = mock_process_rows.call_args.kwargs["retrieved_at"]
+    timestamp = retrieved_at.strftime("%Y-%m-%dT%H:%MZ")
+    mock_fetch.assert_called_once_with(timestamp)
+    mock_process_rows.assert_called_once_with(
+        payload["data"],
+        spec=FORECAST_SPEC,
+        dataset="CI_Forecast",
+        conn=conn,
+        retrieved_at=retrieved_at,
+        request_context={"timestamp": timestamp, "horizon_hours": 48},
+        parse_rows=parse,
+        load_rows=load,
+    )
+    mock_validate_completeness.assert_called_once_with(payload["data"], retrieved_at)
+    assert events == ["stored", "checked"]
+
+
+def test_run_fails_after_shared_routing_rejects_a_row(payload):
+    conn = Mock()
+
+    with (
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.fetch",
+            return_value=payload,
+        ),
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.process_rows",
+            return_value=1,
+        ),
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.validate_forecast_window"
+        ) as mock_validate_completeness,
+    ):
+        with pytest.raises(RuntimeError, match="Quarantined 1 row"):
+            run_poller(conn)
+
+    mock_validate_completeness.assert_not_called()

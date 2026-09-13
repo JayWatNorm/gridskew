@@ -191,12 +191,11 @@ docker compose exec postgres-prod psql -U gridskew -d gridskew_prod
 The Carbon forecast DAG runs at five and 35 minutes past each hour so it does
 not poll exactly while NESO's half-hour boundary update may still be publishing.
 Its 35-minute SLA expires five minutes after each scheduled run becomes due and
-requires the shared deployment to have `core.check_slas=True`. The current
-homelab Compose file makes that setting explicit. Its next Airflow rebuild also
-installs the `simplejson` dependency needed by B1610 quarantine, so deploy and
-verify the homelab image and configuration before pulling the dependent GridSkew
-ingestion change.
-Afterwards, confirm the effective setting, confirm no DAG import errors, observe
+requires the shared deployment to have `core.check_slas=True`. The homelab
+Compose file makes that setting explicit and the Airflow image includes the
+`simplejson` dependency used by B1610 quarantine.
+
+After deployment, confirm the effective setting, confirm no DAG import errors, observe
 an on-time scheduled forecast run without a miss, and use a harmless controlled
 scheduled test to prove a late run appears under **Browse → SLA Misses**. A
 manual trigger does not exercise Airflow's SLA check.

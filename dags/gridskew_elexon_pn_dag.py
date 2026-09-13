@@ -1,4 +1,4 @@
-"""gridskew's elexon pns dag, retrieves commitments for the past day with catchup."""
+"""Load Elexon Physical Notifications each day, including historical runs."""
 
 import sys
 from datetime import datetime, timedelta, timezone

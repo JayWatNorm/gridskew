@@ -1,198 +1,92 @@
 # Endpoint validation
 
-## Status
+Every ingested endpoint has an explicit contract checked before typed parsing.
+The validator is offline and source-independent: callers provide decoded rows
+and the matching contract.
 
-PN, QPN and B1610 have field contracts and a shared, offline row validator.
-Nineteen validator tests cover PN contract rules and batch behaviour, input
-non-mutation, QPN and B1610 fixture compatibility, and B1610 quantity types.
-All three pollers now validate every fetched row before parsing. They send
-compatible and warning-only rows to their typed loads and rejected findings to
-fixed-table quarantine writers. Warning-only findings also produce grouped,
-bounded JSON warning logs. Mixed responses commit both compatible rows and
-quarantine evidence before the task fails. All-rejected responses commit the
-quarantine evidence, skip typed parsing and loading, then fail. Before row
-validation, each poller rejects an empty response or a non-list outer container
-and raises so Airflow can retry; these response failures do not enter the row
-quarantine.
+**Deployment:** Runtime validation and quarantine are deployed for all five
+ingested datasets. Carbon forecast and outturn completeness checks are also
+deployed.
 
-PN and QPN validation is already running in production. This release adds the
-B1610 validation path. Its quarantine writer serialises Decimal quantities as
-JSON numbers without converting them to binary floats or strings, and its
-routing tests include a non-dictionary item beside a compatible row. Release
-order is the rebuilt Airflow image with the new runtime dependency first, then
-the updated B1610 poller.
+## Behavior
+
+`validate_row(row, spec)` returns error and warning lists.
+`validate_rows(rows, spec)` returns one indexed finding per source item without
+changing the input.
+
+| Condition | Finding |
+|---|---|
+| Required field missing | Error |
+| Forbidden null | Error |
+| Incompatible exact Python type | Error |
+| Unexpected field | Warning |
+| Optional field missing | Warning |
+
+Elexon contracts are flat. Carbon contracts recurse through `intensity` and
+report dotted paths such as `intensity.actual`. A non-dictionary row produces
+an error finding and does not stop later rows from being checked.
+
+Pollers validate the response envelope before row validation. Elexon expects a
+non-empty list; Carbon expects a dictionary containing a non-empty `data` list.
+Invalid envelopes fail without parsing, loading or quarantine.
+
+Carbon also checks semantic period coverage after compatible rows are loaded.
+Forecast requires consecutive half-hour periods that cover at least 48 hours
+from the first returned boundary and contain the request time in the first
+period. Outturn requires consecutive periods covering the endpoint's observed
+inclusive request boundaries. These rules do not assume a fixed response size.
+
+## Routing
+
+Rows with no errors remain compatible, including warning-only rows. Warnings
+are grouped by reason and field, with the affected count and at most five source
+indexes.
+
+Rejected rows are written to `raw.endpoint_quarantine` before compatible rows
+are parsed and loaded. Evidence includes the dataset, capture time, request
+context, validation errors, observed fields and complete payload. Carbon
+observed fields include nested dotted paths.
+
+Mixed responses retain both compatible data and rejected evidence before the
+task fails. All-rejected responses skip typed parsing and loading. Outturn
+applies this per request window, continues after validation-rejected chunks and
+raises once after all requested windows. HTTP, envelope, parsing, quarantine
+and database failures still stop immediately.
+
+`process_rows` returns the rejected-row count. Each poller uses that count to
+set its final task status after successful writes. Available compatible data is
+therefore retained even when the task reports an incomplete or invalid response.
 
 ## Components
 
 | File | Responsibility |
 |---|---|
-| [contracts.py](../../ingestion/elexon/contracts.py) | Independent `PN_SPEC`, `QPN_SPEC` and `B1610_SPEC` definitions |
-| [validation.py](../../ingestion/validation.py) | Source-independent checks over already-fetched Python dictionaries |
-| [test_validation.py](../../tests/test_validation.py) | Cross-source contract tests, mixed-batch findings and input non-mutation |
-| [pn_poller.py](../../ingestion/elexon/pn_poller.py) | PN validation routing, grouped warning logs, typed loading and the current PN quarantine writer |
-| [qpn_poller.py](../../ingestion/elexon/qpn_poller.py) | QPN validation routing, grouped warning logs, typed loading and the current QPN quarantine writer |
-| [b1610_poller.py](../../ingestion/elexon/b1610_poller.py) | B1610 validation routing, Decimal-safe quarantine and typed loading |
-| [test_elexon_pn.py](../../tests/test_elexon_pn.py) | PN parsing, response-container, routing, warning-evidence and quarantine-writer boundary tests |
-| [test_elexon_qpn.py](../../tests/test_elexon_qpn.py) | QPN parsing, response-container, routing, warning-evidence and quarantine-writer boundary tests |
-| [test_elexon_b1610.py](../../tests/test_elexon_b1610.py) | B1610 parsing, response-container, routing, warning-evidence, Decimal-writer and non-dictionary tests |
-| [006_endpoint_quarantine.sql](../../sql/init/006_endpoint_quarantine.sql) | Fixed quarantine-table definition for rejected source rows |
+| [`validation.py`](../../ingestion/validation.py) | Generic flat and nested contract checks |
+| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN and B1610 contracts |
+| [`contracts.py`](../../ingestion/carbon_intensity/contracts.py) | Forecast and outturn contracts |
+| [`routing.py`](../../ingestion/routing.py) | Shared warning, quarantine and compatible-row routing |
+| [`pn_poller.py`](../../ingestion/elexon/pn_poller.py) | PN response window, parser and loader |
+| [`qpn_poller.py`](../../ingestion/elexon/qpn_poller.py) | QPN response window, parser and loader |
+| [`b1610_poller.py`](../../ingestion/elexon/b1610_poller.py) | B1610 response window, parser, loader and Decimal encoder |
+| [`006_endpoint_quarantine.sql`](../../sql/init/006_endpoint_quarantine.sql) | Rejected-row table |
 
-The validator makes no HTTP requests, imports no poller and performs no database
-writes. The caller supplies both the decoded data and the appropriate contract.
+## Source-specific notes
 
-## Field contracts
+Type checks use exact Python types, so booleans do not satisfy integer fields.
+B1610 accepts integer and `Decimal` quantities. Its response and quarantine
+serializers keep decimal values as JSON numbers without converting them to
+binary floats or strings.
 
-Each contract contains nine field names. Each name maps to three settings:
+Target-key duplicates handled by `ON CONFLICT DO NOTHING` are not validation
+failures and do not enter quarantine.
 
-- `type`: an allowed Python type or tuple of types.
-- `required`: whether the key must be present.
-- `nullable`: whether a present key may contain `None`.
-
-A required, nullable field must exist but may contain `None`. This differs from
-an optional field, whose absence does not produce an error. Contract order does
-not need to match the response order; checks use field names.
-
-PN and QPN require `bmUnit` but permit a null value. Their
-`nationalGridBmUnit` must be present and non-null. B1610 requires a non-null
-`bmUnit`; `nationalGridBmUnitId` and `psrType` are required but nullable.
-All three recognise `dataset` as optional and non-null when present.
-
-B1610 fetches decimal JSON numbers as `Decimal`, while integer JSON numbers
-decode as `int`. Its `quantity` contract therefore accepts `(int, Decimal)`.
-Type checks compare exact types: Python booleans do not satisfy integer fields.
-Dates and timestamps remain strings here; the parser owns their conversion.
-Locally generated `retrieved_at` is not a source field and is not in a contract.
-
-## Function interfaces
-
-`validate_row(row, spec)` returns `(errors, warnings)`, two lists of messages.
-
-| Finding | Result |
-|---|---|
-| Required key absent | Error |
-| Present value is null where null is forbidden | Error |
-| Non-null value has an incompatible exact type | Error |
-| Key is not in the contract | Warning |
-| Optional key absent | Warning |
-
-Missing keys and nulls are handled before type checks. The function does not
-coerce values, drop fields or change the supplied row.
-
-`run(results, spec)` checks every row and returns a list of findings:
-
-```python
-[
-    {"index": 0, "row": original_row, "errors": [], "warnings": []},
-    # One dictionary per input row.
-]
-```
-
-Indexes are zero-based. Each `row` is a reference to the original dictionary,
-not a copy. The output preserves input order, and an empty input list produces
-an empty findings list. The function reports findings; it does not itself split
-the data into load and quarantine batches.
-
-A non-dictionary item produces an indexed error finding with the original item
-and does not stop later rows from being validated. This generic validator still
-accepts an empty list and returns no findings. The PN, QPN and B1610 pollers
-apply their stricter non-empty-list response contracts before calling the
-validator.
-
-## Validation performed
-
-The repeatable pytest coverage in
-[test_validation.py](../../tests/test_validation.py) exercises the three
-captured fixtures: 28 PN, 24 QPN and 27 B1610 rows. Its 19 tests cover:
-
-- A valid PN row and missing required fields, including required-but-nullable
-  `bmUnit`.
-- Forbidden nulls and permitted null `bmUnit` values.
-- Rejection of string and boolean values for integer `settlementPeriod`.
-- Unexpected fields and missing optional `dataset` as warning-only findings.
-- A renamed field as a missing-required error plus an unexpected-field warning.
-- Mixed valid/invalid batch findings: count, zero-based indexes, errors,
-  warnings and references to the original input dictionaries.
-- A non-dictionary item producing an error finding without preventing later
-  valid rows from being checked.
-- An empty input list returning an empty findings list.
-- Source input remaining unchanged after batch validation.
-- Complete QPN and B1610 fixtures matching their independent contracts.
-- B1610 accepting integer and `Decimal` quantities while rejecting `float`.
-
-The tests import the production `PN_SPEC`, `QPN_SPEC` and `B1610_SPEC` contracts
-and use independent expected findings. Deliberate row changes happen only in
-memory. They make no live API calls or database connections. Checking
-original-row references is distinct from proving that validation leaves all
-input values unchanged; both behaviours now have explicit coverage.
-
-Run from the repository root with the development dependencies installed:
+## Tests and boundaries
 
 ```bash
-python -m pytest tests/test_validation.py -v
+python -m pytest
 ```
 
-The full Python suite passed with **58 tests on 9 September 2026**, including
-these 19 validator tests and the PN, QPN and B1610 routing, warning-evidence and
-writer coverage. Warning-evidence coverage for all three pollers includes six
-matching warnings and proves that the complete affected-row count is retained
-while the source-index sample is capped at five. Loader-wiring tests call each
-real loader twice with `execute_values()` mocked and protect the source-specific
-conflict target, batch, page size and commit calls. They do not execute a live
-PostgreSQL conflict. Repository-wide Ruff lint and formatting checks and DAG
-compilation also passed.
-
-## Integration boundary
-
-The PN, QPN and B1610 flows are fetch, validate, route, parse and load. Rejected
-source rows are prepared for `raw.endpoint_quarantine` with the dataset, request
-context, retrieval time, zero-based source index, validation errors, observed
-field names and complete source payload. Compatible rows continue to typed
-loading. Warning-only rows remain compatible and do not enter quarantine.
-Existing target-key duplicates retain `ON CONFLICT ... DO NOTHING`; they are
-not quarantine events. B1610's psycopg2 payload adapter uses `simplejson` so a
-rejected Decimal quantity remains a JSON number with its decimal representation
-preserved.
-
-An empty PN, QPN or B1610 response, or a non-list outer container, fails
-immediately before row validation. Nothing is parsed, loaded or quarantined.
-The raised exception allows each Airflow task's configured retry policy to
-handle a potentially transient publisher response without inventing source-row
-evidence.
-
-After all applicable routed writes complete, any rejected row makes the task
-fail. A mixed response therefore retains its compatible rows and quarantine
-evidence before raising. An all-rejected response retains its quarantine
-evidence, does not call typed parsing or loading with an empty list, and then
-raises.
-
-Warning-only findings produce one warning-level JSON log per `(reason, field)`
-group. Each record contains the dataset, source retrieval time, request window,
-severity, reason, affected field, complete affected-row count and up to five
-zero-based source indexes. A row with multiple warnings contributes to each
-matching group. The full count preserves impact while the fixed-size sample
-keeps Airflow logs bounded. No warning table or duplicate error-summary table
-is used.
-
-The quarantine DDL and a standalone insert/commit/read-back check were verified
-in development. The Python tests prove all three pollers' routing and the values
-sent to their writers with mocks; they do not constitute a live database
-integration test. The quarantine table uses a generated identity primary key
-and has no source-payload uniqueness constraint, so repeated observations can
-remain separate evidence.
-
-Remaining follow-up work includes:
-
-- Routing date-parsing failures and other row-specific parse failures.
-- Deciding whether the repeated Elexon routing, warning-grouping and quarantine
-  code warrants a shared module after the flat and nested paths have parity
-  coverage.
-- Deploying B1610 only after its new runtime dependency is present in the
-  Airflow image.
-- Running a live database conflict test if stronger evidence than the current
-  SQL-wiring and DDL checks becomes necessary.
-- Adding nested Carbon Intensity contracts as the next separate validation
-  build after B1610 delivery.
-
-Value ranges and model-quality rules remain downstream concerns. Database
-schema-drift monitoring, automatic schema evolution and blanket retention of
-successful response payloads are outside this feature.
+Fixture-backed tests cover contracts, response envelopes, parsers, loader
+wiring and Carbon period completeness. Shared tests cover routing, warning
+evidence and quarantine values. They make no live API or database calls. Real
+PostgreSQL commit/replay behavior remains a separate follow-up check.

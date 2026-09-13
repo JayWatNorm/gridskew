@@ -29,26 +29,73 @@ OUT = Path(__file__).resolve().parents[1] / "fixtures" / "elexon" / "b1610_strea
 LAG_DAYS = 14  # matches the II poll offset
 MAX_UNITS = 6
 
+
+def has_null_ng(row):
+    return row["nationalGridBmUnitId"] is None
+
+
+def has_ng(row):
+    return bool(row["nationalGridBmUnitId"])
+
+
+def has_negative_quantity(row):
+    return row["quantity"] < 0
+
+
+def has_zero_quantity(row):
+    return row["quantity"] == 0
+
+
+def has_positive_quantity(row):
+    return row["quantity"] > 0
+
+
+def has_three_decimal_places(row):
+    quantity = row["quantity"]
+    return quantity != 0 and -quantity.as_tuple().exponent == 3
+
+
+def is_period_one(row):
+    return row["settlementPeriod"] == 1
+
+
+def is_period_two(row):
+    return row["settlementPeriod"] == 2
+
+
+def has_large_quantity(row):
+    # The real range runs to +-700 MWh. A fixture topping out at single digits
+    # cannot catch a numeric scale problem.
+    return abs(row["quantity"]) > 100
+
+
+def has_t_prefix(row):
+    return row["bmUnit"].startswith("T_")
+
+
+def has_e_prefix(row):
+    return row["bmUnit"].startswith("E_")
+
+
+def has_other_prefix(row):
+    # A parser that mishandles one identifier format can pass a fixture that
+    # contains only another format.
+    return not row["bmUnit"].startswith(("T_", "E_"))
+
+
 TRAITS = {
-    "null_ng": lambda r: r["nationalGridBmUnitId"] is None,
-    "has_ng": lambda r: bool(r["nationalGridBmUnitId"]),
-    "negative": lambda r: r["quantity"] < 0,
-    "zero": lambda r: r["quantity"] == 0,
-    "positive": lambda r: r["quantity"] > 0,
-    "three_dp": lambda r: (
-        r["quantity"] != 0 and -r["quantity"].as_tuple().exponent == 3
-    ),
-    "period_1": lambda r: r["settlementPeriod"] == 1,
-    "period_2": lambda r: r["settlementPeriod"] == 2,
-    # magnitude: the real range runs to +-700 MWh. A fixture topping out at
-    # single digits cannot catch a numeric scale problem.
-    "large": lambda r: abs(r["quantity"]) > 100,
-    # identifier shapes: a parse that mishandles one format passes a fixture
-    # containing only the other. pn_stream.json covers three shapes for the
-    # same reason.
-    "prefix_T": lambda r: r["bmUnit"].startswith("T_"),
-    "prefix_E": lambda r: r["bmUnit"].startswith("E_"),
-    "prefix_other": lambda r: not r["bmUnit"].startswith(("T_", "E_")),
+    "null_ng": has_null_ng,
+    "has_ng": has_ng,
+    "negative": has_negative_quantity,
+    "zero": has_zero_quantity,
+    "positive": has_positive_quantity,
+    "three_dp": has_three_decimal_places,
+    "period_1": is_period_one,
+    "period_2": is_period_two,
+    "large": has_large_quantity,
+    "prefix_T": has_t_prefix,
+    "prefix_E": has_e_prefix,
+    "prefix_other": has_other_prefix,
 }
 
 
@@ -68,6 +115,14 @@ def fetch(from_date, to_date):
 
 def traits_of(rows):
     return {name for name, test in TRAITS.items() if any(test(r) for r in rows)}
+
+
+def fixture_sort_key(row):
+    return row["settlementDate"], row["settlementPeriod"], row["bmUnit"]
+
+
+def decimal_sentinel(value):
+    return f"@@{value}@@"
 
 
 today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -112,16 +167,20 @@ for unit, unit_rows in chosen.items():
 print("\ntrait coverage")
 covered = traits_of([r for rs in chosen.values() for r in rs])
 for name in TRAITS:
-    print(f"  {'OK ' if name in covered else '** MISSING **'} {name}")
+    if name in covered:
+        status = "OK"
+    else:
+        status = "** MISSING **"
+    print(f"  {status} {name}")
 
 selected = sorted(
     (r for rs in chosen.values() for r in rs),
-    key=lambda r: (r["settlementDate"], r["settlementPeriod"], r["bmUnit"]),
+    key=fixture_sort_key,
 )
 
 # json.dumps cannot serialise Decimal, and float() would turn 0.000 into 0.0.
 # Emit a sentinel, then unquote it, so quantities stay byte-for-byte as sent.
-text = json.dumps(selected, indent=4, default=lambda o: f"@@{o}@@")
+text = json.dumps(selected, indent=4, default=decimal_sentinel)
 text = re.sub(r'"@@(-?[\d.]+)@@"', r"\1", text)
 
 OUT.write_text(text + "\n", encoding="utf-8")

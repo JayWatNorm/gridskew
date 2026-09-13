@@ -7,10 +7,6 @@ GridSkew is a working data platform built around a real analytical question,
 not a tutorial dataset. It applies Python ingestion, PostgreSQL, dbt and Airflow
 to live public APIs and preserves the revisions that those APIs overwrite.
 
-AI-assisted tools support coaching, documentation, scaffolding and code review.
-The repository owner makes and verifies the design, implementation and analysis
-decisions represented here.
-
 ## The question
 
 1. **Find the shortfalls.** Where did generating units commit to produce power
@@ -102,16 +98,20 @@ time behaviour differs. See
 
 ## Reliability and validation
 
-`PN`, `QPN` and `B1610` have explicit field contracts and shared offline
-validation. Compatible rows continue to typed parsing; rejected rows are
-excluded and written to an append-only quarantine with their request context
-and complete payload. Mixed and fully rejected responses retain their evidence
-before the Airflow task fails.
+Each ingested endpoint has an explicit field contract. Shared validation and
+routing report missing, null, incompatible and unexpected fields before typed
+parsing.
+Carbon contracts also validate the nested `intensity` object.
+Carbon period-completeness checks protect forecast and outturn response windows.
+Runtime validation, quarantine and Carbon period-completeness checks are
+deployed for all five ingested datasets.
 
-Tests cover response routing, source contracts, grouped warnings, quarantine
-writes and loader wiring without a live API or database. See
-[endpoint validation](docs/sources/endpoint-validation.md) for the detailed
-contracts and coverage.
+Compatible rows continue to typed loading. Rejected rows are committed to
+`raw.endpoint_quarantine` with their request context and complete payload;
+warning-only rows remain loadable and produce grouped logs. Tests cover the
+contracts, routing, response envelopes, quarantine evidence and loader wiring
+without calling live services. See
+[endpoint validation](docs/sources/endpoint-validation.md).
 
 ## Tests
 
@@ -161,7 +161,9 @@ the [deployment guide](docs/deployment.md).
 
 - Carbon intensity forecast and outturn collection
 - `PN`, `QPN` and `B1610` ingestion, backfills and scheduled Airflow runs
-- Append-only raw storage with endpoint validation and rejected-row quarantine
+- Append-only raw storage with deployed Elexon validation and quarantine
+- Runtime validation and quarantine for all five ingested datasets
+- Carbon forecast and outturn period-completeness checks
 - dbt sources, freshness checks and five source-grain staging views
 - Settlement-period conversion covering normal days and UK clock changes
 - Pull-request CI with Python tests, linting and DAG compilation
@@ -176,3 +178,8 @@ One open modelling question is whether `QPN` should alter the shortfall
 calculation. Only 18,300 of 41.5 million observed `QPN` rows were non-zero, all
 for one BM unit, so the question is testable but does not block the wider
 models. See the [QPN dataset notes](docs/sources/elexon/015_qpn.md).
+
+| |
+|---|
+| AI-assisted tools support coaching, documentation, scaffolding and code review. |
+| The repository owner makes and verifies the design, implementation and analysis decisions represented here. |

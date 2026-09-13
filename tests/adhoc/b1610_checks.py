@@ -1,4 +1,4 @@
-"""B1610 reconnaissance, before the poller is built.
+"""Historical B1610 reconnaissance used to design the poller.
 
 Six questions the design depends on:
   1. how many days late does data actually arrive?
@@ -11,8 +11,8 @@ Six questions the design depends on:
 Question 5 is the one that decides whether II is usable or whether analysis has
 to wait a year. Questions 1-4 only tell you which label is current.
 
-Self-contained: there is no b1610_poller yet, so fetch lives here and becomes
-the prototype for it.
+This remains self-contained so its original API evidence can be reproduced
+without using production poller behaviour.
 
 Roughly 60 requests, one-hour windows, sleep(0.2) between. A few minutes.
 """
@@ -59,7 +59,8 @@ print("   days ago     rows")
 
 first_populated = None
 for days_ago in range(1, 11):
-    rows = fetch(*window(days_ago))
+    from_date, to_date = window(days_ago)
+    rows = fetch(from_date, to_date)
     print(f"   {days_ago:>8}   {len(rows):>6,}")
     if rows and first_populated is None:
         first_populated = days_ago
@@ -82,7 +83,8 @@ print("   days ago     rows   units   run types")
 
 seen_at = {}
 for days_ago in ages:
-    rows = fetch(*window(days_ago))
+    from_date, to_date = window(days_ago)
+    rows = fetch(from_date, to_date)
     runs = Counter(r["settlementRunType"] for r in rows)
     units = len({r["bmUnit"] for r in rows})
     for run in runs:
@@ -103,12 +105,13 @@ print()
 # returned one run per date - so it may only serve the current one. If past
 # runs ARE retrievable, question 5 can be answered today rather than in a year.
 
-probe_age = 300 if 300 <= max(ages) else max(ages)
+probe_age = min(300, max(ages))
 print(f"3. explicit run retrieval, {today - timedelta(days=probe_age):%Y-%m-%d}")
 
 snapshots = {}
 for run in RUNS:
-    rows = fetch(*window(probe_age), run_type=run)
+    from_date, to_date = window(probe_age)
+    rows = fetch(from_date, to_date, run_type=run)
     print(f"   {run:>3}   {len(rows):>6,} rows")
     if rows:
         snapshots[run] = {
@@ -147,7 +150,10 @@ else:
             continue
         delta = sum(abs(snap[k] - final[k]) for k in shared)
         differ = sum(1 for k in shared if snap[k] != final[k])
-        pct = (100 * delta / total) if total else Decimal(0)
+        if total:
+            pct = 100 * delta / total
+        else:
+            pct = Decimal(0)
         print(
             f"   {run:>3}   {len(shared):>7,} shared   {differ:>9,} differ   "
             f"{delta:>12,.3f} MWh   {pct:>7.3f}%"

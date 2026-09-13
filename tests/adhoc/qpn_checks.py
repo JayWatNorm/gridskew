@@ -18,6 +18,13 @@ for r in nonzero:
     by_unit[r["bmUnit"] or r["nationalGridBmUnit"]].append(r)
 
 print(f"units with any non-zero QPN: {len(by_unit)}")
-for u, v in sorted(by_unit.items(), key=lambda kv: -len(kv[1]))[:10]:
-    levels = sorted({(x["levelFrom"], x["levelTo"]) for x in v})[:4]
-    print(f"   {u:16} {len(v):>4} rows   levels {levels}")
+
+
+def row_count(item):
+    unit, rows = item
+    return len(rows)
+
+
+for unit, unit_rows in sorted(by_unit.items(), key=row_count, reverse=True)[:10]:
+    levels = sorted({(row["levelFrom"], row["levelTo"]) for row in unit_rows})[:4]
+    print(f"   {unit:16} {len(unit_rows):>4} rows   levels {levels}")
