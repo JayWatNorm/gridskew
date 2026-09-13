@@ -31,6 +31,10 @@ same parameters, the same grain and the same timestamp formats. **Everything in
 chunk, `catchup=True` a year back, `timeout=30`, `page_size=1000`,
 and serialization through the one-slot `elexon` Airflow pool.
 
+The modules also use the same validation and quarantine routing while keeping
+separate parsers and loaders. See
+[../endpoint-validation.md](../endpoint-validation.md).
+
 ## Volume, counted
 
 Counted across the completed backfill, 2026-08-23:

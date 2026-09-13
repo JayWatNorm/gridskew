@@ -12,6 +12,9 @@ market data.
 | Docs | https://bmrs.elexon.co.uk/api-documentation/introduction |
 | Data browser | https://bmrs.elexon.co.uk/ |
 
+Ingested Elexon endpoints use the shared contracts and quarantine behavior
+described in [../endpoint-validation.md](../endpoint-validation.md).
+
 The developer portal publishes the **OpenAPI specification** in JSON, YAML and
 WADL. It is the reliable machine-readable source for endpoint parameters,
 response schemas and worked examples; the rendered documentation remains useful

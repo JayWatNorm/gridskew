@@ -106,10 +106,10 @@ docs.
 
 ### Nullability
 
-`actual` is nullable because unsettled periods legitimately have none.
-`forecast_final` is nullable too, deliberately: a `NOT NULL` would reject the
-row and destroy the evidence that the source published a null. That expectation
-belongs in a dbt test on the staging model, not a constraint on raw.
+The raw `actual` and `forecast_final` columns remain nullable so PostgreSQL
+cannot discard unexpected source evidence. The outturn contract requires
+non-null `intensity.actual` and `intensity.forecast` because the poller requests
+settled periods. A null value is retained in quarantine and the run fails.
 
 ## Ingestion
 

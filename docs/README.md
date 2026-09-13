@@ -16,9 +16,9 @@ actually being ingested** — the rest have one page until something reads them.
 The reasoning that would otherwise be repeated across every ingestion page lives
 once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
 
-[Endpoint validation](sources/endpoint-validation.md) describes the shared
-offline validator, Elexon contracts, cross-source pytest coverage, the deployed
-PN/QPN controls and the B1610 validation release.
+[Endpoint validation](sources/endpoint-validation.md) describes shared
+validation and routing, flat Elexon and nested Carbon contracts, warning
+logs and rejected-row quarantine.
 
 Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.

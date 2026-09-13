@@ -1,3 +1,5 @@
+"""Fetch, validate, quarantine and load Elexon B1610 generation volumes."""
+
 import json
 import logging
 import os
@@ -8,19 +10,21 @@ import psycopg2
 import requests
 import simplejson
 from dotenv import load_dotenv
-from psycopg2.extras import Json, execute_values
+from psycopg2.extras import execute_values
 
 from ingestion.elexon.contracts import B1610_SPEC
-from ingestion.validation import run as validate_rows
-
-logger = logging.getLogger(__name__)
+from ingestion.routing import process_rows
 
 
 def decimal_json_dumps(values):
+    """Encode B1610 quarantine payloads without converting Decimal values."""
+
     return simplejson.dumps(values, use_decimal=True)
 
 
 def fetch(from_date, to_date):
+    """Fetch B1610 rows while preserving source decimal precision."""
+
     response = requests.get(
         "https://data.elexon.co.uk/bmrs/api/v1/datasets/B1610/stream",
         params={
@@ -37,140 +41,75 @@ def fetch(from_date, to_date):
 
 
 def run(conn, from_date=None, to_date=None):
-    """Load one B1610 window, defaulting to the current II publication lag."""
+    """Validate and load one B1610 window at the expected II publication lag."""
 
     retrieved_at = datetime.now(timezone.utc)
-    retrieved_at_day_start = retrieved_at.replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    day_start = retrieved_at.replace(hour=0, minute=0, second=0, microsecond=0)
     if to_date is None or from_date is None:
-        from_date = retrieved_at_day_start - timedelta(days=15)
-        to_date = retrieved_at_day_start - timedelta(days=14)
-    request_context = {
-        "from": from_date.isoformat(),
-        "to": to_date.isoformat(),
-    }
-    result = fetch(from_date, to_date)
-    if (not result) or (not isinstance(result, list)):
+        from_date = day_start - timedelta(days=15)
+        to_date = day_start - timedelta(days=14)
+
+    rows = fetch(from_date, to_date)
+    if not isinstance(rows, list) or not rows:
         raise RuntimeError(
             "Invalid response returned from Elexon B1610 API: expected a non-empty list"
         )
-    validation_findings = validate_rows(result, spec=B1610_SPEC)
-    error_rows = []
-    valid_rows = []
-    warning_findings = []
-    warning_grouped = {}
 
-    for finding in validation_findings:
-        if finding["errors"]:
-            error_rows.append(finding)
-        else:
-            valid_rows.append(finding["row"])
-            if finding["warnings"]:
-                warning_findings.append(finding)
-
-    for finding in warning_findings:
-        for warning in finding["warnings"]:
-            reason, field = warning.split(": ", 1)
-            key = (reason, field)
-            if key not in warning_grouped:
-                warning_grouped[key] = {
-                    "reason": reason,
-                    "field": field,
-                    "source_indexes": [finding["index"]],
-                }
-            else:
-                warning_grouped[key]["source_indexes"].append(finding["index"])
-
-    for group in warning_grouped.values():
-        payload = {
-            "dataset": "B1610",
-            "retrieved_at": retrieved_at.isoformat(),
-            "request_context": request_context,
-            "severity": "warning",
-            "reason": group["reason"],
-            "field": group["field"],
-            "affected_row_count": len(group["source_indexes"]),
-            "sample_source_indexes": group["source_indexes"][:5],
-        }
-        logger.warning("%s", json.dumps(payload))
-    if error_rows:
-        quarantine_rows(error_rows, conn, retrieved_at, request_context)
-    if valid_rows:
-        par_result = parse(valid_rows, retrieved_at)
-        load(par_result, conn)
-    if error_rows:
-        raise RuntimeError(
-            f"Quarantined {len(error_rows)} rows due to validation errors"
-        )
-    return
-
-
-def parse(results, retrieved_at):
-    rows = [
-        (
-            result["bmUnit"],
-            result["nationalGridBmUnitId"],
-            result["psrType"],
-            date.fromisoformat(result["settlementDate"]),
-            result["settlementPeriod"],
-            datetime.strptime(result["halfHourEndTime"], "%Y-%m-%dT%H:%M:%S").replace(
-                tzinfo=timezone.utc
-            ),
-            result["settlementRunType"],
-            result["quantity"],
-            retrieved_at,
-        )
-        for result in results
-    ]
-    return rows
-
-
-def quarantine_rows(rows, conn, retrieved_at, request_context):
-    """Insert rejected B1610 findings into the endpoint quarantine and commit."""
-
-    quarantined_at = datetime.now(timezone.utc)
-
-    insert_sql = (
-        "INSERT INTO raw.endpoint_quarantine (dataset, retrieved_at, request_context,"
-        "validation_errors, observed_fields, payload, quarantined_at) VALUES %s"
+    rejected_count = process_rows(
+        rows,
+        spec=B1610_SPEC,
+        dataset="B1610",
+        conn=conn,
+        retrieved_at=retrieved_at,
+        request_context={
+            "from": from_date.isoformat(),
+            "to": to_date.isoformat(),
+        },
+        parse_rows=parse,
+        load_rows=load,
+        payload_dumps=decimal_json_dumps,
     )
-
-    insert_values = [
-        (
-            "B1610",
-            retrieved_at,
-            Json(request_context),
-            Json(
-                {
-                    "source_index": finding["index"],
-                    "errors": finding["errors"],
-                }
-            ),
-            Json(
-                list(finding["row"].keys()) if isinstance(finding["row"], dict) else []
-            ),
-            Json(finding["row"], dumps=decimal_json_dumps),
-            quarantined_at,
+    if rejected_count:
+        raise RuntimeError(
+            f"Quarantined {rejected_count} rows due to validation errors"
         )
-        for finding in rows
-    ]
-
-    with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, insert_values, page_size=1000)
-    conn.commit()
 
 
-def load(results, conn):
+def parse(source_rows, retrieved_at):
+    """Convert compatible source dictionaries to typed B1610 insert tuples."""
+
+    parsed_rows = []
+    for source_row in source_rows:
+        parsed_rows.append(
+            (
+                source_row["bmUnit"],
+                source_row["nationalGridBmUnitId"],
+                source_row["psrType"],
+                date.fromisoformat(source_row["settlementDate"]),
+                source_row["settlementPeriod"],
+                datetime.strptime(
+                    source_row["halfHourEndTime"], "%Y-%m-%dT%H:%M:%S"
+                ).replace(tzinfo=timezone.utc),
+                source_row["settlementRunType"],
+                source_row["quantity"],
+                retrieved_at,
+            )
+        )
+    return parsed_rows
+
+
+def load(parsed_rows, conn):
+    """Insert typed B1610 rows, ignoring existing target keys, and commit."""
+
     insert_sql = (
         "INSERT INTO raw.elexon_b1610 (bm_unit, national_grid_bm_unit_id, psr_type, "
-        "settlement_date, settlement_period, half_hour_end_time, settlement_run_type,"
-        "quantity, retrieved_at) VALUES %s ON CONFLICT (bm_unit,"
-        "settlement_date, settlement_period, settlement_run_type) DO NOTHING"
+        "settlement_date, settlement_period, half_hour_end_time, settlement_run_type, "
+        "quantity, retrieved_at) VALUES %s ON CONFLICT (bm_unit, settlement_date, "
+        "settlement_period, settlement_run_type) DO NOTHING"
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, results, page_size=1000)
+        execute_values(cursor, insert_sql, parsed_rows, page_size=1000)
     conn.commit()
 
 

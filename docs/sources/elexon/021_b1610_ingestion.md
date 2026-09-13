@@ -24,17 +24,10 @@ the server pulls the updated poller.
 
 ## Validation and quarantine
 
-The local B1610 poller rejects an empty response or non-list outer container
-before row validation. It validates every item, including non-dictionary rows,
-routes compatible and warning-only rows to the typed table, writes rejected
-rows to `raw.endpoint_quarantine`, then fails a mixed or all-rejected run after
-the applicable writes commit. Rejected Decimal quantities remain JSON numbers
-without conversion to binary floats or strings.
-
-The tests cover response containers, compatible/rejected routing,
-non-dictionary items, grouped bounded warning evidence, the quarantine writer
-and source-specific conflict-clause wiring. They use mocks and do not claim a
-live database conflict test. See
+B1610 requires a non-empty list response and validates every item before typed
+parsing. It uses the same routing as PN and QPN. Its source adapter supplies a
+Decimal-aware encoder so rejected quantities remain JSON numbers without
+conversion to binary floats or strings. See
 [../endpoint-validation.md](../endpoint-validation.md).
 
 ## Two rungs currently implemented

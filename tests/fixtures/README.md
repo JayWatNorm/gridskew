@@ -7,15 +7,15 @@ which is the point.
 
 ## Validator test usage
 
-[test_validation.py](../test_validation.py) loads the PN, QPN and B1610 fixtures.
-PN rows cover individual contract rules and mixed-batch behaviour; the complete
-QPN and B1610 fixtures are checked against their independent contracts. B1610
-numbers are decoded with `Decimal` as they are in the poller, with additional
-integer and rejected-float cases. Deliberate changes are made in memory, and an
-explicit test proves that validation leaves its source input unchanged. These
-tests need no live API or database access.
-See [endpoint validation](../../docs/sources/endpoint-validation.md) for coverage
-and the test command.
+[test_validation.py](../test_validation.py) checks the Elexon and Carbon
+fixtures against their production contracts. Carbon coverage includes nested
+`intensity` fields and the forecast/outturn nullability difference. B1610
+decimal quantities are decoded as they are in the poller. Deliberate mutations
+are made in memory, and validation must leave its input unchanged.
+
+Poller and routing tests reuse the fixtures for parsing and response-envelope
+behavior. The automated tests make no live API or database calls. See
+[endpoint validation](../../docs/sources/endpoint-validation.md).
 
 ## carbon_intensity/
 

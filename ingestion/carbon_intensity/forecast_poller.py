@@ -7,6 +7,10 @@ import requests
 from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
+from ingestion.carbon_intensity.completeness import validate_forecast_window
+from ingestion.carbon_intensity.contracts import FORECAST_SPEC
+from ingestion.routing import process_rows
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,46 +26,79 @@ def fetch(timestamp):
     return response.json()
 
 
-def parse(results, retrieved_at):
-    rows = [
-        (
-            datetime.strptime(result["from"], "%Y-%m-%dT%H:%MZ").replace(
-                tzinfo=timezone.utc
-            ),
-            datetime.strptime(result["to"], "%Y-%m-%dT%H:%MZ").replace(
-                tzinfo=timezone.utc
-            ),
-            retrieved_at,
-            result["intensity"]["forecast"],
-            result["intensity"]["actual"],
-            result["intensity"]["index"],
+def response_rows(response):
+    """Return rows from a valid Carbon Intensity response envelope."""
+
+    if not isinstance(response, dict):
+        raise RuntimeError(
+            "Invalid response returned from Carbon Intensity forecast API: "
+            "expected a non-empty data list"
         )
-        for result in results["data"]
-    ]
+
+    rows = response.get("data")
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError(
+            "Invalid response returned from Carbon Intensity forecast API: "
+            "expected a non-empty data list"
+        )
     return rows
 
 
-def load(results, conn):
+def parse(source_rows, retrieved_at):
+    parsed_rows = []
+    for source_row in source_rows:
+        parsed_rows.append(
+            (
+                datetime.strptime(source_row["from"], "%Y-%m-%dT%H:%MZ").replace(
+                    tzinfo=timezone.utc
+                ),
+                datetime.strptime(source_row["to"], "%Y-%m-%dT%H:%MZ").replace(
+                    tzinfo=timezone.utc
+                ),
+                retrieved_at,
+                source_row["intensity"]["forecast"],
+                source_row["intensity"]["actual"],
+                source_row["intensity"]["index"],
+            )
+        )
+    return parsed_rows
+
+
+def load(parsed_rows, conn):
     insert_sql = (
         "INSERT INTO raw.carbon_intensity_forecast (period_start, "
         "period_end, retrieved_at, forecast, actual, intensity_index) VALUES %s"
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, results)
+        execute_values(cursor, insert_sql, parsed_rows)
     conn.commit()
 
 
 def run(conn):
+    """Validate and load one 48-hour forecast observation."""
+
     retrieved_at = datetime.now(timezone.utc)
     timestamp = retrieved_at.strftime("%Y-%m-%dT%H:%MZ")
-    resultset = fetch(timestamp)
-    parsed_results = parse(resultset, retrieved_at)
+    rows = response_rows(fetch(timestamp))
+    request_context = {"timestamp": timestamp, "horizon_hours": 48}
 
-    load(parsed_results, conn)
-    logger.info(
-        "Retrieved %s rows at %s", len(parsed_results), retrieved_at.isoformat()
+    rejected_count = process_rows(
+        rows,
+        spec=FORECAST_SPEC,
+        dataset="CI_Forecast",
+        conn=conn,
+        retrieved_at=retrieved_at,
+        request_context=request_context,
+        parse_rows=parse,
+        load_rows=load,
     )
+    if rejected_count:
+        raise RuntimeError(
+            f"Quarantined {rejected_count} rows due to validation errors"
+        )
+    validate_forecast_window(rows, retrieved_at)
+    logger.info("Retrieved %s rows at %s", len(rows), retrieved_at.isoformat())
 
 
 if __name__ == "__main__":

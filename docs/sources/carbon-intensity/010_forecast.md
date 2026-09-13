@@ -33,8 +33,8 @@ GET https://api.carbonintensity.org.uk/intensity/{from}/fw48h
 
 Returns **96 or 97** half-hourly periods covering the next 48 hours. The count
 varies: a request landing exactly on a half-hour boundary returns 97, one
-mid-period returns 96. Scheduled runs fire at `:00` and `:30` and consistently
-return 97.
+mid-period returns 96. Scheduled runs fire at `:05` and `:35`, so the count is
+not treated as a fixed response contract.
 
 ## Response
 
@@ -78,8 +78,8 @@ CREATE TABLE raw.carbon_intensity_forecast (
 
 `sql/init/001_carbon_intensity_forecast.sql`
 
-**Grain:** one row per settlement period, per poll. About 97 rows every 30
-minutes, roughly 250 MB per year.
+**Grain:** one row per settlement period, per poll. Usually 96 or 97 rows every
+30 minutes, roughly 250 MB per year.
 
 **Key:** `(period_start, retrieved_at)`. Both values are given by the source or
 the run; neither is derived. Together they say "this is what the model believed
@@ -101,7 +101,7 @@ See [011_forecast_ingestion.md](011_forecast_ingestion.md).
 
 **`retrieved_at` must be captured once per poll**, before the HTTP request, and
 written identically to every row in the batch. Generate it per row and the
-batch dissolves into 97 near-identical timestamps, losing the thing the archive
+batch dissolves into near-identical timestamps, losing the thing the archive
 exists to record.
 
 **Two columns are `integer` and two are `timestamptz`**, so a positional swap in

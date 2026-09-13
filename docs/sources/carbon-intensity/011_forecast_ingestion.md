@@ -4,7 +4,8 @@ How `raw.carbon_intensity_forecast` is loaded. For what the data means, see
 [010_forecast.md](010_forecast.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: deployed and running in production since 2026-08-17.**
+**Status: running in production since 2026-08-17. Runtime validation,
+quarantine and period-completeness checks are deployed.**
 
 | | |
 |---|---|
@@ -57,19 +58,37 @@ datasets could wait, because their history is still retrievable.
 
 ## Volume
 
-About 97 rows every 30 minutes — **roughly 1.7M rows and 250 MB a year.**
+The API normally returns 96 or 97 rows per poll — **roughly 1.7M rows and 250
+MB a year.**
 
 At that size none of the chunking, memory or rate-limit considerations that shape
-the Elexon pollers apply. One request per run, no chunker, no ladder.
+the Elexon pollers apply. Each run makes one request without splitting windows.
 
 ## `retrieved_at` must be captured once per poll
 
 Before the HTTP request, and written identically to every row in the batch.
 
-Generate it per row and the batch dissolves into 97 near-identical timestamps.
+Generate it per row and the batch dissolves into near-identical timestamps.
 The archive records *what the model believed about the next 48 hours at one
 moment*; per-row timestamps would destroy that grouping while still looking
 plausible.
+
+## Validation and quarantine
+
+The poller requires a dictionary containing a non-empty `data` list, then
+validates each period against the forecast contract. `forecast` and `index` are
+required; future `actual` is required but may be null.
+
+Warning-only rows remain loadable. Rejected rows are quarantined with the
+request timestamp and 48-hour horizon, compatible rows are loaded, and the task
+then fails so the rejection remains visible.
+
+After loading compatible rows, the poller requires unique, consecutive
+30-minute periods whose first interval contains the request time and whose
+final boundary reaches at least 48 hours after the first period starts. This
+accepts valid 96- and 97-row responses while rejecting shortened or internally
+broken forecast windows. An incomplete vintage remains stored for diagnosis,
+but the task fails visibly.
 
 ## Politeness
 

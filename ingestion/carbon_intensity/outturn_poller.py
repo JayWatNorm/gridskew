@@ -7,14 +7,18 @@ import requests
 from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
+from ingestion.carbon_intensity.completeness import validate_outturn_window
+from ingestion.carbon_intensity.contracts import OUTTURN_SPEC
+from ingestion.routing import process_rows
+
 logger = logging.getLogger(__name__)
 
 
 def fetch(from_date, to_date):
-    from_date = from_date.strftime("%Y-%m-%dT%H:%MZ")
-    to_date = to_date.strftime("%Y-%m-%dT%H:%MZ")
+    from_timestamp = from_date.strftime("%Y-%m-%dT%H:%MZ")
+    to_timestamp = to_date.strftime("%Y-%m-%dT%H:%MZ")
     response = requests.get(
-        f"https://api.carbonintensity.org.uk/intensity/{from_date}/{to_date}",
+        f"https://api.carbonintensity.org.uk/intensity/{from_timestamp}/{to_timestamp}",
         headers={
             "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
         },
@@ -24,99 +28,159 @@ def fetch(from_date, to_date):
     return response.json()
 
 
-def chunker(yest_date, from_date, to_date, chunk_size=30):
-    rows = []
-    while from_date < yest_date:
-        to_date = min(to_date, yest_date)
-        rows.append([from_date, to_date])
-        from_date = to_date
-        to_date = to_date + timedelta(days=chunk_size)
+def response_rows(response):
+    """Return rows from a valid Carbon Intensity response envelope."""
+
+    if not isinstance(response, dict):
+        raise RuntimeError(
+            "Invalid response returned from Carbon Intensity outturn API: "
+            "expected a non-empty data list"
+        )
+
+    rows = response.get("data")
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError(
+            "Invalid response returned from Carbon Intensity outturn API: "
+            "expected a non-empty data list"
+        )
     return rows
 
 
-def data_checker(conn):
+def build_windows(window_start, window_end, chunk_days=30):
+    """Split one request range into windows within the API limit."""
+
+    windows = []
+    while window_start < window_end:
+        next_end = min(window_start + timedelta(days=chunk_days), window_end)
+        windows.append((window_start, next_end))
+        window_start = next_end
+    return windows
+
+
+def stored_period_summary(conn):
     """Return the stored row count and period bounds."""
 
     with conn.cursor() as cursor:
         cursor.execute(
-            "SELECT count(*), min(period_start) as first_window, max(period_start) as last_window FROM raw.carbon_intensity_outturn;"
+            "SELECT count(*), "
+            "min(period_start) AS first_period_start, "
+            "max(period_start) AS last_period_start "
+            "FROM raw.carbon_intensity_outturn;"
         )
-        lst_data = cursor.fetchall()
-    return lst_data
+        return cursor.fetchone()
 
 
 def run(conn):
     """Backfill one year when needed; otherwise refresh the last seven days."""
 
-    chunker_run = False
     retrieved_at = datetime.now(timezone.utc)
-    yest_date = datetime.now(timezone.utc) - timedelta(days=1)
-    horizon_time = yest_date - timedelta(days=365)
-    from_date = horizon_time
-    to_date = horizon_time + timedelta(days=30)
-    lstdata = data_checker(conn)
-    from_7d = yest_date - timedelta(days=7)
+    request_end = retrieved_at - timedelta(days=1)
+    horizon_start = request_end - timedelta(days=365)
+    recent_start = request_end - timedelta(days=7)
+    row_count, first_period_start, last_period_start = stored_period_summary(conn)
     logger.info(
-        "Data checker results: %s  rows from %s to %s",
-        lstdata[0][0],
-        lstdata[0][1],
-        lstdata[0][2],
+        "Stored outturn data: %s rows from %s to %s",
+        row_count,
+        first_period_start,
+        last_period_start,
     )
-    if lstdata[0][2] is None or lstdata[0][1] > horizon_time:
-        chunker_run = True
+    if last_period_start is None or first_period_start > horizon_start:
+        windows = build_windows(horizon_start, request_end)
     else:
-        chunker_run = False
-    if chunker_run:
-        rows = chunker(yest_date, from_date, to_date)
-        for row in rows:
-            from_date = row[0]
-            to_date = row[1]
-            bf_resultset = fetch(from_date, to_date)
-            bf_parsed_results = parse(bf_resultset, retrieved_at)
-            load(bf_parsed_results, conn)
-            logger.info(
-                "Retrieved %s rows at %s",
-                len(bf_parsed_results),
-                datetime.now(timezone.utc).isoformat(),
+        windows = [(recent_start, request_end)]
+
+    rejected_count = 0
+    incomplete_count = 0
+    for window_start, window_end in windows:
+        window_rejected_count, incomplete = process_window(
+            conn, window_start, window_end, retrieved_at
+        )
+        rejected_count += window_rejected_count
+        if incomplete:
+            incomplete_count += 1
+
+    if rejected_count and incomplete_count:
+        raise RuntimeError(
+            f"Quarantined {rejected_count} rows due to validation errors and "
+            f"found {incomplete_count} incomplete outturn windows"
+        )
+    if rejected_count:
+        raise RuntimeError(
+            f"Quarantined {rejected_count} rows due to validation errors"
+        )
+    if incomplete_count:
+        raise RuntimeError(
+            f"Found {incomplete_count} incomplete Carbon Intensity outturn windows"
+        )
+
+
+def process_window(conn, from_date, to_date, retrieved_at):
+    """Validate and load one outturn request window."""
+
+    request_start = from_date.replace(second=0, microsecond=0)
+    request_end = to_date.replace(second=0, microsecond=0)
+    rows = response_rows(fetch(request_start, request_end))
+    request_context = {
+        "from": request_start.isoformat(),
+        "to": request_end.isoformat(),
+    }
+    rejected_count = process_rows(
+        rows,
+        spec=OUTTURN_SPEC,
+        dataset="CI_Outturn",
+        conn=conn,
+        retrieved_at=retrieved_at,
+        request_context=request_context,
+        parse_rows=parse,
+        load_rows=load,
+    )
+    if rejected_count:
+        return rejected_count, False
+
+    try:
+        validate_outturn_window(rows, request_start, request_end)
+    except ValueError as error:
+        logger.warning(
+            "Incomplete outturn window from %s to %s: %s",
+            request_start,
+            request_end,
+            error,
+        )
+        return 0, True
+
+    logger.info("Retrieved %s rows at %s", len(rows), retrieved_at.isoformat())
+    return 0, False
+
+
+def parse(source_rows, retrieved_at):
+    parsed_rows = []
+    for source_row in source_rows:
+        parsed_rows.append(
+            (
+                datetime.strptime(source_row["from"], "%Y-%m-%dT%H:%MZ").replace(
+                    tzinfo=timezone.utc
+                ),
+                datetime.strptime(source_row["to"], "%Y-%m-%dT%H:%MZ").replace(
+                    tzinfo=timezone.utc
+                ),
+                retrieved_at,
+                source_row["intensity"]["actual"],
+                source_row["intensity"]["forecast"],
+                source_row["intensity"]["index"],
             )
-    else:
-        resultset = fetch(from_7d, yest_date)
-        parsed_results = parse(resultset, retrieved_at)
-        load(parsed_results, conn)
-        logger.info(
-            "Retrieved %s rows at %s",
-            len(parsed_results),
-            datetime.now(timezone.utc).isoformat(),
         )
+    return parsed_rows
 
 
-def parse(results, retrieved_at):
-    rows = [
-        (
-            datetime.strptime(result["from"], "%Y-%m-%dT%H:%MZ").replace(
-                tzinfo=timezone.utc
-            ),
-            datetime.strptime(result["to"], "%Y-%m-%dT%H:%MZ").replace(
-                tzinfo=timezone.utc
-            ),
-            retrieved_at,
-            result["intensity"]["actual"],
-            result["intensity"]["forecast"],
-            result["intensity"]["index"],
-        )
-        for result in results["data"]
-    ]
-    return rows
-
-
-def load(results, conn):
+def load(parsed_rows, conn):
     insert_sql = (
         "INSERT INTO raw.carbon_intensity_outturn (period_start, "
-        "period_end, retrieved_at,  actual, forecast_final, intensity_index) VALUES %s ON CONFLICT (period_start, retrieved_at) DO NOTHING"
+        "period_end, retrieved_at, actual, forecast_final, intensity_index) "
+        "VALUES %s ON CONFLICT (period_start, retrieved_at) DO NOTHING"
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, results)
+        execute_values(cursor, insert_sql, parsed_rows)
     conn.commit()
 
 
