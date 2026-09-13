@@ -178,3 +178,8 @@ One open modelling question is whether `QPN` should alter the shortfall
 calculation. Only 18,300 of 41.5 million observed `QPN` rows were non-zero, all
 for one BM unit, so the question is testable but does not block the wider
 models. See the [QPN dataset notes](docs/sources/elexon/015_qpn.md).
+
+| |
+|---|
+| AI-assisted tools support coaching, documentation, scaffolding and code review. |
+| The repository owner makes and verifies the design, implementation and analysis decisions represented here. |
