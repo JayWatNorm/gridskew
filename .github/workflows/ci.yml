@@ -75,5 +75,5 @@ jobs:
           DBT_PASSWORD: password
           DBT_DBNAME: gridskew_dev
         run: |
-          dbt parse
-          dbt build
+          dbt parse --project-dir dbt
+          dbt build --project-dir dbt
