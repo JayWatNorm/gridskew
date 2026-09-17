@@ -47,7 +47,9 @@ def load_fixture(
     """Parse a JSON fixture and load it into the database using ingestion logic."""
     fixture_path = FIXTURES_DIR / rel_path
     if preserve_decimals:
-        payload = json.loads(fixture_path.read_text(encoding="utf-8"), parse_float=Decimal)
+        payload = json.loads(
+            fixture_path.read_text(encoding="utf-8"), parse_float=Decimal
+        )
     else:
         payload = json.loads(fixture_path.read_text(encoding="utf-8"))
 
@@ -65,12 +67,14 @@ def load_fixture(
         load_rows=load_fn,
     )
     if rejected_count:
-        raise RuntimeError(f"Validation failed: {rejected_count} rows quarantined from {rel_path}")
+        raise RuntimeError(
+            f"Validation failed: {rejected_count} rows quarantined from {rel_path}"
+        )
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    
+
     # Use the same default fallback as the pollers, but respect standard env vars
     conn = psycopg2.connect(
         host=os.getenv("DBT_HOST", "localhost"),
@@ -79,11 +83,13 @@ def main():
         user=os.getenv("DBT_USER", "postgres"),
         password=os.getenv("DBT_PASSWORD", "password"),
     )
-    
+
     try:
         run_ddl(conn)
         load_fixture(conn, "elexon/pn_stream.json", PN_SPEC, "PN", parse_pn, load_pn)
-        load_fixture(conn, "elexon/qpn_stream.json", QPN_SPEC, "QPN", parse_qpn, load_qpn)
+        load_fixture(
+            conn, "elexon/qpn_stream.json", QPN_SPEC, "QPN", parse_qpn, load_qpn
+        )
         load_fixture(
             conn,
             "elexon/b1610_stream.json",
