@@ -68,7 +68,7 @@ jobs:
 
       - name: Run dbt commands
         env:
-          DBT_PROFILES_DIR: dbt
+          DBT_PROFILES_DIR: dbt_profiles
           DBT_HOST: localhost
           DBT_PORT: 5432
           DBT_USER: postgres
