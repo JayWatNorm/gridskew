@@ -11,6 +11,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gridskew_dev
+        
+        ports:
+          - 5432:5432
+
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+
+
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -38,3 +57,23 @@ jobs:
 
       - name: Check DAG files compile
         run: python -m compileall -q dags/
+
+      - name: Run a setup script
+        env:
+          PYTHONPATH: .
+          DB_USER: postgres
+          DB_PASSWORD: password
+          DB_NAME: gridskew_dev
+        run: python tests/adhoc/load_ci_fixtures.py
+
+      - name: Run dbt commands
+        env:
+          DBT_PROFILES_DIR: dbt_profiles
+          DBT_HOST: localhost
+          DBT_PORT: 5432
+          DBT_USER: postgres
+          DBT_PASSWORD: password
+          DBT_DBNAME: gridskew_dev
+        run: |
+          dbt parse --project-dir dbt
+          dbt build --project-dir dbt
