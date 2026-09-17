@@ -13,6 +13,6 @@ gridskew:
       port: "{{ env_var('DBT_PORT') | as_number }}"
       user: "{{ env_var('DBT_USER') }}"
       password: "{{ env_var('DBT_PASSWORD') }}"
-      dbname: gridskew_prod
+      dbname: "{{ env_var('DBT_DBNAME', 'gridskew_prod') }}"
       schema: dbt_dev
       threads: 4
