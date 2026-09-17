@@ -60,6 +60,7 @@ jobs:
 
       - name: Run a setup script
         env:
+          PYTHONPATH: .
           DB_USER: postgres
           DB_PASSWORD: password
           DB_NAME: gridskew_dev

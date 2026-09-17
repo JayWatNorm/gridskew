@@ -12,4 +12,4 @@ select
     level_from,
     level_to,
     retrieved_at
-from {{ source('elexon', 'elexon_pn') }}
+from {{ source('elexon', 'elexon_pn') }break}
