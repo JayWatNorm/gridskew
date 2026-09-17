@@ -4,7 +4,6 @@ sources:
       Elexon Insights commitments (PN and QPN) and metered volumes (B1610).
       PN and QPN contain declared segments; B1610 contains settlement-period
       quantities. All tables are append-only.
-    database: gridskew_prod
     schema: raw
     loaded_at_field: retrieved_at
 

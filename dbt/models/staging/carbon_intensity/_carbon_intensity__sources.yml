@@ -3,7 +3,6 @@ sources:
     description: >
       Raw carbon intensity data from the National Energy System Operator
       (NESO).
-    database: gridskew_prod
     schema: raw
     loaded_at_field: retrieved_at
 
