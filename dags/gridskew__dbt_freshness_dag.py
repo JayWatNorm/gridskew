@@ -24,12 +24,21 @@ def gridskew__dbt_freshness_dag():
         profiles_dir = "/opt/airflow/dbt_profiles"
         log_path = "/opt/airflow/data/gridskew/dbt_logs"
 
-        # Override the shared UK Crime variables so GridSkew writes to its own folders
         task_env = os.environ.copy()
         task_env["DBT_TARGET_PATH"] = "/opt/airflow/data/gridskew/dbt_target"
         task_env["DBT_PACKAGES_INSTALL_PATH"] = (
             "/opt/airflow/data/gridskew/dbt_packages"
         )
+
+        # Parse the Airflow URI into pieces for dbt's profile
+        from urllib.parse import urlparse
+
+        uri = urlparse(os.environ["AIRFLOW_CONN_GRIDSKEW_PROD"])
+        task_env["GRIDSKEW_DB_HOST"] = uri.hostname
+        task_env["GRIDSKEW_DB_PORT"] = str(uri.port)
+        task_env["GRIDSKEW_DB_USER"] = uri.username
+        task_env["GRIDSKEW_DB_PASSWORD"] = uri.password
+        task_env["GRIDSKEW_DB_NAME"] = uri.path.lstrip("/")
 
         for cmd in (["dbt", "source", "freshness"],):
             result = subprocess.run(
