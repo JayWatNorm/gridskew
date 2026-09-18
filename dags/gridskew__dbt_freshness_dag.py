@@ -47,6 +47,9 @@ def gridskew__dbt_freshness_dag():
                 check=False,
                 env=task_env,
             )
+            print(result.stdout)
+            print(result.stderr)
+            result.check_returncode()
 
     freshness_check()
 
