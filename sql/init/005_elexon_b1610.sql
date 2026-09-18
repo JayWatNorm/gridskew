@@ -49,4 +49,4 @@ COMMENT ON COLUMN raw.elexon_b1610.national_grid_bm_unit_id IS
  on bm_unit. The source field has an Id suffix that PN and QPN do not have.';
 
 
--- CREATE INDEX IF NOT EXISTS idx_raw_elexon_b1610_retrieved_at ON raw.elexon_b1610 (retrieved_at);
+CREATE INDEX IF NOT EXISTS idx_raw_elexon_b1610_retrieved_at ON raw.elexon_b1610 (retrieved_at);
