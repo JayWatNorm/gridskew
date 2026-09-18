@@ -39,4 +39,4 @@ COMMENT ON COLUMN raw.elexon_qpn.national_grid_bm_unit IS
   'National Grid identifier for the same unit. Needed to join REMIT outage notices.';
 
 
--- CREATE INDEX IF NOT EXISTS idx_raw_elexon_qpn_retrieved_at ON raw.elexon_qpn (retrieved_at);
+CREATE INDEX IF NOT EXISTS idx_raw_elexon_qpn_retrieved_at ON raw.elexon_qpn (retrieved_at);
