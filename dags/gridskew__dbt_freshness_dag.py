@@ -1,4 +1,5 @@
 """Source Freshness Check"""
+
 import subprocess
 from datetime import datetime, timedelta, timezone
 
@@ -11,10 +12,7 @@ from airflow.decorators import dag, task
     start_date=datetime(2026, 9, 18, tzinfo=timezone.utc),
     catchup=False,
     max_active_runs=1,
-    default_args={
-        "retries": 1,
-        "retry_delay": timedelta(minutes=5)
-    },
+    default_args={"retries": 1, "retry_delay": timedelta(minutes=5)},
     tags=["gridskew", "dbt", "freshness"],
 )
 def gridskew__dbt_freshness_dag():
@@ -26,7 +24,15 @@ def gridskew__dbt_freshness_dag():
         log_path = "/opt/airflow/data/gridskew/dbt_logs"
         for cmd in (["dbt", "deps"], ["dbt", "source", "freshness"]):
             result = subprocess.run(
-                cmd + ["--project-dir", project_dir, "--profiles-dir", profiles_dir, "--log-path", log_path],
+                cmd
+                + [
+                    "--project-dir",
+                    project_dir,
+                    "--profiles-dir",
+                    profiles_dir,
+                    "--log-path",
+                    log_path,
+                ],
                 capture_output=True,
                 text=True,
                 check=False,
