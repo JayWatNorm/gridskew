@@ -3,6 +3,9 @@ version: '1.0.0'
 
 profile: 'gridskew'
 
+target-path: "{{ env_var('DBT_TARGET_PATH', 'target') }}"
+packages-install-path: "{{ env_var('DBT_PACKAGES_INSTALL_PATH', 'dbt_packages') }}"
+
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
