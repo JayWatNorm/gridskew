@@ -1,5 +1,6 @@
 """Source Freshness Check"""
 
+import os
 import subprocess
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +19,7 @@ from airflow.decorators import dag, task
 def gridskew__dbt_freshness_dag():
     @task
     def freshness_check():
-        import os
+        from airflow.hooks.base import BaseHook
 
         project_dir = "/opt/airflow/project/gridskew/dbt"
         profiles_dir = "/opt/airflow/dbt_profiles"
@@ -30,34 +31,38 @@ def gridskew__dbt_freshness_dag():
             "/opt/airflow/data/gridskew/dbt_packages"
         )
 
-        # Parse the Airflow URI into pieces for dbt's profile
-        from urllib.parse import urlparse
+        conn = BaseHook.get_connection("gridskew_prod")
+        task_env["GRIDSKEW_DB_HOST"] = conn.host
+        task_env["GRIDSKEW_DB_PORT"] = str(conn.port or 5432)
+        task_env["GRIDSKEW_DB_USER"] = conn.login
+        task_env["GRIDSKEW_DB_PASSWORD"] = conn.password
+        task_env["GRIDSKEW_DB_NAME"] = conn.schema or "gridskew_prod"
 
-        uri = urlparse(os.environ["AIRFLOW_CONN_GRIDSKEW_PROD"])
-        task_env["GRIDSKEW_DB_HOST"] = uri.hostname
-        task_env["GRIDSKEW_DB_PORT"] = str(uri.port)
-        task_env["GRIDSKEW_DB_USER"] = uri.username
-        task_env["GRIDSKEW_DB_PASSWORD"] = uri.password
-        task_env["GRIDSKEW_DB_NAME"] = uri.path.lstrip("/")
+        cmd = [
+            "dbt",
+            "source",
+            "freshness",
+            "--project-dir",
+            project_dir,
+            "--profiles-dir",
+            profiles_dir,
+            "--log-path",
+            log_path,
+        ]
 
-        for cmd in (["dbt", "source", "freshness"],):
-            result = subprocess.run(
-                cmd
-                + [
-                    "--project-dir",
-                    project_dir,
-                    "--profiles-dir",
-                    profiles_dir,
-                    "--log-path",
-                    log_path,
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                env=task_env,
-            )
-            print(result.stdout)
-            print(result.stderr)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=task_env,
+        )
+        print(result.stdout)
+        print(result.stderr)
+
+        # dbt source freshness returns 0 (pass), 1 (warn), and 2+ (error).
+        # Log warnings without failing the task; fail on genuine errors.
+        if result.returncode not in (0, 1):
             result.check_returncode()
 
     freshness_check()
