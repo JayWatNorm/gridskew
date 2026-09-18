@@ -24,10 +24,17 @@ def gridskew__dbt_freshness_dag():
         log_path = "/opt/airflow/data/gridskew/dbt_logs"
         for cmd in (["dbt", "deps"], ["dbt", "source", "freshness"]):
             subprocess.run(
-                cmd + ["--project-dir", project_dir, "--profiles-dir", profiles_dir, "--log-path", log_path],
-                check=True
+                cmd
+                + [
+                    "--project-dir",
+                    project_dir,
+                    "--profiles-dir",
+                    profiles_dir,
+                    "--log-path",
+                    log_path,
+                ],
+                check=True,
             )
-
 
     freshness_check()
 
