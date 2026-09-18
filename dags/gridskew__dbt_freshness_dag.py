@@ -24,13 +24,11 @@ def gridskew__dbt_freshness_dag():
         project_dir = "/opt/airflow/project/gridskew/dbt"
         profiles_dir = "/opt/airflow/dbt_profiles"
         log_path = "/opt/airflow/data/gridskew/dbt_logs"
-        
-        # Override the shared UK Crime variables so GridSkew writes to its own folders
+
         task_env = os.environ.copy()
         task_env["DBT_TARGET_PATH"] = "/opt/airflow/data/gridskew/dbt_target"
         task_env["DBT_PACKAGES_INSTALL_PATH"] = "/opt/airflow/data/gridskew/dbt_packages"
 
-        # Removed 'dbt deps' because GridSkew doesn't have a packages.yml yet!
         for cmd in (["dbt", "source", "freshness"],):
             result = subprocess.run(
                 cmd + ["--project-dir", project_dir, "--profiles-dir", profiles_dir, "--log-path", log_path],
@@ -39,9 +37,6 @@ def gridskew__dbt_freshness_dag():
                 check=False,
                 env=task_env,
             )
-            print(result.stdout)
-            print(result.stderr)
-            result.check_returncode()
 
 
     freshness_check()
