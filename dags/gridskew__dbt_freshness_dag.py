@@ -16,14 +16,23 @@ from airflow.decorators import dag, task
     tags=["gridskew", "dbt", "freshness"],
 )
 def gridskew__dbt_freshness_dag():
-
     @task
     def freshness_check():
+        import os
+
         project_dir = "/opt/airflow/project/gridskew/dbt"
         profiles_dir = "/opt/airflow/dbt_profiles"
         log_path = "/opt/airflow/data/gridskew/dbt_logs"
-        for cmd in (["dbt", "deps"], ["dbt", "source", "freshness"]):
-            subprocess.run(
+
+        # Override the shared UK Crime variables so GridSkew writes to its own folders
+        task_env = os.environ.copy()
+        task_env["DBT_TARGET_PATH"] = "/opt/airflow/data/gridskew/dbt_target"
+        task_env["DBT_PACKAGES_INSTALL_PATH"] = (
+            "/opt/airflow/data/gridskew/dbt_packages"
+        )
+
+        for cmd in (["dbt", "source", "freshness"],):
+            result = subprocess.run(
                 cmd
                 + [
                     "--project-dir",
@@ -33,8 +42,14 @@ def gridskew__dbt_freshness_dag():
                     "--log-path",
                     log_path,
                 ],
-                check=True,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=task_env,
             )
+            print(result.stdout)
+            print(result.stderr)
+            result.check_returncode()
 
     freshness_check()
 
