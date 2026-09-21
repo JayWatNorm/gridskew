@@ -1,0 +1,7 @@
+settlement_run_code,run_order,is_final
+II,1,false
+SF,2,false
+R1,3,false
+R2,4,false
+R3,5,false
+RF,6,true

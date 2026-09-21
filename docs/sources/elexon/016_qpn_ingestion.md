@@ -86,23 +86,23 @@ either, so `retrieved_at` is again the only instrument.
 
 Run both experiments over the same four weeks so the results are comparable.
 
-## The open question this table exists to answer
+## Settlement-shortfall decision: answered
 
-`015_qpn.md` carries it in full. Briefly: the BSC glossary states QPN is **not
-used in Settlement** and that the deduction determines the level *the Dynamic
-Data apply to*, while `B1610` is settlement metered volume. So whether
-`PN - QPN` is the right promise to compare against B1610 is **unresolved**.
+QPN does not alter the settlement-shortfall calculation. Use integrated
+`PN MWh - B1610 MWh`; do not subtract QPN. The BSC glossary states that QPN is
+not used in Settlement and scopes the net operating level to Dynamic Data.
 
-**Bounded rather than open, as of 2026-08-23.** A full year of data shows the
-deduction can affect **one BM unit in the market**. Every other unit's shortfall
-figures are identical under either interpretation, so no model is blocked. The
-question still needs answering for that unit, and `B1610` answers it.
+The independently reproduced 10–16 August 2026 cohort corroborates that rule.
+Across all 336 `WILCT-1` periods, `PN - B1610` had +0.309 MWh mean error;
+`(PN - QPN) - B1610` introduced a +30.309 MWh mean error. The complete decision,
+including the limits of that one-unit comparison, is in
+[015_qpn.md](015_qpn.md).
 
-Ingesting QPN is what kept the question answerable. It was cheap, it shares
-everything with PN, and skipping it would have foreclosed the analysis rather
-than deferred it — the bound above could not have been established without a year
-of the data already loaded.
+QPN remains useful for Dynamic Data comparisons. Those models must align PN
+and QPN on the union of their segment boundaries, preserve QPN's sign and keep
+an absent optional submission distinct from a submitted zero.
 
-## Result
+## Restatement-experiment result
 
-*To be recorded here when the experiments conclude.*
+*Not yet recorded.* This is the PN/QPN re-polling experiment above, not the
+settlement-shortfall decision, which is closed.

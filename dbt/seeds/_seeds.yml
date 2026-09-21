@@ -1,0 +1,32 @@
+seeds:
+  - name: elexon_settlement_run_codes
+    description: >
+      Ordered reference values for Elexon B1610 settlement revisions.
+      One row represents one settlement-run code.
+
+    config:
+      column_types:
+        settlement_run_code: varchar(2)
+        run_order: smallint
+        is_final: boolean
+
+    columns:
+      - name: settlement_run_code
+        description: >
+          Code received in the B1610 settlement_run_type field.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: run_order
+        description: >
+          Chronological revision order from the initial run to the final run.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: is_final
+        description: >
+          True only for the RF settlement run.
+        data_tests:
+          - not_null
