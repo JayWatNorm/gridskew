@@ -11,16 +11,18 @@ For why the pollers are written the way they are, see
 [sources/ingestion-patterns.md](sources/ingestion-patterns.md). This page is
 about getting them running somewhere.
 
-## Two artefacts, two mechanisms
+## Two deployment mechanisms
 
-A deployment moves two different things, and they do not move the same way.
+A deployment moves DAG files and bind-mounted project code, and they do not
+move the same way.
 
 | Artefact | How it reaches Airflow | Effect of a `git pull` |
 |---|---|---|
 | `dags/*.py` | **copied** into the Airflow instance's DAG folder | none until copied again |
 | `ingestion/` | **bind-mounted** from a checkout of this repository | takes effect on next task run |
+| `dbt/` | **bind-mounted** from the same checkout | takes effect on the next dbt task run |
 
-**DAGs are copies; ingestion is mounted.** This is the single most important
+**DAGs are copies; project code is mounted.** This is the single most important
 thing on the page, because the failure it causes is silent: pull a DAG change,
 see it in the repository, and watch Airflow keep running the old one.
 
@@ -110,6 +112,36 @@ Verify the row count before allowing a schedule to run unattended. Expected
 volumes are on each dataset's ingestion page.
 
 **5. Unpause.**
+
+## Production dbt freshness
+
+`gridskew__dbt_freshness_dag` runs at 20 and 50 minutes past each hour, after
+the forecast collector's 5- and 35-minute runs. It executes:
+
+```bash
+dbt source freshness
+```
+
+The task reads the bind-mounted project from
+`/opt/airflow/project/gridskew/dbt` and the deployment-owned profile from
+`/opt/airflow/dbt_profiles`. Generated artifacts and logs use writable data
+paths rather than the repository checkout:
+
+```text
+/opt/airflow/data/gridskew/dbt_target
+/opt/airflow/data/gridskew/dbt_packages
+/opt/airflow/data/gridskew/dbt_logs
+```
+
+Database credentials come from the `gridskew_prod` Airflow Connection. A dbt
+freshness return code of 0 passes, 1 records warnings without failing the task,
+and 2 or greater fails it.
+
+This scheduled command checks source arrival only. It does **not** load seeds,
+build models or run their data tests. GitHub CI performs a complete
+fixture-backed `dbt build` in a temporary database, while production model and
+seed materialisation remains a separate release or future scheduled-build
+step.
 
 ## Backfills
 

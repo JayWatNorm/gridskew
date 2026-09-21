@@ -4,9 +4,14 @@ How `raw.elexon_b1610` is loaded. For what the data means and what the columns
 are, see [020_b1610.md](020_b1610.md). For the reasoning behind these patterns,
 see [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: II rung deployed, backfill complete 2026-08-23.** 354 runs covering
-settlement days 2025-08-22 to 2026-08-10, **139,316,985 rows**, no gaps. The SF
-rung is deployed and runs forward only.
+**Status: II and SF rungs deployed.** The II backfill completed 2026-08-23:
+354 runs covering settlement days 2025-08-22 to 2026-08-10, with 139,316,985
+rows at that checkpoint and no unexpected gaps. Scheduled II and SF capture
+then continued; the exact table total was **159,151,689 rows on 2026-09-21**.
+
+For the approved 2026-08-10 through 2026-08-16 cohort, II and SF each contain
+3,083,376 rows with periods 1–48 present on every date. R1 is correctly absent
+before its dated capture window.
 
 This release adds endpoint validation to the B1610 poller. The Airflow image
 includes its new Decimal-aware JSON dependency and is rolled out first, before
@@ -30,18 +35,25 @@ Decimal-aware encoder so rejected quantities remain JSON numbers without
 conversion to binary floats or strings. See
 [../endpoint-validation.md](../endpoint-validation.md).
 
-## Two rungs currently implemented
+## Two standing rungs currently implemented
 
 | Rung | Offset | `start_date` | Catches |
 |---|---|---|---|
 | **II** | `data_interval_start - 14d` | 2025-09-05 | `II` |
 | **SF** | `data_interval_start - 35d` | forward only | `SF` |
 
-`R1` through `RF` are not currently polled. They can be added without changing
-the schema, but only prospectively: Elexon stops serving a run after a later run
-supersedes it. Any R1, R2, R3 or RF capture already missed cannot be recovered.
-Until those schedules exist, the retained series is accurately described as
-the first and latest captured positions, not the first and final positions.
+`R1` through `RF` are not standing full-history rungs. They can be added without
+changing the schema, but only prospectively: Elexon stops serving a run after a
+later run supersedes it. Any R1, R2, R3 or RF capture already missed cannot be
+recovered. Until a final-run schedule exists, the retained series is accurately
+described as the first and latest captured positions, not the first and final
+positions.
+
+One bounded exception is approved. The seven settlement dates from 2026-08-10
+through 2026-08-16 will be requested at fixed +56 days, on 2026-10-05 through
+2026-10-11. Completion requires every response to report `R1`; this cohort will
+measure II→SF and SF→R1 restatement without committing to full-history R1/R2/R3
+storage.
 
 **`start_date` is the earliest wanted settlement day plus the offset.** 2025-09-05
 minus 14 days is 2025-08-22, which aligns B1610 with PN's history. A different

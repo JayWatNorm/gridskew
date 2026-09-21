@@ -1,9 +1,10 @@
 # gridskew dbt project
 
-This project transforms the five production `raw` tables. The Silver staging
-models are in place; intermediate models and the Gold layer follow in later
-build stages. dbt reads `gridskew_prod.raw` through the restricted
-`gridskew_dbt` role and writes development objects to `dbt_dev`.
+This project transforms the five production `raw` tables and owns small,
+version-controlled reference datasets. The Silver staging models and first S3
+seed are in place; intermediate models and the Gold layer follow in later build
+stages. dbt reads `gridskew_prod.raw` through the restricted `gridskew_dbt`
+role and writes development objects to `dbt_dev`.
 
 ## Project structure
 
@@ -13,11 +14,18 @@ build stages. dbt reads `gridskew_prod.raw` through the restricted
 | `models/intermediate/` | Joins, grain changes and reusable business logic |
 | `models/marts/` | Facts, dimensions and final aggregates |
 | `macros/` | Reusable SQL expressions, including settlement-period conversion |
+| `seeds/` | Small reference datasets, their explicit types, documentation and data tests |
 | `models/staging/*/_*__unit_tests.yml` | Inline mock inputs and expected results for dbt unit tests |
 | `../dbt_profiles/` | Local profile; credentials come from environment variables |
 
 Models are materialised as views unless a model defines a different strategy.
 Staging models must not join, aggregate or deduplicate source rows.
+
+That model default does not apply to seeds. `dbt seed` loads each CSV as a
+physical table in the target schema. The first seed,
+`elexon_settlement_run_codes`, provides the ordered II → SF → R1 → R2 → R3 →
+RF reference used by later B1610 models. Its CSV is the version-controlled
+source of truth; the `dbt_dev` table is a reloadable copy.
 
 `macros/settlement_period.sql` converts a British-local settlement date and
 period into a UTC instant using PostgreSQL's `Europe/London` timezone rules. It
@@ -80,6 +88,16 @@ Run only the fixture-backed unit tests:
 dbt test --select "test_type:unit"
 ```
 
+Load and test the Elexon settlement-run seed:
+
+```powershell
+dbt seed --select elexon_settlement_run_codes
+dbt test --select elexon_settlement_run_codes
+```
+
+Use `dbt seed --full-refresh` after changing a seed's columns or configured
+types. Ordinary value changes need only a normal `dbt seed` run.
+
 Build and test the selected models together:
 
 ```powershell
@@ -89,3 +107,10 @@ dbt build
 The local profile reads production raw data deliberately. Safety comes from
 database permissions: `gridskew_dbt` can select from `raw` and write to
 `dbt_dev`, but it cannot change `raw` or create schemas.
+
+The production Airflow dbt DAG currently runs `dbt source freshness` only. It
+does not materialise models or seeds. GitHub CI runs a full build against an
+ephemeral PostgreSQL service; that proves the project but does not deploy its
+relations to the homelab. A production seed therefore needs an explicit
+release-time `dbt seed` or the future scheduled build job when a production
+model first depends on it.

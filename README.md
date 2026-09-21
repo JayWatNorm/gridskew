@@ -89,8 +89,9 @@ forecast and settlement revisions observable.
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
 Linux server, with separate development and production databases. Six Airflow
 DAGs collect carbon intensity forecasts and outturn plus `PN`, `QPN` and two
-`B1610` settlement runs. The raw layer currently contains about 227 million
-rows.
+`B1610` settlement runs. A seventh DAG runs production dbt source-freshness
+checks twice an hour. At the 21 September 2026 checkpoint, the raw layer
+contained about 247 million rows.
 
 The sources use different scheduling and backfill strategies because their
 time behaviour differs. See
@@ -133,7 +134,7 @@ not automated tests and are deliberately excluded from pytest.
 ingestion/      Python ingestion package
 dags/           Airflow DAG definitions
 sql/            Raw-layer DDL
-dbt/            Sources, models, tests and macros
+dbt/            Sources, seeds, models, tests and macros
 dbt_profiles/   Connection profile using environment variables
 tests/          pytest suite, captured fixtures and ad-hoc checks
 docs/           Source, ingestion and deployment documentation
@@ -164,12 +165,18 @@ the [deployment guide](docs/deployment.md).
 - Append-only raw storage with deployed Elexon validation and quarantine
 - Runtime validation and quarantine for all five ingested datasets
 - Carbon forecast and outturn period-completeness checks
-- dbt sources, freshness checks and five source-grain staging views
+- dbt sources, scheduled production freshness checks and five source-grain
+  staging views
 - Settlement-period conversion covering normal days and UK clock changes
-- Pull-request CI with Python tests, linting and DAG compilation
+- The first S3 reference seed: ordered Elexon settlement-run codes with
+  explicit PostgreSQL types and data tests
+- Pull-request CI with 87 Python tests, linting, DAG compilation, `dbt parse`
+  and a deterministic fixture-backed `dbt build`
 
 **Next**
 
+- Complete the remaining S3 reference data: fuel classification from the exact
+  BM-unit vocabulary and an ordering lookup for Carbon Intensity bands
 - Capture the BM unit registry and model its changing attributes
 - Build incremental generation and commitment facts
 - Join shortfalls to forecast error and explanatory inputs
