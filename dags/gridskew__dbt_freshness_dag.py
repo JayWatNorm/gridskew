@@ -13,7 +13,11 @@ from airflow.decorators import dag, task
     start_date=datetime(2026, 9, 18, tzinfo=timezone.utc),
     catchup=False,
     max_active_runs=1,
-    default_args={"retries": 1, "retry_delay": timedelta(minutes=5)},
+    default_args={
+        "retries": 1,
+        "retry_delay": timedelta(minutes=5),
+        "execution_timeout": timedelta(minutes=15),
+    },
     tags=["gridskew", "dbt", "freshness"],
 )
 def gridskew__dbt_freshness_dag():
@@ -56,14 +60,11 @@ def gridskew__dbt_freshness_dag():
             text=True,
             check=False,
             env=task_env,
+            timeout=14 * 60,
         )
         print(result.stdout)
         print(result.stderr)
-
-        # dbt source freshness returns 0 (pass), 1 (warn), and 2+ (error).
-        # Log warnings without failing the task; fail on genuine errors.
-        if result.returncode not in (0, 1):
-            result.check_returncode()
+        result.check_returncode()
 
     freshness_check()
 
