@@ -1,8 +1,8 @@
 """Load Quiescent Physical Notifications from Elexon each day.
 
 Elexon deducts QPN from PN to derive the net operating level to which Dynamic
-Data apply. QPN is not used in Settlement, so whether the shortfall model should
-compare B1610 with PN or PN minus QPN remains an analytical question.
+Data apply. QPN is not used in Settlement, so the settlement-shortfall model
+compares integrated PN MWh with B1610 MWh without subtracting QPN.
 """
 
 import sys

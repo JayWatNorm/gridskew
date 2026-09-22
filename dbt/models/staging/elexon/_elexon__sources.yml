@@ -16,8 +16,9 @@ sources:
           import.
           Check against QPN, which declares an underlying-process MW quantity
           netted off this figure to establish the operating level to which
-          Dynamic Data apply. Whether that deduction belongs in the B1610
-          shortfall comparison remains an analytical question.
+          Dynamic Data apply. QPN is not used in Settlement, so downstream
+          shortfall models compare integrated PN MWh with B1610 MWh without
+          subtracting QPN.
         freshness:
           warn_after: {count: 25, period: hour}
           error_after: {count: 48, period: hour}

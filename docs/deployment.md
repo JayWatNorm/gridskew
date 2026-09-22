@@ -134,8 +134,9 @@ paths rather than the repository checkout:
 ```
 
 Database credentials come from the `gridskew_prod` Airflow Connection. A dbt
-freshness return code of 0 passes, 1 records warnings without failing the task,
-and 2 or greater fails it.
+freshness return code of 0 passes; every non-zero result (including return code
+1 for warnings) fails the task via `result.check_returncode()`, ensuring stale
+sources immediately alert in Airflow.
 
 This scheduled command checks source arrival only. It does **not** load seeds,
 build models or run their data tests. GitHub CI performs a complete

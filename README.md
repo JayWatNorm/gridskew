@@ -181,10 +181,12 @@ the [deployment guide](docs/deployment.md).
 - Build incremental generation and commitment facts
 - Join shortfalls to forecast error and explanatory inputs
 
-One open modelling question is whether `QPN` should alter the shortfall
-calculation. Only 18,300 of 41.5 million observed `QPN` rows were non-zero, all
-for one BM unit, so the question is testable but does not block the wider
-models. See the [QPN dataset notes](docs/sources/elexon/015_qpn.md).
+`QPN` does not alter the settlement-shortfall calculation. The model compares
+integrated `PN MWh` with `B1610 MWh` without subtracting QPN; QPN remains
+available for Dynamic Data comparisons. The completed one-unit comparison
+supports this rule: only 18,300 of 41.5 million observed QPN rows were non-zero,
+all for one BM unit. See the
+[QPN dataset notes](docs/sources/elexon/015_qpn.md).
 
 | |
 |---|

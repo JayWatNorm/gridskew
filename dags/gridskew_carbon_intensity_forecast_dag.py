@@ -19,6 +19,7 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
     default_args={
         "retries": 3,
         "retry_delay": timedelta(minutes=5),
+        "execution_timeout": timedelta(minutes=15),
     },
     tags=["gridskew", "carbon-intensity"],
 )

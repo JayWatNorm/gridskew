@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS raw.elexon_pn (
 COMMENT ON TABLE raw.elexon_pn IS
   'What each unit said it would export or import. One row per unit per declared
  segment, per poll, so a unit can have several rows in one settlement period.
- QPN is a separate declaration and must be considered before applying PN in a
- settlement comparison.';
+ QPN is not used in Settlement, so downstream shortfall models compare integrated
+ PN MWh with B1610 MWh without subtracting QPN.';
 
 COMMENT ON COLUMN raw.elexon_pn.settlement_date IS
   'British local time. Never derive this from time_from.';
