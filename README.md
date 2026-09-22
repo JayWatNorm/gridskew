@@ -59,8 +59,11 @@ missed revisions cannot be recovered.
   forecast is a late revision.
 - Forecast revisions also reflect weather, demand and interconnector updates;
   attributing them to generation shortfalls requires the per-unit Elexon join.
-- Per-unit generation is published about five working days after the event and
-  is later restated, so the full analysis trails real time.
+- `B1610` includes metered BM-unit imports and exports, not only physical
+  generation. Shortfall and fuel comparisons need a verified generator cohort;
+  units without a supported fuel label remain unknown.
+- Per-unit metered data is published about five working days after the event
+  and is later restated, so the full analysis trails real time.
 - The project measures associations and accounting relationships, not causal
   proof.
 - Weather data planned for a later phase is a proxy for the inputs used by the
@@ -70,7 +73,7 @@ missed revisions cannot be recovered.
 
 | Source | Role |
 |---|---|
-| **Elexon Insights** | Physical notifications and metered generation; later phases add outages, balancing actions, demand and prices |
+| **Elexon Insights** | Physical notifications and metered BM-unit energy; later phases add outages, balancing actions, demand and prices |
 | **NESO Carbon Intensity API** | Half-hourly national carbon intensity forecasts and outturn |
 
 The platform uses a medallion structure inside PostgreSQL:
