@@ -185,7 +185,8 @@ the [deployment guide](docs/deployment.md).
 **Built in dbt development**
 
 - Three S3 reference seeds with explicit PostgreSQL types and data tests;
-  loaded into `dbt_dev`. The production freshness DAG does not deploy seeds.
+  loaded into `dbt_dev` for development. Loading them for production models
+  would be a separate release step.
 
 **Next**
 
