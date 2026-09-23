@@ -1,8 +1,8 @@
 # gridskew dbt project
 
 This project transforms the five production `raw` tables and owns small,
-version-controlled reference datasets. The Silver staging models and first S3
-seed are in place; intermediate models and the Gold layer follow in later build
+version-controlled reference datasets. The Silver staging models and three S3
+seeds are in place; intermediate models and the Gold layer follow in later build
 stages. dbt reads `gridskew_prod.raw` through the restricted `gridskew_dbt`
 role and writes development objects to `dbt_dev`.
 
@@ -22,10 +22,20 @@ Models are materialised as views unless a model defines a different strategy.
 Staging models must not join, aggregate or deduplicate source rows.
 
 That model default does not apply to seeds. `dbt seed` loads each CSV as a
-physical table in the target schema. The first seed,
-`elexon_settlement_run_codes`, provides the ordered II → SF → R1 → R2 → R3 →
-RF reference used by later B1610 models. Its CSV is the version-controlled
-source of truth; the `dbt_dev` table is a reloadable copy.
+physical table in the target schema. The three S3 seeds are:
+
+| Seed | Grain and purpose |
+|---|---|
+| `elexon_settlement_run_codes` | One row per settlement-run code, ordering II → SF → R1 → R2 → R3 → RF |
+| `elexon_fuel_codes` | One row per published Elexon fuel-type code, grouped by code meaning |
+| `carbon_intensity_bands` | One row per API index label, ordered from very low to very high |
+
+The CSVs are version-controlled sources of truth; their `dbt_dev` tables are
+reloadable copies. `elexon_fuel_codes.code_group` includes plant technologies,
+storage and interconnectors, so it does not verify an individual BM unit's
+fuel, renewable status or emissions. `INTELE` remains unclassified because
+its published meaning is unresolved. The Carbon Intensity seed stores label
+order only, not fixed gCO2/kWh boundaries.
 
 `macros/settlement_period.sql` converts a British-local settlement date and
 period into a UTC instant using PostgreSQL's `Europe/London` timezone rules. It
@@ -88,11 +98,11 @@ Run only the fixture-backed unit tests:
 dbt test --select "test_type:unit"
 ```
 
-Load and test the Elexon settlement-run seed:
+Load and test the three reference seeds in the development target:
 
 ```powershell
-dbt seed --select elexon_settlement_run_codes
-dbt test --select elexon_settlement_run_codes
+dbt seed --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity_bands
+dbt test --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity_bands
 ```
 
 Use `dbt seed --full-refresh` after changing a seed's columns or configured

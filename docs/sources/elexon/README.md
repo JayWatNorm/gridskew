@@ -59,6 +59,13 @@ A **BM Unit** is the thing all of this is measured against. Roughly a single
 generating unit or a group of them, identified like `T_DRAXX-1`. The registry
 at `/reference/bmunits/all` says which is which.
 
+The [dbt fuel-code seed](../../../dbt/seeds/elexon_fuel_codes.csv) groups the
+exact codes from `/reference/fueltypes/all`. It includes published codes that
+do not appear in the current BM-unit registry. A null unit `fuelType` stays
+unknown; the lookup does not infer a value from a unit name. `INTELE` remains
+unclassified, and `BIOMASS` means bioenergy without a sustainability or
+zero-carbon claim.
+
 Unit counts quoted in these pages are approximate. To get the current figure:
 
 ```powershell

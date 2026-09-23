@@ -30,3 +30,78 @@ seeds:
           True only for the RF settlement run.
         data_tests:
           - not_null
+
+  - name: elexon_fuel_codes
+    description: >
+      One row per exact published Elexon fuel-type reference code. Codes are
+      checked against the BM-unit registry and the Elexon fuel-type reference
+      list. The group describes the publisher's code, including technologies
+      and interconnector roles; it does not verify a BM unit's actual fuel,
+      physical generation, sustainability or emissions.
+
+    config:
+      column_types:
+        fuel_code: varchar(16)
+        code_group: varchar(32)
+
+    columns:
+      - name: fuel_code
+        description: >
+          Exact Elexon fuelType code. INTELE is retained because it is in the
+          published reference list, although its meaning is not established.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: code_group
+        description: >
+          Broad code category. BIOMASS is bioenergy but this makes no claim
+          about sustainable feedstock, lifecycle emissions or zero carbon.
+          Gas-turbine codes name plant technology rather than measured fuel.
+          The unclassified value preserves a code with unresolved meaning.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - bioenergy
+                  - gas_turbine
+                  - coal
+                  - unclassified
+                  - interconnector
+                  - hydro
+                  - nuclear
+                  - oil
+                  - other
+                  - pumped_storage
+                  - wind
+
+  - name: carbon_intensity_bands
+    description: >
+      One row per published Carbon Intensity API index label, ordered from
+      very low to very high. This lookup orders source labels only. Numeric
+      gCO2/kWh thresholds can change and are not encoded here.
+
+    config:
+      column_types:
+        intensity_index: varchar(16)
+        band_order: smallint
+
+    columns:
+      - name: intensity_index
+        description: >
+          Exact lower-case index label returned by the Carbon Intensity API.
+        data_tests:
+          - unique
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['very low', 'low', 'moderate', 'high', 'very high']
+
+      - name: band_order
+        description: >
+          Publisher-defined order from lowest (1) to highest (5), not a
+          fixed numeric carbon-intensity boundary.
+        data_tests:
+          - unique
+          - not_null
