@@ -89,6 +89,14 @@ does not need a lake. Its essential rule is that source records are never
 updated or deleted: a revision arrives as another row. This makes captured
 forecast and settlement revisions observable.
 
+Three version-controlled dbt seeds provide small reference lookups:
+settlement-run order, Elexon's published fuel codes grouped by code meaning,
+and the five Carbon Intensity labels ordered from very low to very high. The
+fuel-code groups include technology and interconnector roles; they do not
+establish a unit's actual fuel or emissions. The Carbon labels do not encode
+fixed numerical thresholds. See the [dbt guide](dbt/README.md) for their
+contracts and load commands.
+
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
 Linux server, with separate development and production databases. Six Airflow
 DAGs collect carbon intensity forecasts and outturn plus `PN`, `QPN` and two
@@ -171,15 +179,16 @@ the [deployment guide](docs/deployment.md).
 - dbt sources, scheduled production freshness checks and five source-grain
   staging views
 - Settlement-period conversion covering normal days and UK clock changes
-- The first S3 reference seed: ordered Elexon settlement-run codes with
-  explicit PostgreSQL types and data tests
 - Pull-request CI with 87 Python tests, linting, DAG compilation, `dbt parse`
   and a deterministic fixture-backed `dbt build`
 
+**Built in dbt development**
+
+- Three S3 reference seeds with explicit PostgreSQL types and data tests;
+  loaded into `dbt_dev`. The production freshness DAG does not deploy seeds.
+
 **Next**
 
-- Complete the remaining S3 reference data: fuel classification from the exact
-  BM-unit vocabulary and an ordering lookup for Carbon Intensity bands
 - Capture the BM unit registry and model its changing attributes
 - Build incremental generation and commitment facts
 - Join shortfalls to forecast error and explanatory inputs
@@ -190,8 +199,3 @@ available for Dynamic Data comparisons. The completed one-unit comparison
 supports this rule: only 18,300 of 41.5 million observed QPN rows were non-zero,
 all for one BM unit. See the
 [QPN dataset notes](docs/sources/elexon/015_qpn.md).
-
-| |
-|---|
-| AI-assisted tools support coaching, documentation, scaffolding and code review. |
-| The repository owner makes and verifies the design, implementation and analysis decisions represented here. |
