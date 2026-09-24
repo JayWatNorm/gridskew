@@ -78,6 +78,10 @@ missed revisions cannot be recovered.
 
 The platform uses a medallion structure inside PostgreSQL:
 
+S4 adds complete BM-unit registry captures, a current unit dimension and an
+observed-change snapshot. Null fuels remain unknown; snapshot dates are
+observation dates. Production rollout is pending.
+
 | Layer | Implementation | Purpose |
 |---|---|---|
 | **Bronze** | `raw` schema | Append-only source-grain records, retrieval context and rejected payloads |

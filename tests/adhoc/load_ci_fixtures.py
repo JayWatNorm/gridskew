@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from copy import deepcopy
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -14,6 +15,8 @@ from ingestion.carbon_intensity.outturn_poller import load as load_outturn
 from ingestion.carbon_intensity.outturn_poller import parse as parse_outturn
 from ingestion.elexon.b1610_poller import load as load_b1610
 from ingestion.elexon.b1610_poller import parse as parse_b1610
+from ingestion.elexon.bmunits_poller import load_extract as load_bm_units
+from ingestion.elexon.bmunits_poller import validate_extract as validate_bm_units
 from ingestion.elexon.contracts import B1610_SPEC, PN_SPEC, QPN_SPEC
 from ingestion.elexon.pn_poller import load as load_pn
 from ingestion.elexon.pn_poller import parse as parse_pn
@@ -75,13 +78,19 @@ def load_fixture(
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    # Use the same default fallback as the pollers, but respect standard env vars
+    if (
+        os.getenv("GRIDSKEW_DISPOSABLE_TEST") != "1"
+        or os.getenv("DBT_HOST") not in {"localhost", "127.0.0.1"}
+        or os.getenv("DBT_DBNAME") != "gridskew_dev"
+    ):
+        raise RuntimeError("Fixtures require explicit opt-in to local gridskew_dev")
+
     conn = psycopg2.connect(
-        host=os.getenv("DBT_HOST", "localhost"),
-        port=os.getenv("DBT_PORT", "5432"),
-        dbname=os.getenv("DBT_DBNAME", "gridskew_dev"),
-        user=os.getenv("DBT_USER", "postgres"),
-        password=os.getenv("DBT_PASSWORD", "password"),
+        host=os.environ["DBT_HOST"],
+        port=os.environ["DBT_PORT"],
+        dbname=os.environ["DBT_DBNAME"],
+        user=os.environ["DBT_USER"],
+        password=os.environ["DBT_PASSWORD"],
     )
 
     try:
@@ -99,6 +108,16 @@ def main():
             load_b1610,
             preserve_decimals=True,
         )
+        bm_units = json.loads(
+            (FIXTURES_DIR / "elexon/bmunits_truncated.json").read_text(encoding="utf-8")
+        )
+        extra_eic = deepcopy(bm_units[1])
+        extra_eic["eic"] = "48W00001ACHRW-1R"
+        bm_units.insert(2, extra_eic)
+        rejected, unit_count = validate_bm_units(bm_units)
+        if rejected:
+            raise RuntimeError("BM-unit CI fixture failed source validation")
+        load_bm_units(conn, bm_units, datetime.now(timezone.utc), unit_count)
         load_fixture(
             conn,
             "carbon_intensity/forecast_fw48h.json",

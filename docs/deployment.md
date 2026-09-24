@@ -4,8 +4,8 @@ This project does not run its own scheduler. The DAGs in `dags/` are written to
 be deployed onto an Airflow instance that lives elsewhere and is shared with
 other projects.
 
-That constraint shapes everything below. If Airflow were bundled with this
-repository, a `git pull` would deploy it and this page would not exist.
+The homelab release coordinates this repository and the separate
+`homelab-platform` checkout. Database provisioning remains an explicit step.
 
 For why the pollers are written the way they are, see
 [sources/ingestion-patterns.md](sources/ingestion-patterns.md). This page is
@@ -56,35 +56,41 @@ rather than the application role will fail on write, again only at run time:
 SELECT tablename, tableowner FROM pg_tables WHERE schemaname = 'raw';
 ```
 
-**2. Commit the DAG into the Airflow repository, then pull on the host.**
+**2. Release the reviewed pair of repository revisions.**
 
-The copy is made **on your development machine and committed**, not made by hand
-on the server. Copy the file into `homelab-platform/dags/`, commit and push
-there, then on the host:
+Commit the deployment copy into `homelab-platform/dags/` alongside the GridSkew
+change. The manual **Release GridSkew to Homelab** workflow in that repository
+accepts the full 40-character commit SHA for each repository. Run the workflow
+from `main`. Both selected commits must be on their respective remote `main`
+histories. GridSkew's latest main-push CI run for the selected commit must pass.
 
-```bash
-cd ~/gridskew && git pull            # bind-mounted ingestion/
-cd ~/homelab-platform && git pull    # the DAG copy
-```
+Before adopting this workflow, disable the former automatic CD workflows in
+both repositories, then merge the replacement/removal. Otherwise an old
+push-triggered workflow can still deploy during the transition. Cancel any
+old queued release. Configure the `production` GitHub environment with the
+desired required reviewer and main-branch restriction. Merely naming an
+environment does not enable approval protection. If GridSkew is private, set
+`GRIDSKEW_RELEASE_TOKEN` in the platform repository with read access to
+GridSkew Actions; an inaccessible CI result fails the release.
 
-Both repositories, because the two artefacts travel separately.
+Pause all GridSkew DAGs, resolve queued runs and let active runs finish. Avoid
+manual triggers throughout the release window. The workflow checks this state,
+checks the two S4 DAG copies, verifies the raw S4 tables exist, and refuses
+dirty host checkouts. GitHub concurrency and a host `flock` prevent overlapping
+releases using this workflow. Other release processes must use the same lock.
 
-Copying by hand on the server also works, but leaves a file Git has no record
-of — which blocks the next pull and lets the deployed DAG drift from the
-repository invisibly. Committing the copy keeps the deployed version reviewable.
+The workflow checks out the exact commits in detached-HEAD mode, then checks
+Airflow imports. On a command failure after switching code, it attempts to
+restore both previous code revisions. The job summary records the old and new
+pair. A killed runner may require manual recovery. No database rollback occurs.
+Future releases use the workflow again; ordinary `git pull` is not the host
+update procedure for a detached checkout.
 
-The duplication itself is unavoidable in this model: the file exists in two
-repositories and drifts if you edit one and forget the other. Git makes that
-drift **visible**; it cannot prevent it.
-
-**The server should only ever pull.** Worth enforcing rather than remembering:
-
-```bash
-cd ~/homelab-platform && git config pull.ff only
-```
-
-Any divergence then fails loudly instead of offering three ways to merge around
-it — which is what happens if you ever commit on the server by mistake.
+This release updates mounted code and DAGs. It does not rebuild images, restart
+services, apply Compose changes, provision database grants or run data models.
+Infrastructure changes need their own reviewed procedure. The workflow has
+local syntax checks; its first actual GitHub/homelab execution remains a
+deployment acceptance check.
 
 **3. Wait for the scheduler to pick it up.**
 
@@ -112,6 +118,88 @@ Verify the row count before allowing a schedule to run unattended. Expected
 volumes are on each dataset's ingestion page.
 
 **5. Unpause.**
+
+## BM-unit registry S4 rollout
+
+The S4 registry DAG and dbt models are prepared locally. Production remains
+pending until the following steps succeed in order:
+
+1. Confirm the existing `gridskew_prod` Airflow connection points to the
+   production database. Create a separate Airflow Postgres connection named
+   `gridskew_dbt`, using the same host, port and database (`gridskew_prod`),
+   but the existing restricted dbt user that owns the `dbt_dev` objects.
+   Confirm that user's identity and object ownership before the release; a
+   different user may be unable to replace existing models or snapshots.
+   The S4 DAG selects the homelab profile's `dev` target: seeds and models go
+   to `gridskew_prod.dbt_dev`, and the
+   snapshot goes to `gridskew_prod.dbt_dev_snapshots`. The existing `prod`
+   profile and source-freshness DAG are unchanged. Inspect schema ownership
+   before changing grants. Do not assume the dbt user name.
+2. Apply [`007_elexon_bm_units.sql`](../sql/init/007_elexon_bm_units.sql)
+   to the verified database as the production ingestion table owner, or make
+   that role the owner after an administrator applies it. Confirm it can insert into both
+   new raw tables and quarantine, and can hold SHARE locks on the new tables.
+   Use an administrator to run
+   [`001_bmu_snapshot_schema.sql`](../sql/deploy/001_bmu_snapshot_schema.sql)
+   against `gridskew_prod` with
+   `psql -v snapshot_schema=dbt_dev_snapshots -v dbt_role=<verified_dbt_role> -f ...`.
+   It grants the dbt role read access to the new raw tables and write access
+   to `dbt_dev` and `dbt_dev_snapshots`; it creates the snapshot schema if
+   needed. Confirm the dbt role can read production raw data but cannot write
+   to `raw`.
+3. Release the GridSkew project checkout and the matching
+   `gridskew_elexon_bmunits_dag.py` in `homelab-platform/dags`. Compare the
+   two DAG files and check Airflow import errors. Keep the new DAG paused.
+4. Trigger one observed run while the new DAG is paused. Confirm a manifest
+   exists; its `row_count` matches the raw-row count; `unit_count` matches both distinct source IDs
+   and `dim_bm_unit` rows; and the snapshot has one current version per ID.
+   Check that the fuel-code seed and scoped relationship test passed. Verify
+   the dbt objects are in `dbt_dev` and `dbt_dev_snapshots`, with no new S4
+   objects in `public` or `public_snapshots`. Then unpause the daily DAG and
+   resume the existing GridSkew DAG schedules.
+
+The DAG fetches a complete response, then holds SHARE locks on both registry
+raw tables while checking the expected manifest and running dbt seed/build/
+test/snapshot. Inserts, updates and deletes wait until the guard transaction
+ends; reads continue. In addition to SELECT, the guard role must own both tables
+or hold table-level UPDATE, DELETE or TRUNCATE privilege to acquire SHARE locks.
+Verify this explicitly; SELECT plus INSERT alone is insufficient. Prefer the
+existing table-owning ingestion role over broadening an analysis-only role.
+Acquisition waits at most 30 seconds. The dedicated guard connection
+disables its idle-in-transaction timeout for the bounded task; do not terminate
+that connection mid-run. A rejected or suspicious
+response leaves the last good manifest current. If a model task fails after a
+successful capture, fix the cause and retry that task while the captured
+manifest is still latest. If a different extract became latest, rerun from a
+fresh capture. Do not delete or recreate an existing production snapshot to
+retry. New captures can supersede a failed observation; raw evidence remains,
+but automatic historical replay is not implemented. Current views follow the
+latest accepted raw manifest immediately, before dbt data tests finish.
+Snapshot dates show when GridSkew observed a value, not when Elexon
+first made it effective. The first snapshot has no pre-collection history.
+
+The existing source freshness DAG remains a separate arrival monitor. It does
+not run the S4 models or snapshot. S4 uses per-attempt temporary target/package
+directories and persistent logs under `dbt_logs/bmunits/<attempt-uuid>` so the
+two DAGs do not overwrite the same generated artifacts. Apply normal log
+retention to that directory. A new S4 DAG is explicitly paused on creation;
+existing DAG pause states are retained.
+
+## How CI applies init SQL
+
+CI starts an empty PostgreSQL 16 service. Its **Apply sql/init DDL and load
+disposable CI fixtures** step runs `tests/adhoc/load_ci_fixtures.py`. That
+script's `main()` opens a connection and calls `run_ddl(conn)`, which sorts and
+executes every `sql/init/*.sql` file before committing and loading fixtures.
+The subsequent dbt build therefore finds the raw tables and sample data.
+
+This is a Python setup step, not a PostgreSQL container init-directory mount.
+It does not execute `sql/deploy/001_bmu_snapshot_schema.sql`, and it is not a
+production migration system. The fixture and lifecycle scripts require
+`GRIDSKEW_DISPOSABLE_TEST=1`, a loopback host and database `gridskew_dev`;
+connection fields use explicit `DBT_*` variables. CI's administrative role
+does not prove that the production runtime grants are sufficient. Verify those
+grants and the actual profile target during the first observed production run.
 
 ## Production dbt freshness
 

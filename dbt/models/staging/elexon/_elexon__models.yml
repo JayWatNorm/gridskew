@@ -1,4 +1,23 @@
 models:
+  - name: stg_elexon__bm_units
+    description: >
+      One row per complete registry extract and source position. This view
+      preserves every source row, including multiple EICs for one BM unit.
+      retrieved_at is observation time, not the source effective date.
+    columns:
+      - name: extract_id
+        data_tests: [not_null]
+      - name: source_index
+        data_tests: [not_null]
+      - name: national_grid_bm_unit
+        data_tests: [not_null]
+      - name: fuel_type
+        description: Nullable published fuel code; null remains unknown.
+      - name: demand_capacity_mw
+        description: Source string converted to numeric MW; blanks become null.
+      - name: generation_capacity_mw
+        description: Source string converted to numeric MW; blanks become null.
+
   - name: stg_elexon__b1610
     description: >
       One row per BM unit, settlement period and settlement run, containing

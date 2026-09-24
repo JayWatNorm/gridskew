@@ -1,0 +1,34 @@
+snapshots:
+  - name: snap_elexon__bm_units
+    description: >
+      Observed BM-unit registry history from the first complete GridSkew
+      capture onward. Validity timestamps record observation, not the source's
+      business effective date. A source disappearance closes the prior row.
+    relation: ref('int_elexon__bm_units_current')
+    config:
+      schema: snapshots
+      unique_key: national_grid_bm_unit
+      strategy: check
+      hard_deletes: invalidate
+      check_cols:
+        - elexon_bm_unit
+        - eics
+        - fuel_type
+        - lead_party_name
+        - bm_unit_type
+        - fpn_flag
+        - bm_unit_name
+        - lead_party_id
+        - demand_capacity_mw
+        - generation_capacity_mw
+        - production_or_consumption_flag
+        - transmission_loss_factor
+        - working_day_credit_assessment_import_capability
+        - non_working_day_credit_assessment_import_capability
+        - working_day_credit_assessment_export_capability
+        - non_working_day_credit_assessment_export_capability
+        - credit_qualifying_status
+        - demand_in_production_flag
+        - gsp_group_id
+        - gsp_group_name
+        - interconnector_id

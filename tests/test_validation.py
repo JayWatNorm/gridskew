@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC, OUTTURN_SPEC
-from ingestion.elexon.contracts import B1610_SPEC, PN_SPEC, QPN_SPEC
+from ingestion.elexon.contracts import B1610_SPEC, BM_UNITS_SPEC, PN_SPEC, QPN_SPEC
 from ingestion.validation import validate_row, validate_rows
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
@@ -187,6 +187,28 @@ def test_b1610_fixture_matches_its_contract():
         B1610_SPEC,
         preserve_decimals=True,
     )
+
+
+def test_bm_units_fixture_matches_its_contract():
+    assert_fixture_matches_contract("elexon/bmunits_truncated.json", BM_UNITS_SPEC)
+
+
+def test_bm_units_contract_preserves_nullable_identity_and_fuel():
+    row = load_rows("elexon/bmunits_truncated.json")[5].copy()
+    errors, warnings = validate_row(row, BM_UNITS_SPEC)
+
+    assert errors == []
+    assert warnings == []
+    assert row["elexonBmUnit"] is None
+
+
+def test_bm_units_contract_rejects_non_boolean_flag():
+    row = load_rows("elexon/bmunits_truncated.json")[0].copy()
+    row["fpnFlag"] = "true"
+
+    errors, _ = validate_row(row, BM_UNITS_SPEC)
+
+    assert errors == ["Invalid data type detected: fpnFlag"]
 
 
 def test_forecast_fixture_matches_its_contract():

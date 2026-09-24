@@ -4,9 +4,10 @@ Every ingested endpoint has an explicit contract checked before typed parsing.
 The validator is offline and source-independent: callers provide decoded rows
 and the matching contract.
 
-**Deployment:** Runtime validation and quarantine are deployed for all five
+**Deployment:** Runtime validation and quarantine are deployed for five
 ingested datasets. Carbon forecast and outturn completeness checks are also
-deployed.
+deployed. The BM-unit complete-response path is implemented locally and awaits
+production rollout.
 
 ## Behavior
 
@@ -38,6 +39,12 @@ inclusive request boundaries. These rules do not assume a fixed response size.
 
 ## Routing
 
+The BM-unit registry uses a stricter complete-response rule. Any invalid row
+blocks the entire extract. Rejected rows are quarantined, but compatible rows
+from that response are not published. Its row/unit-count and key-loss checks
+also block suspiciously small responses. See
+[Elexon BM-unit ingestion](elexon/071_bmunits_ingestion.md).
+
 Rows with no errors remain compatible, including warning-only rows. Warnings
 are grouped by reason and field, with the affected count and at most five source
 indexes.
@@ -62,12 +69,13 @@ therefore retained even when the task reports an incomplete or invalid response.
 | File | Responsibility |
 |---|---|
 | [`validation.py`](../../ingestion/validation.py) | Generic flat and nested contract checks |
-| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN and B1610 contracts |
+| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN, B1610 and BM-unit contracts |
 | [`contracts.py`](../../ingestion/carbon_intensity/contracts.py) | Forecast and outturn contracts |
 | [`routing.py`](../../ingestion/routing.py) | Shared warning, quarantine and compatible-row routing |
 | [`pn_poller.py`](../../ingestion/elexon/pn_poller.py) | PN response window, parser and loader |
 | [`qpn_poller.py`](../../ingestion/elexon/qpn_poller.py) | QPN response window, parser and loader |
 | [`b1610_poller.py`](../../ingestion/elexon/b1610_poller.py) | B1610 response window, parser, loader and Decimal encoder |
+| [`bmunits_poller.py`](../../ingestion/elexon/bmunits_poller.py) | Complete registry gate, manifest and raw-row loader |
 | [`006_endpoint_quarantine.sql`](../../sql/init/006_endpoint_quarantine.sql) | Rejected-row table |
 
 ## Source-specific notes

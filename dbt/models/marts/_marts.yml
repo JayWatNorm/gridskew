@@ -1,0 +1,26 @@
+models:
+  - name: dim_bm_unit
+    description: >
+      One row per National Grid BM-unit ID in the latest complete registry
+      extract. This is a current dimension; null source fuels stay unknown and
+      no column alone proves physical generation. Earlier values require the
+      observed dbt snapshot and cannot be inferred before first capture.
+    columns:
+      - name: national_grid_bm_unit
+        description: Unique current BM-unit key.
+        data_tests: [unique, not_null]
+      - name: elexon_bm_unit
+        description: Nullable Elexon identifier.
+      - name: eics
+        description: Sorted EIC set, including multiple EICs for one unit.
+      - name: fuel_type
+        description: Nullable publisher fuel code; no missing unit fuel is inferred.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('elexon_fuel_codes')
+                field: fuel_code
+              config:
+                where: fuel_type is not null
+      - name: retrieved_at
+        description: Registry observation time, not a business effective date.
