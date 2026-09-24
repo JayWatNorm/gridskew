@@ -16,6 +16,17 @@ PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 SNAPSHOT_TABLE = "dbt_dev_snapshots.snap_elexon__bm_units"
 
 
+def disposable_connection():
+    """Open each test connection with the CI credentials, including its password."""
+    return psycopg2.connect(
+        host=os.environ["DBT_HOST"],
+        port=os.environ["DBT_PORT"],
+        user=os.environ["DBT_USER"],
+        password=os.environ["DBT_PASSWORD"],
+        dbname=os.environ["DBT_DBNAME"],
+    )
+
+
 def dbt_snapshot(conn, expected_id):
     with locked_extract(conn, expected_id):
         subprocess.run(
@@ -99,7 +110,7 @@ def assert_state(conn, total, current):
 
 def check_database_guards(conn, initial_id):
     """Exercise real writer blocking and dbt tests against deliberate bad state."""
-    writer = psycopg2.connect(conn.dsn)
+    writer = disposable_connection()
     try:
         with locked_extract(conn, initial_id):
             with writer.cursor() as cursor:
@@ -208,13 +219,7 @@ def main():
         or os.getenv("DBT_DBNAME") != "gridskew_dev"
     ):
         raise RuntimeError("Lifecycle checks require opt-in to local gridskew_dev")
-    conn = psycopg2.connect(
-        host=os.environ["DBT_HOST"],
-        port=os.environ["DBT_PORT"],
-        user=os.environ["DBT_USER"],
-        password=os.environ["DBT_PASSWORD"],
-        dbname=os.environ["DBT_DBNAME"],
-    )
+    conn = disposable_connection()
     try:
         with conn.cursor() as cursor:
             initial_id = latest_extract(cursor)
