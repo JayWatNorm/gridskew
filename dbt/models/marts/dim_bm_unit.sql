@@ -1,0 +1,21 @@
+select
+    national_grid_bm_unit,
+    elexon_bm_unit,
+    eics,
+    bm_unit_name,
+    bm_unit_type,
+    fuel_type,
+    lead_party_name,
+    lead_party_id,
+    demand_capacity_mw,
+    generation_capacity_mw,
+    production_or_consumption_flag,
+    fpn_flag,
+    credit_qualifying_status,
+    demand_in_production_flag,
+    gsp_group_id,
+    gsp_group_name,
+    interconnector_id,
+    extract_id,
+    retrieved_at
+from {{ ref('int_elexon__bm_units_current') }}

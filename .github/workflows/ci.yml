@@ -13,7 +13,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -58,12 +58,15 @@ jobs:
       - name: Check DAG files compile
         run: python -m compileall -q dags/
 
-      - name: Run a setup script
+      - name: Apply sql/init DDL and load disposable CI fixtures
         env:
           PYTHONPATH: .
-          DB_USER: postgres
-          DB_PASSWORD: password
-          DB_NAME: gridskew_dev
+          GRIDSKEW_DISPOSABLE_TEST: "1"
+          DBT_HOST: localhost
+          DBT_PORT: 5432
+          DBT_USER: postgres
+          DBT_PASSWORD: password
+          DBT_DBNAME: gridskew_dev
         run: python tests/adhoc/load_ci_fixtures.py
 
       - name: Run dbt commands
@@ -77,3 +80,15 @@ jobs:
         run: |
           dbt parse --project-dir dbt
           dbt build --project-dir dbt
+
+      - name: Check BM-unit snapshot lifecycle
+        env:
+          PYTHONPATH: .
+          GRIDSKEW_DISPOSABLE_TEST: "1"
+          DBT_PROFILES_DIR: dbt_profiles
+          DBT_HOST: localhost
+          DBT_PORT: 5432
+          DBT_USER: postgres
+          DBT_PASSWORD: password
+          DBT_DBNAME: gridskew_dev
+        run: python tests/adhoc/check_bmu_snapshot_lifecycle.py

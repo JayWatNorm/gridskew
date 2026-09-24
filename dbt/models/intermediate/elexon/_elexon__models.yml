@@ -1,0 +1,19 @@
+models:
+  - name: int_elexon__bm_units_current
+    description: >
+      One row per National Grid BM-unit ID in the latest complete extract.
+      Multiple EICs become a sorted set; other attributes must agree or the
+      unique-key test fails. This is observed current state, not history before
+      collection began.
+    columns:
+      - name: national_grid_bm_unit
+        description: Current BM-unit grain and dbt snapshot key.
+        data_tests: [unique, not_null]
+      - name: elexon_bm_unit
+        description: Nullable Elexon identifier.
+      - name: eics
+        description: Sorted distinct EICs from all rows for this unit.
+      - name: fuel_type
+        description: Nullable published code, with unknowns preserved.
+      - name: source_row_count
+        description: Number of source rows contributing to this unit.

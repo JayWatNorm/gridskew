@@ -1,13 +1,51 @@
 sources:
   - name: elexon
     description: >
-      Elexon Insights commitments (PN and QPN) and metered volumes (B1610).
+      Elexon Insights commitments (PN and QPN), metered volumes (B1610), and
+      complete BM-unit registry observations.
       PN and QPN contain declared segments; B1610 contains settlement-period
       quantities. All tables are append-only.
     schema: raw
     loaded_at_field: retrieved_at
 
     tables:
+
+      - name: elexon_bm_units_extracts
+        description: >
+          One committed manifest per complete BM-unit registry response.
+          row_count counts source rows; unit_count counts distinct National
+          Grid BM-unit IDs. Only a successful full response gets a manifest.
+        freshness:
+          warn_after: {count: 25, period: hour}
+          error_after: {count: 48, period: hour}
+        columns:
+          - name: extract_id
+            data_tests: [unique, not_null]
+          - name: retrieved_at
+            description: UTC observation time, not a source effective date.
+          - name: row_count
+            description: Number of raw source rows in this complete extract.
+          - name: unit_count
+            description: Number of distinct National Grid BM-unit IDs.
+
+      - name: elexon_bm_units
+        description: >
+          Every row from each committed full registry response. One unit may
+          have multiple source rows with different EICs; source_index retains
+          the exact response grain.
+        columns:
+          - name: extract_id
+            description: Complete response identifier.
+          - name: source_index
+            description: Zero-based source position within the response.
+          - name: national_grid_bm_unit
+            description: Nonblank unit identifier, not unique in raw extracts.
+          - name: elexon_bm_unit
+            description: Nullable Elexon identifier.
+          - name: eic
+            description: Nullable EIC; one unit can have more than one.
+          - name: fuel_type
+            description: Nullable source fuel code; never inferred.
 
       # ------------------------------------------------------------------
       - name: elexon_pn

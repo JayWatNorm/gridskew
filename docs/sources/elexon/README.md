@@ -88,11 +88,11 @@ Numbered in build order, not alphabetically.
 | [040_boalf.md](040_boalf.md) | — | `BOALF` | The intervention | Phase 1, step 3 |
 | [050_demand.md](050_demand.md) | — | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | Phase 1, step 3 |
 | [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Phase 1, step 3 |
-| [070_bmunits.md](070_bmunits.md) | — | `/reference/bmunits/all` | The address book | Phase 1, S4 |
+| [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Phase 1, S4; deployment pending |
 | [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
 
-An ingestion page exists only once a dataset is actually being loaded. The
-patterns behind them are in
+The BM-unit ingestion page describes the implemented S4 path before its first
+production run. The patterns behind the deployed collectors are in
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
 **Steps 1 and 3** refer to the thesis in the project README: find the

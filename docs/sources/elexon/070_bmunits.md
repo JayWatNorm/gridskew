@@ -1,6 +1,8 @@
 # BM Unit registry
 
-**Not yet ingested.** Planned for Phase 1, S4.
+**S4 implementation prepared locally; production deployment pending.** See
+[071_bmunits_ingestion.md](071_bmunits_ingestion.md) for the complete-extract
+gate, raw/current/snapshot lineage and recovery steps.
 
 ## In plain terms
 
@@ -111,11 +113,17 @@ until dated evidence supports a label.
 The registry is a **current-state** view. Ask it today and you get today's
 answer, with no history.
 
-The endpoint has no reliable updated-at field, so the planned dbt snapshot
-will use the `check` strategy. It will compare descriptive attributes on each
-poll and record a new version when one changes. A settlement-period join can
+The endpoint has no reliable updated-at field, so the S4 dbt snapshot uses
+the `check` strategy. It compares descriptive attributes on each poll and
+records a new version when one changes. A settlement-period join can
 use a captured version only from the start of collection onwards; earlier
-fuel history needs separate dated evidence. That is the S4 build.
+fuel history needs separate dated evidence.
+
+Two complete responses checked on 23 September 2026 each contained 3,103
+source rows and 3,102 distinct National Grid IDs. One unit had two source
+rows with different EICs; raw ingestion preserves both and the current model
+aggregates them. The observed response had 90 null Elexon IDs and 2,515 null
+fuel types. These are dated checks, not fixed expected counts.
 
 ## Relevance to the README's limitations
 
