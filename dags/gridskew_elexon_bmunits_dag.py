@@ -100,7 +100,7 @@ def gridskew_elexon_bmunits():
         finally:
             conn.close()
 
-    @task(execution_timeout=timedelta(minutes=60))
+    @task(pool="gridskew_dbt", execution_timeout=timedelta(minutes=60))
     def build_current_and_snapshot(extract_id):
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 

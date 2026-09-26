@@ -59,15 +59,17 @@ dbt test --select assert_bm_units_staging_grain assert_bm_units_current_extract_
 dbt snapshot --select snap_elexon__bm_units
 ```
 
-The single daily Airflow DAG runs these after capturing a complete extract and
-rechecks its manifest immediately before snapshotting. Local dbt target schema
+The daily Airflow DAG runs the same steps after capturing a complete extract,
+with `dbt test` in place of `dbt build`: the views already exist, and rebuilding
+them would drop the views that depend on them. It rechecks the manifest
+immediately before snapshotting. A release that changes these models runs the
+build explicitly. Local dbt target schema
 `dbt_dev` generates `dbt_dev_snapshots`; the checked-in homelab target schema
 `public` generates `public_snapshots`. The snapshot schema needs to exist and
 grant `USAGE, CREATE` to the verified dbt runtime role. Use the separate
 administrator-run SQL and rollout sequence in
 [the deployment guide](../docs/deployment.md). Do not create a fresh snapshot
-over existing production history. The S4 code has passed fixture-backed dbt
-and lifecycle checks locally; production rollout is pending.
+over existing production history. S4 runs in production.
 
 That model default does not apply to seeds. `dbt seed` loads each CSV as a
 physical table in the target schema. The three S3 seeds are:
