@@ -102,10 +102,11 @@ fixed numerical thresholds. See the [dbt guide](dbt/README.md) for their
 contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. Six Airflow
-DAGs collect carbon intensity forecasts and outturn plus `PN`, `QPN` and two
-`B1610` settlement runs. A seventh DAG runs production dbt source-freshness
-checks every hour. At the 21 September 2026 checkpoint, the raw layer
+Linux server, with separate development and production databases. Seven
+Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`, two
+`B1610` settlement runs and the BM unit registry. Two more run dbt:
+source-freshness checks every hour and the nightly S6 period models. At the
+21 September 2026 checkpoint, the raw layer
 contained about 247 million rows.
 
 The sources use different scheduling and backfill strategies because their

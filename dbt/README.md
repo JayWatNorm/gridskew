@@ -187,8 +187,9 @@ The local profile reads production raw data deliberately. Safety comes from
 database permissions: `gridskew_dbt` can select from `raw` and write to
 `dbt_dev`, but it cannot change `raw` or create schemas.
 
-The production Airflow dbt DAG currently runs `dbt source freshness` only. It
-does not materialise models or seeds. GitHub CI runs a full build against an
+The production Airflow dbt DAGs run source freshness hourly, test and snapshot
+the BM-unit registry daily, and update the S6 period tables nightly. Scheduled
+runs do not recreate views or load seeds. GitHub CI runs a full build against an
 ephemeral PostgreSQL service; that proves the project but does not deploy its
 relations to the homelab. A production seed therefore needs an explicit
 release-time `dbt seed` or the future scheduled build job when a production
