@@ -40,3 +40,8 @@ COMMENT ON COLUMN raw.elexon_pn.national_grid_bm_unit IS
 
 
 CREATE INDEX IF NOT EXISTS idx_raw_elexon_pn_retrieved_at ON raw.elexon_pn (retrieved_at);
+
+-- The S6 period model fetches every capture of a touched unit-period by its
+-- declared key, so segments outside the period are still found.
+CREATE INDEX IF NOT EXISTS idx_raw_elexon_pn_period
+    ON raw.elexon_pn (national_grid_bm_unit, settlement_date, settlement_period);

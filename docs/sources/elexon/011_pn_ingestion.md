@@ -106,7 +106,7 @@ Composition of those rows:
 | Null `bm_unit` | 657,743 | **1.4%** |
 
 Three of those matter downstream. The **7.6% ramp share** is what the settlement
-period integration macro exists for — naive endpoint integration is wrong on
+period integration in `int_elexon__pn_period_mwh` exists for — naive endpoint integration is wrong on
 roughly one row in thirteen, which is common enough to be a correctness problem
 rather than an edge case. The **11.9% negative share** rules out any check
 constraint assuming generation is positive. The **70.3% zero share** is why

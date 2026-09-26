@@ -2,7 +2,9 @@
 
 This project transforms raw API captures and owns small, version-controlled
 reference datasets. S4 adds a BM-unit current dimension and an observed-history
-snapshot to the existing staging models and S3 seeds. The local profile reads
+snapshot to the existing staging models and S3 seeds. S6 adds incremental
+period tables for metered (B1610) and committed (PN) energy, exposed as the
+`fct_generation` and `fct_commitments` views. The local profile reads
 `gridskew_prod.raw` and writes development models to `dbt_dev`; the homelab
 profile has a separate production target and runtime role. Verify the effective
 target and user before running commands that create or update relations.
@@ -57,15 +59,17 @@ dbt test --select assert_bm_units_staging_grain assert_bm_units_current_extract_
 dbt snapshot --select snap_elexon__bm_units
 ```
 
-The single daily Airflow DAG runs these after capturing a complete extract and
-rechecks its manifest immediately before snapshotting. Local dbt target schema
+The daily Airflow DAG runs the same steps after capturing a complete extract,
+with `dbt test` in place of `dbt build`: the views already exist, and rebuilding
+them would drop the views that depend on them. It rechecks the manifest
+immediately before snapshotting. A release that changes these models runs the
+build explicitly. Local dbt target schema
 `dbt_dev` generates `dbt_dev_snapshots`; the checked-in homelab target schema
 `public` generates `public_snapshots`. The snapshot schema needs to exist and
 grant `USAGE, CREATE` to the verified dbt runtime role. Use the separate
 administrator-run SQL and rollout sequence in
 [the deployment guide](../docs/deployment.md). Do not create a fresh snapshot
-over existing production history. The S4 code has passed fixture-backed dbt
-and lifecycle checks locally; production rollout is pending.
+over existing production history. S4 runs in production.
 
 That model default does not apply to seeds. `dbt seed` loads each CSV as a
 physical table in the target schema. The three S3 seeds are:
@@ -96,6 +100,25 @@ same `settlement_date` and `settlement_period` arguments, so they do not repeat
 the same fixture matrix. The combined three-model build verifies their macro
 integration. A consumer-specific unit test belongs with either model if its
 input handling later diverges through casting, renaming or filtering.
+
+## Period facts
+
+The two period tables recompute only settlement periods with new captures.
+Normal runs:
+
+```powershell
+dbt test --select "stg_elexon__b1610,test_type:generic"
+dbt run --select int_elexon__b1610_period int_elexon__pn_period_mwh
+dbt test --select int_elexon__b1610_period+ int_elexon__pn_period_mwh+ --exclude tag:full_population
+```
+
+After a manual load, a seed or logic change, and monthly:
+
+```powershell
+dbt build --select int_elexon__b1610_period+ int_elexon__pn_period_mwh+ --full-refresh
+```
+
+See [model decisions](../docs/decisions.md).
 
 ## Local setup
 
@@ -164,8 +187,9 @@ The local profile reads production raw data deliberately. Safety comes from
 database permissions: `gridskew_dbt` can select from `raw` and write to
 `dbt_dev`, but it cannot change `raw` or create schemas.
 
-The production Airflow dbt DAG currently runs `dbt source freshness` only. It
-does not materialise models or seeds. GitHub CI runs a full build against an
+The production Airflow dbt DAGs run source freshness hourly, test and snapshot
+the BM-unit registry daily, and update the S6 period tables nightly. Scheduled
+runs do not recreate views or load seeds. GitHub CI runs a full build against an
 ephemeral PostgreSQL service; that proves the project but does not deploy its
 relations to the homelab. A production seed therefore needs an explicit
 release-time `dbt seed` or the future scheduled build job when a production

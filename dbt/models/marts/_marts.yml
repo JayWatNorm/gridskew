@@ -24,3 +24,139 @@ models:
                 where: fuel_type is not null
       - name: retrieved_at
         description: Registry observation time, not a business effective date.
+
+  - name: fct_generation
+    description: >
+      View. One row per B1610 BM unit and settlement period: metered MWh from
+      the first captured and the latest settlement run (persisted in
+      int_elexon__b1610_period, see that model for the rules and the S8
+      caveat on first_run_code), with current registry mapping and evidence
+      joined at query time. A registry change shows at once without rewriting
+      any row. Zero, negative, unmapped and non-generator rows are kept;
+      positive MWh alone does not prove physical generation. Registry
+      candidates are grouped per Elexon ID, so the join cannot multiply
+      periods. The tests below re-run the view over all history, so they are
+      tagged full_population and run with full refreshes.
+    columns:
+      - name: bm_unit
+        description: Elexon BM-unit identifier. Part of the key.
+        data_tests:
+          - not_null:
+              config:
+                tags: ['full_population']
+      - name: settlement_date
+        description: Settlement date, British local time. Part of the key.
+        data_tests:
+          - not_null:
+              config:
+                tags: ['full_population']
+      - name: settlement_period
+        description: Settlement period. Part of the key.
+        data_tests:
+          - not_null:
+              config:
+                tags: ['full_population']
+      - name: period_start_utc
+        description: UTC start of the settlement period.
+      - name: first_quantity_mwh
+        description: MWh from the earliest captured run.
+      - name: first_run_code
+        description: Run of the first captured value; SF or later means backfilled.
+      - name: first_retrieved_at
+        description: When the first captured run was first seen.
+      - name: first_source_national_grid_bm_unit_id
+        description: National Grid ID delivered with the first captured run.
+      - name: latest_quantity_mwh
+        description: MWh from the highest-ordered run captured so far.
+      - name: latest_run_code
+        description: Run code of the latest value.
+      - name: latest_retrieved_at
+        description: When the latest run was first seen.
+      - name: latest_source_national_grid_bm_unit_id
+        description: National Grid ID delivered with the latest run.
+      - name: mapping_status
+        description: >
+          mapped, unmapped (no registry row), ambiguous (more than one
+          registry row for the Elexon ID) or conflict (a delivered National
+          Grid ID disagrees with the registry). Unknown mapping keeps the MWh.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['mapped', 'unmapped', 'ambiguous', 'conflict']
+              config:
+                tags: ['full_population']
+      - name: mapped_national_grid_bm_unit
+        description: Registry National Grid ID; set only when mapped.
+      - name: current_fuel_type
+        description: Current registry fuel code, not the fuel at settlement.
+      - name: current_bm_unit_type
+        description: Current registry BM-unit type; set only when mapped.
+      - name: current_production_or_consumption_flag
+        description: Current registry role flag; set only when mapped.
+
+  - name: fct_commitments
+    description: >
+      View. One row per PN National Grid BM unit and settlement period: the
+      committed MWh integrated from the latest non-echo capture and its
+      coverage status (persisted in int_elexon__pn_period_mwh, see that model
+      for the capture and coverage rules), with current registry mapping and
+      evidence joined at query time. Incomplete or invalid periods are kept
+      with a NULL pn_mwh; absence of PN is never zero. The registry is unique
+      on National Grid ID, so the join cannot multiply periods. The tests
+      below are tagged full_population, as for fct_generation.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid BM-unit identifier. Part of the key.
+        data_tests:
+          - not_null:
+              config:
+                tags: ['full_population']
+      - name: settlement_date
+        description: Settlement date, British local time. Part of the key.
+        data_tests:
+          - not_null:
+              config:
+                tags: ['full_population']
+      - name: settlement_period
+        description: Settlement period. Part of the key.
+        data_tests:
+          - not_null:
+              config:
+                tags: ['full_population']
+      - name: period_start_utc
+        description: UTC start of the settlement period.
+      - name: pn_mwh
+        description: Integrated PN MWh; NULL unless coverage_status is complete.
+      - name: coverage_status
+        description: complete, incomplete or invalid.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['complete', 'incomplete', 'invalid']
+              config:
+                tags: ['full_population']
+      - name: segment_count
+        description: Number of segments in the chosen capture.
+      - name: pn_retrieved_at
+        description: When the chosen capture was polled.
+      - name: source_bm_unit
+        description: Elexon ID delivered with the PN; null for 1.4% of rows.
+      - name: mapping_status
+        description: >
+          mapped, unmapped (no registry row) or conflict (the delivered Elexon
+          ID disagrees with the registry, or the capture's segments carry more
+          than one Elexon ID). PN cannot be ambiguous.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['mapped', 'unmapped', 'conflict']
+              config:
+                tags: ['full_population']
+      - name: mapped_elexon_bm_unit
+        description: Registry Elexon ID; set only when mapped.
+      - name: current_fuel_type
+        description: Current registry fuel code, not the fuel at the period.
+      - name: current_bm_unit_type
+        description: Current registry BM-unit type; set only when mapped.
+      - name: current_production_or_consumption_flag
+        description: Current registry role flag; set only when mapped.
