@@ -9,7 +9,7 @@ from airflow.decorators import dag, task
 
 @dag(
     dag_id="gridskew__dbt_freshness_dag",
-    schedule="20,50 * * * *",
+    schedule="20 * * * *",
     start_date=datetime(2026, 9, 18, tzinfo=timezone.utc),
     catchup=False,
     max_active_runs=1,

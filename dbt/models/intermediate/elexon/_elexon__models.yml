@@ -17,3 +17,91 @@ models:
         description: Nullable published code, with unknowns preserved.
       - name: source_row_count
         description: Number of source rows contributing to this unit.
+
+  - name: int_elexon__b1610_period
+    description: >
+      Private S6 incremental table. One row per B1610 BM unit and settlement
+      period, with the first captured and the latest settlement-run value.
+      "First captured" is the earliest retrieved_at (ties broken by run
+      order): it is first observed, not the lowest run now available. Live
+      dates normally start at II; backfilled dates start at SF or later, so S8
+      must filter or label on first_run_code before it treats a first value as
+      II. "Latest" is the highest run_order in the settlement-run seed. Each
+      run recomputes only periods with a source row captured since the stored
+      watermark minus capture_margin; this equals a full rebuild while every
+      new raw row becomes visible within the margin. After a manual load, a
+      raw edit, a seed change or a logic change, run
+      `--select int_elexon__b1610_period+ --full-refresh`. Registry evidence
+      is attached in fct_generation.
+    columns:
+      - name: bm_unit
+        description: Elexon BM-unit identifier from B1610. Part of the key.
+      - name: settlement_date
+        description: Settlement date, British local time. Part of the key.
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50. Part of the key.
+      - name: first_quantity_mwh
+        description: MWh from the earliest captured run. Never an invented II.
+      - name: first_run_code
+        description: Run code of the first captured value (II, SF, R1 ...).
+      - name: first_retrieved_at
+        description: When the first captured run was first seen.
+      - name: first_source_national_grid_bm_unit_id
+        description: National Grid ID delivered with the first captured run.
+      - name: latest_quantity_mwh
+        description: MWh from the highest-ordered run captured so far.
+      - name: latest_run_code
+        description: Run code of the latest value.
+      - name: latest_retrieved_at
+        description: When the latest run was first seen.
+      - name: latest_source_national_grid_bm_unit_id
+        description: National Grid ID delivered with the latest run.
+      - name: last_captured_at
+        description: >
+          Latest retrieved_at over all runs of the period; the source of the
+          incremental watermark.
+
+  - name: int_elexon__pn_period_mwh
+    description: >
+      Private S6 incremental table. One row per PN National Grid BM unit and
+      settlement period, integrated to MWh from one capture. The chosen
+      capture is the latest one that is not an echo: an echo only repeats
+      segments already captured for that period (the next day's poll re-sends
+      the segment touching its requested start). Segments are never mixed
+      across captures. The capture must cover the period exactly once: a
+      segment outside the period or with no duration makes it invalid; a gap,
+      overlap or missing edge makes it incomplete. Both keep the row with a
+      NULL pn_mwh. A unit-period with no PN has no row; absence is never zero.
+      This is the latest captured PN, not the state at gate closure. The
+      incremental rule and full-refresh cases match int_elexon__b1610_period.
+      Registry evidence is attached in fct_commitments.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid BM-unit identifier from PN. Part of the key.
+      - name: settlement_date
+        description: Settlement date, British local time. Part of the key.
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50. Part of the key.
+      - name: pn_mwh
+        description: >
+          Sum of segment trapezoids, (MW at start + MW at end) / 2 x hours, in
+          numeric. NULL unless coverage_status is complete.
+      - name: coverage_status
+        description: >
+          complete, incomplete (gap, overlap or missing edge) or invalid (a
+          segment outside the period, a segment with no duration, or a period
+          number that does not exist on that date).
+      - name: segment_count
+        description: Number of segments in the chosen capture.
+      - name: pn_retrieved_at
+        description: When the chosen capture was polled.
+      - name: source_bm_unit
+        description: Elexon ID delivered with the PN; null for 1.4% of rows.
+      - name: has_conflicting_source_bm_units
+        description: >
+          True when the chosen capture's segments carry more than one Elexon
+          ID; fct_commitments then reports a mapping conflict.
+      - name: last_captured_at
+        description: >
+          Latest retrieved_at over all captures of the period, echoes
+          included; the source of the incremental watermark.

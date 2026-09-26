@@ -61,7 +61,15 @@ models:
           II, SF, R1, R2, R3, RF. Each supersedes the last. Part of the
           key, so a revision lands as a new row. Not filterable in
           practice — the API serves only the run currently in force, so
-          which run you receive is decided by the poll offset
+          which run you receive is decided by the poll offset.
+          S6 blocking check: every code must exist in the settlement-run seed,
+          so an unknown run stops the build before the facts. NOT NULL is
+          enforced by the raw table, so no separate null test.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('elexon_settlement_run_codes')
+                field: settlement_run_code
       - name: quantity
         description: >
           MWh for the whole period, not MW. Negative for units that

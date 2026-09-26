@@ -26,6 +26,7 @@ unnumbered so GitHub renders them on arrival.
 ```
 docs/
   deployment.md               Getting the DAGs onto an external Airflow
+  decisions.md                Model decisions and the reasons for them
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
   endpoint-validation.md      Contracts, routing, warning logs and quarantine

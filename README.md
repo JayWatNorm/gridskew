@@ -105,7 +105,7 @@ The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hoste
 Linux server, with separate development and production databases. Six Airflow
 DAGs collect carbon intensity forecasts and outturn plus `PN`, `QPN` and two
 `B1610` settlement runs. A seventh DAG runs production dbt source-freshness
-checks twice an hour. At the 21 September 2026 checkpoint, the raw layer
+checks every hour. At the 21 September 2026 checkpoint, the raw layer
 contained about 247 million rows.
 
 The sources use different scheduling and backfill strategies because their
@@ -183,7 +183,8 @@ the [deployment guide](docs/deployment.md).
 - dbt sources, scheduled production freshness checks and five source-grain
   staging views
 - Settlement-period conversion covering normal days and UK clock changes
-- Pull-request CI with 87 Python tests, linting, DAG compilation, `dbt parse`
+- BM unit registry capture, current dimension and observed-history snapshot
+- Pull-request CI with 122 Python tests, linting, DAG compilation, `dbt parse`
   and a deterministic fixture-backed `dbt build`
 
 **Built in dbt development**
@@ -191,11 +192,12 @@ the [deployment guide](docs/deployment.md).
 - Three S3 reference seeds with explicit PostgreSQL types and data tests;
   loaded into `dbt_dev` for development. Loading them for production models
   would be a separate release step.
+- Incremental generation and commitment models (`fct_generation`,
+  `fct_commitments`) at unit and settlement-period grain; see
+  [model decisions](docs/decisions.md)
 
 **Next**
 
-- Capture the BM unit registry and model its changing attributes
-- Build incremental generation and commitment facts
 - Join shortfalls to forecast error and explanatory inputs
 
 `QPN` does not alter the settlement-shortfall calculation. The model compares
