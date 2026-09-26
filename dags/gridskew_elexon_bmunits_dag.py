@@ -118,7 +118,9 @@ def gridskew_elexon_bmunits():
                 env = dbt_environment(work_dir)
                 print(f"BM-unit dbt logs: {env['DBT_LOG_PATH']}")
                 run_dbt(env, "seed", "--select", "elexon_fuel_codes")
-                run_dbt(env, "build", "--select", "+dim_bm_unit")
+                # Test, not build: rebuilding these views would drop the views that
+                # depend on them (DROP ... CASCADE). Releases recreate views.
+                run_dbt(env, "test", "--select", "+dim_bm_unit")
                 run_dbt(
                     env,
                     "test",
