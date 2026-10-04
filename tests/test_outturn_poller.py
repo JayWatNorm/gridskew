@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
+from fakes import single_spaced
 
 from ingestion.carbon_intensity.contracts import OUTTURN_SPEC
 from ingestion.carbon_intensity.outturn_poller import (
@@ -33,8 +34,12 @@ def test_build_windows_covers_the_range_in_contiguous_30_day_chunks():
     assert windows[0][0] == WINDOW_START
     assert windows[-1][1] == WINDOW_END
     assert windows[-1][1] - windows[-1][0] == timedelta(days=5)
-    assert all(end - start <= timedelta(days=30) for start, end in windows)
-    assert all(current[1] == following[0] for current, following in pairwise(windows))
+    for start, end in windows:
+        assert end - start <= timedelta(days=30)
+    for window, next_window in pairwise(windows):
+        window_end = window[1]
+        next_window_start = next_window[0]
+        assert window_end == next_window_start
 
 
 def test_parse_maps_a_source_row_to_the_database_tuple(payload):
@@ -62,13 +67,14 @@ def test_load_uses_the_expected_columns_conflict_key_and_commits():
     ) as mock_execute_values:
         load(parsed_rows, conn)
 
-    sql = "".join(mock_execute_values.call_args.args[1].split())
-    assert sql == (
-        "INSERTINTOraw.carbon_intensity_outturn(period_start,period_end,"
-        "retrieved_at,actual,forecast_final,intensity_index)VALUES%s"
-        "ONCONFLICT(period_start,retrieved_at)DONOTHING"
+    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
+    assert single_spaced(insert_sql) == (
+        "INSERT INTO raw.carbon_intensity_outturn (period_start, period_end, "
+        "retrieved_at, actual, forecast_final, intensity_index) "
+        "VALUES %s "
+        "ON CONFLICT (period_start, retrieved_at) DO NOTHING"
     )
-    assert mock_execute_values.call_args.args[2] == parsed_rows
+    assert inserted_rows == parsed_rows
     conn.commit.assert_called_once_with()
 
 
@@ -215,12 +221,12 @@ def test_run_backfills_all_windows_and_reports_the_total_failures(summary_output
         ):
             run_poller(conn)
 
-    assert mock_process_window.call_count == 3
-    capture_times = [item.args[3] for item in mock_process_window.call_args_list]
-    assert len(set(capture_times)) == 1
-    assert [item.args[:3] for item in mock_process_window.call_args_list] == [
-        (conn, start, end) for start, end in windows
-    ]
+    calls = mock_process_window.call_args_list
+    assert len(calls) == 3
+    shared_capture_time = calls[0].args[3]
+    for window_call, window in zip(calls, windows, strict=True):
+        window_start, window_end = window
+        assert window_call.args == (conn, window_start, window_end, shared_capture_time)
 
 
 def test_run_refreshes_only_the_recent_window_when_history_is_complete():

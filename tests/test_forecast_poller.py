@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from fakes import single_spaced
 
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
 from ingestion.carbon_intensity.forecast_poller import load, parse
@@ -45,12 +46,13 @@ def test_load_uses_the_expected_columns_and_commits():
     ) as mock_execute_values:
         load(parsed_rows, conn)
 
-    sql = "".join(mock_execute_values.call_args.args[1].split())
-    assert sql == (
-        "INSERTINTOraw.carbon_intensity_forecast(period_start,period_end,"
-        "retrieved_at,forecast,actual,intensity_index)VALUES%s"
+    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
+    assert single_spaced(insert_sql) == (
+        "INSERT INTO raw.carbon_intensity_forecast (period_start, period_end, "
+        "retrieved_at, forecast, actual, intensity_index) "
+        "VALUES %s"
     )
-    assert mock_execute_values.call_args.args[2] == parsed_rows
+    assert inserted_rows == parsed_rows
     conn.commit.assert_called_once_with()
 
 

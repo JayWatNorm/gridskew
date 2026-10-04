@@ -73,7 +73,8 @@ def test_process_rows_routes_mixed_batch():
     assert events == ["quarantine", "parse", "load"]
     parse_rows.assert_called_once_with([valid_row, warning_row], RETRIEVED_AT)
     load_rows.assert_called_once_with(parsed_rows, conn)
-    rejected_finding = mock_quarantine.call_args.args[0][0]
+    quarantined_findings = mock_quarantine.call_args.args[0]
+    rejected_finding = quarantined_findings[0]
     assert rejected_finding == {
         "index": 2,
         "row": rejected_row,
@@ -128,22 +129,19 @@ def test_process_rows_groups_warning_logs_and_caps_source_indexes(caplog):
         load_rows=Mock(),
     )
 
-    payloads = [json.loads(record.getMessage()) for record in caplog.records]
-    payloads_by_field = {payload["field"]: payload for payload in payloads}
+    payloads_by_field = {}
+    for record in caplog.records:
+        payload = json.loads(record.getMessage())
+        assert payload["dataset"] == "CI_Forecast"
+        payloads_by_field[payload["field"]] = payload
 
-    assert len(payloads) == 2
-    assert payloads_by_field["publisherNote"]["affected_row_count"] == 6
-    assert payloads_by_field["publisherNote"]["sample_source_indexes"] == [
-        0,
-        1,
-        2,
-        3,
-        4,
-    ]
-    assert payloads_by_field["intensity.publisherStatus"]["sample_source_indexes"] == [
-        5
-    ]
-    assert all(payload["dataset"] == "CI_Forecast" for payload in payloads)
+    assert len(caplog.records) == 2
+    assert len(payloads_by_field) == 2
+    note_warning = payloads_by_field["publisherNote"]
+    assert note_warning["affected_row_count"] == 6
+    assert note_warning["sample_source_indexes"] == [0, 1, 2, 3, 4]
+    status_warning = payloads_by_field["intensity.publisherStatus"]
+    assert status_warning["sample_source_indexes"] == [5]
 
 
 @pytest.mark.parametrize(
@@ -173,7 +171,8 @@ def test_quarantine_rows_preserves_evidence(dataset, request_context):
     with patch("ingestion.routing.execute_values") as mock_execute_values:
         quarantine_rows([finding], conn, dataset, RETRIEVED_AT, request_context)
 
-    inserted = mock_execute_values.call_args.args[2][0]
+    _cursor, _insert_sql, inserted_rows = mock_execute_values.call_args.args
+    inserted = inserted_rows[0]
     assert inserted[0] == dataset
     assert inserted[1] == RETRIEVED_AT
     assert inserted[2].adapted == request_context
@@ -213,7 +212,8 @@ def test_quarantine_rows_uses_custom_payload_encoder():
             payload_dumps=decimal_json_dumps,
         )
 
-    payload = mock_execute_values.call_args.args[2][0][5]
+    _cursor, _insert_sql, inserted_rows = mock_execute_values.call_args.args
+    payload = inserted_rows[0][5]
     decoded = json.loads(payload.dumps(payload.adapted), parse_float=Decimal)
     assert decoded == row
 

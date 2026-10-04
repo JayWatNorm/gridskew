@@ -37,8 +37,9 @@ def assert_fixture_matches_contract(
     findings = validate_rows(rows, spec)
 
     assert findings
-    assert all(finding["errors"] == [] for finding in findings)
-    assert all(finding["warnings"] == [] for finding in findings)
+    for finding in findings:
+        assert finding["errors"] == []
+        assert finding["warnings"] == []
 
 
 @pytest.fixture
@@ -157,11 +158,14 @@ def test_validate_row_rejects_a_non_dictionary_nested_value(forecast_row):
 def test_validate_rows_keeps_checking_after_a_non_dictionary_item(pn_row):
     findings = validate_rows([pn_row, None, pn_row.copy()], PN_SPEC)
 
-    assert [finding["index"] for finding in findings] == [0, 1, 2]
-    assert findings[0]["errors"] == []
-    assert findings[1]["row"] is None
-    assert findings[1]["errors"] == ["Invalid row type: expected dictionary"]
-    assert findings[2]["errors"] == []
+    first_valid, not_a_dictionary, second_valid = findings
+    assert first_valid["index"] == 0
+    assert first_valid["errors"] == []
+    assert not_a_dictionary["index"] == 1
+    assert not_a_dictionary["row"] is None
+    assert not_a_dictionary["errors"] == ["Invalid row type: expected dictionary"]
+    assert second_valid["index"] == 2
+    assert second_valid["errors"] == []
 
 
 def test_validate_rows_does_not_change_nested_source_rows():

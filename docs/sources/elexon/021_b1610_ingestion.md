@@ -23,8 +23,8 @@ the server pulls the updated poller.
 | Table | `raw.elexon_b1610` |
 | DDL | `sql/init/005_elexon_b1610.sql` |
 | Tests | `tests/test_elexon_b1610.py`, against `b1610_stream.json` |
-| DAGs | `gridskew_elexon_b1610_II_dag.py`, `..._SF_dag.py` |
-| Schedule | `@daily`, both |
+| DAGs | `gridskew_elexon_b1610_II_dag.py`, `..._SF_dag.py`, `..._cohort_dag.py` |
+| Schedule | II/SF: `@daily`; cohort: seven fixed events at 06:00 UTC |
 | `catchup` | II **`True`**, SF **`False`** |
 
 ## Validation and quarantine
@@ -64,13 +64,16 @@ calculation would misalign the two tables used by the thesis join.
 II is live from day 7, but publication counts **working** days. Five working days
 is seven calendar days in a normal week and about twelve around Christmas.
 
-With `catchup=True`, a run that finds nothing writes nothing and is never
-retried — so being early creates a **permanent hole**, not a delay. Seven days of
-margin costs a week of freshness and removes that failure class entirely.
+The current poller rejects an empty response and fails visibly, so retries
+can recover a transient publication delay. The 14-day offset gives a
+working-day publication margin at the cost of a week of freshness; it does
+not prove that every response is complete.
 
-The 35-day rung is also a **backstop**: any day the head poll missed is picked up
-there, arriving as `SF` rather than `II`. The data is not lost, only the earlier
-reading of it.
+The 35-day rung can capture a later settlement run for a date missed by the
+head poll. It does not recover the missing earlier II reading: settlement
+runs that the endpoint has replaced may no longer be retrievable. Record
+any missing or unexpected run type rather than treating SF as equivalent
+evidence for II.
 
 ### Why SF does not backfill
 
@@ -86,25 +89,68 @@ conflict and nothing would insert.
 > steady-state behaviour, not what its backfill collected — worth knowing before
 > writing a model that filters on run type.
 
-## The poll offset is the run-type selector
+## Bounded cohort captures
+
+`gridskew_elexon_b1610_cohort` captures R1 for British settlement dates
+2026-08-10 through 2026-08-16. Its only seven events are 2026-10-05 through
+2026-10-11 at 06:00 UTC, each settlement date +56 days. It starts paused,
+uses the existing `elexon` pool and enables catchup for a late unpause.
+The date mapping in the DAG is the schedule's sole source; an unlisted date
+is refused.
+
+The cohort calls the existing poller with `settlementRunType=R1`. II and SF
+keep their existing unfiltered requests. The British-day window includes
+half-hour **start** times, despite the response field being named
+`halfHourEndTime`. The inclusive API bounds are local midnight through the
+next local midnight minus 30 minutes, converted to UTC. For 2026-08-10 this is
+`2026-08-09T23:00Z` through `2026-08-10T22:30Z`. A live one-unit check on
+1 October verified that end-time request bounds skip period 1 and include
+the following settlement date. Clock-change days have 46
+or 50 periods rather than 48.
+
+Before routing or writing, the cohort refuses a response containing a typed
+settlement date different from the requested date or an integer period outside
+1 through that date's expected count. Either mismatch rejects the entire
+batch. Missing or wrongly typed fields still follow the existing quarantine
+route. This extra check applies only to the bounded cohort.
+
+After compatible rows commit, the cohort task requires every returned row
+to have the requested run type and the stored period numbers for
+that settlement date/run type to be exactly 1–46, 1–48 or 1–50 as appropriate. It logs
+the requested date/run, returned run counts, stored rows, periods and units.
+Mixed runs or missing/unexpected stored periods fail visibly while keeping already committed
+data. The existing key makes a repeated insert idempotent. This check is
+period coverage across the cohort; it does not prove every unit is complete.
+
+**Clear a task instance to repeat a capture.** Do not manually trigger an
+old date: manual triggering is not a reliable way to select a past capture.
+A run without a logical date is refused.
+
+RF is a later addition to the same bounded mapping: +430 days,
+2027-10-14 through 2027-10-20. Those RF events are not scheduled in this
+release. A filter cannot restore a run that the source has superseded.
+
+## The poll offset determines which run is available
 
 The API serves only the run currently in force and **discards what it
 supersedes** — see [020_b1610.md](020_b1610.md). So the run type is chosen by how
-long you wait, not by a parameter:
+long you wait. The cohort parameter requests the desired run explicitly;
+its completion check still verifies what the source returned:
 
 | Poll at | Returns |
 |---|---|
 | 14 days | `II` |
 | 35 days | `SF` |
-| 80 days | `R1` |
+| 80 days | `R1` (standing-rung margin; the bounded cohort requests +56 days) |
 | 165 days | `R2` |
 | 300 days | `R3` |
 | 450 days | `RF` |
 
-That is why this is two DAGs at fixed offsets rather than one job with an
-argument, and why **a missed settlement-run revision cannot be recovered
-later**. A later rung can still recover the underlying period at a more mature
-run type.
+II and SF therefore remain two standing DAGs at fixed offsets; the bounded
+cohort adds an explicit run-type request and checks the returned run.
+**A missed settlement-run revision cannot be recovered later** once the source
+supersedes it. A later rung can still recover the underlying period at a more
+mature run type.
 
 ## Chunking and volumes
 
