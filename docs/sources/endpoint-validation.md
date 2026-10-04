@@ -58,7 +58,10 @@ Mixed responses retain both compatible data and rejected evidence before the
 task fails. All-rejected responses skip typed parsing and loading. Outturn
 applies this per request window, continues after validation-rejected chunks and
 raises once after all requested windows. HTTP, envelope, parsing, quarantine
-and database failures still stop immediately.
+and database failures still stop immediately, with one exception: when outturn
+re-fetches a history window on a Monday, a failure there is logged and counted
+as an incomplete window, the remaining history windows are still attempted, and
+the run then fails.
 
 `process_rows` returns the rejected-row count. Each poller uses that count to
 set its final task status after successful writes. Available compatible data is
@@ -96,5 +99,7 @@ python -m pytest
 
 Fixture-backed tests cover contracts, response envelopes, parsers, loader
 wiring and Carbon period completeness. Shared tests cover routing, warning
-evidence and quarantine values. They make no live API or database calls. Real
-PostgreSQL commit/replay behavior remains a separate follow-up check.
+evidence and quarantine values. They make no live API or database calls, so
+they do not exercise real PostgreSQL commits. CI covers that separately: it
+loads the fixtures into a disposable PostgreSQL through the same routing and
+loaders before the dbt build.

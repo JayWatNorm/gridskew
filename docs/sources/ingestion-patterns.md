@@ -104,8 +104,11 @@ appeared.
 **0.04% of the cost on the days nothing changed**, which will be most of them,
 because settlement runs complete in waves rather than gradually.
 
-The assumption to validate once: that settlement runs advance uniformly across
-units. Probe three or four units on the same day and check they agree.
+The assumption to validate first: that settlement runs advance uniformly across
+units. Probe three or four units on the same day and check they agree. It does
+not hold exactly: a few B1610 unit-periods never progress past the interim run
+(see [elexon/020_b1610.md](elexon/020_b1610.md)), so a probe can decide when to
+fetch a day, not which rows changed.
 
 ## Chunk size is bounded by memory, not by the API
 
@@ -121,8 +124,8 @@ The constraint is what happens after the response arrives:
 | 7 days | 909k | 236 MB | ~0.8 GB |
 | 30 days | 3.9M | 1 GB | ~3.6 GB |
 
-**One day per chunk**, because an Airflow worker shares a homelab with Postgres
-and everything else, and a poller that is OOM-killed part way through a backfill
+**One day per chunk**, because the Airflow worker shares one server with
+PostgreSQL, and a poller that is OOM-killed part way through a backfill
 is a worse failure than a few hundred extra requests.
 
 A chunk boundary can split a settlement period's ramp segments across two
@@ -178,7 +181,7 @@ a run rather than of a row.
 | DAG | Setting | Why |
 |---|---|---|
 | Carbon intensity forecast | `catchup=False`, poll now | Source not addressable. History does not exist |
-| Carbon intensity outturn | `catchup=False`, rolling 7-day window | Addressable, but actuals arrive late for every period. Volume so small the overlap is free |
+| Carbon intensity outturn | `catchup=False`, rolling 7-day window, weekly re-fetch of any gap in history | Addressable, but actuals arrive late for every period. Volume so small the overlap is free |
 | Elexon PN, QPN and B1610 II | `catchup=True`, daily chunks | Addressable, high volume, and responsible for the historical load |
 | Elexon B1610 SF | `catchup=False`, fixed 35-day lag | Runs forwards only to capture SF while it is available |
 

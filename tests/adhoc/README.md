@@ -1,12 +1,12 @@
 # Ad-hoc checks
 
-**These are not automated tests.** They are exploratory validation scripts used
-to answer specific questions about the data. They are retained so documented
-measurements remain reproducible.
+**pytest does not collect anything here.** Some scripts are exploratory checks,
+kept so documented measurements remain reproducible. Others are checks that CI
+runs.
 
 They are **excluded from pytest** by `norecursedirs = ["adhoc"]` in
-`pyproject.toml`. That exclusion is load-bearing: these scripts **call the live
-API at import time**, so if pytest ever collected one it would make real HTTP
+`pyproject.toml`. That exclusion is load-bearing: the exploratory scripts **call
+the live API at import time**, so if pytest ever collected one it would make real HTTP
 requests during collection — including on a CI runner.
 
 **Do not name anything in here `test_*.py`.** The exclusion covers the directory,
@@ -29,6 +29,19 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `pn_checks.py` | Are `bmUnit` and `nationalGridBmUnit` ever null? How many PN rows are zero-to-zero? | 2,450 of 132,728 rows have a null `bmUnit` and none has a null `nationalGridBmUnit`, which is why the primary key uses the National Grid identifier. 72% of rows are zero-to-zero, and 63% of units are zero all day. See `docs/sources/elexon/010_pn.md` |
 | `qpn_checks.py` | Does QPN share PN's null pattern, and how often is it actually non-zero? | Same 2,450 null `bmUnit` rows, same zero nulls on `nationalGridBmUnit`, so the same key holds. **50 of 119,600 rows are non-zero — 0.04% — and all 50 belong to `T_WILCT-1`**, at a constant −60 MW. See `docs/sources/elexon/015_qpn.md` |
 | `b1610_checks.py` | When does B1610 arrive, when does each settlement run publish, can earlier runs be recovered, and what does a market-wide day contain? | First publication appears after five working days, normally 7 calendar days. A settlement day contains **~440,000 rows across 9,177 units**, making B1610 the largest table in the project. Identifier pattern is **inverted from PN**: `bmUnit` never null, `nationalGridBmUnitId` null on 71.8%. Run boundaries measured out to 720 days place `RF` at ~420 days. Most importantly, **superseded runs are discarded and cannot be fetched retrospectively** — restatement is only observable forwards. See `docs/sources/elexon/020_b1610.md` |
+
+## Checks CI runs
+
+| Script | What it checks | Needs |
+|---|---|---|
+| `load_ci_fixtures.py` | Applies `sql/init` and loads the captured fixtures through the real routing and loaders | Disposable PostgreSQL |
+| `check_bmu_snapshot_lifecycle.py` | Real dbt snapshot transitions for the BM-unit registry | Disposable PostgreSQL |
+| `check_outturn_gap_refetch.py` | The outturn history gap query, inside one transaction that is rolled back | Disposable PostgreSQL |
+| `check_s6_facts.py` | The period tables: an incremental run equals a full refresh; runs in its own job on an empty database | Disposable PostgreSQL |
+| `check_scheduled_set.py` | The nightly DAG's default dbt commands, and the rules that stop a model or seed replacing a relation | dbt's manifest and the nightly DAG |
+
+The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
+database is a local `gridskew_dev`.
 
 ## Fixture capture
 

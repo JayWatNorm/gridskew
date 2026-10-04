@@ -38,6 +38,7 @@ def test_scheduled_run_writes_tables_only_after_the_run_code_test(nightly):
     for command in commands:
         assert "build" not in command
         assert "--full-refresh" not in command
+        assert "-f" not in command
 
 
 def test_full_refresh_rebuilds_descendants_after_contract_tests(nightly):

@@ -35,7 +35,7 @@ docs/sources/
     010_forecast.md           Every version of the forecast            [running]
     011_forecast_ingestion.md   every 30 min, catchup=False, 35-min SLA
     020_outturn.md            What actually happened                   [running]
-    021_outturn_ingestion.md    daily, 7-day look-back, 30-day chunks
+    021_outturn_ingestion.md    daily, 7-day look-back, Monday gap re-fetch
   elexon/
     README.md                 API level, plus how the GB market works
     010_pn.md                 The promise                              [running]
@@ -43,7 +43,7 @@ docs/sources/
     015_qpn.md                Dynamic Data; not subtracted from PN     [running]
     016_qpn_ingestion.md        as PN
     020_b1610.md              The receipt                              [running]
-    021_b1610_ingestion.md      II at 14d, SF at 35d, catchup=True on II
+    021_b1610_ingestion.md      II at 14d, SF at 35d, bounded R1 cohort
     030_remit.md              The outage notice                        [planned]
     040_boalf.md              The intervention                         [planned]
     050_demand.md             Expected versus actual usage             [later]
