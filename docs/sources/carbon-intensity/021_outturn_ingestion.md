@@ -27,9 +27,16 @@ fetches its own interval and never returns, so an `actual` landing three days
 after the period would never be captured.
 
 Instead, `run` takes its window from the database. `stored_period_summary`
-reads the existing minimum and maximum `period_start`; an empty or short table
-triggers a **365 day backfill in 30 day windows**, otherwise a **7 day
-look-back**. Backfill and catch-up use the same path with different dates.
+reads the stored row count and minimum/maximum `period_start`. An empty table,
+or an earliest stored period later than the one-year horizon, triggers a
+**365 day backfill in 30 day windows**; otherwise the poller requests a
+**7 day look-back**. The maximum period and row count do not establish complete
+historical coverage.
+
+An interrupted initial load can commit an early window, then leave a middle
+gap that later seven-day polls do not revisit. Automatic historical-gap resume
+remains a planned change. `catchup=False` does not repair that gap; preserve
+failed-window evidence and use the observed recovery workflow.
 
 ## Validation and quarantine
 
@@ -91,8 +98,9 @@ Each chunk starts where the last ended, and the API returns the period containin
 that instant. With `retrieved_at` constant across a run, that is a **guaranteed**
 primary key violation, so the insert carries `ON CONFLICT DO NOTHING`.
 
-This only bites when a window starts exactly on a half hour, which is precisely
-when scheduled runs fire. A manual run starting mid-period will not reproduce it.
+The duplicate depends on the endpoint's inclusive boundary alignment, not
+whether a run was scheduled or manual. Adjacent backfill windows can return
+the same aligned boundary period; the loader preserves one row per target key.
 
 The overlap is deliberate: **a duplicate is caught by the primary key, a gap is
 silent.**

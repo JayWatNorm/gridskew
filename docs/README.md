@@ -25,7 +25,7 @@ unnumbered so GitHub renders them on arrival.
 
 ```
 docs/
-  deployment.md               Getting the DAGs onto an external Airflow
+  deployment.md               Homelab CD overview; host steps live in the platform runbook
   decisions.md                Model decisions and the reasons for them
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
@@ -40,15 +40,16 @@ docs/sources/
     README.md                 API level, plus how the GB market works
     010_pn.md                 The promise                              [running]
     011_pn_ingestion.md         daily, catchup=True, 1-day chunks
-    015_qpn.md                An internal process netted off it        [running]
+    015_qpn.md                Dynamic Data; not subtracted from PN     [running]
     016_qpn_ingestion.md        as PN
     020_b1610.md              The receipt                              [running]
     021_b1610_ingestion.md      II at 14d, SF at 35d, catchup=True on II
     030_remit.md              The outage notice                        [planned]
     040_boalf.md              The intervention                         [planned]
-    050_demand.md             Expected versus actual usage             [planned]
-    060_system-prices.md      The cost of fixing the imbalance         [planned]
-    070_bmunits.md            The address book                         [planned]
+    050_demand.md             Expected versus actual usage             [later]
+    060_system-prices.md      The cost of fixing the imbalance         [later]
+    070_bmunits.md            The address book                         [deployed]
+    071_bmunits_ingestion.md    daily registry capture and observed history
     080_mels-mils.md          The headroom                             [optional]
 ```
 

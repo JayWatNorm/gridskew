@@ -5,9 +5,11 @@ reference datasets. S4 adds a BM-unit current dimension and an observed-history
 snapshot to the existing staging models and S3 seeds. S6 adds incremental
 period tables for metered (B1610) and committed (PN) energy, exposed as the
 `fct_generation` and `fct_commitments` views. The local profile reads
-`gridskew_prod.raw` and writes development models to `dbt_dev`; the homelab
-profile has a separate production target and runtime role. Verify the effective
-target and user before running commands that create or update relations.
+`gridskew_prod.raw` and writes to `dbt_dev`. The deployed S4 and S6 jobs also
+select the homelab `dev` target in that production database; these schemas hold
+live derived data and observed history. Freshness uses the separate `prod`
+target. Verify the effective database, target, schema and user before running
+commands that create or update relations.
 
 ## Project structure
 
@@ -50,26 +52,24 @@ new version. Polling metadata is excluded from the change comparison. The
 validity dates are when GridSkew observed a state, not Elexon's business
 effective dates. The endpoint provides no pre-collection attribute history.
 
-Run the current-state and snapshot steps in order against a verified target:
+The deployed daily Airflow DAG captures a complete extract, loads
+`elexon_fuel_codes`, runs `dbt test --select +dim_bm_unit` and the three
+registry singular tests, then runs the snapshot. It rechecks the manifest
+immediately before snapshotting. It tests existing views rather than rebuilding
+them, because recreating upstream views can drop their dependants.
 
-```powershell
-dbt seed --select elexon_fuel_codes
-dbt build --select +dim_bm_unit
-dbt test --select assert_bm_units_staging_grain assert_bm_units_current_extract_count assert_bm_units_duplicate_attributes_agree
-dbt snapshot --select snap_elexon__bm_units
-```
+The S4 change from build to test was released on 26 September 2026; the first
+scheduled run after that change has not yet been confirmed. Use the guarded
+Airflow task for live retries. Do not replace its tests with
+`dbt build --select +dim_bm_unit` as a scheduled or standalone repair.
 
-The daily Airflow DAG runs the same steps after capturing a complete extract,
-with `dbt test` in place of `dbt build`: the views already exist, and rebuilding
-them would drop the views that depend on them. It rechecks the manifest
-immediately before snapshotting. A release that changes these models runs the
-build explicitly. Local dbt target schema
-`dbt_dev` generates `dbt_dev_snapshots`; the checked-in homelab target schema
-`public` generates `public_snapshots`. The snapshot schema needs to exist and
-grant `USAGE, CREATE` to the verified dbt runtime role. Use the separate
-administrator-run SQL and rollout sequence in
-[the deployment guide](../docs/deployment.md). Do not create a fresh snapshot
-over existing production history. S4 runs in production.
+The deployed S4 job selects the `dev` target in the production database:
+`dbt_dev` holds models and `dbt_dev_snapshots` holds observed registry history.
+A schema name containing `dev` does not make it disposable. Schema creation,
+grants and structural changes follow the administrator-run SQL and observed
+release sequence in `homelab-platform/docs/gridskew-release.md` in the platform
+checkout. The [homelab CD overview](../docs/deployment.md) explains that boundary.
+Do not create a fresh snapshot over existing production history.
 
 That model default does not apply to seeds. `dbt seed` loads each CSV as a
 physical table in the target schema. The three S3 seeds are:
@@ -104,7 +104,12 @@ input handling later diverges through casting, renaming or filtering.
 ## Period facts
 
 The two period tables recompute only settlement periods with new captures.
-Normal runs:
+S6 was released on 26 September 2026 and an observed manual nightly run passed;
+the first scheduled nightly run has not yet been confirmed.
+
+The following is the normal nightly command sequence for reference. Live runs
+use the guarded Airflow task in the shared `gridskew_dbt` pool; these commands
+alone do not supply its missing-table guard, connection checks or serialisation:
 
 ```powershell
 dbt test --select "stg_elexon__b1610,test_type:generic"
@@ -112,13 +117,17 @@ dbt run --select int_elexon__b1610_period int_elexon__pn_period_mwh
 dbt test --select int_elexon__b1610_period+ int_elexon__pn_period_mwh+ --exclude tag:full_population
 ```
 
-After a manual load, a seed or logic change, and monthly:
+A manual load outside the capture-time margin, a raw edit, a settlement-run
+seed change, a model-logic change or the monthly recovery requires an observed
+full refresh. Trigger `gridskew__dbt_nightly` with `full_refresh=true` through
+the platform runbook. Its source/run-code checks block before the write, and
+its descendant build restores the fact views. Coordinate the shared dbt pool,
+verify all descendants and tests afterwards, and follow the runbook's recovery
+sequence if a cascade fails. A standalone full-refresh command omits those
+controls.
 
-```powershell
-dbt build --select int_elexon__b1610_period+ int_elexon__pn_period_mwh+ --full-refresh
-```
-
-See [model decisions](../docs/decisions.md).
+See [model decisions](../docs/decisions.md) and
+`homelab-platform/docs/gridskew-release.md` in the platform checkout.
 
 ## Local setup
 
@@ -167,7 +176,11 @@ Run only the fixture-backed unit tests:
 dbt test --select "test_type:unit"
 ```
 
-Load and test the three reference seeds in the development target:
+The following seed-load example is for a verified disposable database.
+The default local `dev` target is in the production database, so it is not
+that disposable context. Live seed changes follow the release runbook.
+
+Load and test the three reference seeds against the verified disposable target:
 
 ```powershell
 dbt seed --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity_bands
@@ -177,20 +190,21 @@ dbt test --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity
 Use `dbt seed --full-refresh` after changing a seed's columns or configured
 types. Ordinary value changes need only a normal `dbt seed` run.
 
-Build and test the selected models together:
+Use a full `dbt build` only against a verified disposable database containing
+fixtures. The local profile deliberately reads production raw data and writes
+to `dbt_dev` in the production database; that schema holds deployed relations.
+Raw read-only permissions protect raw records, but do not protect downstream
+views or snapshots from replacement. Live model changes and full refreshes
+follow the observed platform release workflow with prechecks, explicit
+selectors, descendant recovery and the shared dbt pool.
 
-```powershell
-dbt build
-```
+Freshness is configured hourly. S4 loads `elexon_fuel_codes`, tests the registry
+and records its snapshot. S6 updates the two private period tables and tests
+their descendants without recreating views. First scheduled S4/S6 runs after
+the 26 September release remain unconfirmed. CI runs a full build against an
+ephemeral PostgreSQL service; it does not deploy relations to the homelab.
 
-The local profile reads production raw data deliberately. Safety comes from
-database permissions: `gridskew_dbt` can select from `raw` and write to
-`dbt_dev`, but it cannot change `raw` or create schemas.
-
-The production Airflow dbt DAGs run source freshness hourly, test and snapshot
-the BM-unit registry daily, and update the S6 period tables nightly. Scheduled
-runs do not recreate views or load seeds. GitHub CI runs a full build against an
-ephemeral PostgreSQL service; that proves the project but does not deploy its
-relations to the homelab. A production seed therefore needs an explicit
-release-time `dbt seed` or the future scheduled build job when a production
-model first depends on it.
+`elexon_settlement_run_codes` is consumed by the B1610 period model and
+`elexon_fuel_codes` by registry validation. `carbon_intensity_bands` has no
+current model consumer; do not infer a production load from its presence in
+the repository.
