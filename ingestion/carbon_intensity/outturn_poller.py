@@ -1,3 +1,5 @@
+"""Fetch, validate, quarantine and load Carbon Intensity outturn windows."""
+
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -15,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 def fetch(from_date, to_date):
+    """Fetch outturn rows for a UTC datetime window."""
+
     from_timestamp = from_date.strftime("%Y-%m-%dT%H:%MZ")
     to_timestamp = to_date.strftime("%Y-%m-%dT%H:%MZ")
     response = requests.get(
@@ -115,7 +119,10 @@ def run(conn):
 
 
 def process_window(conn, from_date, to_date, retrieved_at):
-    """Validate and load one outturn request window."""
+    """Validate and load one outturn request window.
+
+    Return (rejected row count, whether the window was incomplete).
+    """
 
     request_start = from_date.replace(second=0, microsecond=0)
     request_end = to_date.replace(second=0, microsecond=0)
@@ -153,26 +160,39 @@ def process_window(conn, from_date, to_date, retrieved_at):
 
 
 def parse(source_rows, retrieved_at):
+    """Convert compatible source dictionaries to typed outturn insert tuples."""
+
     parsed_rows = []
     for source_row in source_rows:
-        parsed_rows.append(
-            (
-                datetime.strptime(source_row["from"], "%Y-%m-%dT%H:%MZ").replace(
-                    tzinfo=timezone.utc
-                ),
-                datetime.strptime(source_row["to"], "%Y-%m-%dT%H:%MZ").replace(
-                    tzinfo=timezone.utc
-                ),
-                retrieved_at,
-                source_row["intensity"]["actual"],
-                source_row["intensity"]["forecast"],
-                source_row["intensity"]["index"],
-            )
-        )
+        parsed_rows.append(_parse_row(source_row, retrieved_at))
     return parsed_rows
 
 
+def _parse_row(source_row, retrieved_at):
+    period_start = _utc_from_text_to_the_minute(source_row["from"])
+    period_end = _utc_from_text_to_the_minute(source_row["to"])
+    intensity = source_row["intensity"]
+    actual = intensity["actual"]
+    forecast_final = intensity["forecast"]
+    intensity_index = intensity["index"]
+
+    return (
+        period_start,
+        period_end,
+        retrieved_at,
+        actual,
+        forecast_final,
+        intensity_index,
+    )
+
+
+def _utc_from_text_to_the_minute(value):
+    return datetime.strptime(value, "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+
+
 def load(parsed_rows, conn):
+    """Insert typed outturn rows, ignoring existing target keys, and commit."""
+
     insert_sql = (
         "INSERT INTO raw.carbon_intensity_outturn (period_start, "
         "period_end, retrieved_at, actual, forecast_final, intensity_index) "

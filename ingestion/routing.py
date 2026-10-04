@@ -25,33 +25,15 @@ def process_rows(
 ):
     """Quarantine rejected rows, load compatible rows and return the rejected count."""
 
-    findings = validate_rows(rows, spec=spec)
     rejected_findings = []
-    compatible_rows = []
-    warning_groups = {}
-
-    for finding in findings:
+    compatible_findings = []
+    for finding in validate_rows(rows, spec=spec):
         if finding["errors"]:
             rejected_findings.append(finding)
-            continue
+        else:
+            compatible_findings.append(finding)
 
-        compatible_rows.append(finding["row"])
-        for warning in finding["warnings"]:
-            reason, field = warning.split(": ", 1)
-            warning_groups.setdefault((reason, field), []).append(finding["index"])
-
-    for (reason, field), source_indexes in warning_groups.items():
-        payload = {
-            "dataset": dataset,
-            "retrieved_at": retrieved_at.isoformat(),
-            "request_context": request_context,
-            "severity": "warning",
-            "reason": reason,
-            "field": field,
-            "affected_row_count": len(source_indexes),
-            "sample_source_indexes": source_indexes[:5],
-        }
-        logger.warning("%s", json.dumps(payload))
+    _log_warnings(compatible_findings, dataset, retrieved_at, request_context)
 
     if rejected_findings:
         quarantine_rows(
@@ -63,11 +45,39 @@ def process_rows(
             payload_dumps=payload_dumps,
         )
 
-    if compatible_rows:
+    if compatible_findings:
+        compatible_rows = []
+        for finding in compatible_findings:
+            compatible_rows.append(finding["row"])
         parsed_rows = parse_rows(compatible_rows, retrieved_at)
         load_rows(parsed_rows, conn)
 
     return len(rejected_findings)
+
+
+def _log_warnings(findings, dataset, retrieved_at, request_context):
+    """Log each distinct warning once, with how many rows it affects."""
+
+    source_indexes_by_warning = {}
+    for finding in findings:
+        for warning in finding["warnings"]:
+            if warning not in source_indexes_by_warning:
+                source_indexes_by_warning[warning] = []
+            source_indexes_by_warning[warning].append(finding["index"])
+
+    for warning, source_indexes in source_indexes_by_warning.items():
+        reason, field = warning.split(": ", 1)
+        payload = {
+            "dataset": dataset,
+            "retrieved_at": retrieved_at.isoformat(),
+            "request_context": request_context,
+            "severity": "warning",
+            "reason": reason,
+            "field": field,
+            "affected_row_count": len(source_indexes),
+            "sample_source_indexes": source_indexes[:5],
+        }
+        logger.warning("%s", json.dumps(payload))
 
 
 def quarantine_rows(
@@ -86,20 +96,24 @@ def quarantine_rows(
         "INSERT INTO raw.endpoint_quarantine (dataset, retrieved_at, request_context,"
         "validation_errors, observed_fields, payload, quarantined_at) VALUES %s"
     )
+    rejected_findings = rows
     insert_values = []
-    for finding in rows:
-        error_details = {
+    for finding in rejected_findings:
+        source_row = finding["row"]
+        validation_errors = {
             "source_index": finding["index"],
             "errors": finding["errors"],
         }
+        observed_fields = _observed_fields(source_row)
+        payload = _json_value(source_row, payload_dumps)
         insert_values.append(
             (
                 dataset,
                 retrieved_at,
                 Json(request_context),
-                Json(error_details),
-                Json(_observed_fields(finding["row"])),
-                _json_value(finding["row"], payload_dumps),
+                Json(validation_errors),
+                Json(observed_fields),
+                payload,
                 quarantined_at,
             )
         )

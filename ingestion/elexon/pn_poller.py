@@ -67,24 +67,35 @@ def parse(source_rows, retrieved_at):
 
     parsed_rows = []
     for source_row in source_rows:
-        parsed_rows.append(
-            (
-                date.fromisoformat(source_row["settlementDate"]),
-                source_row["settlementPeriod"],
-                datetime.strptime(source_row["timeFrom"], "%Y-%m-%dT%H:%M:%SZ").replace(
-                    tzinfo=timezone.utc
-                ),
-                datetime.strptime(source_row["timeTo"], "%Y-%m-%dT%H:%M:%SZ").replace(
-                    tzinfo=timezone.utc
-                ),
-                source_row["levelFrom"],
-                source_row["levelTo"],
-                source_row["nationalGridBmUnit"],
-                source_row["bmUnit"],
-                retrieved_at,
-            )
-        )
+        parsed_rows.append(_parse_row(source_row, retrieved_at))
     return parsed_rows
+
+
+def _parse_row(source_row, retrieved_at):
+    settlement_date = date.fromisoformat(source_row["settlementDate"])
+    settlement_period = source_row["settlementPeriod"]
+    time_from = _utc_from_text_with_seconds(source_row["timeFrom"])
+    time_to = _utc_from_text_with_seconds(source_row["timeTo"])
+    level_from = source_row["levelFrom"]
+    level_to = source_row["levelTo"]
+    national_grid_bm_unit = source_row["nationalGridBmUnit"]
+    bm_unit = source_row["bmUnit"]
+
+    return (
+        settlement_date,
+        settlement_period,
+        time_from,
+        time_to,
+        level_from,
+        level_to,
+        national_grid_bm_unit,
+        bm_unit,
+        retrieved_at,
+    )
+
+
+def _utc_from_text_with_seconds(value):
+    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
 
 def load(parsed_rows, conn):
