@@ -1,8 +1,6 @@
 # BM Unit registry
 
-**S4 capture and observed-history snapshot are deployed.** The change from
-build to test was released on 26 September 2026; its first scheduled run after
-that change has not yet been confirmed. See
+**S4 capture and observed-history snapshot are deployed.** See
 [071_bmunits_ingestion.md](071_bmunits_ingestion.md) for the complete-extract
 gate, raw/current/snapshot lineage and recovery steps.
 

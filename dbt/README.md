@@ -58,9 +58,7 @@ registry singular tests, then runs the snapshot. It rechecks the manifest
 immediately before snapshotting. It tests existing views rather than rebuilding
 them, because recreating upstream views can drop their dependants.
 
-The S4 change from build to test was released on 26 September 2026; the first
-scheduled run after that change has not yet been confirmed. Use the guarded
-Airflow task for live retries. Do not replace its tests with
+Use the guarded Airflow task for live retries. Do not replace its tests with
 `dbt build --select +dim_bm_unit` as a scheduled or standalone repair.
 
 The deployed S4 job selects the `dev` target in the production database:
@@ -104,8 +102,6 @@ input handling later diverges through casting, renaming or filtering.
 ## Period facts
 
 The two period tables recompute only settlement periods with new captures.
-S6 was released on 26 September 2026 and an observed manual nightly run passed;
-the first scheduled nightly run has not yet been confirmed.
 
 The following is the normal nightly command sequence for reference. Live runs
 use the guarded Airflow task in the shared `gridskew_dbt` pool; these commands
@@ -200,8 +196,7 @@ selectors, descendant recovery and the shared dbt pool.
 
 Freshness is configured hourly. S4 loads `elexon_fuel_codes`, tests the registry
 and records its snapshot. S6 updates the two private period tables and tests
-their descendants without recreating views. First scheduled S4/S6 runs after
-the 26 September release remain unconfirmed. CI runs a full build against an
+their descendants without recreating views. CI runs a full build against an
 ephemeral PostgreSQL service; it does not deploy relations to the homelab.
 
 `elexon_settlement_run_codes` is consumed by the B1610 period model and

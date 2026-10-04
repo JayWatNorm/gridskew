@@ -92,9 +92,7 @@ Numbered in build order, not alphabetically.
 | [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
 
 The BM-unit ingestion page describes the deployed S4 capture and snapshot
-path. Its change from build to test was released on 26 September 2026; the
-first scheduled run after that change has not yet been confirmed.
-The patterns behind the collectors are in
+path. The patterns behind the collectors are in
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
 **Steps 1 and 3** refer to the thesis in the project README: find the

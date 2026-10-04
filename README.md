@@ -91,9 +91,7 @@ forecast and settlement revisions observable.
 
 The BM-unit registry is captured in production. dbt exposes its current state
 and snapshots the changes observed since collection began. Null fuels remain
-unknown; snapshot dates are observation dates. The S4 job's change from build
-to test was released on 26 September 2026; its first scheduled run after that
-change has not yet been confirmed.
+unknown; snapshot dates are observation dates.
 
 Three version-controlled dbt seeds provide small reference lookups:
 settlement-run order, Elexon's published fuel codes grouped by code meaning,
@@ -104,14 +102,13 @@ fixed numerical thresholds. See the [dbt guide](dbt/README.md) for their
 contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. Seven
+Linux server, with separate development and production databases. Eight
 Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`, two
-`B1610` settlement runs and the BM unit registry. Two more run dbt:
+standing `B1610` settlement runs, a bounded `B1610` R1 capture and the BM unit
+registry. Two more run dbt:
 source-freshness checks configured hourly and the nightly S6 period models.
-S6 was released on 26 September 2026 and an observed manual nightly run passed;
-the first scheduled nightly run has not yet been confirmed. At the
-21 September 2026 checkpoint, the raw layer
-contained about 247 million rows.
+At the 21 September 2026 checkpoint, the raw layer contained about 247 million
+rows.
 
 The sources use different scheduling and backfill strategies because their
 time behaviour differs. See
@@ -131,13 +128,11 @@ Neither provider endorses this project.
 
 Each ingested endpoint has an explicit field contract. Shared validation and
 routing report missing, null, incompatible and unexpected fields before typed
-parsing.
-Carbon contracts also validate the nested `intensity` object.
-Carbon period-completeness checks protect forecast and outturn response windows.
-Runtime validation and quarantine are deployed for PN, QPN, B1610 and both
-Carbon datasets. Carbon also checks period completeness. The BM-unit registry
-uses a complete-response gate: a rejected or suspiciously small response
-publishes no successful extract.
+parsing; Carbon contracts also validate the nested `intensity` object. Runtime
+validation and quarantine are deployed for PN, QPN, B1610 and both Carbon
+datasets. Carbon also checks that each response covers its periods completely.
+The BM-unit registry uses a complete-response gate: a rejected or suspiciously
+small response publishes no successful extract.
 
 For the five PN/QPN/B1610 and Carbon datasets, compatible rows continue to
 typed loading. Rejected rows are committed to
@@ -158,8 +153,8 @@ python -m pytest
 ```
 
 The dbt project has separate setup and test instructions in
-[dbt/README.md](dbt/README.md). Exploratory scripts under `tests/adhoc/` are
-not automated tests and are deliberately excluded from pytest.
+[dbt/README.md](dbt/README.md). Scripts under `tests/adhoc/` are excluded from
+pytest; some are checks that CI runs.
 
 ## Repository guide
 
@@ -196,7 +191,7 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 
 - Carbon intensity forecast and outturn collection
 - `PN`, `QPN` and `B1610` ingestion, backfills and scheduled Airflow runs
-- Append-only raw storage with deployed Elexon validation and quarantine
+- Append-only raw storage
 - Runtime validation and quarantine for the five time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
@@ -206,35 +201,28 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`
   and a deterministic fixture-backed `dbt build`
 
-**Released; scheduled-run verification pending**
+**Released 26 September 2026**
 
-- S6 was released on 26 September 2026. An observed manual nightly run passed;
-  the first scheduled nightly run and the first S4 scheduled `dbt test` run
-  after the release have not yet been confirmed.
 - Two private incremental period tables, `int_elexon__b1610_period` and
   `int_elexon__pn_period_mwh`, maintain metered and committed energy.
   `fct_generation` and `fct_commitments` expose those values as views joined
   to current registry evidence; see [model decisions](docs/decisions.md).
 - `elexon_settlement_run_codes` supplies settlement-run ordering and
-  `elexon_fuel_codes` supports registry validation. Their deployed relations
-  use development-named schemas within the production database. A dedicated
-  production target remains a separate planned change.
+  `elexon_fuel_codes` supports registry validation.
 
 **Available reference data**
 
 - Three version-controlled seeds have explicit PostgreSQL types and data tests.
   `carbon_intensity_bands` provides label ordering; no current model consumes
-  it. Its production load status has not been verified.
+  it.
 
 **Next**
 
 - First results from data already held: how carbon-intensity forecasts drift
   as a period approaches, how forecast accuracy changes with lead time, and a
   check that settlement revisions do not change the headline
-- A bounded capture of the R1 settlement run (5–11 October) to measure how
-  metered output is revised
-- A dedicated production dbt target and an observed release process for
-  model changes
+- A bounded capture of the R1 settlement run, scheduled for 5–11 October, to
+  measure how metered output is revised
 - Balancing instructions (`BOALF`) and outage notices (`REMIT`), so shortfall
   can be separated into instructed and residual parts
 - Airflow 3 upgrade (October to early November)

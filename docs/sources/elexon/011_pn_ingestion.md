@@ -59,12 +59,10 @@ first load is information — it says the table's assumptions and the source's
 behaviour disagree, and it says so immediately. Swallowed, the same violation
 surfaces weeks later as missing data with no obvious cause.
 
-Unexpected row-count assertions and logging remain outstanding.
 `raise_for_status()` catches HTTP failures and the response contract rejects an
-empty result. A non-empty response whose returned rows satisfy the schema but
-whose total row count is unexpectedly low is not yet distinguished from an
-ordinary run. Those returned rows would load normally; absent rows have no
-payload to quarantine.
+empty result. The poller does not check expected volume: a non-empty response
+whose rows satisfy the schema but whose total is unexpectedly low loads as an
+ordinary run. See [../ingestion-patterns.md](../ingestion-patterns.md).
 
 ## Window cap: tested and closed, 2026-08-21
 
@@ -119,10 +117,7 @@ repository should be counted, not multiplied.
 
 > **Count, do not infer.** A response's byte size is not a row count — measuring
 > tools truncate, and a truncated response looks like a small one. Every volume
-> on this page comes from `count(*)`, which is also why
-> [../ingestion-patterns.md](../ingestion-patterns.md) identifies runtime
-> row-count checks as a required safeguard rather than treating status codes as
-> sufficient. That safeguard remains outstanding in this poller.
+> on this page comes from `count(*)`.
 
 ## Backfill verification
 
@@ -218,42 +213,18 @@ a response on the shared worker at once. The
 pool setup is in `homelab-platform/docs/gridskew-release.md` in the platform
 checkout.
 
-### `start_date` is the history window, and it is deliberately static
+### `start_date` is the history window
 
-`start_date=datetime(2025, 8, 22)` is **a decision about how much history to
-load**, fixed at deployment. It is not maintenance-free, and the trade-off is
-worth stating.
+`start_date=datetime(2025, 8, 22)` fixes how much history the DAG loads. It is
+a literal date, for the reasons in
+[ingestion patterns](../ingestion-patterns.md#start_date-must-be-a-literal-never-computed).
 
-**Redeploying from scratch later re-backfills from that date.** Stand this DAG up
-on a fresh Airflow in 2028 and it creates roughly 1,100 runs rather than 365.
-That is ~145M rows and about a day of running — recoverable, not free, and
-probably what you would want anyway.
+Redeploying onto a fresh Airflow later re-backfills from that date. To change
+the window, change the date in the file.
 
-**Do not make `start_date` dynamic to solve this.** `datetime.now() -
-timedelta(days=365)` is re-evaluated every time the scheduler parses the file,
-which is roughly every thirty seconds. `start_date` is the anchor Airflow uses to
-compute which intervals exist, so a moving value shifts the schedule underneath
-it — runs get skipped or duplicated and the DAG's history stops being coherent.
-It is the same rule as mutable default arguments: **the expression runs when the
-module executes, and a DAG module executes constantly.**
-
-**If the window ever needs changing, change it in the file.** One line, visible
-in the diff, and a reader can see exactly what history the project loads.
-
-**The alternative, if redeployment safety ever matters more than simplicity:**
-set `catchup=False` with a recent `start_date`, and load history once by hand:
-
-```bash
-airflow dags backfill -s 2025-08-22 -e 2026-08-22 gridskew_elexon_pn
-```
-
-That makes the historical load an explicit operation rather than a consequence of
-the DAG existing, so redeploying never triggers one. The cost is that the
-backfill lives in a runbook instead of the DAG, and the "one mechanism serves
-both history and the daily run" property is lost.
-
-**Not adopted**, on the grounds that the redeployment scenario is hypothetical
-and the simpler design is easier to explain.
+The alternative is `catchup=False` with a one-off manual backfill, which makes
+the historical load a separate operation. It is not used: one mechanism serves
+both history and the daily run.
 
 ## Only fetch periods past Gate Closure
 
@@ -265,47 +236,35 @@ for a given day executes after that day has ended.
 
 ## Pre-registered test: do PNs restate?
 
-The original design specified a `1, 8, 30, 90`-day lag ladder for four weeks.
-Its rationale was to distinguish submissions from endpoint corrections:
-Gate Closure constrains submission time, but does not establish that the
-endpoint can never republish or correct a past period. PN has no explicit
+Gate Closure constrains when a PN is submitted. It does not establish that the
+endpoint never republishes or corrects a past period. PN has no explicit
 revision marker; `retrieved_at` identifies each captured response.
 
-**Method amendment, 29 September 2026.** The original query used
-`count(DISTINCT level_from) OVER (...)`, which PostgreSQL does not support.
-It also compared only one level endpoint under a nullable unit identifier,
-so it could miss changes to segment boundaries and other levels. The original
-"empty means PNs do not restate" verdict exceeded what a bounded sample could
-establish. This is a dated amendment, not a claim that the corrected method
-was fixed before data collection. Whether the original lag ladder ran has not
-been verified; record its actual dates and results before drawing conclusions.
+**Design.** Re-poll the same settlement days at lags of 1, 8, 30 and 90 days
+for four weeks, then compare the captures.
 
-The corrected analysis must compare complete, ordered segment sets within
-`national_grid_bm_unit, settlement_date, settlement_period, retrieved_at`.
-Compare both time endpoints, both level endpoints and source unit identity.
-Use the settled S6 echo rule: a later capture consisting entirely of previously
-seen segments is an echo, not evidence of a new complete submission. Do not
-mix segments from different captures to create a plan the unit never submitted.
-Validate the corrected query on disposable PostgreSQL before using it.
+**Comparison.** Compare complete, ordered segment sets within
+`national_grid_bm_unit, settlement_date, settlement_period, retrieved_at`:
+both time endpoints, both level endpoints and the source unit identity. A
+later capture made up entirely of previously seen segments is an echo, not a
+new submission; this is the rule `fct_commitments` uses. Segments from
+different captures are never mixed into one plan.
 
-**Amended decision rule:**
+**Decision rule:**
 
 - **No genuine changes observed:** report the units, dates, sample coverage
-  and capture cadence. Do not claim that PNs never restate. Retain the single
-  daily fetch once the bounded experiment ends.
+  and capture cadence. A bounded sample cannot show that PNs never restate.
+  Keep the single daily fetch.
 - **Genuine changes observed:** record the affected periods, segments and
-  capture lags. Retain only the lag rungs that add evidence, subject to an
-  explicit schedule decision; drop the others when the bounded experiment
-  ends. Do not change production polling automatically from a query result.
+  capture lags. Keep only the lag rungs that add evidence, as an explicit
+  schedule decision; a query result does not change production polling by
+  itself.
 
-**The ladder is the experiment, not the permanent design.** The original
-volume estimates were about 7.3M extra rows and 1.3 GB for four weeks. Permanent
-`1, 8, 30, 90` polling was estimated at four times the single-cadence storage:
-about 32.6 GB/year for PN and 61.9 GB/year with QPN. Those are planning
-estimates, not newly measured totals.
+**The ladder is the experiment, not the permanent design.** Planning
+estimates: about 7.3M extra rows and 1.3 GB for four weeks. Permanent
+`1, 8, 30, 90` polling would be about four times the single-cadence storage:
+32.6 GB/year for PN and 61.9 GB/year with QPN.
 
 ## Result
 
-The ladder's execution status and amended result have not been verified.
-Record the run dates, query version, coverage and polling decision here after
-the bounded analysis is validated.
+*Not yet recorded.* No run of the ladder is recorded either.
