@@ -78,10 +78,6 @@ missed revisions cannot be recovered.
 
 The platform uses a medallion structure inside PostgreSQL:
 
-S4 adds complete BM-unit registry captures, a current unit dimension and an
-observed-change snapshot. Null fuels remain unknown; snapshot dates are
-observation dates. Production rollout is pending.
-
 | Layer | Implementation | Purpose |
 |---|---|---|
 | **Bronze** | `raw` schema | Append-only source-grain records, retrieval context and rejected payloads |
@@ -92,6 +88,12 @@ Bronze is a database schema rather than object storage because this project
 does not need a lake. Its essential rule is that source records are never
 updated or deleted: a revision arrives as another row. This makes captured
 forecast and settlement revisions observable.
+
+The BM-unit registry is captured in production. dbt exposes its current state
+and snapshots the changes observed since collection began. Null fuels remain
+unknown; snapshot dates are observation dates. The S4 job's change from build
+to test was released on 26 September 2026; its first scheduled run after that
+change has not yet been confirmed.
 
 Three version-controlled dbt seeds provide small reference lookups:
 settlement-run order, Elexon's published fuel codes grouped by code meaning,
@@ -105,13 +107,25 @@ The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hoste
 Linux server, with separate development and production databases. Seven
 Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`, two
 `B1610` settlement runs and the BM unit registry. Two more run dbt:
-source-freshness checks every hour and the nightly S6 period models. At the
+source-freshness checks configured hourly and the nightly S6 period models.
+S6 was released on 26 September 2026 and an observed manual nightly run passed;
+the first scheduled nightly run has not yet been confirmed. At the
 21 September 2026 checkpoint, the raw layer
 contained about 247 million rows.
 
 The sources use different scheduling and backfill strategies because their
 time behaviour differs. See
 [ingestion patterns](docs/sources/ingestion-patterns.md) for the design.
+
+## Data sources and licences
+
+- Contains BMRS data © Elexon Limited copyright and database right 2026.
+  Used under the [BMRS open data licence](https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/).
+- Carbon intensity data from the NESO Carbon Intensity API
+  ([carbonintensity.org.uk](https://carbonintensity.org.uk/)), licensed under
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Neither provider endorses this project.
 
 ## Reliability and validation
 
@@ -120,10 +134,13 @@ routing report missing, null, incompatible and unexpected fields before typed
 parsing.
 Carbon contracts also validate the nested `intensity` object.
 Carbon period-completeness checks protect forecast and outturn response windows.
-Runtime validation, quarantine and Carbon period-completeness checks are
-deployed for all five ingested datasets.
+Runtime validation and quarantine are deployed for PN, QPN, B1610 and both
+Carbon datasets. Carbon also checks period completeness. The BM-unit registry
+uses a complete-response gate: a rejected or suspiciously small response
+publishes no successful extract.
 
-Compatible rows continue to typed loading. Rejected rows are committed to
+For the five PN/QPN/B1610 and Carbon datasets, compatible rows continue to
+typed loading. Rejected rows are committed to
 `raw.endpoint_quarantine` with their request context and complete payload;
 warning-only rows remain loadable and produce grouped logs. Tests cover the
 contracts, routing, response envelopes, quarantine evidence and loader wiring
@@ -160,7 +177,7 @@ docs/           Source, ingestion and deployment documentation
 - [Data source documentation](docs/README.md)
 - [Ingestion patterns](docs/sources/ingestion-patterns.md)
 - [Endpoint validation](docs/sources/endpoint-validation.md)
-- [Deployment guide](docs/deployment.md)
+- [Homelab CD overview](docs/deployment.md)
 
 ## Deployment
 
@@ -169,8 +186,9 @@ project's ingestion package is bind-mounted, while DAG files are copied into
 the shared scheduler repository. Deployment therefore requires both artefacts
 to be updated; it is not only a pull of this repository.
 
-The full sequence, backfill behaviour and operational checks are documented in
-the [deployment guide](docs/deployment.md).
+The [homelab CD overview](docs/deployment.md) explains the release boundary.
+Host SQL, Airflow pools and the observed rollout sequence are documented in
+`homelab-platform/docs/gridskew-release.md` in the platform checkout.
 
 ## Status
 
@@ -179,27 +197,49 @@ the [deployment guide](docs/deployment.md).
 - Carbon intensity forecast and outturn collection
 - `PN`, `QPN` and `B1610` ingestion, backfills and scheduled Airflow runs
 - Append-only raw storage with deployed Elexon validation and quarantine
-- Runtime validation and quarantine for all five ingested datasets
+- Runtime validation and quarantine for the five time-series datasets, plus
+  complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
-- dbt sources, scheduled production freshness checks and five source-grain
-  staging views
+- dbt sources, production freshness checks and six source-grain staging views
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
-- Pull-request CI with 122 Python tests, linting, DAG compilation, `dbt parse`
+- Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`
   and a deterministic fixture-backed `dbt build`
 
-**Built in dbt development**
+**Released; scheduled-run verification pending**
 
-- Three S3 reference seeds with explicit PostgreSQL types and data tests;
-  loaded into `dbt_dev` for development. Loading them for production models
-  would be a separate release step.
-- Incremental generation and commitment models (`fct_generation`,
-  `fct_commitments`) at unit and settlement-period grain; see
-  [model decisions](docs/decisions.md)
+- S6 was released on 26 September 2026. An observed manual nightly run passed;
+  the first scheduled nightly run and the first S4 scheduled `dbt test` run
+  after the release have not yet been confirmed.
+- Two private incremental period tables, `int_elexon__b1610_period` and
+  `int_elexon__pn_period_mwh`, maintain metered and committed energy.
+  `fct_generation` and `fct_commitments` expose those values as views joined
+  to current registry evidence; see [model decisions](docs/decisions.md).
+- `elexon_settlement_run_codes` supplies settlement-run ordering and
+  `elexon_fuel_codes` supports registry validation. Their deployed relations
+  use development-named schemas within the production database. A dedicated
+  production target remains a separate planned change.
+
+**Available reference data**
+
+- Three version-controlled seeds have explicit PostgreSQL types and data tests.
+  `carbon_intensity_bands` provides label ordering; no current model consumes
+  it. Its production load status has not been verified.
 
 **Next**
 
-- Join shortfalls to forecast error and explanatory inputs
+- First results from data already held: how carbon-intensity forecasts drift
+  as a period approaches, how forecast accuracy changes with lead time, and a
+  check that settlement revisions do not change the headline
+- A bounded capture of the R1 settlement run (5–11 October) to measure how
+  metered output is revised
+- A dedicated production dbt target and an observed release process for
+  model changes
+- Balancing instructions (`BOALF`) and outage notices (`REMIT`), so shortfall
+  can be separated into instructed and residual parts
+- Airflow 3 upgrade (October to early November)
+
+Demand, system prices and weather remain later extensions.
 
 `QPN` does not alter the settlement-shortfall calculation. The model compares
 integrated `PN MWh` with `B1610 MWh` without subtracting QPN; QPN remains

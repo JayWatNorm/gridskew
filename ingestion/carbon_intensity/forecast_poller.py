@@ -1,3 +1,5 @@
+"""Fetch, validate, quarantine and load one Carbon Intensity 48-hour forecast."""
+
 import logging
 import os
 from datetime import datetime, timezone
@@ -15,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 def fetch(timestamp):
+    """Fetch the 48-hour forecast as seen at `timestamp` (text, UTC)."""
+
     response = requests.get(
         f"https://api.carbonintensity.org.uk/intensity/{timestamp}/fw48h",
         headers={
@@ -45,26 +49,32 @@ def response_rows(response):
 
 
 def parse(source_rows, retrieved_at):
+    """Convert compatible source dictionaries to typed forecast insert tuples."""
+
     parsed_rows = []
     for source_row in source_rows:
-        parsed_rows.append(
-            (
-                datetime.strptime(source_row["from"], "%Y-%m-%dT%H:%MZ").replace(
-                    tzinfo=timezone.utc
-                ),
-                datetime.strptime(source_row["to"], "%Y-%m-%dT%H:%MZ").replace(
-                    tzinfo=timezone.utc
-                ),
-                retrieved_at,
-                source_row["intensity"]["forecast"],
-                source_row["intensity"]["actual"],
-                source_row["intensity"]["index"],
-            )
-        )
+        parsed_rows.append(_parse_row(source_row, retrieved_at))
     return parsed_rows
 
 
+def _parse_row(source_row, retrieved_at):
+    period_start = _utc_from_text_to_the_minute(source_row["from"])
+    period_end = _utc_from_text_to_the_minute(source_row["to"])
+    intensity = source_row["intensity"]
+    forecast = intensity["forecast"]
+    actual = intensity["actual"]
+    intensity_index = intensity["index"]
+
+    return (period_start, period_end, retrieved_at, forecast, actual, intensity_index)
+
+
+def _utc_from_text_to_the_minute(value):
+    return datetime.strptime(value, "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
+
+
 def load(parsed_rows, conn):
+    """Insert typed forecast rows and commit. Every capture is kept."""
+
     insert_sql = (
         "INSERT INTO raw.carbon_intensity_forecast (period_start, "
         "period_end, retrieved_at, forecast, actual, intensity_index) VALUES %s"

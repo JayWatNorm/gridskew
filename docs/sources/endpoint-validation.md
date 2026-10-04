@@ -4,10 +4,10 @@ Every ingested endpoint has an explicit contract checked before typed parsing.
 The validator is offline and source-independent: callers provide decoded rows
 and the matching contract.
 
-**Deployment:** Runtime validation and quarantine are deployed for five
-ingested datasets. Carbon forecast and outturn completeness checks are also
-deployed. The BM-unit complete-response path is implemented locally and awaits
-production rollout.
+**Deployment:** Runtime validation and quarantine are deployed for PN, QPN,
+B1610 and both Carbon datasets. Carbon forecast and outturn completeness checks
+are also deployed. The BM-unit complete-response path is deployed separately;
+its gate publishes only successful complete extracts.
 
 ## Behavior
 

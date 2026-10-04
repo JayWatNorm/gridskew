@@ -40,32 +40,42 @@ def validate_outturn_window(rows, request_start, request_end):
 
 
 def _periods(rows, dataset):
+    """Return the (start, end) pairs in time order, or raise if they are broken."""
+
     periods = []
     for row in rows:
-        period_start = _timestamp(row["from"])
-        period_end = _timestamp(row["to"])
+        period_start = _utc_from_text_to_the_minute(row["from"])
+        period_end = _utc_from_text_to_the_minute(row["to"])
         periods.append((period_start, period_end))
     periods.sort()
 
-    if any(end - start != PERIOD for start, end in periods):
-        raise ValueError(
-            f"Incomplete Carbon Intensity {dataset} response: periods must be "
-            "30 minutes"
-        )
+    for start, end in periods:
+        if end - start != PERIOD:
+            raise ValueError(
+                f"Incomplete Carbon Intensity {dataset} response: periods must be "
+                "30 minutes"
+            )
 
-    starts = [start for start, _ in periods]
-    if len(set(starts)) != len(starts):
-        raise ValueError(
-            f"Incomplete Carbon Intensity {dataset} response: duplicate period"
-        )
+    seen_starts = set()
+    for start, _ in periods:
+        if start in seen_starts:
+            raise ValueError(
+                f"Incomplete Carbon Intensity {dataset} response: duplicate period"
+            )
+        seen_starts.add(start)
 
-    if any(current[1] != following[0] for current, following in pairwise(periods)):
-        raise ValueError(f"Incomplete Carbon Intensity {dataset} response: period gap")
+    for period, next_period in pairwise(periods):
+        period_end = period[1]
+        next_period_start = next_period[0]
+        if period_end != next_period_start:
+            raise ValueError(
+                f"Incomplete Carbon Intensity {dataset} response: period gap"
+            )
 
     return periods
 
 
-def _timestamp(value):
+def _utc_from_text_to_the_minute(value):
     return datetime.strptime(value, "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
 
 

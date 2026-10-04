@@ -80,38 +80,52 @@ def run_dbt(env, args, timeout_minutes):
 
 def dbt_commands(full_refresh):
     """The run-code test blocks before any period table is written."""
-    period_models = [f"{table}+" for table in PERIOD_TABLES]
-    run_codes = ["test", "--select", "stg_elexon__b1610,test_type:generic"]
-    if full_refresh:
-        return [
-            run_codes,
-            [
-                "test",
-                "--select",
-                "source:elexon.elexon_b1610",
-                "source:elexon.elexon_pn",
-            ],
-            ["build", "--select", *period_models, "--full-refresh"],
-        ]
-    return [
-        run_codes,
-        ["run", "--select", *PERIOD_TABLES],
-        ["test", "--select", *period_models, "--exclude", "tag:full_population"],
+
+    period_tables_and_descendants = []
+    for table in PERIOD_TABLES:
+        period_tables_and_descendants.append(f"{table}+")
+
+    test_run_codes = ["test", "--select", "stg_elexon__b1610,test_type:generic"]
+    test_sources = [
+        "test",
+        "--select",
+        "source:elexon.elexon_b1610",
+        "source:elexon.elexon_pn",
     ]
+    rebuild_period_tables_and_descendants = [
+        "build",
+        "--select",
+        *period_tables_and_descendants,
+        "--full-refresh",
+    ]
+    update_period_tables = ["run", "--select", *PERIOD_TABLES]
+    test_period_tables = [
+        "test",
+        "--select",
+        *period_tables_and_descendants,
+        "--exclude",
+        "tag:full_population",
+    ]
+
+    if full_refresh:
+        return [test_run_codes, test_sources, rebuild_period_tables_and_descendants]
+    return [test_run_codes, update_period_tables, test_period_tables]
 
 
 def missing_period_tables(conn):
+    qualified_names = []
+    for table in PERIOD_TABLES:
+        qualified_names.append(f"dbt_dev.{table}")
+
     with conn.cursor() as cursor:
-        cursor.execute(
-            "SELECT to_regclass(%s), to_regclass(%s)",
-            [f"dbt_dev.{table}" for table in PERIOD_TABLES],
-        )
-        found = cursor.fetchone()
-    return [
-        table
-        for table, relation in zip(PERIOD_TABLES, found, strict=True)
-        if relation is None
-    ]
+        cursor.execute("SELECT to_regclass(%s), to_regclass(%s)", qualified_names)
+        relation_or_null_per_table = cursor.fetchone()
+
+    missing = []
+    for table, relation in zip(PERIOD_TABLES, relation_or_null_per_table, strict=True):
+        if relation is None:
+            missing.append(table)
+    return missing
 
 
 @dag(

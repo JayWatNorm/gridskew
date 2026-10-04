@@ -25,29 +25,41 @@ CAPACITY_WHITESPACE = " \t\n\r\f\v"
 CAPACITY_NUMBER = re.compile(
     r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\Z"
 )
-RAW_FIELDS = (
-    "nationalGridBmUnit",
-    "elexonBmUnit",
-    "eic",
-    "fuelType",
-    "leadPartyName",
-    "bmUnitType",
-    "fpnFlag",
-    "bmUnitName",
-    "leadPartyId",
-    "demandCapacity",
-    "generationCapacity",
-    "productionOrConsumptionFlag",
-    "transmissionLossFactor",
-    "workingDayCreditAssessmentImportCapability",
-    "nonWorkingDayCreditAssessmentImportCapability",
-    "workingDayCreditAssessmentExportCapability",
-    "nonWorkingDayCreditAssessmentExportCapability",
-    "creditQualifyingStatus",
-    "demandInProductionFlag",
-    "gspGroupId",
-    "gspGroupName",
-    "interconnectorId",
+SOURCE_FIELDS_AND_COLUMNS = (
+    ("nationalGridBmUnit", "national_grid_bm_unit"),
+    ("elexonBmUnit", "elexon_bm_unit"),
+    ("eic", "eic"),
+    ("fuelType", "fuel_type"),
+    ("leadPartyName", "lead_party_name"),
+    ("bmUnitType", "bm_unit_type"),
+    ("fpnFlag", "fpn_flag"),
+    ("bmUnitName", "bm_unit_name"),
+    ("leadPartyId", "lead_party_id"),
+    ("demandCapacity", "demand_capacity"),
+    ("generationCapacity", "generation_capacity"),
+    ("productionOrConsumptionFlag", "production_or_consumption_flag"),
+    ("transmissionLossFactor", "transmission_loss_factor"),
+    (
+        "workingDayCreditAssessmentImportCapability",
+        "working_day_credit_assessment_import_capability",
+    ),
+    (
+        "nonWorkingDayCreditAssessmentImportCapability",
+        "non_working_day_credit_assessment_import_capability",
+    ),
+    (
+        "workingDayCreditAssessmentExportCapability",
+        "working_day_credit_assessment_export_capability",
+    ),
+    (
+        "nonWorkingDayCreditAssessmentExportCapability",
+        "non_working_day_credit_assessment_export_capability",
+    ),
+    ("creditQualifyingStatus", "credit_qualifying_status"),
+    ("demandInProductionFlag", "demand_in_production_flag"),
+    ("gspGroupId", "gsp_group_id"),
+    ("gspGroupName", "gsp_group_name"),
+    ("interconnectorId", "interconnector_id"),
 )
 
 logger = logging.getLogger(__name__)
@@ -61,95 +73,142 @@ def fetch():
     return response.json()
 
 
-def _finding(index, row, error):
-    return {"index": index, "row": row, "errors": [error], "warnings": []}
-
-
 def validate_extract(rows):
     """Return rejected findings and the number of distinct BM units."""
 
     if not isinstance(rows, list) or not rows:
         raise RuntimeError("Invalid BM-unit response: expected a non-empty list")
 
-    findings = validate_rows(rows, BM_UNITS_SPEC)
-    rejected = [finding for finding in findings if finding["errors"]]
-    by_unit = defaultdict(list)
+    contract_findings = validate_rows(rows, BM_UNITS_SPEC)
+    rejected = _findings_with_errors(contract_findings)
 
-    for index, row in enumerate(rows):
+    rows_by_unit = defaultdict(list)
+    for source_index, row in enumerate(rows):
         if not isinstance(row, dict):
             continue
-        key = row.get("nationalGridBmUnit")
-        if not isinstance(key, str) or not key.strip():
-            rejected.append(_finding(index, row, "Blank nationalGridBmUnit"))
+
+        unit = row.get("nationalGridBmUnit")
+        if not _is_usable_identifier(unit):
+            rejected.append(_rejection(source_index, row, "Blank nationalGridBmUnit"))
             continue
-        by_unit[key].append((index, row))
+        rows_by_unit[unit].append((source_index, row))
 
         for field in CAPACITY_FIELDS:
-            value = row.get(field)
-            if not isinstance(value, str):
-                continue
-            value = value.strip(CAPACITY_WHITESPACE)
-            if not value:
-                continue
-            try:
-                if not CAPACITY_NUMBER.fullmatch(value):
-                    raise InvalidOperation
-                number = Decimal(value)
-                # PostgreSQL unconstrained numeric supports at most 131072
-                # digits before the point and 16383 after it.
-                if (
-                    not number.is_finite()
-                    or number.adjusted() >= 131072
-                    or number.as_tuple().exponent < -16383
-                ):
-                    raise InvalidOperation
-            except InvalidOperation:
-                rejected.append(_finding(index, row, f"Invalid numeric {field}"))
+            if _has_invalid_capacity_text(row.get(field)):
+                rejected.append(
+                    _rejection(source_index, row, f"Invalid numeric {field}")
+                )
 
-        if findings[index]["warnings"]:
+        contract_warnings = contract_findings[source_index]["warnings"]
+        if contract_warnings:
             logger.warning(
                 "BM-unit row %s has source contract warnings: %s",
-                index,
-                findings[index]["warnings"],
+                source_index,
+                contract_warnings,
             )
 
-    for entries in by_unit.values():
-        if len(entries) == 1:
-            continue
-        seen_eics = set()
-        reference = {key: value for key, value in entries[0][1].items() if key != "eic"}
-        for index, row in entries:
-            eic = row.get("eic")
-            if not isinstance(eic, str) or not eic.strip():
-                rejected.append(
-                    _finding(index, row, "Duplicate unit needs distinct EICs")
-                )
-                continue
-            if eic in seen_eics:
-                rejected.append(
-                    _finding(index, row, "Duplicate unit needs distinct EICs")
-                )
-            seen_eics.add(eic)
-            if {key: value for key, value in row.items() if key != "eic"} != reference:
-                rejected.append(
-                    _finding(index, row, "Duplicate unit attributes disagree")
-                )
+    for positioned_rows in rows_by_unit.values():
+        rejected.extend(_duplicate_unit_rejections(positioned_rows))
 
-    # A bad row can have several independent reasons; keep one quarantine entry
-    # per source position with all of its reasons.
-    combined = {}
-    for finding in rejected:
-        entry = combined.setdefault(
-            finding["index"],
-            {
-                "index": finding["index"],
-                "row": finding["row"],
+    return _merged_by_source_index(rejected), len(rows_by_unit)
+
+
+def _findings_with_errors(findings):
+    with_errors = []
+    for finding in findings:
+        if finding["errors"]:
+            with_errors.append(finding)
+    return with_errors
+
+
+def _rejection(source_index, row, error):
+    return {"index": source_index, "row": row, "errors": [error], "warnings": []}
+
+
+def _is_usable_identifier(value):
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _has_invalid_capacity_text(value):
+    """Only text is judged here; the field contract rejects other types.
+
+    Blank text means the capacity is unknown and is accepted.
+    """
+
+    if not isinstance(value, str):
+        return False
+    text = value.strip(CAPACITY_WHITESPACE)
+    if not text:
+        return False
+    if not CAPACITY_NUMBER.fullmatch(text):
+        return True
+    try:
+        number = Decimal(text)
+    except InvalidOperation:
+        return True
+    if not number.is_finite():
+        return True
+    # PostgreSQL unconstrained numeric supports at most 131072 digits before
+    # the point and 16383 after it.
+    if number.adjusted() >= 131072:
+        return True
+    if number.as_tuple().exponent < -16383:
+        return True
+    return False
+
+
+def _duplicate_unit_rejections(positioned_rows):
+    """One unit may repeat only with a distinct EIC per row and all else equal."""
+
+    if len(positioned_rows) == 1:
+        return []
+
+    rejected = []
+    seen_eics = set()
+    _, first_row = positioned_rows[0]
+    expected_attributes = _without_eic(first_row)
+    for source_index, row in positioned_rows:
+        eic = row.get("eic")
+        if not _is_usable_identifier(eic):
+            rejected.append(
+                _rejection(source_index, row, "Duplicate unit needs distinct EICs")
+            )
+            continue
+        if eic in seen_eics:
+            rejected.append(
+                _rejection(source_index, row, "Duplicate unit needs distinct EICs")
+            )
+        seen_eics.add(eic)
+        if _without_eic(row) != expected_attributes:
+            rejected.append(
+                _rejection(source_index, row, "Duplicate unit attributes disagree")
+            )
+    return rejected
+
+
+def _without_eic(row):
+    attributes = {}
+    for field, value in row.items():
+        if field != "eic":
+            attributes[field] = value
+    return attributes
+
+
+def _merged_by_source_index(rejections):
+    """A row can be rejected for several reasons; keep one entry with all of them."""
+
+    merged = {}
+    for rejection in rejections:
+        source_index = rejection["index"]
+        if source_index not in merged:
+            merged[source_index] = {
+                "index": source_index,
+                "row": rejection["row"],
                 "errors": [],
                 "warnings": [],
-            },
-        )
-        entry["errors"].extend(finding["errors"])
-    return list(combined.values()), len(by_unit)
+            }
+        merged[source_index]["errors"].extend(rejection["errors"])
+    return list(merged.values())
 
 
 def previous_extract(conn):
@@ -193,36 +252,19 @@ def load_extract(conn, rows, retrieved_at, unit_count, *, extract_id=None):
     """Commit all source rows and their success manifest as one transaction."""
 
     extract_id = extract_id or uuid4()
-    values = [
-        (str(extract_id), index, *(row[field] for field in RAW_FIELDS))
-        for index, row in enumerate(rows)
-    ]
-    columns = "extract_id, source_index, " + ", ".join(
-        (
-            "national_grid_bm_unit",
-            "elexon_bm_unit",
-            "eic",
-            "fuel_type",
-            "lead_party_name",
-            "bm_unit_type",
-            "fpn_flag",
-            "bm_unit_name",
-            "lead_party_id",
-            "demand_capacity",
-            "generation_capacity",
-            "production_or_consumption_flag",
-            "transmission_loss_factor",
-            "working_day_credit_assessment_import_capability",
-            "non_working_day_credit_assessment_import_capability",
-            "working_day_credit_assessment_export_capability",
-            "non_working_day_credit_assessment_export_capability",
-            "credit_qualifying_status",
-            "demand_in_production_flag",
-            "gsp_group_id",
-            "gsp_group_name",
-            "interconnector_id",
-        )
-    )
+
+    source_fields = []
+    column_names = ["extract_id", "source_index"]
+    for source_field, column_name in SOURCE_FIELDS_AND_COLUMNS:
+        source_fields.append(source_field)
+        column_names.append(column_name)
+    columns = ", ".join(column_names)
+
+    values = []
+    for source_index, row in enumerate(rows):
+        source_values = [row[source_field] for source_field in source_fields]
+        values.append((str(extract_id), source_index, *source_values))
+
     try:
         with conn.cursor() as cursor:
             cursor.execute(

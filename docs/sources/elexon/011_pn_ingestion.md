@@ -212,9 +212,11 @@ and unpausing resumes where it left off — each run is independent and idempote
 
 **A one-slot Airflow Pool serialises all Elexon work.** `max_active_runs` limits
 one DAG but does not prevent another Elexon DAG from running at the same time.
-Every Elexon task uses the `elexon` pool, so only one of the four DAGs can
-materialise a response on the shared worker at once. See
-[../../deployment.md](../../deployment.md).
+Every Elexon request task uses the `elexon` pool, so only one can materialise
+a response on the shared worker at once. The
+[homelab CD overview](../../deployment.md) explains the deployment boundary;
+pool setup is in `homelab-platform/docs/gridskew-release.md` in the platform
+checkout.
 
 ### `start_date` is the history window, and it is deliberately static
 
@@ -263,43 +265,47 @@ for a given day executes after that day has ended.
 
 ## Pre-registered test: do PNs restate?
 
-**Stated before the data arrives, so the answer cannot be chosen
-retrospectively.**
+The original design specified a `1, 8, 30, 90`-day lag ladder for four weeks.
+Its rationale was to distinguish submissions from endpoint corrections:
+Gate Closure constrains submission time, but does not establish that the
+endpoint can never republish or correct a past period. PN has no explicit
+revision marker; `retrieved_at` identifies each captured response.
 
-Gate Closure means a PN cannot be *submitted* after its period begins. That is a
-rule about submissions, not a guarantee about the endpoint — corrections,
-republication and late-loaded submissions are not ruled out, and PN carries no
-revision marker to make one visible.
+**Method amendment, 29 September 2026.** The original query used
+`count(DISTINCT level_from) OVER (...)`, which PostgreSQL does not support.
+It also compared only one level endpoint under a nullable unit identifier,
+so it could miss changes to segment boundaries and other levels. The original
+"empty means PNs do not restate" verdict exceeded what a bounded sample could
+establish. This is a dated amendment, not a claim that the corrected method
+was fixed before data collection. Whether the original lag ladder ran has not
+been verified; record its actual dates and results before drawing conclusions.
 
-`retrieved_at` is the only instrument. Because it is in the primary key, every
-re-poll of a window stores a fresh copy.
+The corrected analysis must compare complete, ordered segment sets within
+`national_grid_bm_unit, settlement_date, settlement_period, retrieved_at`.
+Compare both time endpoints, both level endpoints and source unit identity.
+Use the settled S6 echo rule: a later capture consisting entirely of previously
+seen segments is an echo, not evidence of a new complete submission. Do not
+mix segments from different captures to create a plan the unit never submitted.
+Validate the corrected query on disposable PostgreSQL before using it.
 
-**The experiment**: run a lag ladder of `1, 8, 30, 90` days for four weeks, then:
+**Amended decision rule:**
 
-```sql
-SELECT (retrieved_at - time_from) AS lag, count(*)
-FROM (
-    SELECT bm_unit, time_from, retrieved_at,
-           count(DISTINCT level_from) OVER (PARTITION BY bm_unit, time_from) AS variants
-    FROM raw.elexon_pn
-) t
-WHERE variants > 1
-GROUP BY 1 ORDER BY 1;
-```
+- **No genuine changes observed:** report the units, dates, sample coverage
+  and capture cadence. Do not claim that PNs never restate. Retain the single
+  daily fetch once the bounded experiment ends.
+- **Genuine changes observed:** record the affected periods, segments and
+  capture lags. Retain only the lag rungs that add evidence, subject to an
+  explicit schedule decision; drop the others when the bounded experiment
+  ends. Do not change production polling automatically from a query result.
 
-**Decision rule, fixed in advance:**
-
-- **Empty** — PNs do not restate. Drop to a single daily fetch and record the
-  result here with the date.
-- **Rows returned** — restatement is real. Keep the rungs where changes actually
-  appear, drop the rest, and record which.
-
-**The ladder is the experiment, not the design.** Four weeks costs about 7.3M
-extra rows and 1.3 GB, one-off. Running `1, 8, 30, 90` permanently would cost 4×
-storage — about 32.6 GB a year for PN and 61.9 GB with QPN — to monitor
-something with no evidence it happens. A rolling 90-day PN window would cost
-about 734 GB a year for the same reach.
+**The ladder is the experiment, not the permanent design.** The original
+volume estimates were about 7.3M extra rows and 1.3 GB for four weeks. Permanent
+`1, 8, 30, 90` polling was estimated at four times the single-cadence storage:
+about 32.6 GB/year for PN and 61.9 GB/year with QPN. Those are planning
+estimates, not newly measured totals.
 
 ## Result
 
-*To be recorded here when the experiment concludes.*
+The ladder's execution status and amended result have not been verified.
+Record the run dates, query version, coverage and polling decision here after
+the bounded analysis is validated.

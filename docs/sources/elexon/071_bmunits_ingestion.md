@@ -3,8 +3,11 @@
 GridSkew polls `GET /reference/bmunits/all` once per day. The endpoint gives
 the current registry, with no historical backfill or source update timestamp.
 Collection starts an **observed** history; it cannot recover earlier changes.
-The S4 code is checked in locally, but production collection starts only after
-the deployment checks in [the deployment guide](../../deployment.md).
+S4 capture and snapshots are deployed. The change from build to test was
+released on 26 September 2026; its first scheduled run after that change has
+not yet been confirmed. The [homelab CD overview](../../deployment.md) explains
+the release boundary; host checks and recovery live in
+`homelab-platform/docs/gridskew-release.md` in the platform checkout.
 
 ## Complete-extract gate
 
@@ -47,17 +50,17 @@ or B1610 unit is not required to occur in today's registry.
 
 ## Recovery
 
-The single `gridskew_elexon_bmunits` Airflow DAG runs capture, current-model
-build and tests, and snapshot in order, with one active run at a time. If
-deployed, capture writes production raw tables; its dbt task reads the same
-database through the separate `gridskew_dbt` connection and writes only to
-`dbt_dev` and `dbt_dev_snapshots`. If
-capture fails, inspect the source and quarantine evidence, then retry the DAG.
+The single `gridskew_elexon_bmunits` Airflow DAG runs capture, the fuel seed,
+registry tests and snapshot in order, with one active run at a time. Capture
+writes production raw tables; its dbt task reads the same database through the
+separate `gridskew_dbt` connection, selects the `dev` target and writes only to
+`dbt_dev` and `dbt_dev_snapshots`. Existing views are tested rather than
+rebuilt. If capture fails, inspect the source and quarantine evidence, then retry the DAG.
 If dbt fails after a successful capture, repair the model or database issue
 and retry the dbt task against that manifest. The task holds PostgreSQL SHARE
 locks on both raw registry tables while it checks the expected manifest and
-runs dbt seed/build/test/snapshot. Other database writers wait; readers can
-continue. Lock acquisition times out after 30 seconds. A different latest
+runs dbt seed/test/snapshot in the shared `gridskew_dbt` pool. Other database
+writers wait; readers can continue. Lock acquisition times out after 30 seconds. A different latest
 manifest stops the task. The guard connection must remain alive for the task;
 do not terminate it during a run. Temporary dbt target/package directories are
 unique per attempt; logs remain under `dbt_logs/bmunits/<attempt-uuid>`.

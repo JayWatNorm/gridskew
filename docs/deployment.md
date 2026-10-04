@@ -11,5 +11,6 @@ then restores or holds schedules according to the selected release mode.
 GridSkew's `ingestion/` and `dbt/` code is mounted into Airflow; deployed
 DAG files live in `homelab-platform/dags/`.
 
-Host preparation, workflow inputs, verification, and recovery are documented
-in the `homelab-platform` repository.
+This page is the CD overview. Host SQL, Airflow pool prerequisites, workflow
+inputs, observed rollout checks and recovery are documented in
+`homelab-platform/docs/gridskew-release.md` in the platform checkout.

@@ -82,17 +82,19 @@ Numbered in build order, not alphabetically.
 | Page | Ingestion | Dataset | In a phrase | Priority |
 |---|---|---|---|---|
 | [010_pn.md](010_pn.md) | [011](011_pn_ingestion.md) | `PN` | The promise | Phase 1, first |
-| [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | An internal process netted off the promise | Phase 1, first |
+| [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | Dynamic Data; not subtracted from PN | Phase 1, first |
 | [020_b1610.md](020_b1610.md) | [021](021_b1610_ingestion.md) | `B1610` | The receipt | Phase 1, first |
 | [030_remit.md](030_remit.md) | — | `REMIT` | Outage notice, planned or unplanned | Phase 1, step 3 |
 | [040_boalf.md](040_boalf.md) | — | `BOALF` | The intervention | Phase 1, step 3 |
 | [050_demand.md](050_demand.md) | — | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | Phase 1, step 3 |
 | [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Phase 1, step 3 |
-| [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Phase 1, S4; deployment pending |
+| [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Phase 1, S4; deployed |
 | [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
 
-The BM-unit ingestion page describes the implemented S4 path before its first
-production run. The patterns behind the deployed collectors are in
+The BM-unit ingestion page describes the deployed S4 capture and snapshot
+path. Its change from build to test was released on 26 September 2026; the
+first scheduled run after that change has not yet been confirmed.
+The patterns behind the collectors are in
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
 **Steps 1 and 3** refer to the thesis in the project README: find the
