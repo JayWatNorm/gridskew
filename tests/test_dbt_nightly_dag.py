@@ -1,24 +1,14 @@
 """Guard the nightly S6 dbt commands without requiring Airflow to run."""
 
-import runpy
-import sys
-from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
+from fakes import connection_returning, load_dag_file
 
 
 @pytest.fixture
 def nightly(monkeypatch):
-    airflow = ModuleType("airflow")
-    airflow.__path__ = []
-    decorators = ModuleType("airflow.decorators")
-    decorators.dag = lambda **_kwargs: lambda _function: lambda: None
-    decorators.task = Mock()
-    hooks = ModuleType("airflow.hooks")
-    hooks.__path__ = []
-    base = ModuleType("airflow.hooks.base")
     connection = SimpleNamespace(
         host="postgres",
         port=5432,
@@ -26,16 +16,8 @@ def nightly(monkeypatch):
         login="gridskew_dbt",
         password="test-only",
     )
-    base.BaseHook = SimpleNamespace(get_connection=lambda _name: connection)
-    for name, module in {
-        "airflow": airflow,
-        "airflow.decorators": decorators,
-        "airflow.hooks": hooks,
-        "airflow.hooks.base": base,
-    }.items():
-        monkeypatch.setitem(sys.modules, name, module)
-    path = Path(__file__).resolve().parents[1] / "dags/gridskew__dbt_nightly_dag.py"
-    return runpy.run_path(str(path))
+    connections = {"gridskew_prod": connection, "gridskew_dbt": connection}
+    return load_dag_file(monkeypatch, "gridskew__dbt_nightly_dag.py", connections)
 
 
 def test_scheduled_run_writes_tables_only_after_the_run_code_test(nightly):
@@ -53,9 +35,9 @@ def test_scheduled_run_writes_tables_only_after_the_run_code_test(nightly):
         ],
     ]
     # A scheduled run never rebuilds views or selects upstream models.
-    assert not any(
-        "build" in command or "--full-refresh" in command for command in commands
-    )
+    for command in commands:
+        assert "build" not in command
+        assert "--full-refresh" not in command
 
 
 def test_full_refresh_rebuilds_descendants_after_contract_tests(nightly):
@@ -71,10 +53,7 @@ def test_full_refresh_rebuilds_descendants_after_contract_tests(nightly):
 
 
 def test_missing_period_table_is_reported(nightly):
-    cursor = MagicMock()
-    cursor.fetchone.return_value = (None, "dbt_dev.int_elexon__pn_period_mwh")
-    conn = MagicMock()
-    conn.cursor.return_value.__enter__.return_value = cursor
+    conn = connection_returning((None, "dbt_dev.int_elexon__pn_period_mwh"))
     assert nightly["missing_period_tables"](conn) == ["int_elexon__b1610_period"]
 
 
@@ -84,9 +63,8 @@ def test_dbt_runs_in_the_dev_target_with_its_own_logs(nightly, monkeypatch):
     assert env["DBT_TARGET_PATH"] == "/tmp/nightly/target"
     assert "/dbt_logs/nightly/" in env["DBT_LOG_PATH"]
 
-    run = Mock(
-        return_value=SimpleNamespace(stdout="", stderr="", check_returncode=Mock())
-    )
+    finished_process = SimpleNamespace(stdout="", stderr="", check_returncode=Mock())
+    run = Mock(return_value=finished_process)
     monkeypatch.setattr(nightly["subprocess"], "run", run)
     nightly["run_dbt"](env, ["run", "--select", "x"], timeout_minutes=30)
     command = run.call_args.args[0]

@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from fakes import single_spaced
 
 from ingestion.elexon.contracts import QPN_SPEC
 from ingestion.elexon.qpn_poller import load, parse
@@ -44,13 +45,14 @@ def test_load_uses_the_expected_columns_conflict_key_and_batch_size():
     with patch("ingestion.elexon.qpn_poller.execute_values") as mock_execute_values:
         load(parsed_rows, conn)
 
-    sql = "".join(mock_execute_values.call_args.args[1].split())
-    assert sql == (
-        "INSERTINTOraw.elexon_qpn(settlement_date,settlement_period,time_from,"
-        "time_to,level_from,level_to,national_grid_bm_unit,bm_unit,retrieved_at)"
-        "VALUES%sONCONFLICT(national_grid_bm_unit,time_from,retrieved_at)DONOTHING"
+    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
+    assert single_spaced(insert_sql) == (
+        "INSERT INTO raw.elexon_qpn (settlement_date, settlement_period, time_from, "
+        "time_to, level_from, level_to, national_grid_bm_unit, bm_unit, retrieved_at) "
+        "VALUES %s "
+        "ON CONFLICT (national_grid_bm_unit, time_from, retrieved_at) DO NOTHING"
     )
-    assert mock_execute_values.call_args.args[2] == parsed_rows
+    assert inserted_rows == parsed_rows
     assert mock_execute_values.call_args.kwargs["page_size"] == 1000
     conn.commit.assert_called_once_with()
 
