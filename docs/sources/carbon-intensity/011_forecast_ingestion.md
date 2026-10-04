@@ -17,11 +17,8 @@ quarantine and period-completeness checks are deployed.**
 | `catchup` | **`False`** |
 | Task SLA | **35 minutes**: the 30-minute interval plus five minutes to complete |
 
-This release adds the SLA to both the project DAG and its homelab deployment
-copy. Airflow records a scheduled task that misses this deadline under
-**Browse → SLA Misses**; it does not cancel, fail or retry an otherwise
-successful task. Manual runs do not exercise this check. The homelab deployment
-explicitly enables `core.check_slas`.
+A scheduled task that misses this deadline is recorded as an SLA miss in
+Airflow; it is not cancelled, failed or retried.
 
 The five-minute schedule offset reduces the risk of polling while NESO is still
 publishing its boundary update. The API response has no publication timestamp

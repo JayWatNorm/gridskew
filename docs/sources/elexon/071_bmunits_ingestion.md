@@ -3,9 +3,7 @@
 GridSkew polls `GET /reference/bmunits/all` once per day. The endpoint gives
 the current registry, with no historical backfill or source update timestamp.
 Collection starts an **observed** history; it cannot recover earlier changes.
-S4 capture and snapshots are deployed. The change from build to test was
-released on 26 September 2026; its first scheduled run after that change has
-not yet been confirmed. The [homelab CD overview](../../deployment.md) explains
+S4 capture and snapshots are deployed. The [homelab CD overview](../../deployment.md) explains
 the release boundary; host checks and recovery live in
 `homelab-platform/docs/gridskew-release.md` in the platform checkout.
 

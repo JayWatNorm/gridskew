@@ -9,13 +9,12 @@ see [../ingestion-patterns.md](../ingestion-patterns.md).
 rows at that checkpoint and no unexpected gaps. Scheduled II and SF capture
 then continued; the exact table total was **159,151,689 rows on 2026-09-21**.
 
-For the approved 2026-08-10 through 2026-08-16 cohort, II and SF each contain
-3,083,376 rows with periods 1–48 present on every date. R1 is correctly absent
-before its dated capture window.
+For the 2026-08-10 through 2026-08-16 cohort, II and SF each contain
+3,083,376 rows with periods 1–48 present on every date. R1 for the same dates
+is captured from 2026-10-05 through 2026-10-11.
 
-This release adds endpoint validation to the B1610 poller. The Airflow image
-includes its new Decimal-aware JSON dependency and is rolled out first, before
-the server pulls the updated poller.
+Endpoint validation and quarantine are deployed. The poller's Decimal-aware
+JSON encoder needs `simplejson`, which the Airflow image includes.
 
 | | |
 |---|---|
@@ -49,11 +48,11 @@ recovered. Until a final-run schedule exists, the retained series is accurately
 described as the first and latest captured positions, not the first and final
 positions.
 
-One bounded exception is approved. The seven settlement dates from 2026-08-10
-through 2026-08-16 will be requested at fixed +56 days, on 2026-10-05 through
-2026-10-11. Completion requires every response to report `R1`; this cohort will
-measure II→SF and SF→R1 restatement without committing to full-history R1/R2/R3
-storage.
+There is one bounded exception. The seven settlement dates from 2026-08-10
+through 2026-08-16 are requested at fixed +56 days, on 2026-10-05 through
+2026-10-11. Completion requires every response to report `R1`; this cohort
+measures II→SF and SF→R1 restatement without committing to full-history
+R1/R2/R3 storage.
 
 **`start_date` is the earliest wanted settlement day plus the offset.** 2025-09-05
 minus 14 days is 2025-08-22, which aligns B1610 with PN's history. A different
@@ -103,10 +102,9 @@ keep their existing unfiltered requests. The British-day window includes
 half-hour **start** times, despite the response field being named
 `halfHourEndTime`. The inclusive API bounds are local midnight through the
 next local midnight minus 30 minutes, converted to UTC. For 2026-08-10 this is
-`2026-08-09T23:00Z` through `2026-08-10T22:30Z`. A live one-unit check on
-1 October verified that end-time request bounds skip period 1 and include
-the following settlement date. Clock-change days have 46
-or 50 periods rather than 48.
+`2026-08-09T23:00Z` through `2026-08-10T22:30Z`. Bounds built from period end
+times would skip period 1 and include the first period of the following
+settlement date. Clock-change days have 46 or 50 periods rather than 48.
 
 Before routing or writing, the cohort refuses a response containing a typed
 settlement date different from the requested date or an integer period outside
@@ -127,8 +125,8 @@ old date: manual triggering is not a reliable way to select a past capture.
 A run without a logical date is refused.
 
 RF is a later addition to the same bounded mapping: +430 days,
-2027-10-14 through 2027-10-20. Those RF events are not scheduled in this
-release. A filter cannot restore a run that the source has superseded.
+2027-10-14 through 2027-10-20. Those RF events are not yet scheduled. A filter
+cannot restore a run that the source has superseded.
 
 ## The poll offset determines which run is available
 
@@ -232,12 +230,11 @@ Note the first day shows **46** here where PN's shows 47 — the two datasets
 timestamp differently (`timeFrom` versus `halfHourEndTime`), so the same `from`
 parameter lands on a different boundary.
 
-## Unexpected row-count safeguard is outstanding
+## Expected volume is not checked
 
-The response contract now rejects a zero-row result and raises for Airflow
-retry before parsing, loading or quarantine. It does not yet detect a non-empty
-response whose returned rows satisfy the schema but whose total row count is
-unexpectedly low. Those returned rows would load normally; absent rows have no
-payload to quarantine. Given B1610's volume, that is the remaining
-silent-truncation risk identified in
+The response contract rejects a zero-row result and raises for Airflow retry
+before parsing, loading or quarantine. It does not detect a non-empty response
+whose rows satisfy the schema but whose total is unexpectedly low: those rows
+load normally, and absent rows have no payload to quarantine. Given B1610's
+volume, this is the silent-truncation risk described in
 [../ingestion-patterns.md](../ingestion-patterns.md).
