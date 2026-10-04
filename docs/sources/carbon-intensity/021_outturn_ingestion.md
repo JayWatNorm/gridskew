@@ -33,10 +33,29 @@ or an earliest stored period later than the one-year horizon, triggers a
 **7 day look-back**. The maximum period and row count do not establish complete
 historical coverage.
 
-An interrupted initial load can commit an early window, then leave a middle
-gap that later seven-day polls do not revisit. Automatic historical-gap resume
-remains a planned change. `catchup=False` does not repair that gap; preserve
-failed-window evidence and use the observed recovery workflow.
+## Re-fetching gaps in history
+
+An interrupted initial load can commit an early window and leave a gap in the
+middle, and a DAG that stays paused for more than a week leaves one behind the
+look-back. The seven-day look-back reaches neither.
+
+The Monday run therefore compares the stored history with the expected
+half-hours, from one day inside the one-year horizon to the start of the
+look-back, and re-fetches every 30-day window that holds a missing period. It
+logs a warning naming each window and its missing count.
+
+- **The look-back runs first.** A failing history request cannot stop late
+  actuals from landing.
+- **History is re-fetched on Mondays only.** The day of the week is the limit,
+  so it holds whatever the source returns, including nothing. A gap waits up to
+  six days for its first attempt.
+- **A history request that fails does not stop the others.** The failure is
+  logged, the remaining windows are still attempted, and the run then fails.
+- **Airflow retries on a Monday repeat the history requests**, 12 per attempt
+  at most.
+- **A re-fetched window that is still incomplete fails the run** after its rows
+  are stored, like any other incomplete chunk. A period the source never
+  supplies therefore fails every Monday run.
 
 ## Validation and quarantine
 
@@ -114,7 +133,8 @@ rows a year**. Negligible.
 
 `User-Agent: gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
 
-A backfill is 13 requests; a daily run is one. No throttling needed.
+A backfill is 13 requests; a daily run is one. A Monday run adds one for each
+history window with a gap (12 at most). No throttling needed.
 
 ## Findings from this table
 

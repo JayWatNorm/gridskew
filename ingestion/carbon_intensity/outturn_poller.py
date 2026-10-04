@@ -15,6 +15,12 @@ from ingestion.routing import process_rows
 
 logger = logging.getLogger(__name__)
 
+HALF_HOUR = timedelta(minutes=30)
+MONDAY = 0
+# One fixed day a week bounds the requests for a period the source itself
+# lacks, whatever the response to the last attempt stored.
+HISTORY_REFETCH_WEEKDAY = MONDAY
+
 
 def fetch(from_date, to_date):
     """Fetch outturn rows for a UTC datetime window."""
@@ -74,8 +80,83 @@ def stored_period_summary(conn):
         return cursor.fetchone()
 
 
+def floor_to_period(value):
+    """Round down to the start of the containing half-hour."""
+
+    if value.minute < 30:
+        period_minute = 0
+    else:
+        period_minute = 30
+    return value.replace(minute=period_minute, second=0, microsecond=0)
+
+
+def missing_period_starts(conn, first_start, last_start):
+    """Return the expected half-hour starts, inclusive, with no stored row."""
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT expected.period_start "
+            "FROM generate_series(%s::timestamptz, %s::timestamptz, "
+            "interval '30 minutes') AS expected(period_start) "
+            "LEFT JOIN raw.carbon_intensity_outturn AS stored "
+            "ON stored.period_start = expected.period_start "
+            "WHERE stored.period_start IS NULL "
+            "ORDER BY expected.period_start",
+            (first_start, last_start),
+        )
+        rows = cursor.fetchall()
+
+    missing = []
+    for (period_start,) in rows:
+        missing.append(period_start)
+    return missing
+
+
+def is_history_refetch_day(retrieved_at):
+    return retrieved_at.weekday() == HISTORY_REFETCH_WEEKDAY
+
+
+def gap_windows(conn, horizon_start, recent_start, request_end):
+    """Return the 30-day history windows that hold missing periods."""
+
+    missing = missing_period_starts(
+        conn,
+        floor_to_period(horizon_start) + timedelta(days=1),
+        floor_to_period(recent_start) - HALF_HOUR,
+    )
+    if not missing:
+        return []
+
+    windows_with_gaps = []
+    for window_start, window_end in build_windows(horizon_start, request_end):
+        missing_count = _count_within(missing, window_start, window_end)
+        if missing_count == 0:
+            continue
+
+        logger.warning(
+            "Re-fetching outturn history from %s to %s: %s periods missing",
+            window_start.isoformat(),
+            window_end.isoformat(),
+            missing_count,
+        )
+        windows_with_gaps.append((window_start, window_end))
+    return windows_with_gaps
+
+
+def _count_within(period_starts, window_start, window_end):
+    count = 0
+    for period_start in period_starts:
+        if window_start <= period_start < window_end:
+            count += 1
+    return count
+
+
 def run(conn):
-    """Backfill one year when needed; otherwise refresh the last seven days."""
+    """Backfill one year when needed; otherwise refresh the last seven days.
+
+    The refresh runs before any history re-fetch, so a failing history window
+    cannot stop late actuals from landing.
+    """
 
     retrieved_at = datetime.now(timezone.utc)
     request_end = retrieved_at - timedelta(days=1)
@@ -88,17 +169,27 @@ def run(conn):
         first_period_start,
         last_period_start,
     )
+    history_windows = []
     if last_period_start is None or first_period_start > horizon_start:
         windows = build_windows(horizon_start, request_end)
     else:
         windows = [(recent_start, request_end)]
+        if is_history_refetch_day(retrieved_at):
+            history_windows = gap_windows(
+                conn, horizon_start, recent_start, request_end
+            )
+
+    outcomes = []
+    for window_start, window_end in windows:
+        outcomes.append(process_window(conn, window_start, window_end, retrieved_at))
+    for window_start, window_end in history_windows:
+        outcomes.append(
+            process_history_window(conn, window_start, window_end, retrieved_at)
+        )
 
     rejected_count = 0
     incomplete_count = 0
-    for window_start, window_end in windows:
-        window_rejected_count, incomplete = process_window(
-            conn, window_start, window_end, retrieved_at
-        )
+    for window_rejected_count, incomplete in outcomes:
         rejected_count += window_rejected_count
         if incomplete:
             incomplete_count += 1
@@ -116,6 +207,24 @@ def run(conn):
         raise RuntimeError(
             f"Found {incomplete_count} incomplete Carbon Intensity outturn windows"
         )
+
+
+def process_history_window(conn, from_date, to_date, retrieved_at):
+    """Process one history window; a failed request counts as incomplete.
+
+    One window that cannot be fetched must not stop the windows after it.
+    """
+
+    try:
+        return process_window(conn, from_date, to_date, retrieved_at)
+    except Exception:
+        logger.exception(
+            "Outturn history re-fetch failed from %s to %s",
+            from_date.isoformat(),
+            to_date.isoformat(),
+        )
+        conn.rollback()
+        return 0, True
 
 
 def process_window(conn, from_date, to_date, retrieved_at):

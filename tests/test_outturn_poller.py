@@ -10,6 +10,8 @@ from fakes import single_spaced
 from ingestion.carbon_intensity.contracts import OUTTURN_SPEC
 from ingestion.carbon_intensity.outturn_poller import (
     build_windows,
+    floor_to_period,
+    is_history_refetch_day,
     load,
     parse,
     process_window,
@@ -20,11 +22,23 @@ FIXTURE_PATH = Path(__file__).parent / "fixtures" / "carbon_intensity" / "outtur
 RETRIEVED_AT = datetime(2026, 8, 19, 21, 43, 17, tzinfo=timezone.utc)
 WINDOW_START = datetime(2025, 8, 20, tzinfo=timezone.utc)
 WINDOW_END = datetime(2026, 8, 20, tzinfo=timezone.utc)
+HISTORY_OLDER_THAN_THE_HORIZON = (
+    100,
+    datetime(2020, 1, 1, tzinfo=timezone.utc),
+    datetime(2026, 8, 1, tzinfo=timezone.utc),
+)
 
 
 @pytest.fixture
 def payload():
     return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+
+def a_period_start_100_days_ago():
+    """`run` reads the real clock, so a missing period is placed relative to now."""
+
+    this_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    return this_hour - timedelta(days=100)
 
 
 def test_build_windows_covers_the_range_in_contiguous_30_day_chunks():
@@ -242,6 +256,14 @@ def test_run_refreshes_only_the_recent_window_when_history_is_complete():
             ),
         ),
         patch(
+            "ingestion.carbon_intensity.outturn_poller.is_history_refetch_day",
+            return_value=True,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
+            return_value=[],
+        ),
+        patch(
             "ingestion.carbon_intensity.outturn_poller.process_window",
             return_value=(0, False),
         ) as mock_process_window,
@@ -253,3 +275,129 @@ def test_run_refreshes_only_the_recent_window_when_history_is_complete():
     assert end == retrieved_at - timedelta(days=1)
     assert start == end - timedelta(days=7)
     assert mock_process_window.call_args_list == [call(conn, start, end, retrieved_at)]
+
+
+def test_run_refetches_a_history_gap_after_the_recent_refresh():
+    conn = Mock()
+    missing_start = a_period_start_100_days_ago()
+
+    with (
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
+            return_value=HISTORY_OLDER_THAN_THE_HORIZON,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.is_history_refetch_day",
+            return_value=True,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
+            return_value=[missing_start],
+        ) as mock_missing_period_starts,
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.process_window",
+            return_value=(0, False),
+        ) as mock_process_window,
+    ):
+        run_poller(conn)
+
+    recent_call, history_call = mock_process_window.call_args_list
+    _conn, recent_start, recent_end, retrieved_at = recent_call.args
+    _conn, history_start, history_end, _retrieved_at = history_call.args
+    assert recent_end == retrieved_at - timedelta(days=1)
+    assert recent_start == recent_end - timedelta(days=7)
+    assert history_start <= missing_start < history_end
+    assert history_end - history_start <= timedelta(days=30)
+
+    _conn, first_checked, last_checked = mock_missing_period_starts.call_args.args
+    horizon_start = recent_end - timedelta(days=365)
+    assert first_checked == floor_to_period(horizon_start) + timedelta(days=1)
+    assert last_checked == floor_to_period(recent_start) - timedelta(minutes=30)
+
+
+def test_run_attempts_every_history_gap_when_one_request_fails():
+    conn = Mock()
+    older_gap = a_period_start_100_days_ago() - timedelta(days=100)
+    newer_gap = a_period_start_100_days_ago()
+    recent_refresh = (0, False)
+    failed_request = RuntimeError("expected a non-empty data list")
+    later_window = (0, False)
+
+    with (
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
+            return_value=HISTORY_OLDER_THAN_THE_HORIZON,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.is_history_refetch_day",
+            return_value=True,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
+            return_value=[older_gap, newer_gap],
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.process_window",
+            side_effect=[recent_refresh, failed_request, later_window],
+        ) as mock_process_window,
+    ):
+        with pytest.raises(RuntimeError, match="Found 1 incomplete"):
+            run_poller(conn)
+
+    assert mock_process_window.call_count == 3
+    conn.rollback.assert_called_once_with()
+
+
+def test_run_leaves_history_gaps_alone_between_refetch_days():
+    conn = Mock()
+
+    with (
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
+            return_value=HISTORY_OLDER_THAN_THE_HORIZON,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.is_history_refetch_day",
+            return_value=False,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
+            return_value=[a_period_start_100_days_ago()],
+        ) as mock_missing_period_starts,
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.process_window",
+            return_value=(0, False),
+        ) as mock_process_window,
+    ):
+        run_poller(conn)
+
+    mock_missing_period_starts.assert_not_called()
+    assert mock_process_window.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "run_date,expected",
+    [
+        pytest.param(datetime(2026, 10, 5, 6, tzinfo=timezone.utc), True, id="monday"),
+        pytest.param(
+            datetime(2026, 10, 6, 6, tzinfo=timezone.utc), False, id="tuesday"
+        ),
+    ],
+)
+def test_history_is_refetched_on_one_day_a_week(run_date, expected):
+    assert is_history_refetch_day(run_date) is expected
+
+
+@pytest.mark.parametrize(
+    "minute,period_minute",
+    [
+        pytest.param(29, 0, id="last-minute-of-the-first-half-hour"),
+        pytest.param(30, 30, id="first-minute-of-the-second-half-hour"),
+    ],
+)
+def test_floor_to_period_returns_the_start_of_the_half_hour(minute, period_minute):
+    inside_the_period = datetime(2026, 8, 20, 6, minute, 45, tzinfo=timezone.utc)
+
+    assert floor_to_period(inside_the_period) == datetime(
+        2026, 8, 20, 6, period_minute, tzinfo=timezone.utc
+    )
