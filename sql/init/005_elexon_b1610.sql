@@ -27,9 +27,9 @@ COMMENT ON COLUMN raw.elexon_b1610.half_hour_end_time IS
   'Period end. Naive in the source, unlike PN; UTC attached during parsing.';
 
 COMMENT ON COLUMN raw.elexon_b1610.settlement_run_type IS
-  'Which settlement run produced this quantity. Not filterable in practice — the
-   API serves only the run currently in force, so which run you get is decided by
-    the poll offset, not by a parameter.';
+  'Which settlement run produced this quantity. The API serves only the run
+   currently in force, so the poll offset decides which run exists; naming the
+   run in the request returns nothing once a later run has replaced it.';
 
 COMMENT ON COLUMN raw.elexon_b1610.quantity IS
   'MWh for the whole period, not MW. Numeric because these get summed.
@@ -50,3 +50,9 @@ COMMENT ON COLUMN raw.elexon_b1610.national_grid_bm_unit_id IS
 
 
 CREATE INDEX IF NOT EXISTS idx_raw_elexon_b1610_retrieved_at ON raw.elexon_b1610 (retrieved_at);
+
+-- Rows arrive in settlement-date order, so a block-range index is tiny and lets
+-- a query for one settlement date skip the rest of the table. The stored
+-- coverage check after each capture filters on settlement_date.
+CREATE INDEX IF NOT EXISTS idx_raw_elexon_b1610_settlement_date
+    ON raw.elexon_b1610 USING brin (settlement_date);

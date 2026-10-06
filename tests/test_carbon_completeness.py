@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from ingestion.carbon_intensity.completeness import (
-    validate_forecast_window,
+    forecast_covers_48_hours,
+    validate_forecast_periods,
     validate_outturn_window,
 )
 
@@ -29,7 +30,9 @@ def test_forecast_accepts_a_complete_48_hour_window(period_count):
     rows = make_period_rows(START, period_count)
     requested_at = START + timedelta(minutes=5)
 
-    validate_forecast_window(rows, requested_at)
+    validate_forecast_periods(rows, requested_at)
+
+    assert forecast_covers_48_hours(rows)
 
 
 def test_forecast_rejects_a_request_outside_the_first_period():
@@ -37,14 +40,15 @@ def test_forecast_rejects_a_request_outside_the_first_period():
     requested_at = START + PERIOD
 
     with pytest.raises(ValueError, match="first period"):
-        validate_forecast_window(rows, requested_at)
+        validate_forecast_periods(rows, requested_at)
 
 
-def test_forecast_rejects_a_window_shorter_than_48_hours():
+def test_forecast_reports_a_short_window_without_rejecting_its_periods():
     rows = make_period_rows(START, 95)
 
-    with pytest.raises(ValueError, match="shorter than 48 hours"):
-        validate_forecast_window(rows, START)
+    validate_forecast_periods(rows, START)
+
+    assert not forecast_covers_48_hours(rows)
 
 
 def test_forecast_rejects_a_gap_between_periods():
@@ -52,7 +56,7 @@ def test_forecast_rejects_a_gap_between_periods():
     del rows[30]
 
     with pytest.raises(ValueError, match="period gap"):
-        validate_forecast_window(rows, START)
+        validate_forecast_periods(rows, START)
 
 
 def test_forecast_rejects_a_duplicate_period():
@@ -60,7 +64,7 @@ def test_forecast_rejects_a_duplicate_period():
     rows.insert(30, rows[30].copy())
 
     with pytest.raises(ValueError, match="duplicate period"):
-        validate_forecast_window(rows, START)
+        validate_forecast_periods(rows, START)
 
 
 def test_forecast_rejects_a_period_with_the_wrong_duration():
@@ -70,7 +74,7 @@ def test_forecast_rejects_a_period_with_the_wrong_duration():
     )
 
     with pytest.raises(ValueError, match="periods must be 30 minutes"):
-        validate_forecast_window(rows, START)
+        validate_forecast_periods(rows, START)
 
 
 @pytest.mark.parametrize(

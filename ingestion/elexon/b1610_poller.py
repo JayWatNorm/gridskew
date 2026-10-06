@@ -58,7 +58,11 @@ def run(
     *,
     expected_settlement_date=None,
 ):
-    """Validate and load one B1610 window at the expected II publication lag."""
+    """Validate and load one B1610 window; return the source rows.
+
+    With no window, load the UTC day that ended 14 days ago. The scheduled
+    captures call capture_settlement_date, which adds the completeness check.
+    """
 
     retrieved_at = datetime.now(timezone.utc)
     day_start = retrieved_at.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -73,7 +77,7 @@ def run(
         )
 
     if expected_settlement_date is not None:
-        validate_cohort_response(rows, expected_settlement_date)
+        validate_settlement_date_response(rows, expected_settlement_date)
 
     request_context = {
         "from": from_date.isoformat(),
@@ -171,8 +175,8 @@ def british_day_window(settlement_date):
     return start, end - HALF_HOUR
 
 
-def validate_cohort_response(rows, settlement_date):
-    """Refuse out-of-date or out-of-range cohort rows before any writes.
+def validate_settlement_date_response(rows, settlement_date):
+    """Refuse rows for another date or an impossible period before any writes.
 
     Envelope and field-type errors still use the existing quarantine route.
     A date/period mismatch rejects the batch; valid but incomplete batches
@@ -187,18 +191,18 @@ def validate_cohort_response(rows, settlement_date):
         returned_date = row.get("settlementDate")
         if isinstance(returned_date, str) and returned_date != expected_date:
             raise RuntimeError(
-                f"Invalid cohort response: returned settlement date {returned_date!r}; "
+                f"Invalid response: returned settlement date {returned_date!r}; "
                 f"expected {expected_date}"
             )
         period = row.get("settlementPeriod")
         if type(period) is int and not 1 <= period <= expected:
             raise RuntimeError(
-                f"Invalid cohort response: returned settlement period {period}; "
+                f"Invalid response: returned settlement period {period}; "
                 f"expected 1..{expected} for {expected_date}"
             )
 
 
-def cohort_coverage(conn, settlement_date, run_type):
+def stored_coverage(conn, settlement_date, run_type):
     """Return stored rows, periods and units for one date and settlement run."""
 
     with conn.cursor() as cursor:
@@ -211,8 +215,13 @@ def cohort_coverage(conn, settlement_date, run_type):
         return cursor.fetchone()
 
 
-def capture_cohort_date(conn, settlement_date, run_type):
-    """Load one settlement date for one run, then fail if it is incomplete."""
+def capture_settlement_date(conn, settlement_date, run_type):
+    """Load one settlement date for one run, then fail if it is incomplete.
+
+    The daily II and SF captures and the bounded cohort captures all use
+    this. Rows received are committed before the check, so a failed capture
+    keeps what the source did return and a repeat fills in the rest.
+    """
 
     from_date, to_date = british_day_window(settlement_date)
     rows = run(
@@ -225,7 +234,7 @@ def capture_cohort_date(conn, settlement_date, run_type):
     returned = Counter(
         row.get("settlementRunType") for row in rows if isinstance(row, dict)
     )
-    row_count, stored_periods, unit_count = cohort_coverage(
+    row_count, stored_periods, unit_count = stored_coverage(
         conn, settlement_date, run_type
     )
     conn.rollback()

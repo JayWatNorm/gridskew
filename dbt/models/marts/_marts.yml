@@ -78,7 +78,8 @@ models:
         description: >
           mapped, unmapped (no registry row), ambiguous (more than one
           registry row for the Elexon ID) or conflict (a delivered National
-          Grid ID disagrees with the registry). Unknown mapping keeps the MWh.
+          Grid ID disagrees with the registry, letter case ignored). Unknown
+          mapping keeps the MWh.
         data_tests:
           - accepted_values:
               arguments:

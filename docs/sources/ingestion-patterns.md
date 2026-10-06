@@ -151,8 +151,9 @@ you would simply be blocked.
   truncated or throttled response could still return 200 with a non-empty list
   whose returned rows satisfy the schema but whose total row count is
   unexpectedly low. The pollers would load those returned rows normally;
-  absent rows have no payload to quarantine. No expected-volume check currently
-  detects and fails that case.
+  absent rows have no payload to quarantine. B1610 captures fail when a
+  settlement period is missing for their date; no check detects a response
+  with every period but too few units, and PN and QPN have no volume check.
 
 ## How `retrieved_at` participates in raw identity
 

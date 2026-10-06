@@ -81,11 +81,17 @@ request timestamp and 48-hour horizon, compatible rows are loaded, and the task
 then fails so the rejection remains visible.
 
 After loading compatible rows, the poller requires unique, consecutive
-30-minute periods whose first interval contains the request time and whose
-final boundary reaches at least 48 hours after the first period starts. This
-accepts valid 96- and 97-row responses while rejecting shortened or internally
-broken forecast windows. An incomplete vintage remains stored for diagnosis,
-but the task fails visibly.
+30-minute periods whose first interval contains the request time. An
+internally broken window remains stored for diagnosis, and the task fails
+visibly.
+
+A window that ends less than 48 hours after its first period starts is
+different. The source feed sometimes stops extending and repeats its last
+forecast for hours or days; every such poll measured to date equals the poll
+before it. The poller stores the short window once, logs a warning and
+succeeds, because a retry would store the same rows again. A poll with fewer
+than 96 rows is therefore a repeat of a frozen feed, not a new forecast, and
+models must not count it as one.
 
 ## Politeness
 

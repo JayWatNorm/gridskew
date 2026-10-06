@@ -32,10 +32,16 @@ non-empty list; Carbon expects a dictionary containing a non-empty `data` list.
 Invalid envelopes fail without parsing, loading or quarantine.
 
 Carbon also checks semantic period coverage after compatible rows are loaded.
-Forecast requires consecutive half-hour periods that cover at least 48 hours
-from the first returned boundary and contain the request time in the first
-period. Outturn requires consecutive periods covering the endpoint's observed
-inclusive request boundaries. These rules do not assume a fixed response size.
+Forecast requires consecutive half-hour periods that contain the request time
+in the first period. A forecast window shorter than 48 hours is stored and
+logged as a warning without failing the task: the source feed has stopped
+extending. Outturn requires consecutive periods covering the endpoint's
+observed inclusive request boundaries. These rules do not assume a fixed
+response size.
+
+Each B1610 capture checks period coverage for its settlement date after
+compatible rows are loaded, and fails when a period is missing or another
+settlement run is returned.
 
 ## Routing
 

@@ -59,9 +59,9 @@ models:
         description: >
           Which settlement run produced this quantity, in order
           II, SF, R1, R2, R3, RF. Each supersedes the last. Part of the
-          key, so a revision lands as a new row. Not filterable in
-          practice — the API serves only the run currently in force, so
-          which run you receive is decided by the poll offset.
+          key, so a revision lands as a new row. The API serves only the
+          run currently in force, so the poll offset decides which run
+          exists; a request for a superseded run returns nothing.
           S6 blocking check: every code must exist in the settlement-run seed,
           so an unknown run stops the build before the facts. NOT NULL is
           enforced by the raw table, so no separate null test.
@@ -78,8 +78,7 @@ models:
         description: >
           When this settlement run was first seen. Deliberately NOT part
           of the key here — a re-poll finding no new run inserts nothing,
-          which makes re-polls idempotent and absorbs the one period of
-          overlap between consecutive daily chunks.
+          which makes re-polls idempotent and a repeated capture safe.
   - name: stg_elexon__qpn
     description: >
       One row per declared QPN segment, per unit, per poll. QPN segment
