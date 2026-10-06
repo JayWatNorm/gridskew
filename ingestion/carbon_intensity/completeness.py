@@ -4,25 +4,33 @@ from datetime import datetime, timedelta, timezone
 from itertools import pairwise
 
 PERIOD = timedelta(minutes=30)
+FORECAST_WINDOW = timedelta(hours=48)
 
 
-def validate_forecast_window(rows, requested_at):
-    """Require a continuous forecast covering 48 hours from its first period."""
+def validate_forecast_periods(rows, requested_at):
+    """Require continuous half-hours that start at the request time."""
 
     periods = _periods(rows, "forecast")
     first_start, first_end = periods[0]
-    final_end = periods[-1][1]
 
     if not first_start <= requested_at < first_end:
         raise ValueError(
             "Incomplete Carbon Intensity forecast response: first period does not "
             "contain the request time"
         )
-    if final_end < first_start + timedelta(hours=48):
-        raise ValueError(
-            "Incomplete Carbon Intensity forecast response: window is shorter "
-            "than 48 hours"
-        )
+
+
+def forecast_covers_48_hours(rows):
+    """Return whether valid forecast periods reach 48 hours from the first.
+
+    A shorter window is not a broken response. The source feed sometimes
+    stops extending and repeats its last forecast until it resumes.
+    """
+
+    periods = _periods(rows, "forecast")
+    first_start = periods[0][0]
+    final_end = periods[-1][1]
+    return final_end >= first_start + FORECAST_WINDOW
 
 
 def validate_outturn_window(rows, request_start, request_end):

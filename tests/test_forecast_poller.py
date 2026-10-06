@@ -105,7 +105,7 @@ def test_run_stores_rows_before_checking_completeness(payload):
             side_effect=record_storage,
         ) as mock_process_rows,
         patch(
-            "ingestion.carbon_intensity.forecast_poller.validate_forecast_window",
+            "ingestion.carbon_intensity.forecast_poller.validate_forecast_periods",
             side_effect=record_completeness_check,
         ) as mock_validate_completeness,
     ):
@@ -141,10 +141,31 @@ def test_run_fails_after_shared_routing_rejects_a_row(payload):
             return_value=1,
         ),
         patch(
-            "ingestion.carbon_intensity.forecast_poller.validate_forecast_window"
+            "ingestion.carbon_intensity.forecast_poller.validate_forecast_periods"
         ) as mock_validate_completeness,
     ):
         with pytest.raises(RuntimeError, match="Quarantined 1 row"):
             run_poller(conn)
 
     mock_validate_completeness.assert_not_called()
+
+
+def test_run_stores_a_short_window_once_and_succeeds_with_a_warning(payload, caplog):
+    short_window = {"data": payload["data"][:80]}
+
+    with (
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.fetch",
+            return_value=short_window,
+        ),
+        patch(
+            "ingestion.carbon_intensity.forecast_poller.process_rows",
+            return_value=0,
+        ) as mock_process_rows,
+        patch("ingestion.carbon_intensity.forecast_poller.validate_forecast_periods"),
+        caplog.at_level("WARNING", logger="ingestion.carbon_intensity.forecast_poller"),
+    ):
+        run_poller(Mock())
+
+    mock_process_rows.assert_called_once()
+    assert "shorter than 48 hours: stored 80 rows" in caplog.text

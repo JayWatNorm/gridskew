@@ -77,12 +77,12 @@ def gridskew_elexon_b1610_cohort():
         run_type, settlement_date = cohort_capture(logical_date.date())
 
         sys.path.insert(0, PROJECT_PATH)
-        from ingestion.elexon.b1610_poller import capture_cohort_date
+        from ingestion.elexon.b1610_poller import capture_settlement_date
 
         # Credentials come from the Airflow Connection.
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
-            capture_cohort_date(conn, settlement_date, run_type)
+            capture_settlement_date(conn, settlement_date, run_type)
         finally:
             conn.close()
 

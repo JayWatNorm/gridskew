@@ -250,6 +250,8 @@ B1610_ROWS = [
     ("S6_B", None, AUG10, 1, "II", "-3.5", T0),
     ("S6_C", None, AUG10, 1, "II", "1", T0),
     ("S6_D", "S6NG_WRONG", AUG10, 1, "II", "2", T0),
+    # Delivered National Grid ID differs from the registry by letter case only.
+    ("S6_A", "s6ng_a", AUG10, 5, "II", "4", T0),
 ]
 
 
@@ -266,7 +268,7 @@ def check_generation(conn):
     insert_b1610(conn, B1610_ROWS)
     build_b1610()
     facts = generation(conn)
-    assert len(facts) == 10, f"expected 10 unit-periods, got {len(facts)}"
+    assert len(facts) == 11, f"expected 11 unit-periods, got {len(facts)}"
     assert_indexes(conn, B1610_PERIODS, "bm_unit, settlement_date, settlement_period")
 
     def row(unit, day, period):
@@ -281,6 +283,7 @@ def check_generation(conn):
     assert row("S6_B", AUG10, 1)[5:] == ("unmapped", None, None)
     assert row("S6_C", AUG10, 1)[5:] == ("ambiguous", None, None)
     assert row("S6_D", AUG10, 1)[5:] == ("conflict", None, None)
+    assert row("S6_A", AUG10, 5)[5:] == ("mapped", "S6NG_A", "CCGT")
     assert row("S6_A", AUTUMN, 49)[0] == datetime(
         2025, 10, 26, 23, 0, tzinfo=timezone.utc
     )

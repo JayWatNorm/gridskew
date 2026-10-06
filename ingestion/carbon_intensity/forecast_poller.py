@@ -9,7 +9,10 @@ import requests
 from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
-from ingestion.carbon_intensity.completeness import validate_forecast_window
+from ingestion.carbon_intensity.completeness import (
+    forecast_covers_48_hours,
+    validate_forecast_periods,
+)
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
 from ingestion.routing import process_rows
 
@@ -86,7 +89,12 @@ def load(parsed_rows, conn):
 
 
 def run(conn):
-    """Validate and load one 48-hour forecast observation."""
+    """Validate and load one 48-hour forecast observation.
+
+    A window shorter than 48 hours is stored and logged as a warning, and the
+    run succeeds: the source feed has stopped extending, and a retry would
+    only store the same rows again.
+    """
 
     retrieved_at = datetime.now(timezone.utc)
     timestamp = retrieved_at.strftime("%Y-%m-%dT%H:%MZ")
@@ -107,7 +115,15 @@ def run(conn):
         raise RuntimeError(
             f"Quarantined {rejected_count} rows due to validation errors"
         )
-    validate_forecast_window(rows, retrieved_at)
+    validate_forecast_periods(rows, retrieved_at)
+    if not forecast_covers_48_hours(rows):
+        logger.warning(
+            "Carbon Intensity forecast window is shorter than 48 hours: "
+            "stored %s rows at %s; the source feed has stopped extending",
+            len(rows),
+            retrieved_at.isoformat(),
+        )
+        return
     logger.info("Retrieved %s rows at %s", len(rows), retrieved_at.isoformat())
 
 

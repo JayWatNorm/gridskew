@@ -25,10 +25,13 @@ mapped as (
         case
             when registry.candidate_count is null then 'unmapped'
             when registry.candidate_count > 1 then 'ambiguous'
-            when periods.first_source_national_grid_bm_unit_id
-                <> registry.national_grid_bm_unit
-                or periods.latest_source_national_grid_bm_unit_id
-                <> registry.national_grid_bm_unit
+            -- Letter case is ignored: the registry has changed the case of a
+            -- National Grid ID while the unit stayed the same. Any other
+            -- difference stays a conflict.
+            when lower(periods.first_source_national_grid_bm_unit_id)
+                <> lower(registry.national_grid_bm_unit)
+                or lower(periods.latest_source_national_grid_bm_unit_id)
+                <> lower(registry.national_grid_bm_unit)
                 then 'conflict'
             else 'mapped'
         end as mapping_status,

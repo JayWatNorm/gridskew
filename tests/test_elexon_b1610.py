@@ -9,13 +9,13 @@ from fakes import connection_returning, cursor_of, single_spaced
 
 from ingestion.elexon.b1610_poller import (
     british_day_window,
-    capture_cohort_date,
-    cohort_coverage,
+    capture_settlement_date,
     decimal_json_dumps,
     expected_period_count,
     fetch,
     load,
     parse,
+    stored_coverage,
 )
 from ingestion.elexon.b1610_poller import run as run_poller
 from ingestion.elexon.contracts import B1610_SPEC
@@ -219,18 +219,18 @@ def test_fetch_sends_the_settlement_run_type_only_when_requested():
     assert "settlementRunType" not in mock_get.call_args_list[1].kwargs["params"]
 
 
-def test_capture_cohort_date_fails_after_loading_when_a_period_is_missing():
+def test_capture_settlement_date_fails_after_loading_when_a_period_is_missing():
     conn = Mock()
     rows = [{"settlementRunType": "R1"}]
     with (
         patch("ingestion.elexon.b1610_poller.run", return_value=rows) as mock_run,
         patch(
-            "ingestion.elexon.b1610_poller.cohort_coverage",
+            "ingestion.elexon.b1610_poller.stored_coverage",
             return_value=(47, list(range(1, 48)), 1),
         ),
     ):
         with pytest.raises(RuntimeError, match="47 of 48 periods stored"):
-            capture_cohort_date(conn, date(2026, 8, 10), "R1")
+            capture_settlement_date(conn, date(2026, 8, 10), "R1")
 
     mock_run.assert_called_once_with(
         conn,
@@ -241,24 +241,24 @@ def test_capture_cohort_date_fails_after_loading_when_a_period_is_missing():
     )
 
 
-def test_capture_cohort_date_fails_when_another_run_type_is_returned():
+def test_capture_settlement_date_fails_when_another_run_type_is_returned():
     rows = [{"settlementRunType": "R1"}, {"settlementRunType": "SF"}]
     with (
         patch("ingestion.elexon.b1610_poller.run", return_value=rows),
         patch(
-            "ingestion.elexon.b1610_poller.cohort_coverage",
+            "ingestion.elexon.b1610_poller.stored_coverage",
             return_value=(96, list(range(1, 49)), 1),
         ),
     ):
         with pytest.raises(RuntimeError, match="returned run types"):
-            capture_cohort_date(Mock(), date(2026, 8, 10), "R1")
+            capture_settlement_date(Mock(), date(2026, 8, 10), "R1")
 
 
-def test_cohort_coverage_is_scoped_to_date_and_run():
+def test_stored_coverage_is_scoped_to_date_and_run():
     coverage = (440496, list(range(1, 49)), 9177)
     conn = connection_returning(coverage)
 
-    assert cohort_coverage(conn, date(2026, 8, 10), "R1") == coverage
+    assert stored_coverage(conn, date(2026, 8, 10), "R1") == coverage
 
     sql, params = cursor_of(conn).execute.call_args.args
     assert "WHERE settlement_date = %s AND settlement_run_type = %s" in sql
@@ -299,7 +299,7 @@ def test_cohort_commits_valid_rows_then_fails_when_a_period_is_missing(
         caplog.at_level("INFO", logger="ingestion.elexon.b1610_poller"),
     ):
         with pytest.raises(RuntimeError, match="47 of 48 periods stored"):
-            capture_cohort_date(conn, date(2026, 8, 10), "R1")
+            capture_settlement_date(conn, date(2026, 8, 10), "R1")
 
     _from_date, _to_date, requested_run_type = get_rows.call_args.args
     assert requested_run_type == "R1"
@@ -318,7 +318,7 @@ def test_cohort_commits_valid_rows_then_reports_complete_coverage(source_rows, c
         patch("ingestion.elexon.b1610_poller.execute_values") as insert_rows,
         caplog.at_level("INFO", logger="ingestion.elexon.b1610_poller"),
     ):
-        summary = capture_cohort_date(conn, date(2026, 8, 10), "R1")
+        summary = capture_settlement_date(conn, date(2026, 8, 10), "R1")
 
     assert summary["stored_periods"] == summary["expected_periods"] == 48
     assert summary["returned_run_types"] == {"R1": len(rows)}
@@ -352,7 +352,7 @@ def test_cohort_refuses_wrong_response_date_before_any_write(
         patch("ingestion.elexon.b1610_poller.process_rows", return_value=0) as route,
     ):
         with pytest.raises(RuntimeError, match="returned settlement date"):
-            capture_cohort_date(conn, date(2026, 8, 10), "R1")
+            capture_settlement_date(conn, date(2026, 8, 10), "R1")
     route.assert_not_called()
     conn.commit.assert_not_called()
     conn.cursor.assert_not_called()
@@ -386,7 +386,7 @@ def test_cohort_refuses_out_of_range_returned_period_before_writes(
         patch("ingestion.elexon.b1610_poller.process_rows", return_value=0) as route,
     ):
         with pytest.raises(RuntimeError, match="returned settlement period"):
-            capture_cohort_date(conn, settlement_date, "R1")
+            capture_settlement_date(conn, settlement_date, "R1")
     route.assert_not_called()
     conn.commit.assert_not_called()
 
@@ -426,7 +426,7 @@ def test_cohort_accepts_exactly_the_expected_stored_periods(
         patch("ingestion.elexon.b1610_poller.fetch", return_value=rows),
         patch("ingestion.elexon.b1610_poller.execute_values"),
     ):
-        summary = capture_cohort_date(conn, settlement_date, "R1")
+        summary = capture_settlement_date(conn, settlement_date, "R1")
 
     assert summary["stored_period_numbers"] == stored_periods
     conn.commit.assert_called_once_with()
@@ -447,7 +447,7 @@ def test_cohort_rejects_the_right_count_of_wrong_stored_periods(
         patch("ingestion.elexon.b1610_poller.execute_values"),
     ):
         with pytest.raises(RuntimeError, match="stored period numbers"):
-            capture_cohort_date(conn, settlement_date, "R1")
+            capture_settlement_date(conn, settlement_date, "R1")
 
     conn.commit.assert_called_once_with()
     conn.rollback.assert_called_once_with()

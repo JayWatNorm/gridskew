@@ -36,10 +36,14 @@ conversion to binary floats or strings. See
 
 ## Two standing rungs currently implemented
 
-| Rung | Offset | `start_date` | Catches |
+| Rung | Settlement date captured | `start_date` | Requests |
 |---|---|---|---|
 | **II** | `data_interval_start - 14d` | 2025-09-05 | `II` |
 | **SF** | `data_interval_start - 35d` | forward only | `SF` |
+
+Each daily run captures one British settlement date, names its run in the
+request and then checks what is stored. See
+[One settlement date per run](#one-settlement-date-per-run).
 
 `R1` through `RF` are not standing full-history rungs. They can be added without
 changing the schema, but only prospectively: Elexon stops serving a run after a
@@ -63,10 +67,11 @@ calculation would misalign the two tables used by the thesis join.
 II is live from day 7, but publication counts **working** days. Five working days
 is seven calendar days in a normal week and about twelve around Christmas.
 
-The current poller rejects an empty response and fails visibly, so retries
-can recover a transient publication delay. The 14-day offset gives a
-working-day publication margin at the cost of a week of freshness; it does
-not prove that every response is complete.
+The poller rejects an empty response and fails visibly, so retries can
+recover a transient publication delay. The 14-day offset gives a working-day
+publication margin at the cost of a week of freshness. It is a margin, not a
+guarantee: the capture check below fails a run whose settlement date is not
+yet fully published.
 
 The 35-day rung can capture a later settlement run for a date missed by the
 head poll. It does not recover the missing earlier II reading: settlement
@@ -88,6 +93,45 @@ conflict and nothing would insert.
 > steady-state behaviour, not what its backfill collected — worth knowing before
 > writing a model that filters on run type.
 
+## One settlement date per run
+
+The daily II and SF runs and the bounded cohort all call
+`capture_settlement_date` with one British settlement date and one run type.
+
+The request names the run (`settlementRunType`). The British-day window
+includes half-hour **start** times, despite the response field being named
+`halfHourEndTime`. The inclusive API bounds are local midnight through the
+next local midnight minus 30 minutes, converted to UTC. For 2026-08-10 this is
+`2026-08-09T23:00Z` through `2026-08-10T22:30Z`. Bounds built from period end
+times would skip period 1 and include the first period of the following
+settlement date. Clock-change days have 46 or 50 periods rather than 48.
+
+Before routing or writing, the capture refuses a response containing a typed
+settlement date different from the requested date or an integer period outside
+1 through that date's expected count. Either mismatch rejects the entire
+batch. Missing or wrongly typed fields still follow the existing quarantine
+route.
+
+After compatible rows commit, the task requires every returned row to have the
+requested run type and the stored period numbers for that settlement date and
+run type to be exactly 1–46, 1–48 or 1–50 as appropriate. It logs the
+requested date and run, returned run counts, stored rows, periods and units.
+Mixed runs or missing or unexpected stored periods fail visibly while keeping
+already committed data. The existing key makes a repeated insert idempotent.
+This check is period coverage; it does not prove every unit is complete.
+
+A run whose settlement date is not yet fully published therefore fails
+instead of succeeding with part of the date. A run asked for a superseded run
+type receives an empty response and fails.
+
+**Clear a task instance to repeat a capture**, while the run is still in
+force. Do not manually trigger an old date: manual triggering is not a
+reliable way to select a past capture. A run without a data interval or
+logical date is refused.
+
+The stored-coverage query filters on `settlement_date`; the block-range index
+`idx_raw_elexon_b1610_settlement_date` lets it read one date's blocks.
+
 ## Bounded cohort captures
 
 `gridskew_elexon_b1610_cohort` captures R1 for British settlement dates
@@ -97,33 +141,6 @@ uses the existing `elexon` pool and enables catchup for a late unpause.
 The date mapping in the DAG is the schedule's sole source; an unlisted date
 is refused.
 
-The cohort calls the existing poller with `settlementRunType=R1`. II and SF
-keep their existing unfiltered requests. The British-day window includes
-half-hour **start** times, despite the response field being named
-`halfHourEndTime`. The inclusive API bounds are local midnight through the
-next local midnight minus 30 minutes, converted to UTC. For 2026-08-10 this is
-`2026-08-09T23:00Z` through `2026-08-10T22:30Z`. Bounds built from period end
-times would skip period 1 and include the first period of the following
-settlement date. Clock-change days have 46 or 50 periods rather than 48.
-
-Before routing or writing, the cohort refuses a response containing a typed
-settlement date different from the requested date or an integer period outside
-1 through that date's expected count. Either mismatch rejects the entire
-batch. Missing or wrongly typed fields still follow the existing quarantine
-route. This extra check applies only to the bounded cohort.
-
-After compatible rows commit, the cohort task requires every returned row
-to have the requested run type and the stored period numbers for
-that settlement date/run type to be exactly 1–46, 1–48 or 1–50 as appropriate. It logs
-the requested date/run, returned run counts, stored rows, periods and units.
-Mixed runs or missing/unexpected stored periods fail visibly while keeping already committed
-data. The existing key makes a repeated insert idempotent. This check is
-period coverage across the cohort; it does not prove every unit is complete.
-
-**Clear a task instance to repeat a capture.** Do not manually trigger an
-old date: manual triggering is not a reliable way to select a past capture.
-A run without a logical date is refused.
-
 RF is a later addition to the same bounded mapping: +430 days,
 2027-10-14 through 2027-10-20. Those RF events are not yet scheduled. A filter
 cannot restore a run that the source has superseded.
@@ -132,8 +149,8 @@ cannot restore a run that the source has superseded.
 
 The API serves only the run currently in force and **discards what it
 supersedes** — see [020_b1610.md](020_b1610.md). So the run type is chosen by how
-long you wait. The cohort parameter requests the desired run explicitly;
-its completion check still verifies what the source returned:
+long you wait. Every capture requests its run explicitly; the completion
+check still verifies what the source returned:
 
 | Poll at | Returns |
 |---|---|
@@ -144,30 +161,29 @@ its completion check still verifies what the source returned:
 | 300 days | `R3` |
 | 450 days | `RF` |
 
-II and SF therefore remain two standing DAGs at fixed offsets; the bounded
-cohort adds an explicit run-type request and checks the returned run.
+II and SF therefore remain two standing DAGs at fixed offsets; each names its
+run and checks the returned run, as the bounded cohort does.
 **A missed settlement-run revision cannot be recovered later** once the source
 supersedes it. A later rung can still recover the underlying period at a more
 mature run type.
 
 ## Chunking and volumes
 
-**One day per request**, as PN. Counted after the backfill:
+**One settlement date per request.** Counted after the backfill:
 
 | | |
 |---|---|
-| Rows fetched per run | 449,673 — 9,177 units x 49 periods |
-| Rows stored per settlement day | 440,496 — 48 periods |
-| Duplicated per run | 9,177 — one period, absorbed by `ON CONFLICT` |
+| Rows fetched and stored per run | 440,496 — 9,177 units x 48 periods |
 | Density | 177 bytes/row |
 
-The boundary is inclusive at **both** ends, so a UTC-day window returns 49
-periods. Periods 1 and 2 of each settlement day arrive in the *previous* run, 3
-to 48 in its own, and period 3 arrives twice.
+The boundary is inclusive at **both** ends. The backfill and the daily runs
+before the one-date windows used UTC-day windows, which return 49 periods:
+periods 3 to 48 of one settlement day, periods 1 and 2 of the next, and
+period 3 twice.
 
-**That daily overlap is why `retrieved_at` is not in the key.** With it, those
-9,177 rows would be stored again every single day — 3.3M redundant rows a year.
-Verified in dev: the same window loaded twice leaves the row count unchanged.
+**`retrieved_at` is not in the key**, so a repeated capture of the same run
+stores nothing. Verified in dev: the same window loaded twice leaves the row
+count unchanged. That is what makes clearing a failed capture safe.
 
 ### Storage
 
@@ -230,11 +246,12 @@ Note the first day shows **46** here where PN's shows 47 — the two datasets
 timestamp differently (`timeFrom` versus `halfHourEndTime`), so the same `from`
 parameter lands on a different boundary.
 
-## Expected volume is not checked
+## Period coverage is checked; unit volume is not
 
 The response contract rejects a zero-row result and raises for Airflow retry
-before parsing, loading or quarantine. It does not detect a non-empty response
-whose rows satisfy the schema but whose total is unexpectedly low: those rows
-load normally, and absent rows have no payload to quarantine. Given B1610's
-volume, this is the silent-truncation risk described in
+before parsing, loading or quarantine. Each capture then fails when its
+settlement date is stored without every settlement period. It does not detect
+a response that holds every period but too few units: those rows load
+normally, and absent rows have no payload to quarantine. That remainder is the
+silent-truncation risk described in
 [../ingestion-patterns.md](../ingestion-patterns.md).
