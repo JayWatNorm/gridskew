@@ -79,6 +79,58 @@ models:
           When this settlement run was first seen. Deliberately NOT part
           of the key here — a re-poll finding no new run inserts nothing,
           which makes re-polls idempotent and a repeated capture safe.
+  - name: stg_elexon__boalf
+    description: >
+      One row per unit, acceptance, ramp point and poll. Each ramp point is a
+      straight MW line the system operator instructed the unit to follow.
+      Every poll is retained, so the midnight ramp point of an acceptance
+      that crosses midnight appears once for each of the two daily polls.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid identifier. Never null. Part of the key
+      - name: bm_unit
+        description: Elexon identifier. This is the identifier B1610 keys on
+      - name: acceptance_number
+        description: >
+          Identifies an acceptance for one unit. Two units can hold the same
+          number. Part of the key
+      - name: acceptance_time
+        description: When the system operator issued the acceptance, UTC
+      - name: settlement_date
+        description: >
+          British local time, for the period the ramp point starts in. Never
+          derive this from time_from
+      - name: settlement_period_from
+        description: Settlement period the ramp point starts in
+      - name: settlement_period_to
+        description: Settlement period the ramp point ends in
+      - name: time_from
+        description: Ramp point start, UTC. Part of the key
+      - name: time_to
+        description: Ramp point end, UTC
+      - name: level_from
+        description: >
+          MW at time_from: an absolute level, not a change from the notified
+          level. The value moves in a straight line to level_to
+      - name: level_to
+        description: MW at time_to. See level_from
+      - name: so_flag
+        description: >
+          Believed to mark an action taken for system reasons. The API does
+          not document it
+      - name: amendment_flag
+        description: >
+          Only ORI observed. The by-period model keeps the latest capture of
+          each ramp point and assumes that none is withdrawn; another value
+          here means that assumption needs checking.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ORI']
+              config:
+                severity: warn
+      - name: retrieved_at
+        description: When this poll ran. Part of the key.
   - name: stg_elexon__qpn
     description: >
       One row per declared QPN segment, per unit, per poll. QPN segment

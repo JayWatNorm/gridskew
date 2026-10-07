@@ -16,7 +16,7 @@ applicable writes commit.
 |---|---|
 | Module | `ingestion/elexon/pn_poller.py` |
 | Table | `raw.elexon_pn` |
-| DDL | `sql/init/003_elexon_pn.sql` |
+| DDL | `sql/migrations/V003__elexon_pn.sql` |
 | Tests | `tests/test_elexon_pn.py`, against `pn_stream.json` |
 | DAG | `dags/gridskew_elexon_pn_dag.py` |
 | Schedule | `@daily` |

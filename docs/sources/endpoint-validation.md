@@ -85,7 +85,7 @@ therefore retained even when the task reports an incomplete or invalid response.
 | [`qpn_poller.py`](../../ingestion/elexon/qpn_poller.py) | QPN response window, parser and loader |
 | [`b1610_poller.py`](../../ingestion/elexon/b1610_poller.py) | B1610 response window, parser, loader and Decimal encoder |
 | [`bmunits_poller.py`](../../ingestion/elexon/bmunits_poller.py) | Complete registry gate, manifest and raw-row loader |
-| [`006_endpoint_quarantine.sql`](../../sql/init/006_endpoint_quarantine.sql) | Rejected-row table |
+| [`V006__endpoint_quarantine.sql`](../../sql/migrations/V006__endpoint_quarantine.sql) | Rejected-row table |
 
 ## Source-specific notes
 

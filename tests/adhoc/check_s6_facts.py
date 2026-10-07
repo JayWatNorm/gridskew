@@ -4,7 +4,8 @@ Loads small, controlled raw rows, runs the real dbt models and asserts the S6
 plan revision 4 acceptance matrix: the incremental period tables recompute
 only touched unit-periods and equal a full refresh; the fact views show
 current registry evidence. It mutates the target database, so it refuses to
-run unless explicitly pointed at a local disposable gridskew_dev.
+run unless explicitly pointed at a local disposable gridskew_dev. The raw
+tables must exist first: apply sql/migrations to the empty database.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
@@ -21,8 +22,6 @@ from zoneinfo import ZoneInfo
 
 import psycopg2
 from psycopg2 import errors
-
-from tests.adhoc.load_ci_fixtures import run_ddl
 
 PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 # The repository profile reads the guarded DBT_* variables; pinning it and the
@@ -606,7 +605,6 @@ def main():
     # block dbt's table swap indefinitely.
     conn.autocommit = True
     try:
-        run_ddl(conn)
         check_generation(conn)
         check_commitments(conn)
         check_job_commands_keep_views(conn)

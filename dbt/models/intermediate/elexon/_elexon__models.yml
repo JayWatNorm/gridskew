@@ -105,3 +105,50 @@ models:
         description: >
           Latest retrieved_at over all captures of the period, echoes
           included; the source of the incremental watermark.
+
+  - name: int_elexon__boa_by_period
+    description: >
+      Private view. One row per unit, acceptance, ramp point and settlement
+      half-hour that the ramp point overlaps, from the latest capture of each
+      ramp point. An acceptance level is the absolute MW the system operator
+      instructed the unit to follow; it is not a change from the notified
+      level. Acceptances of one unit overlap in time: a later acceptance
+      replaces an earlier one for the minutes they share, so summing
+      instructed_mwh across acceptances counts those minutes more than once.
+      A model that needs one instructed level per half-hour must first choose
+      the acceptance in force. A unit and half-hour with no acceptance has no
+      row; absence is not zero. Every acceptance observed so far is an
+      original (amendment_flag ORI). A later capture that gives a ramp point
+      the same start replaces it; one that removes a ramp point or moves its
+      start leaves the old point in place. Check how amendments arrive
+      before this view feeds an analysis.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid BM-unit identifier. Part of the grain.
+      - name: bm_unit
+        description: Elexon identifier delivered with the acceptance.
+      - name: acceptance_number
+        description: >
+          Identifies an acceptance for one unit; two units can hold the same
+          number. Part of the grain.
+      - name: acceptance_time
+        description: When the system operator issued the acceptance, UTC.
+      - name: period_start_utc
+        description: UTC start of the settlement half-hour. Part of the grain.
+      - name: ramp_point_time_from
+        description: Start of the source ramp point, UTC. Part of the grain.
+      - name: covered_from
+        description: Start of the part of the ramp point inside the half-hour.
+      - name: covered_to
+        description: End of the part of the ramp point inside the half-hour.
+      - name: instructed_mwh
+        description: >
+          Energy of the instructed level between covered_from and covered_to:
+          the mean of the MW at the two ends times the hours, rounded to six
+          decimal places. Negative when the instructed level is an import.
+      - name: so_flag
+        description: >
+          Believed to mark an action taken for system reasons. The API does
+          not document it.
+      - name: retrieved_at
+        description: When the chosen capture of the ramp point was polled.

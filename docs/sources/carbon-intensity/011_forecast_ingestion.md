@@ -11,7 +11,7 @@ quarantine and period-completeness checks are deployed.**
 |---|---|
 | Module | `ingestion/carbon_intensity/forecast_poller.py` |
 | Table | `raw.carbon_intensity_forecast` |
-| DDL | `sql/init/001_carbon_intensity_forecast.sql` |
+| DDL | `sql/migrations/V001__carbon_intensity_forecast.sql` |
 | DAG | `dags/gridskew_carbon_intensity_forecast_dag.py`, `dag_id` `gridskew_carbon_intensity` |
 | Schedule | `5,35 * * * *` (five minutes after each half-hour boundary) |
 | `catchup` | **`False`** |

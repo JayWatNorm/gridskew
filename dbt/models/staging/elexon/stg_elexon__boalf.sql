@@ -1,0 +1,19 @@
+select
+    national_grid_bm_unit,
+    bm_unit,
+    acceptance_number,
+    acceptance_time,
+    settlement_date,
+    settlement_period_from,
+    settlement_period_to,
+    time_from,
+    time_to,
+    level_from,
+    level_to,
+    so_flag,
+    deemed_bo_flag,
+    stor_flag,
+    rr_flag,
+    amendment_flag,
+    retrieved_at
+from {{ source('elexon', 'elexon_boalf') }}

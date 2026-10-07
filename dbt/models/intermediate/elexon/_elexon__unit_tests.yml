@@ -1,0 +1,62 @@
+unit_tests:
+  - name: test_pn_period_mwh_integrates_ramps_to_mwh
+    description: >
+      Each segment is a trapezoid: the mean of its two MW levels times its
+      hours. Period 1 has a ramp and a flat segment, period 2 imports,
+      period 3 has an odd MW sum that whole-number division would truncate,
+      and period 4 has a gap, so it has no energy.
+    model: int_elexon__pn_period_mwh
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_elexon__pn')
+        format: csv
+        rows: |
+          national_grid_bm_unit,bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
+          UNIT-1,T_UNIT-1,2026-01-15,1,2026-01-15 00:00:00+00,2026-01-15 00:00:00+00,2026-01-15 00:10:00+00,0,60,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,2026-01-15,1,2026-01-15 00:00:00+00,2026-01-15 00:10:00+00,2026-01-15 00:30:00+00,60,60,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,2026-01-15,2,2026-01-15 00:30:00+00,2026-01-15 00:30:00+00,2026-01-15 01:00:00+00,-50,-50,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,2026-01-15,3,2026-01-15 01:00:00+00,2026-01-15 01:00:00+00,2026-01-15 01:30:00+00,3,4,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,2026-01-15,4,2026-01-15 01:30:00+00,2026-01-15 01:30:00+00,2026-01-15 01:40:00+00,60,60,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,2026-01-15,4,2026-01-15 01:30:00+00,2026-01-15 01:50:00+00,2026-01-15 02:00:00+00,60,60,2026-01-16 00:00:00+00
+    # dbt compares numbers as text and the model does not round pn_mwh, so
+    # each expected value carries the model's 22 decimal places.
+    expect:
+      format: csv
+      rows: |
+        settlement_period,pn_mwh,coverage_status
+        1,25.0000000000000000000000,complete
+        2,-25.0000000000000000000000,complete
+        3,1.7500000000000000000000,complete
+        4,,incomplete
+
+  - name: test_boa_by_period_clips_ramps_to_half_hours
+    description: >
+      Acceptance 101 of UNIT-1 crosses midnight, so two daily polls hold it.
+      Its ramp from 23:15 to 23:45 is split at 23:30. The points captured
+      only by the first poll are kept, and the midnight point captured by
+      both polls counts once. UNIT-2 holds the same acceptance number and
+      keeps its own row.
+    model: int_elexon__boa_by_period
+    given:
+      - input: ref('stg_elexon__boalf')
+        format: csv
+        rows: |
+          national_grid_bm_unit,bm_unit,acceptance_number,acceptance_time,time_from,time_to,level_from,level_to,so_flag,retrieved_at
+          UNIT-1,T_UNIT-1,101,2026-01-15 23:05:00+00,2026-01-15 23:15:00+00,2026-01-15 23:45:00+00,0,60,false,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,101,2026-01-15 23:05:00+00,2026-01-15 23:45:00+00,2026-01-16 00:00:00+00,60,60,false,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,101,2026-01-15 23:05:00+00,2026-01-16 00:00:00+00,2026-01-16 00:10:00+00,60,0,false,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,101,2026-01-15 23:05:00+00,2026-01-16 00:00:00+00,2026-01-16 00:10:00+00,60,0,false,2026-01-17 00:00:00+00
+          UNIT-1,T_UNIT-1,101,2026-01-15 23:05:00+00,2026-01-16 00:10:00+00,2026-01-16 00:20:00+00,30,30,false,2026-01-17 00:00:00+00
+          UNIT-2,T_UNIT-2,101,2026-01-15 23:50:00+00,2026-01-16 00:00:00+00,2026-01-16 00:30:00+00,10,10,true,2026-01-16 00:00:00+00
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,period_start_utc,ramp_point_time_from,instructed_mwh,retrieved_at
+        UNIT-1,2026-01-15 23:00:00+00,2026-01-15 23:15:00+00,3.750000,2026-01-16 00:00:00+00
+        UNIT-1,2026-01-15 23:30:00+00,2026-01-15 23:15:00+00,11.250000,2026-01-16 00:00:00+00
+        UNIT-1,2026-01-15 23:30:00+00,2026-01-15 23:45:00+00,15.000000,2026-01-16 00:00:00+00
+        UNIT-1,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00,5.000000,2026-01-17 00:00:00+00
+        UNIT-1,2026-01-16 00:00:00+00,2026-01-16 00:10:00+00,5.000000,2026-01-17 00:00:00+00
+        UNIT-2,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00,5.000000,2026-01-16 00:00:00+00

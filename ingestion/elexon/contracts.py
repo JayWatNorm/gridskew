@@ -24,6 +24,26 @@ QPN_SPEC = {
     "bmUnit": {"type": str, "required": True, "nullable": True},
 }
 
+BOALF_SPEC = {
+    "dataset": {"type": str, "required": False, "nullable": False},
+    "settlementDate": {"type": str, "required": True, "nullable": False},
+    "settlementPeriodFrom": {"type": int, "required": True, "nullable": False},
+    "settlementPeriodTo": {"type": int, "required": True, "nullable": False},
+    "timeFrom": {"type": str, "required": True, "nullable": False},
+    "timeTo": {"type": str, "required": True, "nullable": False},
+    "levelFrom": {"type": int, "required": True, "nullable": False},
+    "levelTo": {"type": int, "required": True, "nullable": False},
+    "acceptanceNumber": {"type": int, "required": True, "nullable": False},
+    "acceptanceTime": {"type": str, "required": True, "nullable": False},
+    "deemedBoFlag": {"type": bool, "required": True, "nullable": False},
+    "soFlag": {"type": bool, "required": True, "nullable": False},
+    "amendmentFlag": {"type": str, "required": True, "nullable": True},
+    "storFlag": {"type": bool, "required": True, "nullable": False},
+    "rrFlag": {"type": bool, "required": True, "nullable": False},
+    "nationalGridBmUnit": {"type": str, "required": True, "nullable": False},
+    "bmUnit": {"type": str, "required": True, "nullable": True},
+}
+
 B1610_SPEC = {
     "dataset": {"type": str, "required": False, "nullable": False},
     "psrType": {"type": str, "required": True, "nullable": True},

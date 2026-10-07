@@ -85,7 +85,7 @@ CREATE TABLE raw.carbon_intensity_outturn (
 );
 ```
 
-`sql/init/002_carbon_intensity_outturn.sql`
+`sql/migrations/V002__carbon_intensity_outturn.sql`
 
 **Note the column order differs from the forecast table.** Here `actual` comes
 before `forecast_final`; there `forecast` comes before `actual`. Both pairs are

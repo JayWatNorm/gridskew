@@ -20,7 +20,7 @@ JSON encoder needs `simplejson`, which the Airflow image includes.
 |---|---|
 | Module | `ingestion/elexon/b1610_poller.py` |
 | Table | `raw.elexon_b1610` |
-| DDL | `sql/init/005_elexon_b1610.sql` |
+| DDL | `sql/migrations/V005__elexon_b1610.sql` |
 | Tests | `tests/test_elexon_b1610.py`, against `b1610_stream.json` |
 | DAGs | `gridskew_elexon_b1610_II_dag.py`, `..._SF_dag.py`, `..._cohort_dag.py` |
 | Schedule | II/SF: `@daily`; cohort: seven fixed events at 06:00 UTC |

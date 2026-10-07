@@ -16,7 +16,7 @@ applicable writes commit.
 |---|---|
 | Module | `ingestion/elexon/qpn_poller.py` |
 | Table | `raw.elexon_qpn` |
-| DDL | `sql/init/004_elexon_qpn.sql` |
+| DDL | `sql/migrations/V004__elexon_qpn.sql` |
 | Tests | `tests/test_elexon_qpn.py`, against `qpn_stream.json` |
 | DAG | `dags/gridskew_elexon_qpn_dag.py` |
 | Schedule | `@daily` |
