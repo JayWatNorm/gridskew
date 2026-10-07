@@ -1,0 +1,163 @@
+models:
+  - name: int_carbon_forecast__revisions
+    description: >
+      One row per forecast half-hour per poll, with the poll flags of the
+      forecast drift reading rule (docs/carbon-forecast-trajectory.md). No row
+      is dropped. The rule counts a poll when it is the earliest poll of its
+      half-hour slot, is not partial and is not part of a no-change run; those
+      rows have is_counted_poll true.
+    columns:
+      - name: period_start
+        description: Start of the forecast half-hour, UTC. Part of the key.
+        data_tests: [not_null]
+      - name: retrieved_at
+        description: When the poll started. Identifies the poll. Part of the key.
+        data_tests: [not_null]
+      - name: forecast
+        description: Forecast carbon intensity for the half-hour, in gCO2/kWh.
+      - name: horizon_seconds
+        description: >
+          Exact seconds from the poll to the start of the half-hour. Negative
+          when the poll was made after the half-hour started. The rule tests
+          this column.
+      - name: horizon_hours
+        description: >
+          The same horizon in hours, rounded to four decimal places, for
+          reading. No rule tests it: a poll made a fraction of a second after
+          the half-hour starts rounds to zero.
+      - name: poll_slot
+        description: The poll time rounded down to the half-hour, UTC.
+      - name: poll_row_count
+        description: Number of half-hours the poll returned.
+      - name: is_first_poll_in_slot
+        description: >
+          True for the earliest poll of its slot. A retry or a re-run in the
+          same slot is false and is never counted.
+      - name: is_partial_poll
+        description: >
+          True when the poll returned fewer half-hours than a full 48-hour
+          window (var forecast_full_poll_rows).
+      - name: is_unchanged_from_previous_slot
+        description: >
+          True when the poll repeats the previous slot's poll in every
+          half-hour the two share. Set only for the earliest poll of a slot.
+      - name: is_no_change_poll
+        description: >
+          True when the poll is unchanged and belongs to a run of unchanged
+          slot polls at least var forecast_no_change_run_polls long. Partial
+          polls count towards the run. A shorter repeat is normal and stays.
+      - name: is_counted_poll
+        description: >
+          True when the reading rule counts the poll: earliest in its slot,
+          not partial and not a no-change poll.
+
+  - name: int_carbon_forecast__by_period
+    description: >
+      One row per forecast half-hour: the forecast trajectory under the
+      forecast drift reading rule (docs/carbon-forecast-trajectory.md), and
+      beside it the same trajectory "as published", with one poll per slot and
+      no poll excluded.
+      A trajectory is complete when it has at least
+      var forecast_trajectory_min_slots slots, starts at least
+      var forecast_trajectory_first_horizon_hours ahead and ends at most
+      var forecast_trajectory_final_horizon_hours ahead. Each limit is tested
+      on the exact horizon in seconds.
+    columns:
+      - name: period_start
+        description: Start of the forecast half-hour, UTC. The key.
+        data_tests: [unique, not_null]
+      - name: counted_slots
+        description: >
+          Number of counted polls that hold this half-hour, the poll inside
+          the half-hour included.
+      - name: first_horizon_hours
+        description: Horizon of the first forecast, rounded to four places.
+      - name: final_horizon_hours
+        description: Horizon of the final forecast, rounded to four places.
+      - name: first_forecast
+        description: Forecast of the counted poll with the largest horizon.
+      - name: forecast_24h
+        description: >
+          Forecast of the counted poll nearest to 24 hours ahead; null when
+          none is within half an hour of it.
+      - name: forecast_4h
+        description: >
+          Forecast of the counted poll nearest to 4 hours ahead; null when
+          none is within half an hour of it.
+      - name: final_forecast
+        description: >
+          Forecast of the counted poll with the smallest horizon that is not
+          negative: the last counted poll made at or before the start of the
+          half-hour.
+      - name: drift
+        description: Final forecast minus first forecast, in gCO2/kWh.
+      - name: has_complete_trajectory
+        description: True when the counted polls form a complete trajectory.
+      - name: has_complete_trajectory_before_no_change_exclusion
+        description: >
+          The same test with partial polls excluded and no-change polls kept.
+          It separates the half-hours each exclusion removes.
+      - name: as_published_slots
+        description: Number of slots that hold this half-hour, no poll excluded.
+      - name: as_published_drift
+        description: Drift with no poll excluded. The sensitivity check reads it.
+      - name: as_published_has_complete_trajectory
+        description: True when the trajectory is complete with no poll excluded.
+
+  - name: int_carbon_outturn__latest
+    description: >
+      One row per half-hour: the latest capture that holds an observed carbon
+      intensity. The outturn is re-captured for seven days and a value can be
+      revised, so the choice of capture is explicit.
+    columns:
+      - name: period_start
+        description: Start of the half-hour, UTC. The key.
+        data_tests: [unique, not_null]
+      - name: actual
+        description: Observed carbon intensity, in gCO2/kWh.
+        data_tests: [not_null]
+      - name: api_final_forecast
+        description: The final forecast the source reports beside the outturn.
+      - name: outturn_captured_at
+        description: When the chosen capture was polled.
+
+  - name: int_carbon_error_by_period
+    description: >
+      One row per half-hour that has both an archived forecast and an
+      outturn. Error is actual minus forecast, in gCO2/kWh: positive means the
+      half-hour was dirtier than forecast. The forecast columns follow the
+      forecast drift reading rule; see int_carbon_forecast__by_period.
+    columns:
+      - name: period_start
+        description: Start of the half-hour, UTC. The key.
+        data_tests: [unique, not_null]
+      - name: actual
+        description: Observed carbon intensity.
+      - name: first_forecast
+        description: First archived forecast.
+      - name: forecast_24h
+        description: Forecast about 24 hours ahead.
+      - name: forecast_4h
+        description: Forecast about 4 hours ahead.
+      - name: final_forecast
+        description: Final archived forecast before the half-hour began.
+      - name: api_final_forecast
+        description: The final forecast the source reports beside the outturn.
+      - name: error_24h
+        description: Actual minus the 24-hour forecast.
+      - name: error_4h
+        description: Actual minus the 4-hour forecast.
+      - name: error_final
+        description: Actual minus the final archived forecast.
+      - name: error_api_final
+        description: Actual minus the source's own final forecast.
+      - name: drift
+        description: Final forecast minus first forecast.
+      - name: has_complete_trajectory
+        description: True when the counted polls form a complete trajectory.
+      - name: has_complete_trajectory_before_no_change_exclusion
+        description: The same test with only partial polls excluded.
+      - name: as_published_drift
+        description: Drift with no poll excluded.
+      - name: as_published_has_complete_trajectory
+        description: True when the trajectory is complete with no poll excluded.

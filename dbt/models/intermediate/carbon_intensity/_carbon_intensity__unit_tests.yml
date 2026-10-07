@@ -1,0 +1,275 @@
+unit_tests:
+  - name: test_revisions_count_one_full_poll_per_slot
+    description: >
+      A retry in the same half-hour slot and a poll with a short window are
+      kept as rows and are not counted.
+    model: int_carbon_forecast__revisions
+    overrides:
+      vars:
+        forecast_full_poll_rows: 2
+    given:
+      - input: ref('stg_carbon_intensity__forecast')
+        format: csv
+        rows: |
+          retrieved_at,period_start,forecast
+          2026-09-10 12:05:00+00,2026-09-10 13:00:00+00,150
+          2026-09-10 12:05:00+00,2026-09-10 13:30:00+00,151
+          2026-09-10 12:10:00+00,2026-09-10 13:00:00+00,150
+          2026-09-10 12:10:00+00,2026-09-10 13:30:00+00,151
+          2026-09-10 12:35:00+00,2026-09-10 13:00:00+00,152
+    expect:
+      format: csv
+      rows: |
+        retrieved_at,period_start,poll_slot,horizon_hours,is_first_poll_in_slot,is_partial_poll,is_counted_poll
+        2026-09-10 12:05:00+00,2026-09-10 13:00:00+00,2026-09-10 12:00:00+00,0.9167,true,false,true
+        2026-09-10 12:05:00+00,2026-09-10 13:30:00+00,2026-09-10 12:00:00+00,1.4167,true,false,true
+        2026-09-10 12:10:00+00,2026-09-10 13:00:00+00,2026-09-10 12:00:00+00,0.8333,false,false,false
+        2026-09-10 12:10:00+00,2026-09-10 13:30:00+00,2026-09-10 12:00:00+00,1.3333,false,false,false
+        2026-09-10 12:35:00+00,2026-09-10 13:00:00+00,2026-09-10 12:30:00+00,0.4167,true,true,false
+
+  - name: test_revisions_keep_the_exact_horizon_in_seconds
+    description: >
+      A poll made a tenth of a second after the half-hour starts has a
+      negative horizon in seconds, although its horizon in hours rounds to
+      zero. The rule reads the seconds.
+    model: int_carbon_forecast__revisions
+    overrides:
+      vars:
+        forecast_full_poll_rows: 1
+    given:
+      - input: ref('stg_carbon_intensity__forecast')
+        format: csv
+        rows: |
+          retrieved_at,period_start,forecast
+          2026-09-10 12:05:00+00,2026-09-10 13:00:00+00,150
+          2026-09-10 12:59:59.9+00,2026-09-10 13:00:00+00,151
+          2026-09-10 13:00:00.1+00,2026-09-10 13:00:00+00,152
+    expect:
+      format: csv
+      rows: |
+        retrieved_at,horizon_seconds,horizon_hours
+        2026-09-10 12:05:00+00,3300.000000,0.9167
+        2026-09-10 12:59:59.9+00,0.100000,0.0000
+        2026-09-10 13:00:00.1+00,-0.100000,0.0000
+
+  - name: test_revisions_exclude_a_run_of_four_unchanged_polls
+    description: >
+      Three repeats in a row stay counted. Four in a row are a frozen feed and
+      are not counted, and the short polls of a frozen feed count towards the
+      four. The poll that changes a value ends the run.
+    model: int_carbon_forecast__revisions
+    overrides:
+      vars:
+        forecast_full_poll_rows: 2
+    given:
+      - input: ref('stg_carbon_intensity__forecast')
+        format: csv
+        rows: |
+          retrieved_at,period_start,forecast
+          2026-09-10 00:05:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 00:05:00+00,2026-09-11 12:30:00+00,100
+          2026-09-10 00:35:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 00:35:00+00,2026-09-11 12:30:00+00,100
+          2026-09-10 01:05:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 01:05:00+00,2026-09-11 12:30:00+00,100
+          2026-09-10 01:35:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 01:35:00+00,2026-09-11 12:30:00+00,100
+          2026-09-10 02:05:00+00,2026-09-11 12:00:00+00,110
+          2026-09-10 02:05:00+00,2026-09-11 12:30:00+00,100
+          2026-09-10 02:35:00+00,2026-09-11 12:00:00+00,110
+          2026-09-10 02:35:00+00,2026-09-11 12:30:00+00,100
+          2026-09-10 03:05:00+00,2026-09-11 12:00:00+00,110
+          2026-09-10 03:05:00+00,2026-09-11 12:30:00+00,100
+          2026-09-10 03:35:00+00,2026-09-11 12:00:00+00,110
+          2026-09-10 04:05:00+00,2026-09-11 12:00:00+00,110
+          2026-09-10 04:35:00+00,2026-09-11 12:00:00+00,120
+          2026-09-10 04:35:00+00,2026-09-11 12:30:00+00,100
+    expect:
+      format: csv
+      rows: |
+        retrieved_at,period_start,is_unchanged_from_previous_slot,is_no_change_poll,is_counted_poll
+        2026-09-10 00:05:00+00,2026-09-11 12:00:00+00,false,false,true
+        2026-09-10 00:05:00+00,2026-09-11 12:30:00+00,false,false,true
+        2026-09-10 00:35:00+00,2026-09-11 12:00:00+00,true,false,true
+        2026-09-10 00:35:00+00,2026-09-11 12:30:00+00,true,false,true
+        2026-09-10 01:05:00+00,2026-09-11 12:00:00+00,true,false,true
+        2026-09-10 01:05:00+00,2026-09-11 12:30:00+00,true,false,true
+        2026-09-10 01:35:00+00,2026-09-11 12:00:00+00,true,false,true
+        2026-09-10 01:35:00+00,2026-09-11 12:30:00+00,true,false,true
+        2026-09-10 02:05:00+00,2026-09-11 12:00:00+00,false,false,true
+        2026-09-10 02:05:00+00,2026-09-11 12:30:00+00,false,false,true
+        2026-09-10 02:35:00+00,2026-09-11 12:00:00+00,true,true,false
+        2026-09-10 02:35:00+00,2026-09-11 12:30:00+00,true,true,false
+        2026-09-10 03:05:00+00,2026-09-11 12:00:00+00,true,true,false
+        2026-09-10 03:05:00+00,2026-09-11 12:30:00+00,true,true,false
+        2026-09-10 03:35:00+00,2026-09-11 12:00:00+00,true,true,false
+        2026-09-10 04:05:00+00,2026-09-11 12:00:00+00,true,true,false
+        2026-09-10 04:35:00+00,2026-09-11 12:00:00+00,false,false,true
+        2026-09-10 04:35:00+00,2026-09-11 12:30:00+00,false,false,true
+
+  - name: test_revisions_follow_a_run_across_a_lost_slot
+    description: >
+      The 01:30 slot has no poll. The poll after it is compared with the poll
+      before it, so the four repeats are one frozen run. The 03:05 poll shares
+      no half-hour with the poll before it: it is a new forecast, it ends the
+      run, and the three repeats after it stay counted.
+    model: int_carbon_forecast__revisions
+    overrides:
+      vars:
+        forecast_full_poll_rows: 1
+    given:
+      - input: ref('stg_carbon_intensity__forecast')
+        format: csv
+        rows: |
+          retrieved_at,period_start,forecast
+          2026-09-10 00:05:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 00:35:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 01:05:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 02:05:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 02:35:00+00,2026-09-11 12:00:00+00,100
+          2026-09-10 03:05:00+00,2026-09-13 12:00:00+00,100
+          2026-09-10 03:35:00+00,2026-09-13 12:00:00+00,100
+          2026-09-10 04:05:00+00,2026-09-13 12:00:00+00,100
+          2026-09-10 04:35:00+00,2026-09-13 12:00:00+00,100
+    expect:
+      format: csv
+      rows: |
+        retrieved_at,is_unchanged_from_previous_slot,is_no_change_poll,is_counted_poll
+        2026-09-10 00:05:00+00,false,false,true
+        2026-09-10 00:35:00+00,true,true,false
+        2026-09-10 01:05:00+00,true,true,false
+        2026-09-10 02:05:00+00,true,true,false
+        2026-09-10 02:35:00+00,true,true,false
+        2026-09-10 03:05:00+00,false,false,true
+        2026-09-10 03:35:00+00,true,false,true
+        2026-09-10 04:05:00+00,true,false,true
+        2026-09-10 04:35:00+00,true,false,true
+
+  - name: test_by_period_reads_the_trajectory_from_counted_polls
+    description: >
+      The 12:00 half-hour has a clean trajectory. The 18:00 half-hour ends in
+      two full polls of a frozen feed: complete as published, not complete
+      under the rule. The 06:00 half-hour ends in a short poll: the partial
+      exclusion alone removes it. A retry never supplies the final forecast,
+      and neither does a poll made a tenth of a second after the half-hour
+      starts.
+    model: int_carbon_forecast__by_period
+    overrides:
+      vars:
+        forecast_trajectory_min_slots: 4
+    given:
+      - input: ref('int_carbon_forecast__revisions')
+        format: csv
+        rows: |
+          period_start,retrieved_at,horizon_seconds,forecast,is_first_poll_in_slot,is_partial_poll,is_counted_poll
+          2026-09-10 12:00:00+00,2026-09-08 12:05:00+00,172500,150,true,false,true
+          2026-09-10 12:00:00+00,2026-09-09 11:35:00+00,87900,158,true,false,true
+          2026-09-10 12:00:00+00,2026-09-09 12:05:00+00,86100,160,true,false,true
+          2026-09-10 12:00:00+00,2026-09-10 07:35:00+00,15900,168,true,false,true
+          2026-09-10 12:00:00+00,2026-09-10 08:05:00+00,14100,170,true,false,true
+          2026-09-10 12:00:00+00,2026-09-10 11:35:00+00,1500,172,true,false,true
+          2026-09-10 12:00:00+00,2026-09-10 11:40:00+00,1200,500,false,false,false
+          2026-09-10 12:00:00+00,2026-09-10 12:00:00.1+00,-0.1,175,true,false,true
+          2026-09-10 18:00:00+00,2026-09-08 18:05:00+00,172500,200,true,false,true
+          2026-09-10 18:00:00+00,2026-09-09 18:05:00+00,86100,210,true,false,true
+          2026-09-10 18:00:00+00,2026-09-10 14:05:00+00,14100,220,true,false,true
+          2026-09-10 18:00:00+00,2026-09-10 16:35:00+00,5100,230,true,false,true
+          2026-09-10 18:00:00+00,2026-09-10 17:05:00+00,3300,230,true,false,false
+          2026-09-10 18:00:00+00,2026-09-10 17:35:00+00,1500,230,true,false,false
+          2026-09-11 06:00:00+00,2026-09-09 06:05:00+00,172500,300,true,false,true
+          2026-09-11 06:00:00+00,2026-09-10 06:05:00+00,86100,310,true,false,true
+          2026-09-11 06:00:00+00,2026-09-11 02:05:00+00,14100,320,true,false,true
+          2026-09-11 06:00:00+00,2026-09-11 05:35:00+00,1500,320,true,true,false
+    expect:
+      format: csv
+      rows: |
+        period_start,counted_slots,first_forecast,forecast_24h,forecast_4h,final_forecast,drift,has_complete_trajectory,has_complete_trajectory_before_no_change_exclusion,as_published_slots,as_published_drift,as_published_has_complete_trajectory
+        2026-09-10 12:00:00+00,7,150,160,170,172,22,true,true,7,22,true
+        2026-09-10 18:00:00+00,4,200,210,220,230,30,false,true,6,30,true
+        2026-09-11 06:00:00+00,3,300,310,320,320,20,false,false,4,20,true
+
+  - name: test_by_period_complete_trajectory_limits
+    description: >
+      Each completeness limit on its own, with three slots needed. The 12:00
+      half-hour sits exactly on all three limits and is complete. The 13:00
+      half-hour has one slot too few. The 14:00 half-hour starts a tenth of a
+      second short of 47 hours ahead. The 15:00 half-hour ends a tenth of a
+      second more than half an hour ahead. The 16:00 half-hour ends an hour
+      ahead; the poll made a tenth of a second after it starts does not count
+      as its ending. No half-hour here has a poll within half an hour of 24
+      or 4 hours ahead, so those two forecasts are empty.
+    model: int_carbon_forecast__by_period
+    overrides:
+      vars:
+        forecast_trajectory_min_slots: 3
+    given:
+      - input: ref('int_carbon_forecast__revisions')
+        format: csv
+        rows: |
+          period_start,retrieved_at,horizon_seconds,forecast,is_first_poll_in_slot,is_partial_poll,is_counted_poll
+          2026-09-12 12:00:00+00,2026-09-10 13:00:00+00,169200,100,true,false,true
+          2026-09-12 12:00:00+00,2026-09-12 10:00:00+00,7200,100,true,false,true
+          2026-09-12 12:00:00+00,2026-09-12 11:30:00+00,1800,100,true,false,true
+          2026-09-12 13:00:00+00,2026-09-10 14:00:00+00,169200,100,true,false,true
+          2026-09-12 13:00:00+00,2026-09-12 12:30:00+00,1800,100,true,false,true
+          2026-09-12 14:00:00+00,2026-09-10 15:00:00.1+00,169199.9,100,true,false,true
+          2026-09-12 14:00:00+00,2026-09-12 12:00:00+00,7200,100,true,false,true
+          2026-09-12 14:00:00+00,2026-09-12 13:30:00+00,1800,100,true,false,true
+          2026-09-12 15:00:00+00,2026-09-10 16:00:00+00,169200,100,true,false,true
+          2026-09-12 15:00:00+00,2026-09-12 13:00:00+00,7200,100,true,false,true
+          2026-09-12 15:00:00+00,2026-09-12 14:29:59.9+00,1800.1,100,true,false,true
+          2026-09-12 16:00:00+00,2026-09-10 17:00:00+00,169200,100,true,false,true
+          2026-09-12 16:00:00+00,2026-09-12 14:00:00+00,7200,100,true,false,true
+          2026-09-12 16:00:00+00,2026-09-12 15:00:00+00,3600,100,true,false,true
+          2026-09-12 16:00:00+00,2026-09-12 16:00:00.1+00,-0.1,100,true,false,true
+    expect:
+      format: csv
+      rows: |
+        period_start,counted_slots,forecast_24h,forecast_4h,has_complete_trajectory,as_published_has_complete_trajectory
+        2026-09-12 12:00:00+00,3,,,true,true
+        2026-09-12 13:00:00+00,2,,,false,false
+        2026-09-12 14:00:00+00,3,,,false,false
+        2026-09-12 15:00:00+00,3,,,false,false
+        2026-09-12 16:00:00+00,4,,,false,false
+
+  - name: test_outturn_latest_keeps_the_newest_observed_value
+    description: >
+      A revised outturn replaces the earlier capture, and a half-hour with no
+      observed value yet has no row.
+    model: int_carbon_outturn__latest
+    given:
+      - input: ref('stg_carbon_intensity__outturn')
+        format: csv
+        rows: |
+          period_start,retrieved_at,actual,forecast_final
+          2026-09-10 12:00:00+00,2026-09-11 06:00:00+00,140,150
+          2026-09-10 12:00:00+00,2026-09-12 06:00:00+00,138,150
+          2026-09-10 12:30:00+00,2026-09-12 06:00:00+00,,151
+    expect:
+      format: csv
+      rows: |
+        period_start,actual,api_final_forecast,outturn_captured_at
+        2026-09-10 12:00:00+00,138,150,2026-09-12 06:00:00+00
+
+  - name: test_error_is_actual_minus_forecast
+    description: >
+      A dirtier half-hour than forecast has a positive error, and a half-hour
+      with no outturn has no row.
+    model: int_carbon_error_by_period
+    given:
+      - input: ref('int_carbon_forecast__by_period')
+        format: csv
+        rows: |
+          period_start,first_forecast,forecast_24h,forecast_4h,final_forecast,drift,has_complete_trajectory
+          2026-09-10 12:00:00+00,150,160,170,172,22,true
+          2026-09-10 12:30:00+00,151,161,171,173,22,true
+      - input: ref('int_carbon_outturn__latest')
+        format: csv
+        rows: |
+          period_start,actual,api_final_forecast
+          2026-09-10 12:00:00+00,180,174
+    expect:
+      format: csv
+      rows: |
+        period_start,actual,error_24h,error_4h,error_final,error_api_final,drift
+        2026-09-10 12:00:00+00,180,20,10,8,6,22

@@ -21,7 +21,8 @@ commands that create or update relations.
 | `snapshots/` | Observed BM-unit attribute history from the first successful capture |
 | `macros/` | Reusable SQL expressions, including settlement-period conversion |
 | `seeds/` | Small reference datasets, their explicit types, documentation and data tests |
-| `models/staging/*/_*__unit_tests.yml` | Inline mock inputs and expected results for dbt unit tests |
+| `models/*/*/_*__unit_tests.yml` | Inline mock inputs and expected results for dbt unit tests |
+| `analyses/` | Queries that read the models and that no job runs |
 | `../dbt_profiles/` | Local profile; credentials come from environment variables |
 
 Models are materialised as views unless a model defines a different strategy.
@@ -122,8 +123,18 @@ verify all descendants and tests afterwards, and follow the runbook's recovery
 sequence if a cascade fails. A standalone full-refresh command omits those
 controls.
 
-See [model decisions](../docs/decisions.md) and
-`homelab-platform/docs/gridskew-release.md` in the platform checkout.
+See `homelab-platform/docs/gridskew-release.md` in the platform checkout.
+
+## Carbon forecast trajectory
+
+Four views in the private `analysis` group prepare the forecast drift question:
+`int_carbon_forecast__revisions`, `int_carbon_forecast__by_period`,
+`int_carbon_outturn__latest` and `int_carbon_error_by_period`. No scheduled job
+selects them. `analyses/q1_forecast_drift_population.sql` counts the population
+without reading a forecast value and can run on any day.
+`analyses/q1_forecast_drift_verdict.sql` is read once, when the population
+reaches 2,880 half-hours. See
+[Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
 
 ## Local setup
 

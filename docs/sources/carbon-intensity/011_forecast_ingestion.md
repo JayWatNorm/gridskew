@@ -93,6 +93,13 @@ succeeds, because a retry would store the same rows again. A poll with fewer
 than 96 rows is therefore a repeat of a frozen feed, not a new forecast, and
 models must not count it as one.
 
+## Question running against this table
+
+Does the forecast drift one way between its first and its final version? The
+rule for reading the answer is fixed before any drift value is read, and the
+answer is read once. The rule, and how short and repeated polls are treated,
+are in [Carbon forecast trajectory](../../carbon-forecast-trajectory.md).
+
 ## Politeness
 
 `User-Agent: gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.

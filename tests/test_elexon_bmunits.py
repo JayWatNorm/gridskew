@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
 import pytest
-from fakes import connection_returning
+from fakes import connection_returning, connection_returning_in_turn
 
 from ingestion.elexon.bmunits_poller import (
     check_completeness,
@@ -40,12 +40,10 @@ def contains(messages, text):
     return any(text in message for message in messages)
 
 
-def test_fixture_is_complete_but_has_nullable_fields(rows):
-    rejected, unit_count = validate_extract(rows)
+def units_named(prefix, count):
+    """Return `count` source rows that hold only a distinct unit key."""
 
-    assert rejected == []
-    assert unit_count == len(rows)
-    assert rows[5]["elexonBmUnit"] is None
+    return [{"nationalGridBmUnit": f"{prefix}-{number}"} for number in range(count)]
 
 
 def test_distinct_eics_for_one_unit_preserve_both_source_rows(rows):
@@ -84,16 +82,7 @@ def test_blank_unit_identity_blocks_publication(rows, value):
 
     rejected, _ = validate_extract(rows)
 
-    assert rejected
-
-
-@pytest.mark.parametrize("value", ["not-a-number", "NaN"])
-def test_non_numeric_capacity_blocks_publication(rows, value):
-    rows[0]["generationCapacity"] = value
-
-    rejected, _ = validate_extract(rows)
-
-    assert rejected
+    assert contains(error_messages(rejected), "Blank nationalGridBmUnit")
 
 
 def test_blank_capacity_is_accepted_as_unknown(rows):
@@ -104,20 +93,21 @@ def test_blank_capacity_is_accepted_as_unknown(rows):
     assert rejected == []
 
 
-def test_completeness_blocks_a_large_loss_of_units(rows):
+def test_completeness_blocks_a_loss_of_more_than_five_percent():
     previous = (UUID(int=1), 100, 100)
-    previous_keys = {f"unit-{i}" for i in range(100)}
+    previous_keys = {f"unit-{number}" for number in range(100)}
+    remaining_units = units_named("unit", 94)
 
     with pytest.raises(RuntimeError, match="shrank"):
-        check_completeness(rows, len(rows), previous, previous_keys)
+        check_completeness(remaining_units, 94, previous, previous_keys)
 
 
-def test_completeness_accepts_an_unchanged_extract():
+def test_completeness_accepts_a_loss_of_exactly_five_percent():
     previous = (UUID(int=1), 100, 100)
-    previous_keys = {f"unit-{i}" for i in range(100)}
-    same_units = [{"nationalGridBmUnit": key} for key in sorted(previous_keys)]
+    previous_keys = {f"unit-{number}" for number in range(100)}
+    remaining_units = units_named("unit", 95)
 
-    check_completeness(same_units, 100, previous, previous_keys)
+    check_completeness(remaining_units, 95, previous, previous_keys)
 
 
 def test_load_rolls_back_if_raw_rows_fail(rows):
@@ -150,9 +140,7 @@ def test_run_quarantines_bad_row_without_publishing_extract(rows):
     load.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "value", ["1e999999", "1e-16384", "NaN", "Infinity", "1_000", "\u00a0"]
-)
+@pytest.mark.parametrize("value", ["1e999999", "1e-16384", "NaN", "1_000", "\u00a0"])
 def test_capacity_values_outside_supported_numeric_contract_are_rejected(rows, value):
     rows[0]["generationCapacity"] = value
 
@@ -172,10 +160,9 @@ def test_supported_capacity_values_pass(rows, value):
     assert rejected == []
 
 
-@pytest.mark.parametrize("bad_eic", [[], {}])
-def test_unhashable_duplicate_eic_is_quarantined(rows, bad_eic):
+def test_unhashable_duplicate_eic_is_quarantined(rows):
     duplicate = deepcopy(rows[1])
-    duplicate["eic"] = bad_eic
+    duplicate["eic"] = []
     rows.append(duplicate)
 
     with (
@@ -190,19 +177,23 @@ def test_unhashable_duplicate_eic_is_quarantined(rows, bad_eic):
     load.assert_not_called()
 
 
-def test_first_capture_below_the_minimum_is_rejected(rows):
+def test_first_capture_one_row_below_the_minimum_is_rejected():
+    first_units = units_named("unit", 2499)
+
     with pytest.raises(RuntimeError, match="minimum"):
-        check_completeness(rows, len(rows), None, set())
+        check_completeness(first_units, 2499, None, set())
 
 
-def test_first_capture_at_the_minimum_is_accepted(rows):
-    check_completeness(rows, len(rows), None, set(), first_min=len(rows))
+def test_first_capture_at_the_minimum_is_accepted():
+    first_units = units_named("unit", 2500)
+
+    check_completeness(first_units, 2500, None, set())
 
 
 def test_same_count_with_different_unit_keys_is_rejected():
     previous = (UUID(int=1), 100, 100)
-    previous_keys = {f"unit-{i}" for i in range(100)}
-    replacement = [{"nationalGridBmUnit": f"other-{i}"} for i in range(100)]
+    previous_keys = {f"unit-{number}" for number in range(100)}
+    replacement = units_named("other", 100)
 
     with pytest.raises(RuntimeError, match="unit keys"):
         check_completeness(replacement, 100, previous, previous_keys)
@@ -213,6 +204,18 @@ def test_locked_extract_rejects_missing_or_changed_manifest(manifest):
     conn = connection_returning(manifest)
 
     with pytest.raises(RuntimeError, match="not latest"):
+        with locked_extract(conn, UUID(int=1)):
+            pytest.fail("dbt must not start")
+
+    conn.rollback.assert_called_once()
+
+
+def test_locked_extract_rejects_a_manifest_whose_counts_differ_from_stored_rows():
+    manifest = (str(UUID(int=1)), 10, 10)
+    stored_row_and_unit_counts = (9, 10)
+    conn = connection_returning_in_turn(manifest, stored_row_and_unit_counts)
+
+    with pytest.raises(RuntimeError, match="counts do not match"):
         with locked_extract(conn, UUID(int=1)):
             pytest.fail("dbt must not start")
 

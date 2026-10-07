@@ -206,9 +206,16 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - Two private incremental period tables, `int_elexon__b1610_period` and
   `int_elexon__pn_period_mwh`, maintain metered and committed energy.
   `fct_generation` and `fct_commitments` expose those values as views joined
-  to current registry evidence; see [model decisions](docs/decisions.md).
+  to current registry evidence.
 - `elexon_settlement_run_codes` supplies settlement-run ordering and
   `elexon_fuel_codes` supports registry validation.
+
+**Built, result pending**
+
+- Four views trace each half-hour's carbon forecast from its first to its
+  final version under a reading rule fixed in advance. The drift result is
+  read once, when 60 days of complete trajectories exist; see
+  [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 
 **Available reference data**
 
