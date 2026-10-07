@@ -1,6 +1,6 @@
 # BOALF, balancing acceptances
 
-**Not yet ingested.** Planned for Phase 1, step 3 of the thesis.
+How it is loaded: [041_boalf_ingestion.md](041_boalf_ingestion.md).
 
 ## In plain terms
 
@@ -57,31 +57,89 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream
 
 **None of the flag fields carry descriptions in the API spec** — verified: no
 field on this schema has one. The readings above are industry convention and
-inference from the names, not documented behaviour. Verify against live data
-before the analysis depends on any of them.
+inference from the names, not documented behaviour.
+
+## One day, counted
+
+Market-wide request for the UTC day 2026-10-05, by
+`tests/adhoc/boalf_checks.py`:
+
+| | |
+|---|---|
+| Rows (ramp points) | **26,833** |
+| Units | 364 |
+| Acceptances, as `(nationalGridBmUnit, acceptanceNumber)` | 11,081 |
+| Ramp points per acceptance | 1 to 5; two or three for 92% |
+| Acceptance numbers held by more than one unit | **489 of 10,568** |
+| Repeated `(nationalGridBmUnit, acceptanceNumber, timeFrom)` | 0 |
+| Rows where the two settlement periods differ | 5,595 (20.9%) |
+| Nulls in any field | 0 |
+| `soFlag` | true on 6,346 rows, false on 20,487 |
+| `amendmentFlag` | `ORI` on every row |
+| `deemedBoFlag`, `rrFlag` | false on every row |
+| `storFlag` | false on every row of this day; see below |
+
+Six more days across the year (2025-08-22, 2025-10-26, 2025-12-25,
+2026-01-15, 2026-03-29, 2026-06-21; 107,454 rows) hold no null, no repeated
+ramp point, no ramp point without a duration and no `amendmentFlag` other
+than `ORI`.
+
+**`storFlag` is the same on every row of a day.** It is true on all 36,200
+rows of 2026-03-29 and all 31,613 rows of 2026-03-28, and false on every row
+of the other seven days. It does not single out individual acceptances.
 
 ## Things to know before modelling it
 
-**Acceptances span settlement periods.** `settlementPeriodFrom` and
-`settlementPeriodTo` can differ, so one row is not one half hour. Attributing
-an acceptance to periods means splitting it.
+**A level is an absolute MW level**, the output the unit was instructed to
+follow. It is not a change from the notified level.
 
 **Like PN, levels are a ramp**, not a flat value.
+
+**Acceptances span settlement periods.** `settlementPeriodFrom` and
+`settlementPeriodTo` differ on a fifth of rows, so one row is not one half
+hour. Attributing an acceptance to periods means splitting it.
+`int_elexon__boa_by_period` does this.
+
+**`acceptanceNumber` identifies an acceptance only together with the unit.**
+Two units can hold the same number.
+
+**Acceptances of one unit overlap in time.** A later acceptance replaces an
+earlier one for the minutes they share. Summing energy across the acceptances
+of a unit counts those minutes more than once; a model that needs one
+instructed level per half hour must first choose the acceptance in force.
 
 **`soFlag` is believed to mark actions taken for system reasons** such as
 network constraints or voltage, rather than to balance energy. If so, treating
 them as energy balancing would misattribute the cause. **Not documented in the
 API. Confirm before relying on it.**
 
-**`amendmentFlag` looks like a revision axis**, given the `ORI` example value.
-If so, take the latest per `acceptanceNumber`. Also unconfirmed.
+**`amendmentFlag` looks like a revision axis**, given that every observed
+value is `ORI`. What an amended acceptance looks like is not known. A
+warning-level dbt test on `stg_elexon__boalf` reports any other value except
+null. `int_elexon__boa_by_period` keeps the latest capture of each ramp
+point: an amendment that removed a ramp point or moved its start would leave
+the old point in the view. Check how amendments arrive before the view feeds
+an analysis.
 
-**`from` and `to` filter on `timeFrom`** by default, inclusively. Supplying
-`settlementPeriodFrom` or `settlementPeriodTo` switches them to filtering on
+**`from` and `to` filter on `timeFrom`, and both ends are included.** Two
+consecutive daily requests therefore both return the ramp points that start
+at the midnight between them: 12 points on 2026-10-06. Supplying
+`settlementPeriodFrom` or `settlementPeriodTo` switches the filter to
 settlement **date**, with the time portion ignored. This is documented for
 BOALF, unlike B1610.
 
-## Proposed key
+**An acceptance that crosses midnight is split across two daily requests.**
+38 acceptances were in both the 2026-10-05 and the 2026-10-06 responses. Only
+the midnight ramp point is in both; the points before it are in the first
+response alone. A model must therefore choose the latest capture of each
+**ramp point**, never of a whole acceptance.
 
-Not yet built. Likely `(acceptance_number, bm_unit, time_from, retrieved_at)`,
-but `acceptanceNumber` uniqueness needs confirming against real data first.
+## Key
+
+```sql
+PRIMARY KEY (national_grid_bm_unit, acceptance_number, time_from, retrieved_at)
+```
+
+The unit is part of the key because acceptance numbers repeat across units.
+`retrieved_at` is part of the key because the rows carry no revision number,
+as in PN.

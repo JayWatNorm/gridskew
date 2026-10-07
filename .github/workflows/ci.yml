@@ -7,6 +7,14 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+# A main run is never cancelled: a release needs a completed run for its SHA.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -32,12 +40,12 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
@@ -58,7 +66,17 @@ jobs:
       - name: Check DAG files compile
         run: python -m compileall -q dags/
 
-      - name: Apply sql/init DDL and load disposable CI fixtures
+      - name: Apply raw migrations with Flyway
+        run: >
+          docker run --rm --network host
+          -v "${{ github.workspace }}/sql/migrations:/flyway/sql:ro"
+          flyway/flyway:13.8.0
+          -url=jdbc:postgresql://localhost:5432/gridskew_dev
+          -user=postgres -password=password
+          -schemas=raw -locations=filesystem:/flyway/sql
+          migrate
+
+      - name: Load disposable CI fixtures
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
@@ -133,12 +151,12 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
@@ -146,6 +164,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+
+      - name: Apply raw migrations with Flyway
+        run: >
+          docker run --rm --network host
+          -v "${{ github.workspace }}/sql/migrations:/flyway/sql:ro"
+          flyway/flyway:13.8.0
+          -url=jdbc:postgresql://localhost:5432/gridskew_dev
+          -user=postgres -password=password
+          -schemas=raw -locations=filesystem:/flyway/sql
+          migrate
 
       - name: Check S6 period tables and fact views
         env:

@@ -161,7 +161,7 @@ pytest; some are checks that CI runs.
 ```text
 ingestion/      Python ingestion package
 dags/           Airflow DAG definitions
-sql/            Raw-layer DDL
+sql/            Raw-layer migrations and provisioning scripts
 dbt/            Sources, seeds, models, tests and macros
 dbt_profiles/   Connection profile using environment variables
 tests/          pytest suite, captured fixtures and ad-hoc checks

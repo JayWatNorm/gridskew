@@ -11,7 +11,7 @@ quarantine and period-completeness checks are deployed.**
 |---|---|
 | Module | `ingestion/carbon_intensity/outturn_poller.py` |
 | Table | `raw.carbon_intensity_outturn` |
-| DDL | `sql/init/002_carbon_intensity_outturn.sql` |
+| DDL | `sql/migrations/V002__carbon_intensity_outturn.sql` |
 | DAG | `dags/gridskew_carbon_intensity_outturn_dag.py` |
 | Schedule | `0 6 * * *` |
 | `catchup` | **`False`**, with a rolling look-back |

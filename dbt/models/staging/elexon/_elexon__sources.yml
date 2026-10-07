@@ -160,6 +160,87 @@ sources:
             description: When this poll ran. Part of the key.
 
       # ------------------------------------------------------------------
+      - name: elexon_boalf
+        description: >
+          Bid-offer acceptance levels: the MW level the system operator
+          instructed a unit to follow, as ramp points. One row per unit,
+          acceptance, ramp point and poll. A daily poll returns the ramp
+          points that start in its UTC day, both ends included, so an
+          acceptance that crosses midnight is spread over two polls and its
+          midnight point is in both.
+        freshness:
+          warn_after: {count: 25, period: hour}
+          error_after: {count: 48, period: hour}
+        columns:
+
+          - name: national_grid_bm_unit
+            description: National Grid identifier. Never null. Part of the key.
+
+          - name: bm_unit
+            description: Elexon identifier. Nullable in the contract, as in PN.
+
+          - name: acceptance_number
+            description: >
+              Identifies an acceptance for one unit. Part of the key. Not
+              unique on its own: two units can hold the same number.
+
+          - name: acceptance_time
+            description: When the system operator issued the acceptance, UTC.
+
+          - name: settlement_date
+            description: >
+              British local time, for the period the ramp point starts in.
+              Never derive this from time_from.
+
+          - name: settlement_period_from
+            description: Settlement period the ramp point starts in.
+
+          - name: settlement_period_to
+            description: >
+              Settlement period the ramp point ends in. Differs from
+              settlement_period_from on about a fifth of rows.
+
+          - name: time_from
+            description: Ramp point start, UTC. Part of the key.
+
+          - name: time_to
+            description: Ramp point end, UTC.
+
+          - name: level_from
+            description: >
+              MW at time_from: an absolute level, not a change from the
+              notified level. A straight line to level_to.
+
+          - name: level_to
+            description: MW at time_to. See level_from.
+
+          - name: so_flag
+            description: >
+              Believed to mark an action taken for system reasons, not to
+              balance energy. The API does not document it.
+
+          - name: deemed_bo_flag
+            description: Deemed bid-offer flag. Only false observed.
+
+          - name: stor_flag
+            description: >
+              Short Term Operating Reserve flag. Observed with one value for
+              every row of a day: true on 28 and 29 March 2026, false on the
+              other days checked.
+
+          - name: rr_flag
+            description: Replacement Reserve flag. Only false observed.
+
+          - name: amendment_flag
+            description: >
+              Only ORI observed. A warning test on the staging model reports
+              any other value, because the by-period model assumes that a
+              ramp point is never withdrawn.
+
+          - name: retrieved_at
+            description: When this poll ran. Part of the key.
+
+      # ------------------------------------------------------------------
       - name: elexon_b1610
         description: >
           Metered export or import energy per unit and settlement period — the

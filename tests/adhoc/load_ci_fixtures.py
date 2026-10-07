@@ -17,7 +17,9 @@ from ingestion.elexon.b1610_poller import load as load_b1610
 from ingestion.elexon.b1610_poller import parse as parse_b1610
 from ingestion.elexon.bmunits_poller import load_extract as load_bm_units
 from ingestion.elexon.bmunits_poller import validate_extract as validate_bm_units
-from ingestion.elexon.contracts import B1610_SPEC, PN_SPEC, QPN_SPEC
+from ingestion.elexon.boalf_poller import load as load_boalf
+from ingestion.elexon.boalf_poller import parse as parse_boalf
+from ingestion.elexon.contracts import B1610_SPEC, BOALF_SPEC, PN_SPEC, QPN_SPEC
 from ingestion.elexon.pn_poller import load as load_pn
 from ingestion.elexon.pn_poller import parse as parse_pn
 from ingestion.elexon.qpn_poller import load as load_qpn
@@ -25,15 +27,6 @@ from ingestion.elexon.qpn_poller import parse as parse_qpn
 from ingestion.routing import process_rows
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
-
-
-def run_ddl(conn):
-    """Run the initialization scripts to create the schemas and raw tables."""
-    ddl_dir = Path(__file__).resolve().parent.parent.parent / "sql" / "init"
-    with conn.cursor() as cursor:
-        for file in sorted(ddl_dir.glob("*.sql")):
-            cursor.execute(file.read_text(encoding="utf-8"))
-    conn.commit()
 
 
 def load_fixture(
@@ -94,10 +87,17 @@ def main():
     )
 
     try:
-        run_ddl(conn)
         load_fixture(conn, "elexon/pn_stream.json", PN_SPEC, "PN", parse_pn, load_pn)
         load_fixture(
             conn, "elexon/qpn_stream.json", QPN_SPEC, "QPN", parse_qpn, load_qpn
+        )
+        load_fixture(
+            conn,
+            "elexon/boalf_stream.json",
+            BOALF_SPEC,
+            "BOALF",
+            parse_boalf,
+            load_boalf,
         )
         load_fixture(
             conn,

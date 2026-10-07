@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC, OUTTURN_SPEC
-from ingestion.elexon.contracts import B1610_SPEC, BM_UNITS_SPEC, PN_SPEC, QPN_SPEC
+from ingestion.elexon.contracts import (
+    B1610_SPEC,
+    BM_UNITS_SPEC,
+    BOALF_SPEC,
+    PN_SPEC,
+    QPN_SPEC,
+)
 from ingestion.validation import validate_row, validate_rows
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
@@ -176,6 +182,10 @@ def test_pn_fixture_matches_its_contract():
 
 def test_qpn_fixture_matches_its_contract():
     assert_fixture_matches_contract("elexon/qpn_stream.json", QPN_SPEC)
+
+
+def test_boalf_fixture_matches_its_contract():
+    assert_fixture_matches_contract("elexon/boalf_stream.json", BOALF_SPEC)
 
 
 def test_b1610_fixture_matches_its_contract():

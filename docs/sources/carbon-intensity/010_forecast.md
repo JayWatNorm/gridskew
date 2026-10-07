@@ -76,7 +76,7 @@ CREATE TABLE raw.carbon_intensity_forecast (
 );
 ```
 
-`sql/init/001_carbon_intensity_forecast.sql`
+`sql/migrations/V001__carbon_intensity_forecast.sql`
 
 **Grain:** one row per settlement period, per poll. Usually 96 or 97 rows every
 30 minutes, roughly 250 MB per year.

@@ -85,7 +85,7 @@ Numbered in build order, not alphabetically.
 | [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | Dynamic Data; not subtracted from PN | Phase 1, first |
 | [020_b1610.md](020_b1610.md) | [021](021_b1610_ingestion.md) | `B1610` | The receipt | Phase 1, first |
 | [030_remit.md](030_remit.md) | — | `REMIT` | Outage notice, planned or unplanned | Phase 1, step 3 |
-| [040_boalf.md](040_boalf.md) | — | `BOALF` | The intervention | Phase 1, step 3 |
+| [040_boalf.md](040_boalf.md) | [041](041_boalf_ingestion.md) | `BOALF` | The intervention | Phase 1, step 3; built, not yet released |
 | [050_demand.md](050_demand.md) | — | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | Phase 1, step 3 |
 | [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Phase 1, step 3 |
 | [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Phase 1, S4; deployed |
