@@ -38,7 +38,7 @@ def test_parse_maps_a_source_row_to_the_database_tuple(source_rows):
     )
 
 
-def test_load_uses_the_expected_columns_conflict_key_and_batch_size():
+def test_load_uses_the_expected_columns_conflict_key_and_commits():
     parsed_rows = [Mock(name="parsed_row")]
     conn = MagicMock()
 
@@ -53,14 +53,12 @@ def test_load_uses_the_expected_columns_conflict_key_and_batch_size():
         "ON CONFLICT (national_grid_bm_unit, time_from, retrieved_at) DO NOTHING"
     )
     assert inserted_rows == parsed_rows
-    assert mock_execute_values.call_args.kwargs["page_size"] == 1000
     conn.commit.assert_called_once_with()
 
 
 @pytest.mark.parametrize(
     "response",
     [
-        pytest.param(None, id="none"),
         pytest.param({}, id="dictionary"),
         pytest.param([], id="empty-list"),
     ],

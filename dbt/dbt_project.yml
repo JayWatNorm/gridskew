@@ -17,6 +17,16 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+# The reading rule for the forecast drift question
+# (docs/carbon-forecast-trajectory.md). The values are fixed before any drift
+# result is read.
+vars:
+  forecast_full_poll_rows: 96
+  forecast_no_change_run_polls: 4
+  forecast_trajectory_min_slots: 90
+  forecast_trajectory_first_horizon_hours: 47
+  forecast_trajectory_final_horizon_hours: 0.5
+
 models:
   gridskew:
     staging:

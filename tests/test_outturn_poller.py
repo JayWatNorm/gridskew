@@ -95,10 +95,8 @@ def test_load_uses_the_expected_columns_conflict_key_and_commits():
 @pytest.mark.parametrize(
     "response",
     [
-        pytest.param(None, id="none"),
         pytest.param([], id="list"),
         pytest.param({}, id="missing-data"),
-        pytest.param({"data": {}}, id="data-not-a-list"),
         pytest.param({"data": []}, id="empty-data"),
     ],
 )

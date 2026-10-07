@@ -81,6 +81,14 @@ def connection_returning(row):
     return conn
 
 
+def connection_returning_in_turn(*rows):
+    """Return a fake connection whose cursor's fetchone() gives each row in turn."""
+
+    conn = MagicMock()
+    cursor_of(conn).fetchone.side_effect = rows
+    return conn
+
+
 def cursor_of(conn):
     """Return the fake cursor that `with conn.cursor() as cursor:` yields."""
 

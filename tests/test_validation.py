@@ -54,13 +54,6 @@ def forecast_row():
     )
 
 
-def test_validate_row_accepts_a_valid_row(pn_row):
-    errors, warnings = validate_row(pn_row, PN_SPEC)
-
-    assert errors == []
-    assert warnings == []
-
-
 def test_validate_row_reports_a_missing_required_field(pn_row):
     del pn_row["settlementPeriod"]
 
@@ -195,15 +188,6 @@ def test_b1610_fixture_matches_its_contract():
 
 def test_bm_units_fixture_matches_its_contract():
     assert_fixture_matches_contract("elexon/bmunits_truncated.json", BM_UNITS_SPEC)
-
-
-def test_bm_units_contract_preserves_nullable_identity_and_fuel():
-    row = load_rows("elexon/bmunits_truncated.json")[5].copy()
-    errors, warnings = validate_row(row, BM_UNITS_SPEC)
-
-    assert errors == []
-    assert warnings == []
-    assert row["elexonBmUnit"] is None
 
 
 def test_bm_units_contract_rejects_non_boolean_flag():

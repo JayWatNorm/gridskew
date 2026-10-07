@@ -87,7 +87,8 @@ about this period, at this moment".
 
 **Horizon is not stored.** It is derived downstream as
 `period_start - retrieved_at`. Storing it would duplicate information already
-present and create a way for the two to disagree.
+present and create a way for the two to disagree. The model
+`int_carbon_forecast__revisions` derives it as `horizon_hours`.
 
 **`actual` is always null here** and is stored anyway, because the raw layer
 records what the source returned. Outturn is ingested separately into

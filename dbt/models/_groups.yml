@@ -6,3 +6,11 @@ groups:
       S6 period facts and the private intermediate tables that prepare them.
       A model outside this group cannot reference the private tables; S8 models
       that reuse them join this group.
+
+  - name: analysis
+    owner:
+      name: James
+    description: >
+      Private intermediate models that prepare the research questions, and the
+      analyses that read them. The carbon models hold forecast drift and
+      forecast error; a result is read only through its recorded reading rule.

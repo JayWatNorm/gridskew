@@ -103,18 +103,18 @@ def test_outturn_accepts_its_observed_inclusive_window(
 
 
 @pytest.mark.parametrize(
-    "missing_period",
+    "missing_period,reason",
     [
-        pytest.param(0, id="first"),
-        pytest.param(100, id="interior"),
-        pytest.param(336, id="last"),
+        pytest.param(0, "boundaries do not cover", id="first"),
+        pytest.param(100, "period gap", id="interior"),
+        pytest.param(336, "boundaries do not cover", id="last"),
     ],
 )
-def test_outturn_rejects_a_missing_period(missing_period):
+def test_outturn_rejects_a_missing_period(missing_period, reason):
     request_start = datetime(2026, 8, 20, tzinfo=timezone.utc)
     request_end = request_start + timedelta(days=7)
     rows = make_period_rows(request_start - PERIOD, 337)
     del rows[missing_period]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=reason):
         validate_outturn_window(rows, request_start, request_end)

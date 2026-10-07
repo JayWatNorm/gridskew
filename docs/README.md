@@ -26,7 +26,7 @@ unnumbered so GitHub renders them on arrival.
 ```
 docs/
   deployment.md               Homelab CD overview; host steps live in the platform runbook
-  decisions.md                Model decisions and the reasons for them
+  carbon-forecast-trajectory.md  How the forecast drift question is read
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
   endpoint-validation.md      Contracts, routing, warning logs and quarantine
