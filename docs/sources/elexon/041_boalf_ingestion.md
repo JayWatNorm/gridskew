@@ -4,7 +4,8 @@ How `raw.elexon_boalf` is loaded. For what the data means, see
 [040_boalf.md](040_boalf.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: built; not yet released.**
+**Status: deployed, backfill complete 2026-10-08.** 412 runs covering
+2025-08-22 to 2026-10-07, about 9.0 million rows.
 
 | | |
 |---|---|

@@ -45,8 +45,9 @@ docs/sources/
     016_qpn_ingestion.md        as PN
     020_b1610.md              The receipt                              [running]
     021_b1610_ingestion.md      II at 14d, SF at 35d, bounded R1 cohort
-    030_remit.md              The outage notice                        [planned]
-    040_boalf.md              The intervention                         [built]
+    030_remit.md              The outage notice                        [running]
+    031_remit_ingestion.md      hourly, window from the table, every publication kept
+    040_boalf.md              The intervention                         [running]
     041_boalf_ingestion.md      daily, catchup=True, every poll kept
     050_demand.md             Expected versus actual usage             [later]
     060_system-prices.md      The cost of fixing the imbalance         [later]

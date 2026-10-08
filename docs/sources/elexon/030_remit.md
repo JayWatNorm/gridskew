@@ -1,6 +1,6 @@
 # REMIT, outage notices
 
-**Ingestion built; not yet released.** See [031_remit_ingestion.md](031_remit_ingestion.md).
+**Ingested hourly.** See [031_remit_ingestion.md](031_remit_ingestion.md).
 
 ## In plain terms
 

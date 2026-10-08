@@ -30,6 +30,7 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `qpn_checks.py` | Does QPN share PN's null pattern, and how often is it actually non-zero? | Same 2,450 null `bmUnit` rows, same zero nulls on `nationalGridBmUnit`, so the same key holds. **50 of 119,600 rows are non-zero — 0.04% — and all 50 belong to `T_WILCT-1`**, at a constant −60 MW. See `docs/sources/elexon/015_qpn.md` |
 | `b1610_checks.py` | When does B1610 arrive, when does each settlement run publish, can earlier runs be recovered, and what does a market-wide day contain? | First publication appears after five working days, normally 7 calendar days. A settlement day contains **~440,000 rows across 9,177 units**, making B1610 the largest table in the project. Identifier pattern is **inverted from PN**: `bmUnit` never null, `nationalGridBmUnitId` null on 71.8%. Run boundaries measured out to 720 days place `RF` at ~420 days. Most importantly, **superseded runs are discarded and cannot be fetched retrospectively** — restatement is only observable forwards. See `docs/sources/elexon/020_b1610.md` |
 | `boalf_checks.py` | Is `(nationalGridBmUnit, acceptanceNumber, timeFrom)` a safe key for BOALF, what do the flags hold, and what do two consecutive daily requests share? | For the UTC day 2026-10-05: 26,833 rows, 364 units, 11,081 acceptances, no null and no repeated ramp point. 489 acceptance numbers are held by more than one unit, so the key includes the unit. The next day's request repeats the 12 ramp points that start at midnight, and 38 acceptances are in both. See `docs/sources/elexon/040_boalf.md` |
+| `remit_checks.py` | Which fields identify one publication of a REMIT message? | For September 2026: 5,497 rows, 2,059 `mrid` values. `(mrid, revisionNumber)` repeats 76 times and with `publishTime` 11 times; with `createdTime` never, so the key has all four. See `docs/sources/elexon/030_remit.md` |
 
 ## Checks CI runs
 
@@ -55,6 +56,9 @@ coverage as it goes.
 `boalf_capture_fixture.py` writes `tests/fixtures/elexon/boalf_stream.json` in
 the same way: one real day, keeping every row of the first acceptance that
 shows each trait the tests need.
+
+`remit_capture_fixture.py` writes `tests/fixtures/elexon/remit_publications.json`:
+one real day, keeping the first message that shows each trait the tests need.
 
 Re-run it rather than hand-editing the fixture. The moment a fixture is edited by
 hand it stops recording what the API returned.
