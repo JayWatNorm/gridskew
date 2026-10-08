@@ -46,7 +46,8 @@ BOALF_SPEC = {
 
 # The API marks only revisionNumber and the three times below as never null.
 # mrid is not null here because it is part of the table key. A field is
-# required when every observed row carried it.
+# required when every observed row carried it. eventEndTime is optional: an
+# open-ended event has none.
 REMIT_SPEC = {
     "dataset": {"type": str, "required": False, "nullable": False},
     "mrid": {"type": str, "required": True, "nullable": False},
@@ -79,7 +80,7 @@ REMIT_SPEC = {
     },
     "eventStatus": {"type": str, "required": True, "nullable": True},
     "eventStartTime": {"type": str, "required": True, "nullable": False},
-    "eventEndTime": {"type": str, "required": True, "nullable": True},
+    "eventEndTime": {"type": str, "required": False, "nullable": True},
     "durationUncertainty": {"type": str, "required": False, "nullable": True},
     "cause": {"type": str, "required": True, "nullable": True},
     "relatedInformation": {"type": str, "required": False, "nullable": True},
