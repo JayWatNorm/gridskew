@@ -4,7 +4,8 @@ How `raw.elexon_remit` is loaded. For what the data means, see
 [030_remit.md](030_remit.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: built; not yet released.**
+**Status: deployed, history loaded 2026-10-08.** 107,941 messages published
+from 2024-08-22 to that day.
 
 | | |
 |---|---|
