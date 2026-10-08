@@ -130,13 +130,21 @@ evidence.
 ## Fields that are absent, not null
 
 No field was null in 7,928 messages (September 2026 and seven other days back
-to 2020). A field without a value is left out of the row. Fourteen fields
+to 2020). A field without a value is left out of the row. Thirteen fields
 were on every row: `dataset`, `mrid`, `revisionNumber`, `publishTime`,
 `createdTime`, `messageType`, `messageHeading`, `participantId`,
-`registrationCode`, `assetId`, `eventStatus`, `eventStartTime`,
-`eventEndTime` and `cause`. `OtherMarketInformation` messages carry no
-`eventType`, `unavailabilityType`, `affectedUnit`, `biddingZone` or capacity.
+`registrationCode`, `assetId`, `eventStatus`, `eventStartTime` and `cause`.
+`OtherMarketInformation` messages carry no `eventType`,
+`unavailabilityType`, `affectedUnit`, `biddingZone` or capacity.
 `outageProfile` is on about a quarter of rows and has up to 199 segments.
+
+`eventEndTime` is on nearly every row but not all: an open-ended event has
+none. Of the 107,941 messages published from 2024-08-22 to 2026-10-08, 23
+have no `eventEndTime`, all of type `OtherMarketInformation`. The contract
+treats the field as optional.
+
+A whole day can pass without a message: none was published on 2026-04-25,
+2026-04-26 or 2026-06-14.
 
 ## Observed live, 2026-08-20
 

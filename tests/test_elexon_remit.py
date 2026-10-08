@@ -24,6 +24,7 @@ RETRIEVED_AT = datetime(2026, 10, 8, 9, 15, 4, tzinfo=timezone.utc)
 RUN_TIME = datetime(2026, 10, 8, 9, 15, 4, tzinfo=timezone.utc)
 FRACTIONAL_CAPACITY_ROW = 5
 NO_UNIT_FIELDS_ROW = 4
+EVENT_END_TIME_COLUMN = 15
 PAYLOAD_COLUMN = 16
 
 
@@ -121,6 +122,17 @@ def test_parse_stores_null_for_the_fields_a_message_does_not_carry(source_rows):
         datetime(2026, 9, 27, 0, 0, tzinfo=timezone.utc),
         datetime(2026, 9, 28, 9, 0, tzinfo=timezone.utc),
     )
+
+
+def test_a_message_with_no_end_time_is_accepted_and_stored_with_null(source_rows):
+    open_ended_row = dict(source_rows[NO_UNIT_FIELDS_ROW])
+    del open_ended_row["eventEndTime"]
+
+    findings = validate_rows([open_ended_row], spec=REMIT_SPEC)
+    parsed_rows = parse([open_ended_row], RETRIEVED_AT)
+
+    assert findings[0]["errors"] == []
+    assert parsed_rows[0][EVENT_END_TIME_COLUMN] is None
 
 
 def test_the_payload_keeps_capacities_as_published(source_rows):
