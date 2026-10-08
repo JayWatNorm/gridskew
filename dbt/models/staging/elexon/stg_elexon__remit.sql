@@ -1,0 +1,20 @@
+select
+    mrid,
+    revision_number,
+    publish_time,
+    created_time,
+    message_type,
+    event_type,
+    unavailability_type,
+    event_status,
+    asset_id,
+    affected_unit,
+    fuel_type,
+    normal_capacity,
+    available_capacity,
+    unavailable_capacity,
+    event_start_time,
+    event_end_time,
+    payload -> 'outageProfile' as outage_profile,
+    retrieved_at
+from {{ source('elexon', 'elexon_remit') }}
