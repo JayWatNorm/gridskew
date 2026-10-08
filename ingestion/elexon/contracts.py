@@ -44,6 +44,48 @@ BOALF_SPEC = {
     "bmUnit": {"type": str, "required": True, "nullable": True},
 }
 
+# The API marks only revisionNumber and the three times below as never null.
+# mrid is not null here because it is part of the table key. A field is
+# required when every observed row carried it.
+REMIT_SPEC = {
+    "dataset": {"type": str, "required": False, "nullable": False},
+    "mrid": {"type": str, "required": True, "nullable": False},
+    "revisionNumber": {"type": int, "required": True, "nullable": False},
+    "publishTime": {"type": str, "required": True, "nullable": False},
+    "createdTime": {"type": str, "required": True, "nullable": False},
+    "messageType": {"type": str, "required": True, "nullable": True},
+    "messageHeading": {"type": str, "required": True, "nullable": True},
+    "eventType": {"type": str, "required": False, "nullable": True},
+    "unavailabilityType": {"type": str, "required": False, "nullable": True},
+    "participantId": {"type": str, "required": True, "nullable": True},
+    "registrationCode": {"type": str, "required": True, "nullable": True},
+    "assetId": {"type": str, "required": True, "nullable": True},
+    "assetType": {"type": str, "required": False, "nullable": True},
+    "affectedUnit": {"type": str, "required": False, "nullable": True},
+    "affectedUnitEIC": {"type": str, "required": False, "nullable": True},
+    "affectedArea": {"type": str, "required": False, "nullable": True},
+    "biddingZone": {"type": str, "required": False, "nullable": True},
+    "fuelType": {"type": str, "required": False, "nullable": True},
+    "normalCapacity": {"type": (int, Decimal), "required": False, "nullable": True},
+    "availableCapacity": {
+        "type": (int, Decimal),
+        "required": False,
+        "nullable": True,
+    },
+    "unavailableCapacity": {
+        "type": (int, Decimal),
+        "required": False,
+        "nullable": True,
+    },
+    "eventStatus": {"type": str, "required": True, "nullable": True},
+    "eventStartTime": {"type": str, "required": True, "nullable": False},
+    "eventEndTime": {"type": str, "required": True, "nullable": True},
+    "durationUncertainty": {"type": str, "required": False, "nullable": True},
+    "cause": {"type": str, "required": True, "nullable": True},
+    "relatedInformation": {"type": str, "required": False, "nullable": True},
+    "outageProfile": {"type": list, "required": False, "nullable": True},
+}
+
 B1610_SPEC = {
     "dataset": {"type": str, "required": False, "nullable": False},
     "psrType": {"type": str, "required": True, "nullable": True},

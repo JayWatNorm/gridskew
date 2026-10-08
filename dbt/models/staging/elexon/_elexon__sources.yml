@@ -241,6 +241,97 @@ sources:
             description: When this poll ran. Part of the key.
 
       # ------------------------------------------------------------------
+      - name: elexon_remit
+        description: >
+          REMIT messages: outage and availability notices that market
+          participants publish. One row per publication of a message. A
+          notice is revised by publishing it again; every publication is
+          kept. Fields with no column here, such as the outage profile, are
+          in payload.
+        loaded_at_field: publish_time
+        freshness:
+          warn_after: {count: 12, period: hour}
+          error_after: {count: 24, period: hour}
+        columns:
+
+          - name: mrid
+            description: >
+              Message identifier, shared by every revision of one notice.
+              Part of the key.
+
+          - name: revision_number
+            description: >
+              Part of the key. Not unique within an mrid: one number can be
+              published more than once with different content.
+
+          - name: publish_time
+            description: >
+              When Elexon published this row, UTC. Part of the key. The
+              poller's window and the freshness check both use it.
+
+          - name: created_time
+            description: >
+              The creation time the source gives this row, UTC. Part of the
+              key. It can be later than publish_time.
+
+          - name: message_type
+            description: >
+              UnavailabilitiesOfElectricityFacilities or
+              OtherMarketInformation observed.
+
+          - name: event_type
+            description: >
+              Production, Consumption, Transmission or Other unavailability
+              observed. Null on OtherMarketInformation messages.
+
+          - name: unavailability_type
+            description: >
+              Planned or Unplanned observed; the API does not list the
+              values. Null on OtherMarketInformation messages.
+
+          - name: event_status
+            description: Active, Inactive or Dismissed observed.
+
+          - name: asset_id
+            description: >
+              Usually an Elexon BM-unit identifier, but free text: values
+              such as NO_ASSET occur.
+
+          - name: affected_unit
+            description: >
+              Usually the National Grid form of the unit identifier, but
+              free text.
+
+          - name: fuel_type
+            description: Free text such as Fossil Gas; null on about a quarter.
+
+          - name: normal_capacity
+            description: >
+              MW when fully available, as published. Can be fractional or
+              negative.
+
+          - name: available_capacity
+            description: MW still available during the event.
+
+          - name: unavailable_capacity
+            description: >
+              MW lost. Not always normal_capacity minus available_capacity.
+
+          - name: event_start_time
+            description: Start of the event, UTC.
+
+          - name: event_end_time
+            description: End of the event, UTC. Later revisions often move it.
+
+          - name: payload
+            description: The complete source row.
+
+          - name: retrieved_at
+            description: >
+              When the poll that first stored this row ran. Not part of the
+              key: a repeated read of one publication inserts nothing.
+
+      # ------------------------------------------------------------------
       - name: elexon_b1610
         description: >
           Metered export or import energy per unit and settlement period — the

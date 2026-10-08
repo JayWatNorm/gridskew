@@ -1,6 +1,6 @@
 # REMIT, outage notices
 
-**Not yet ingested.** Planned for Phase 1, step 3 of the thesis.
+**Ingestion built; not yet released.** See [031_remit_ingestion.md](031_remit_ingestion.md).
 
 ## In plain terms
 
@@ -23,9 +23,9 @@ Regulation (EU) 1227/2011**. The planned-versus-unplanned split is the field
 used by this project.
 
 **Caveat before building on it:** the API does not enumerate the values of
-`unavailabilityType`. Both `Planned` (spec example) and `Unplanned` (live,
-2026-08-20) have been observed, so the two-way split is on reasonable ground,
-but whether other values exist is unconfirmed.
+`unavailabilityType`. In the 5,497 messages published in September 2026 it is
+`Planned` on 2,682, `Unplanned` on 2,699 and absent on 116. Every message
+without it has `messageType` `OtherMarketInformation`.
 
 ---
 
@@ -51,9 +51,9 @@ an append-only feed wants.
 |---|---|---|
 | `dataset` | `str or null` | Always `REMIT` when present |
 | `mrid` | `str or null` | Message identifier, stable across revisions |
-| `revisionNumber` | `int` | **Messages are revised.** Take the latest per `mrid` |
+| `revisionNumber` | `int` | **Messages are revised.** Not unique within an `mrid`: see [The key](#the-key) |
 | `publishTime` | `str` | When this revision was published |
-| `createdTime` | `str` | When the message was created |
+| `createdTime` | `str` | Creation time of this row. Later than `publishTime` on some rows |
 | `messageType` | `str or null` | e.g. `UnavailabilitiesOfElectricityFacilities` |
 | `messageHeading` | `str or null` | e.g. `Planned Unavailability of Generation Unit` |
 | `eventType` | `str or null` | e.g. `Production unavailability` |
@@ -67,10 +67,10 @@ an append-only feed wants.
 | `affectedArea` | `str or null` | |
 | `biddingZone` | `str or null` | e.g. `10YGB----------A` |
 | `fuelType` | `str or null` | e.g. `Fossil Gas` |
-| `normalCapacity` | `float or null` | MW when fully available. Spec type is `number`, not integer, so parse as float even though observed values are whole |
+| `normalCapacity` | `float or null` | MW when fully available. Fractional (`49.920`) and negative (`-1.000`) values occur, so parse as a decimal |
 | `availableCapacity` | `float or null` | MW still available during the outage |
 | `unavailableCapacity` | `float or null` | MW lost |
-| `eventStatus` | `str or null` | `Active` and `Dismissed` observed live; `Inactive` in the spec. Not enumerated |
+| `eventStatus` | `str or null` | `Active`, `Dismissed` and `Inactive` observed. Not enumerated |
 | `eventStartTime` | `str` | Outage start |
 | `eventEndTime` | `str or null` | Outage end |
 | `durationUncertainty` | `str or null` | Free text, e.g. `+- 1 day`. **Optional, often absent** |
@@ -100,11 +100,43 @@ Three complications at once, which is why it is not the first dataset to build:
 - **Event-shaped, not period-shaped.** Every other dataset is one row per
   settlement period. REMIT is one row per *event*, with a start and end that
   span many periods. Joining it to half-hourly data means expanding an interval.
-- **Revised.** Store each `(mrid, revisionNumber)` publication append-only, then
-  select the highest revision downstream when current state is required.
+- **Revised.** Store each publication append-only, then select the current
+  one downstream when current state is required.
 - **Nested.** The outage profile array.
 
 That combination is what makes it the S7 build rather than an early one.
+
+## The key
+
+`(mrid, revisionNumber)` does not identify a row. In the 5,497 messages
+published in September 2026 (`tests/adhoc/remit_checks.py`):
+
+| Candidate key | Repeated |
+|---|---|
+| `mrid`, `revisionNumber` | 76 |
+| `mrid`, `revisionNumber`, `publishTime` | 11 |
+| `mrid`, `revisionNumber`, `publishTime`, `createdTime` | 0 |
+
+The repeated rows are not copies. They differ in `eventEndTime`, in the
+capacities, in `eventStatus` and, once in the days sampled, in the unit. A
+key of the first two fields would keep one of them and drop the rest without
+a sign. `raw.elexon_remit` therefore keys on all four fields.
+
+`revisionNumber` also does not always rise with `publishTime`: within
+September 2026 it falls at least once for 31 of 2,059 `mrid` values. A model
+that needs the current state of a notice must choose its rule on that
+evidence.
+
+## Fields that are absent, not null
+
+No field was null in 7,928 messages (September 2026 and seven other days back
+to 2020). A field without a value is left out of the row. Fourteen fields
+were on every row: `dataset`, `mrid`, `revisionNumber`, `publishTime`,
+`createdTime`, `messageType`, `messageHeading`, `participantId`,
+`registrationCode`, `assetId`, `eventStatus`, `eventStartTime`,
+`eventEndTime` and `cause`. `OtherMarketInformation` messages carry no
+`eventType`, `unavailabilityType`, `affectedUnit`, `biddingZone` or capacity.
+`outageProfile` is on about a quarter of rows and has up to 199 segments.
 
 ## Observed live, 2026-08-20
 
@@ -129,7 +161,9 @@ confirmed several things at once:
 
 ## Open questions
 
-- Full value sets for `unavailabilityType` and `eventStatus`.
+- Whether `unavailabilityType` and `eventStatus` take values other than the
+  ones observed.
+- Which row of a notice is current when revision numbers repeat or fall.
 - Do `assetId` values always match BM unit identifiers cleanly, or is the join
   to `PN` and `B1610` dirty? (`E_LYNE2` against `affectedUnit: LNMTH-2`
   suggests not always.)

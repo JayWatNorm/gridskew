@@ -19,11 +19,19 @@ from ingestion.elexon.bmunits_poller import load_extract as load_bm_units
 from ingestion.elexon.bmunits_poller import validate_extract as validate_bm_units
 from ingestion.elexon.boalf_poller import load as load_boalf
 from ingestion.elexon.boalf_poller import parse as parse_boalf
-from ingestion.elexon.contracts import B1610_SPEC, BOALF_SPEC, PN_SPEC, QPN_SPEC
+from ingestion.elexon.contracts import (
+    B1610_SPEC,
+    BOALF_SPEC,
+    PN_SPEC,
+    QPN_SPEC,
+    REMIT_SPEC,
+)
 from ingestion.elexon.pn_poller import load as load_pn
 from ingestion.elexon.pn_poller import parse as parse_pn
 from ingestion.elexon.qpn_poller import load as load_qpn
 from ingestion.elexon.qpn_poller import parse as parse_qpn
+from ingestion.elexon.remit_poller import load as load_remit
+from ingestion.elexon.remit_poller import parse as parse_remit
 from ingestion.routing import process_rows
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
@@ -106,6 +114,15 @@ def main():
             "B1610",
             parse_b1610,
             load_b1610,
+            preserve_decimals=True,
+        )
+        load_fixture(
+            conn,
+            "elexon/remit_publications.json",
+            REMIT_SPEC,
+            "REMIT",
+            parse_remit,
+            load_remit,
             preserve_decimals=True,
         )
         bm_units = json.loads(

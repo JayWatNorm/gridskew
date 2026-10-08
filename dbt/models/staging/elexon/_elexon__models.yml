@@ -217,3 +217,30 @@ models:
           When this poll ran. Part of the key, so a re-poll of the same
           window lands as new rows rather than conflicting — which is
           what makes a resubmitted notification visible.
+
+  - name: stg_elexon__remit
+    description: >
+      One row per publication of a REMIT message. A notice is revised by
+      publishing it again. One revision number can be published more than
+      once, and revision_number does not always rise with publish_time, so
+      this model does not choose the current row of a notice.
+    columns:
+      - name: mrid
+        description: Message identifier, shared by every revision. Part of the key
+      - name: revision_number
+        description: Part of the key. Not unique within an mrid
+      - name: publish_time
+        description: When Elexon published this row, UTC. Part of the key
+      - name: created_time
+        description: The creation time the source gives this row, UTC. Part of the key
+      - name: unavailability_type
+        description: >
+          Planned or Unplanned observed. Null on OtherMarketInformation
+          messages
+      - name: asset_id
+        description: Usually an Elexon BM-unit identifier, but free text
+      - name: outage_profile
+        description: >
+          The optional MW profile of the event as a JSON array of startTime,
+          endTime and capacity, as published. Null on about three quarters of
+          rows
