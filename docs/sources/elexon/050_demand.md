@@ -80,7 +80,7 @@ presumably applies to the **publish window**, though the description does not
 say so explicitly. Through the base endpoint, **a year of NDF history is
 roughly 365 requests**. Through the stream, with no documented cap, it may be
 far fewer — worth one test with a multi-day publish window before building the
-S8 ingestion, since the difference is 365 requests against a handful.
+ingestion, since the difference is 365 requests against a handful.
 
 `INDO` and `ITSDO` did not appear with stream variants.
 

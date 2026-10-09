@@ -53,7 +53,8 @@ also block suspiciously small responses. See
 
 Rows with no errors remain compatible, including warning-only rows. Warnings
 are grouped by reason and field, with the affected count and at most five source
-indexes.
+indexes. REMIT leaves out a field that has no value, so its poller does not
+log the missing-optional-field warning.
 
 Rejected rows are written to `raw.endpoint_quarantine` before compatible rows
 are parsed and loaded. Evidence includes the dataset, capture time, request

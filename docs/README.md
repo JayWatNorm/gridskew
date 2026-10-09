@@ -1,7 +1,6 @@
 # Data source documentation
 
-Grouped by source. Every dataset page opens with an **In plain terms** section;
-no industry background is assumed.
+Grouped by source. Every dataset page opens with an **In plain terms** section.
 
 ## Two pages per dataset
 
@@ -56,9 +55,8 @@ docs/sources/
     080_mels-mils.md          The headroom                             [optional]
 ```
 
-New to this domain? Start with **How the GB electricity market works, briefly**
-in [sources/elexon/README.md](sources/elexon/README.md). Four ideas, and every
-dataset here follows from them.
+The four ideas every dataset follows from are in **How the GB electricity
+market works, briefly** in [sources/elexon/README.md](sources/elexon/README.md).
 
 ## Raw layer conventions
 

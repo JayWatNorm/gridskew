@@ -29,7 +29,7 @@ models:
     description: >
       View. One row per B1610 BM unit and settlement period: metered MWh from
       the first captured and the latest settlement run (persisted in
-      int_elexon__b1610_period, see that model for the rules and the S8
+      int_elexon__b1610_period, see that model for the rules and the
       caveat on first_run_code), with current registry mapping and evidence
       joined at query time. A registry change shows at once without rewriting
       any row. Zero, negative, unmapped and non-generator rows are kept;

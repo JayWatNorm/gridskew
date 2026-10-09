@@ -3,9 +3,9 @@ groups:
     owner:
       name: James
     description: >
-      S6 period facts and the private intermediate tables that prepare them.
-      A model outside this group cannot reference the private tables; S8 models
-      that reuse them join this group.
+      Period facts and the private intermediate tables that prepare them.
+      A model outside this group cannot reference the private tables; a model
+      that reuses them joins this group.
 
   - name: analysis
     owner:

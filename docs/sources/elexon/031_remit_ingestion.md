@@ -106,14 +106,16 @@ run keeps failing for it. Never delete a `REMIT` quarantine row for any
 other reason than that its message is stored, or that the message is
 knowingly given up.
 
-Most optional fields are absent on some messages, so each run logs one
-warning for each optional field that a window lacks.
+A message leaves out a field that has no value, so the run does not log a
+warning for an absent optional field. An unexpected field still logs one.
 
 ## Freshness
 
-`dbt source freshness` reads `publish_time`: it warns after 12 hours without
-a new message and fails after 24. The longest gap between two messages in
-September 2026 was three and a half hours.
+`dbt source freshness` reads `publish_time` and warns after 12 hours without
+a new message. It never fails on REMIT: the source has no cadence, and no
+message was published on 2026-04-25 or 2026-04-26. The longest gap in
+September 2026 was three and a half hours. A message stored before its own
+publish time is left out of the check, as it is from the poller's window.
 
 ## Not proven
 

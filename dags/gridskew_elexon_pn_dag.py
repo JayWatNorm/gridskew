@@ -32,7 +32,6 @@ def gridskew_elexon_pn():
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.elexon.pn_poller import run
 
-        # Credentials come from the Airflow Connection.
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
             run(conn, data_interval_start, data_interval_end)

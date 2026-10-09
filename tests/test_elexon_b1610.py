@@ -217,29 +217,7 @@ def test_fetch_sends_the_settlement_run_type_only_when_requested():
     assert "settlementRunType" not in mock_get.call_args_list[1].kwargs["params"]
 
 
-def test_capture_settlement_date_fails_after_loading_when_a_period_is_missing():
-    conn = Mock()
-    rows = [{"settlementRunType": "R1"}]
-    with (
-        patch("ingestion.elexon.b1610_poller.run", return_value=rows) as mock_run,
-        patch(
-            "ingestion.elexon.b1610_poller.stored_coverage",
-            return_value=(47, list(range(1, 48)), 1),
-        ),
-    ):
-        with pytest.raises(RuntimeError, match="47 of 48 periods stored"):
-            capture_settlement_date(conn, date(2026, 8, 10), "R1")
-
-    mock_run.assert_called_once_with(
-        conn,
-        datetime(2026, 8, 9, 23, 0, tzinfo=timezone.utc),
-        datetime(2026, 8, 10, 22, 30, tzinfo=timezone.utc),
-        settlement_run_type="R1",
-        expected_settlement_date=date(2026, 8, 10),
-    )
-
-
-def test_capture_settlement_date_fails_when_another_run_type_is_returned():
+def test_capture_fails_when_another_run_type_is_returned():
     rows = [{"settlementRunType": "R1"}, {"settlementRunType": "SF"}]
     with (
         patch("ingestion.elexon.b1610_poller.run", return_value=rows),
@@ -284,7 +262,7 @@ def connection_checking_commit_before_coverage(coverage):
     return conn
 
 
-def test_cohort_commits_valid_rows_then_fails_when_a_period_is_missing(
+def test_capture_commits_valid_rows_then_fails_when_a_period_is_missing(
     source_rows, caplog
 ):
     rows = cohort_rows(source_rows)
@@ -296,17 +274,20 @@ def test_cohort_commits_valid_rows_then_fails_when_a_period_is_missing(
         patch("ingestion.elexon.b1610_poller.execute_values") as insert_rows,
         caplog.at_level("INFO", logger="ingestion.elexon.b1610_poller"),
     ):
-        with pytest.raises(RuntimeError, match="47 of 48 periods stored"):
+        with pytest.raises(RuntimeError, match=r"missing \[48\], unexpected \[\]"):
             capture_settlement_date(conn, date(2026, 8, 10), "R1")
 
-    _from_date, _to_date, requested_run_type = get_rows.call_args.args
-    assert requested_run_type == "R1"
+    assert get_rows.call_args.args == (
+        datetime(2026, 8, 9, 23, 0, tzinfo=timezone.utc),
+        datetime(2026, 8, 10, 22, 30, tzinfo=timezone.utc),
+        "R1",
+    )
     insert_rows.assert_called_once()
     conn.rollback.assert_called_once_with()
     assert '"stored_periods": 47' in caplog.text
 
 
-def test_cohort_commits_valid_rows_then_reports_complete_coverage(source_rows, caplog):
+def test_capture_commits_valid_rows_then_reports_complete_coverage(source_rows, caplog):
     rows = cohort_rows(source_rows)
     stored_periods = list(range(1, 49))
     conn = connection_checking_commit_before_coverage((len(rows), stored_periods, 1))
@@ -337,7 +318,7 @@ def test_run_preserves_the_requested_run_type_in_quarantine_context(source_rows)
 
 
 @pytest.mark.parametrize("stored_periods", [[], list(range(1, 49))])
-def test_cohort_refuses_wrong_response_date_before_any_write(
+def test_capture_refuses_wrong_response_date_before_any_write(
     source_rows, stored_periods
 ):
     rows = [
@@ -365,7 +346,7 @@ def test_cohort_refuses_wrong_response_date_before_any_write(
         (date(2026, 10, 25), 51),
     ],
 )
-def test_cohort_refuses_out_of_range_returned_period_before_writes(
+def test_capture_refuses_out_of_range_returned_period_before_writes(
     source_rows, settlement_date, period
 ):
     rows = [
@@ -410,7 +391,7 @@ def one_row_per_period(source_rows, settlement_date, period_count):
 
 
 @pytest.mark.parametrize("settlement_date,expected", CLOCK_CHANGE_DAYS)
-def test_cohort_accepts_exactly_the_expected_stored_periods(
+def test_capture_accepts_exactly_the_expected_stored_periods(
     source_rows, settlement_date, expected
 ):
     rows = one_row_per_period(source_rows, settlement_date, expected)
@@ -428,7 +409,7 @@ def test_cohort_accepts_exactly_the_expected_stored_periods(
     conn.rollback.assert_called_once_with()
 
 
-def test_cohort_rejects_the_right_count_of_wrong_stored_periods(source_rows):
+def test_capture_rejects_the_right_count_of_wrong_stored_periods(source_rows):
     settlement_date = date(2026, 8, 10)
     expected = 48
     rows = one_row_per_period(source_rows, settlement_date, expected)
@@ -440,7 +421,7 @@ def test_cohort_rejects_the_right_count_of_wrong_stored_periods(source_rows):
         patch("ingestion.elexon.b1610_poller.fetch", return_value=rows),
         patch("ingestion.elexon.b1610_poller.execute_values"),
     ):
-        with pytest.raises(RuntimeError, match="stored period numbers"):
+        with pytest.raises(RuntimeError, match=r"missing \[48\], unexpected \[50\]"):
             capture_settlement_date(conn, settlement_date, "R1")
 
     conn.commit.assert_called_once_with()

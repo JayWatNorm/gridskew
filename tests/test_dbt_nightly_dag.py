@@ -1,4 +1,4 @@
-"""Guard the nightly S6 dbt commands without requiring Airflow to run."""
+"""Guard the nightly dbt commands without requiring Airflow to run."""
 
 from types import SimpleNamespace
 from unittest.mock import Mock

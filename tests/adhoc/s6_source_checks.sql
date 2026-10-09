@@ -1,4 +1,4 @@
--- S6 source check (plan v3, "Build, explain and verify" step 1).
+-- Source checks for the period tables.
 --
 -- Read-only. Run as gridskew_dbt against gridskew_prod with psql:
 --   psql -X -v ON_ERROR_STOP=1 -f tests/adhoc/s6_source_checks.sql

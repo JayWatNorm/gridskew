@@ -144,6 +144,31 @@ def test_process_rows_groups_warning_logs_and_caps_source_indexes(caplog):
     assert status_warning["sample_source_indexes"] == [5]
 
 
+def test_process_rows_can_leave_missing_optional_fields_unlogged(caplog):
+    optional_field = {"type": str, "required": False, "nullable": True}
+    spec = dict(FORECAST_SPEC, publisherNote=optional_field)
+    row = make_source_row()
+    row["unexpectedField"] = "observed"
+
+    caplog.set_level(logging.WARNING, logger="ingestion.routing")
+    process_rows(
+        [row],
+        spec=spec,
+        dataset="CI_Forecast",
+        conn=Mock(),
+        retrieved_at=RETRIEVED_AT,
+        request_context=REQUEST_CONTEXT,
+        parse_rows=Mock(return_value=object()),
+        load_rows=Mock(),
+        log_missing_optional_fields=False,
+    )
+
+    logged_reasons = []
+    for record in caplog.records:
+        logged_reasons.append(json.loads(record.getMessage())["reason"])
+    assert logged_reasons == ["Unexpected field"]
+
+
 @pytest.mark.parametrize(
     ("dataset", "request_context"),
     [

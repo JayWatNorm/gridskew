@@ -70,7 +70,7 @@ def gridskew_elexon_b1610_cohort():
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
         if logical_date is None:
-            # Airflow 3 manual runs have no logical date (HL-10 §2).
+            # Airflow 3 manual runs have no logical date.
             raise RuntimeError(
                 "No logical date: clear a scheduled task instance to repeat a capture"
             )
@@ -79,7 +79,6 @@ def gridskew_elexon_b1610_cohort():
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.elexon.b1610_poller import capture_settlement_date
 
-        # Credentials come from the Airflow Connection.
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
             capture_settlement_date(conn, settlement_date, run_type)

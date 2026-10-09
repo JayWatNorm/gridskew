@@ -50,11 +50,11 @@ def is_planned(row):
 
 
 def is_dismissed(row):
-    return row["eventStatus"] == "Dismissed"
+    return row.get("eventStatus") == "Dismissed"
 
 
 def has_no_unit_fields(row):
-    return row["messageType"] == "OtherMarketInformation"
+    return row.get("messageType") == "OtherMarketInformation"
 
 
 def has_short_outage_profile(row):
