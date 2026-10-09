@@ -573,9 +573,11 @@ def check_job_commands_keep_views(conn):
     dbt("run", "--select", "dim_bm_unit", "fct_generation", "fct_commitments")
     views = (GENERATION, COMMITMENTS, "dbt_dev.dim_bm_unit")
     assert all(exists(conn, view) for view in views)
-    # Nightly S6 job.
-    dbt("test", "--select", "stg_elexon__b1610,test_type:generic")
-    dbt("run", "--select", "int_elexon__b1610_period", "int_elexon__pn_period_mwh")
+    # Nightly job. Its whole-project test step needs every view, so
+    # check_nightly_run.py runs it after a full build; here the period tables'
+    # own tests stand in for it.
+    dbt("test", "--selector", "nightly_run_code_check")
+    dbt("run", "--selector", "nightly_models")
     dbt(
         "test",
         "--select",

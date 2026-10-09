@@ -27,6 +27,7 @@ before running a command that creates or updates relations. Use a full
 | `seeds/` | Small reference datasets, their explicit types, documentation and data tests |
 | `models/*/*/_*__unit_tests.yml` | Inline mock inputs and expected results for dbt unit tests |
 | `analyses/` | Queries that read the models and that no job runs |
+| `selectors.yml` | The named selections the nightly job runs |
 | `../dbt_profiles/` | Local profile; credentials come from environment variables |
 
 Models are materialised as views unless a model defines a different strategy.
@@ -115,10 +116,28 @@ use the guarded Airflow task in the shared `gridskew_dbt` pool; these commands
 alone do not supply its missing-table guard, connection checks or serialisation:
 
 ```powershell
-dbt test --select "stg_elexon__b1610,test_type:generic"
-dbt run --select int_elexon__b1610_period int_elexon__pn_period_mwh
-dbt test --select int_elexon__b1610_period+ int_elexon__pn_period_mwh+ --exclude tag:full_population
+dbt test --selector nightly_run_code_check
+dbt run --selector nightly_models
+dbt test --selector nightly_tests
 ```
+
+| Selector | Selects |
+|---|---|
+| `nightly_run_code_check` | The generic tests of `stg_elexon__b1610`; an unknown settlement-run code stops the job before a table is written |
+| `nightly_models` | Every incremental model |
+| `nightly_tests` | Every data test except those tagged `full_population` and any test of the BM-unit snapshot |
+
+The job never recreates a view. `nightly_tests` covers the sources, the
+staging and intermediate views, the registry dimension and the seeds, so
+balancing instructions, outage notices and the carbon models are tested every
+night. Tests tagged `full_population` re-read all history and run with a full
+refresh. Unit tests run in CI: they check model logic against fixed rows, not
+the stored data.
+
+The nightly DAG refuses to start a scheduled run while a period table is
+missing, and `PERIOD_TABLES` in the DAG names the tables it requires. A new
+incremental model is added to that list in the same change; CI fails
+otherwise.
 
 A manual load outside the capture-time margin, a raw edit, a settlement-run
 seed change, a model-logic change or the monthly recovery requires an observed
@@ -131,6 +150,37 @@ controls.
 
 See `homelab-platform/docs/gridskew-release.md` in the platform checkout.
 
+## Node results and artifacts
+
+The project's `on-run-end` hook calls the `record_run_results` macro. An
+invocation that passes `--vars '{audit: true}'` writes one row per node to
+`dbt_dev.dbt_node_results`; any other invocation writes nothing. The nightly
+job passes the variable on each of its commands.
+
+| Column | Holds |
+|---|---|
+| `invocation_id` | dbt's ID for one command. Part of the key |
+| `airflow_run_id` | The Airflow run that started the command; null for a run from a workstation |
+| `dbt_command` | `run`, `test` or `build` |
+| `node_id` | dbt's unique ID of the model, test, seed or snapshot. Part of the key |
+| `resource_type` | `model`, `test`, `seed` or `snapshot` |
+| `status` | dbt's result: `success`, `pass`, `warn`, `fail`, `error` or `skipped` |
+| `execution_seconds` | Time dbt spent on the node |
+| `rows_affected` | The row count the database reported for the node's statement |
+| `failures` | Failing rows of a test; null for other nodes |
+| `message` | dbt's message for the node |
+| `recorded_at` | When the row was written |
+
+One nightly run is three invocations with the same `airflow_run_id`. Rows
+older than 180 days (`node_results_retention_days`) are deleted by the next
+audited invocation. Airflow's task state remains the record of whether a run
+succeeded: a command that fails before dbt finishes writes no row.
+
+A nightly run that succeeds copies `manifest.json` and the `run_results.json`
+of its last command to `/opt/airflow/data/gridskew/artifacts/<UTC day>/` and
+to `artifacts/latest/` in the Airflow container. Each file is replaced whole.
+Day folders older than 30 days are removed. A failed run publishes nothing.
+
 ## Balancing instructions and outage notices
 
 `stg_elexon__boalf` and `stg_elexon__remit` are source-grain views.
@@ -138,16 +188,18 @@ See `homelab-platform/docs/gridskew-release.md` in the platform checkout.
 instructed ramp into settlement half-hours and integrates it to MWh with the
 `ramp_mwh` macro; it reads the latest capture of each ramp point, because an
 acceptance that crosses midnight arrives in two daily polls. No model yet
-chooses the current row of a REMIT notice. No scheduled job selects these
-models.
+chooses the current row of a REMIT notice. The nightly job runs the data
+tests of these models; no scheduled job builds them.
 
 ## Carbon forecast trajectory
 
 Four views in the private `analysis` group prepare the forecast drift question:
 `int_carbon_forecast__revisions`, `int_carbon_forecast__by_period`,
-`int_carbon_outturn__latest` and `int_carbon_error_by_period`. No scheduled job
-selects them. `analyses/q1_forecast_drift_population.sql` counts the population
-without reading a forecast value and can run on any day.
+`int_carbon_outturn__latest` and `int_carbon_error_by_period`. The nightly job
+runs their key tests, which return a count of failing rows and no forecast
+value; no scheduled job builds them.
+`analyses/q1_forecast_drift_population.sql` counts the population without
+reading a forecast value and can run on any day.
 `analyses/q1_forecast_drift_verdict.sql` is read once, when the population
 reaches 2,880 half-hours. See
 [Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
@@ -199,9 +251,15 @@ selectors, descendant recovery and the shared dbt pool.
 
 Freshness runs hourly. The BM-unit job loads `elexon_fuel_codes`, tests the
 registry and records its snapshot. The nightly job updates the two private
-period tables and tests their descendants without recreating views. CI runs a
-full build against an ephemeral PostgreSQL service; it does not deploy
-relations to the homelab.
+period tables and runs the project's data tests without recreating views. CI
+runs a full build against an ephemeral PostgreSQL service, then the nightly
+commands; it does not deploy relations to the homelab.
+
+On a pull request CI also runs
+`dbt build --select +state:modified+ --state <manifest of the last main run>`.
+It rebuilds the changed nodes with everything above and below them. The
+manifest is a workflow artifact that each `main` run uploads; when none
+exists the step is skipped and the full build stands alone.
 
 `elexon_settlement_run_codes` is consumed by the B1610 period model and
 `elexon_fuel_codes` by registry validation. `carbon_intensity_bands` has no
