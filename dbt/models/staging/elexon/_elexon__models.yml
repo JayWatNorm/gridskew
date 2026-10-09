@@ -62,7 +62,7 @@ models:
           key, so a revision lands as a new row. The API serves only the
           run currently in force, so the poll offset decides which run
           exists; a request for a superseded run returns nothing.
-          S6 blocking check: every code must exist in the settlement-run seed,
+          Blocking check: every code must exist in the settlement-run seed,
           so an unknown run stops the build before the facts. NOT NULL is
           enforced by the raw table, so no separate null test.
         data_tests:
@@ -200,11 +200,11 @@ models:
         description: >
           Segment start, UTC. Segments can be shorter than a settlement
           period to describe a ramp. Part of the key.
-        tests:
+        data_tests:
           - not_null
       - name: time_to
         description: Segment end, UTC.
-        tests:
+        data_tests:
           - not_null
       - name: level_from
         description: >

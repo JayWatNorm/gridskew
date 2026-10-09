@@ -35,14 +35,14 @@ sources:
             description: >
               Final-revision forecast for the settlement period, in gCO2/kWh.
               Expected to be non-null in outturn ingestion.
-            tests:
+            data_tests:
               - not_null
 
           - name: actual
             description: >
               Observed carbon intensity for the settlement period, in
               gCO2/kWh. Expected to be non-null in outturn ingestion.
-            tests:
+            data_tests:
               - not_null
 
           - name: intensity_index
@@ -50,7 +50,7 @@ sources:
               API-defined qualitative band for the observed intensity.
               Expected to be non-null. Band thresholds may change over time,
               so long-term comparisons require care.
-            tests:
+            data_tests:
               - accepted_values:
                   arguments:
                     values: ['very high', 'high', 'moderate', 'low', 'very low']
@@ -93,7 +93,7 @@ sources:
               API-defined qualitative band for the forecast intensity.
               Expected to be non-null. Band thresholds may change over time,
               so long-term comparisons require care.
-            tests:
+            data_tests:
               - accepted_values:
                   arguments:
                     values: ['very high', 'high', 'moderate', 'low', 'very low']

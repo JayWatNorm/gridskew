@@ -2,16 +2,13 @@
 
 import json
 import logging
-import os
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-import psycopg2
 import requests
 import simplejson
-from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
 from ingestion.elexon.contracts import B1610_SPEC
@@ -52,23 +49,19 @@ def fetch(from_date, to_date, settlement_run_type=None):
 
 def run(
     conn,
-    from_date=None,
-    to_date=None,
+    from_date,
+    to_date,
     settlement_run_type=None,
     *,
     expected_settlement_date=None,
 ):
     """Validate and load one B1610 window; return the source rows.
 
-    With no window, load the UTC day that ended 14 days ago. The scheduled
-    captures call capture_settlement_date, which adds the completeness check.
+    The scheduled captures call capture_settlement_date, which adds the
+    completeness check.
     """
 
     retrieved_at = datetime.now(timezone.utc)
-    day_start = retrieved_at.replace(hour=0, minute=0, second=0, microsecond=0)
-    if to_date is None or from_date is None:
-        from_date = day_start - timedelta(days=15)
-        to_date = day_start - timedelta(days=14)
 
     rows = fetch(from_date, to_date, settlement_run_type)
     if not isinstance(rows, list) or not rows:
@@ -240,14 +233,13 @@ def capture_settlement_date(conn, settlement_date, run_type):
     conn.rollback()
     expected = expected_period_count(settlement_date)
     stored_periods = set(stored_periods or [])
-    period_count = len(stored_periods)
     expected_periods = set(range(1, expected + 1))
     summary = {
         "settlement_date": settlement_date.isoformat(),
         "run_type": run_type,
         "returned_run_types": dict(returned),
         "stored_rows": row_count,
-        "stored_periods": period_count,
+        "stored_periods": len(stored_periods),
         "stored_period_numbers": sorted(stored_periods),
         "expected_periods": expected,
         "stored_units": unit_count,
@@ -257,11 +249,9 @@ def capture_settlement_date(conn, settlement_date, run_type):
     problems = []
     if set(returned) != {run_type}:
         problems.append(f"returned run types {dict(returned)}")
-    if period_count != expected:
-        problems.append(f"{period_count} of {expected} periods stored")
     if stored_periods != expected_periods:
         problems.append(
-            "stored period numbers: "
+            f"stored periods 1..{expected} expected: "
             f"missing {sorted(expected_periods - stored_periods)}, "
             f"unexpected {sorted(stored_periods - expected_periods)}"
         )
@@ -271,20 +261,3 @@ def capture_settlement_date(conn, settlement_date, run_type):
             + "; ".join(problems)
         )
     return summary
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    logging.basicConfig(level=logging.INFO)
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-    )
-
-    try:
-        run(conn)
-    finally:
-        conn.close()

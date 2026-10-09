@@ -44,23 +44,23 @@ BOALF_SPEC = {
     "bmUnit": {"type": str, "required": True, "nullable": True},
 }
 
-# The API marks only revisionNumber and the three times below as never null.
-# mrid is not null here because it is part of the table key. A field is
-# required when every observed row carried it. eventEndTime is optional: an
-# open-ended event has none.
+# Required: the four fields the API marks as never null (revisionNumber and
+# three times) and mrid, which is part of the table key. Every other field is
+# optional, however often it has been seen. A field without a value is
+# absent, not null: an open-ended event has no eventEndTime.
 REMIT_SPEC = {
     "dataset": {"type": str, "required": False, "nullable": False},
     "mrid": {"type": str, "required": True, "nullable": False},
     "revisionNumber": {"type": int, "required": True, "nullable": False},
     "publishTime": {"type": str, "required": True, "nullable": False},
     "createdTime": {"type": str, "required": True, "nullable": False},
-    "messageType": {"type": str, "required": True, "nullable": True},
-    "messageHeading": {"type": str, "required": True, "nullable": True},
+    "messageType": {"type": str, "required": False, "nullable": True},
+    "messageHeading": {"type": str, "required": False, "nullable": True},
     "eventType": {"type": str, "required": False, "nullable": True},
     "unavailabilityType": {"type": str, "required": False, "nullable": True},
-    "participantId": {"type": str, "required": True, "nullable": True},
-    "registrationCode": {"type": str, "required": True, "nullable": True},
-    "assetId": {"type": str, "required": True, "nullable": True},
+    "participantId": {"type": str, "required": False, "nullable": True},
+    "registrationCode": {"type": str, "required": False, "nullable": True},
+    "assetId": {"type": str, "required": False, "nullable": True},
     "assetType": {"type": str, "required": False, "nullable": True},
     "affectedUnit": {"type": str, "required": False, "nullable": True},
     "affectedUnitEIC": {"type": str, "required": False, "nullable": True},
@@ -78,11 +78,11 @@ REMIT_SPEC = {
         "required": False,
         "nullable": True,
     },
-    "eventStatus": {"type": str, "required": True, "nullable": True},
+    "eventStatus": {"type": str, "required": False, "nullable": True},
     "eventStartTime": {"type": str, "required": True, "nullable": False},
     "eventEndTime": {"type": str, "required": False, "nullable": True},
     "durationUncertainty": {"type": str, "required": False, "nullable": True},
-    "cause": {"type": str, "required": True, "nullable": True},
+    "cause": {"type": str, "required": False, "nullable": True},
     "relatedInformation": {"type": str, "required": False, "nullable": True},
     "outageProfile": {"type": list, "required": False, "nullable": True},
 }

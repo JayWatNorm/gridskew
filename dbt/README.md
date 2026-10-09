@@ -1,15 +1,19 @@
 # gridskew dbt project
 
 This project transforms raw API captures and owns small, version-controlled
-reference datasets. S4 adds a BM-unit current dimension and an observed-history
-snapshot to the existing staging models and S3 seeds. S6 adds incremental
-period tables for metered (B1610) and committed (PN) energy, exposed as the
-`fct_generation` and `fct_commitments` views. The local profile reads
-`gridskew_prod.raw` and writes to `dbt_dev`. The deployed S4 and S6 jobs also
-select the homelab `dev` target in that production database; these schemas hold
-live derived data and observed history. Freshness uses the separate `prod`
-target. Verify the effective database, target, schema and user before running
-commands that create or update relations.
+reference datasets. It holds source-grain staging models, a BM-unit current
+dimension with an observed-history snapshot, incremental period tables for
+metered (B1610) and committed (PN) energy exposed as the `fct_generation` and
+`fct_commitments` views, and private models that prepare the research
+questions.
+
+**`dbt_dev` is in the production database and is not disposable.** The local
+profile reads `gridskew_prod.raw` and writes to `dbt_dev`; the deployed
+BM-unit and nightly jobs select the homelab `dev` target in the same database,
+and `dbt_dev_snapshots` holds observed registry history. Freshness uses the
+separate `prod` target. Verify the effective database, target, schema and user
+before running a command that creates or updates relations. Use a full
+`dbt build` only against a verified disposable database containing fixtures.
 
 ## Project structure
 
@@ -30,7 +34,7 @@ Staging models must not join, aggregate or deduplicate source rows.
 
 ## BM-unit registry lineage
 
-The S4 poller commits each complete response to
+The poller commits each complete response to
 `raw.elexon_bm_units_extracts` and `raw.elexon_bm_units` in one transaction.
 The raw grain is `(extract_id, source_index)`: one National Grid BM-unit ID can
 have multiple source rows with distinct EICs. The manifest stores separate raw
@@ -62,16 +66,16 @@ them, because recreating upstream views can drop their dependants.
 Use the guarded Airflow task for live retries. Do not replace its tests with
 `dbt build --select +dim_bm_unit` as a scheduled or standalone repair.
 
-The deployed S4 job selects the `dev` target in the production database:
-`dbt_dev` holds models and `dbt_dev_snapshots` holds observed registry history.
-A schema name containing `dev` does not make it disposable. Schema creation,
-grants and structural changes follow the administrator-run SQL and observed
-release sequence in `homelab-platform/docs/gridskew-release.md` in the platform
-checkout. The [homelab CD overview](../docs/deployment.md) explains that boundary.
-Do not create a fresh snapshot over existing production history.
+Schema creation, grants and structural changes follow the administrator-run
+SQL and observed release sequence in
+`homelab-platform/docs/gridskew-release.md` in the platform checkout. The
+[homelab CD overview](../docs/deployment.md) explains that boundary. Do not
+create a fresh snapshot over existing production history.
 
-That model default does not apply to seeds. `dbt seed` loads each CSV as a
-physical table in the target schema. The three S3 seeds are:
+## Seeds
+
+`dbt seed` loads each CSV as a physical table in the target schema. The three
+seeds are:
 
 | Seed | Grain and purpose |
 |---|---|
@@ -85,6 +89,8 @@ storage and interconnectors, so it does not verify an individual BM unit's
 fuel, renewable status or emissions. `INTELE` remains unclassified because
 its published meaning is unresolved. The Carbon Intensity seed stores label
 order only, not fixed gCO2/kWh boundaries.
+
+## Settlement periods
 
 `macros/settlement_period.sql` converts a British-local settlement date and
 period into a UTC instant using PostgreSQL's `Europe/London` timezone rules. It
@@ -125,6 +131,16 @@ controls.
 
 See `homelab-platform/docs/gridskew-release.md` in the platform checkout.
 
+## Balancing instructions and outage notices
+
+`stg_elexon__boalf` and `stg_elexon__remit` are source-grain views.
+`int_elexon__boa_by_period`, in the private `analysis` group, splits each
+instructed ramp into settlement half-hours and integrates it to MWh with the
+`ramp_mwh` macro; it reads the latest capture of each ramp point, because an
+acceptance that crosses midnight arrives in two daily polls. No model yet
+chooses the current row of a REMIT notice. No scheduled job selects these
+models.
+
 ## Carbon forecast trajectory
 
 Four views in the private `analysis` group prepare the forecast drift question:
@@ -156,38 +172,17 @@ Make these environment variables available before running dbt:
 
 Run dbt commands from the repository's `dbt` folder.
 
-Check the profile and database connection:
+Commands that change nothing in the database:
 
 ```powershell
 dbt debug
-```
-
-This verifies the project, profile, environment variables and PostgreSQL
-connection without building models.
-
-Check whether each raw source has loaded within its expected interval:
-
-```powershell
 dbt source freshness
-```
-
-Run tests attached to all declared sources:
-
-```powershell
 dbt test --select "source:*"
-```
-
-Run only the fixture-backed unit tests:
-
-```powershell
 dbt test --select "test_type:unit"
 ```
 
-The following seed-load example is for a verified disposable database.
-The default local `dev` target is in the production database, so it is not
-that disposable context. Live seed changes follow the release runbook.
-
-Load and test the three reference seeds against the verified disposable target:
+Seed loads on a verified disposable database only; live seed changes follow
+the release runbook:
 
 ```powershell
 dbt seed --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity_bands
@@ -197,18 +192,16 @@ dbt test --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity
 Use `dbt seed --full-refresh` after changing a seed's columns or configured
 types. Ordinary value changes need only a normal `dbt seed` run.
 
-Use a full `dbt build` only against a verified disposable database containing
-fixtures. The local profile deliberately reads production raw data and writes
-to `dbt_dev` in the production database; that schema holds deployed relations.
 Raw read-only permissions protect raw records, but do not protect downstream
 views or snapshots from replacement. Live model changes and full refreshes
 follow the observed platform release workflow with prechecks, explicit
 selectors, descendant recovery and the shared dbt pool.
 
-Freshness is configured hourly. S4 loads `elexon_fuel_codes`, tests the registry
-and records its snapshot. S6 updates the two private period tables and tests
-their descendants without recreating views. CI runs a full build against an
-ephemeral PostgreSQL service; it does not deploy relations to the homelab.
+Freshness runs hourly. The BM-unit job loads `elexon_fuel_codes`, tests the
+registry and records its snapshot. The nightly job updates the two private
+period tables and tests their descendants without recreating views. CI runs a
+full build against an ephemeral PostgreSQL service; it does not deploy
+relations to the homelab.
 
 `elexon_settlement_run_codes` is consumed by the B1610 period model and
 `elexon_fuel_codes` by registry validation. `carbon_intensity_bands` has no

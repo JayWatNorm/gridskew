@@ -48,7 +48,7 @@ def gridskew_elexon_b1610_SF():
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
         if data_interval_start is None:
-            # Airflow 3 manual runs have no data interval (HL-10 §2).
+            # Airflow 3 manual runs have no data interval.
             raise RuntimeError(
                 "No data interval: clear a scheduled task instance to repeat a capture"
             )
@@ -57,7 +57,6 @@ def gridskew_elexon_b1610_SF():
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.elexon.b1610_poller import capture_settlement_date
 
-        # Credentials come from the Airflow Connection.
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
             capture_settlement_date(conn, settlement_date, RUN_TYPE)

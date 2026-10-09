@@ -73,7 +73,7 @@ missed revisions cannot be recovered.
 
 | Source | Role |
 |---|---|
-| **Elexon Insights** | Physical notifications and metered BM-unit energy; later phases add outages, balancing actions, demand and prices |
+| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions and outage notices; later phases add demand and prices |
 | **NESO Carbon Intensity API** | Half-hourly national carbon intensity forecasts and outturn |
 
 The platform uses a medallion structure inside PostgreSQL:
@@ -102,13 +102,11 @@ fixed numerical thresholds. See the [dbt guide](dbt/README.md) for their
 contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. Eight
+Linux server, with separate development and production databases. Ten
 Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`, two
-standing `B1610` settlement runs, a bounded `B1610` R1 capture and the BM unit
-registry. Two more run dbt:
-source-freshness checks configured hourly and the nightly S6 period models.
-At the 21 September 2026 checkpoint, the raw layer contained about 247 million
-rows.
+standing `B1610` settlement runs, a bounded `B1610` R1 capture, the BM unit
+registry, balancing instructions (`BOALF`) and outage notices (`REMIT`). Two
+more run dbt: hourly source-freshness checks and the nightly period models.
 
 The sources use different scheduling and backfill strategies because their
 time behaviour differs. See
@@ -129,13 +127,13 @@ Neither provider endorses this project.
 Each ingested endpoint has an explicit field contract. Shared validation and
 routing report missing, null, incompatible and unexpected fields before typed
 parsing; Carbon contracts also validate the nested `intensity` object. Runtime
-validation and quarantine are deployed for PN, QPN, B1610 and both Carbon
-datasets. Carbon also checks that each response covers its periods completely.
+validation and quarantine are deployed for PN, QPN, B1610, BOALF, REMIT and
+both Carbon datasets. Carbon also checks that each response covers its periods
+completely.
 The BM-unit registry uses a complete-response gate: a rejected or suspiciously
 small response publishes no successful extract.
 
-For the five PN/QPN/B1610 and Carbon datasets, compatible rows continue to
-typed loading. Rejected rows are committed to
+For those seven datasets, compatible rows continue to typed loading. Rejected rows are committed to
 `raw.endpoint_quarantine` with their request context and complete payload;
 warning-only rows remain loadable and produce grouped logs. Tests cover the
 contracts, routing, response envelopes, quarantine evidence and loader wiring
@@ -176,10 +174,9 @@ docs/           Source, ingestion and deployment documentation
 
 ## Deployment
 
-The Airflow instance is maintained in a separate homelab repository. The
-project's ingestion package is bind-mounted, while DAG files are copied into
-the shared scheduler repository. Deployment therefore requires both artefacts
-to be updated; it is not only a pull of this repository.
+The Airflow instance is maintained in a separate homelab repository, which
+mounts this project's DAG, ingestion and dbt directories. A release names a
+commit of each repository.
 
 The [homelab CD overview](docs/deployment.md) explains the release boundary.
 Host SQL, Airflow pools and the observed rollout sequence are documented in
@@ -190,18 +187,19 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 **Complete and running**
 
 - Carbon intensity forecast and outturn collection
-- `PN`, `QPN` and `B1610` ingestion, backfills and scheduled Airflow runs
+- `PN`, `QPN`, `B1610`, `BOALF` and `REMIT` ingestion, backfills and
+  scheduled Airflow runs
 - Append-only raw storage
-- Runtime validation and quarantine for the five time-series datasets, plus
+- Runtime validation and quarantine for the seven time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
-- dbt sources, production freshness checks and six source-grain staging views
+- dbt sources, production freshness checks and eight source-grain staging views
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`
   and a deterministic fixture-backed `dbt build`
 
-**Released 26 September 2026**
+**Period facts**
 
 - Two private incremental period tables, `int_elexon__b1610_period` and
   `int_elexon__pn_period_mwh`, maintain metered and committed energy.
@@ -228,10 +226,10 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - First results from data already held: how carbon-intensity forecasts drift
   as a period approaches, how forecast accuracy changes with lead time, and a
   check that settlement revisions do not change the headline
-- A bounded capture of the R1 settlement run, scheduled for 5–11 October, to
-  measure how metered output is revised
-- Balancing instructions (`BOALF`) and outage notices (`REMIT`), so shortfall
-  can be separated into instructed and residual parts
+- How metered output is revised between settlement runs, from the bounded R1
+  capture
+- Shortfall separated into instructed and residual parts, from the balancing
+  instructions and outage notices now held
 - Airflow 3 upgrade (October to early November)
 
 Demand, system prices and weather remain later extensions.

@@ -85,12 +85,12 @@ sources:
             description: >
               Segment start, UTC. Segments can be shorter than a settlement
               period to describe a ramp. Part of the key.
-            tests:
+            data_tests:
               - not_null
 
           - name: time_to
             description: Segment end, UTC.
-            tests:
+            data_tests:
               - not_null
 
           - name: level_from
@@ -142,12 +142,12 @@ sources:
             description: >
               Segment start, UTC. QPN segment boundaries are independent of
               PN's — the two cannot be joined row to row. Part of the key.
-            tests:
+            data_tests:
               - not_null
 
           - name: time_to
             description: Segment end, UTC.
-            tests:
+            data_tests:
               - not_null
 
           - name: level_from
@@ -249,9 +249,12 @@ sources:
           kept. Fields with no column here, such as the outage profile, are
           in payload.
         loaded_at_field: publish_time
+        # Warn only: the source has no cadence, and two days have passed
+        # without a message. A message stored before its own publish time is
+        # dated in the future and would hide a stopped feed.
         freshness:
           warn_after: {count: 12, period: hour}
-          error_after: {count: 24, period: hour}
+          filter: publish_time <= retrieved_at
         columns:
 
           - name: mrid
@@ -358,7 +361,7 @@ sources:
 
           - name: psr_type
             description: Resource type. Only Generation observed to date.
-            tests:
+            data_tests:
               - accepted_values:
                   arguments:
                     values: ['Generation']

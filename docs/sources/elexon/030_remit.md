@@ -47,6 +47,10 @@ an append-only feed wants.
 
 ## Response fields
 
+Types are as the API specification gives them. In the responses a field
+with no value is left out, not sent as null: see
+[Fields that are absent, not null](#fields-that-are-absent-not-null).
+
 | Field | Type | Notes |
 |---|---|---|
 | `dataset` | `str or null` | Always `REMIT` when present |
@@ -57,7 +61,7 @@ an append-only feed wants.
 | `messageType` | `str or null` | e.g. `UnavailabilitiesOfElectricityFacilities` |
 | `messageHeading` | `str or null` | e.g. `Planned Unavailability of Generation Unit` |
 | `eventType` | `str or null` | e.g. `Production unavailability` |
-| **`unavailabilityType`** | `str or null` | The field that matters. `Planned` seen in the spec's example. **Values are not enumerated in the API**, so confirm the full set against live data before relying on a two-way split |
+| **`unavailabilityType`** | `str or null` | The field that matters. `Planned` and `Unplanned` observed; absent on `OtherMarketInformation` messages. **Values are not enumerated in the API** |
 | `participantId` | `str or null` | Market participant |
 | `registrationCode` | `str or null` | |
 | `assetId` | `str or null` | e.g. `T_DIDCB5`, matches the BM unit identifier |
@@ -72,7 +76,7 @@ an append-only feed wants.
 | `unavailableCapacity` | `float or null` | MW lost |
 | `eventStatus` | `str or null` | `Active`, `Dismissed` and `Inactive` observed. Not enumerated |
 | `eventStartTime` | `str` | Outage start |
-| `eventEndTime` | `str or null` | Outage end |
+| `eventEndTime` | `str or null` | Outage end. Absent on an open-ended event |
 | `durationUncertainty` | `str or null` | Free text, e.g. `+- 1 day`. **Optional, often absent** |
 | `cause` | `str or null` | Free text, e.g. `Other`, `Unknown` |
 | `relatedInformation` | `str or null` | Free text. **Optional** |
@@ -89,22 +93,18 @@ an append-only feed wants.
 An outage is not always flat. A unit might lose 400 MW for six hours then 200 MW
 for another twelve, and `outageProfile` describes that shape.
 
-**This does not flatten to one row.** Either store the profile as `jsonb` in
-raw and unnest it downstream, or write two tables. Storing it as `jsonb` keeps
-the raw layer faithful to what the source sent, which is the convention here.
+**This does not flatten to one row.** The profile stays inside the `payload`
+column as `jsonb` and is unnested downstream, which keeps the raw layer
+faithful to what the source sent.
 
-## Why this is the awkward one
-
-Three complications at once, which is why it is not the first dataset to build:
+## How it differs from the other datasets
 
 - **Event-shaped, not period-shaped.** Every other dataset is one row per
   settlement period. REMIT is one row per *event*, with a start and end that
   span many periods. Joining it to half-hourly data means expanding an interval.
-- **Revised.** Store each publication append-only, then select the current
-  one downstream when current state is required.
+- **Revised.** Each publication is stored append-only; a model selects the
+  current one when current state is required.
 - **Nested.** The outage profile array.
-
-That combination is what makes it the S7 build rather than an early one.
 
 ## The key
 
@@ -140,32 +140,26 @@ were on every row: `dataset`, `mrid`, `revisionNumber`, `publishTime`,
 
 `eventEndTime` is on nearly every row but not all: an open-ended event has
 none. Of the 107,941 messages published from 2024-08-22 to 2026-10-08, 23
-have no `eventEndTime`, all of type `OtherMarketInformation`. The contract
-treats the field as optional.
+have no `eventEndTime`, all of type `OtherMarketInformation`.
+
+The API specification marks every field nullable except `revisionNumber`,
+`publishTime`, `createdTime` and `eventStartTime`. The contract requires
+those four and `mrid`, which is part of the table key. Every other field is
+optional, however often it has been present: a field seen on every sampled
+row is not thereby guaranteed.
 
 A whole day can pass without a message: none was published on 2026-04-25,
 2026-04-26 or 2026-06-14.
 
-## Observed live, 2026-08-20
+## A revision in practice
 
-A two-hour publish window (see `tests/fixtures/elexon/remit_stream.json`)
-confirmed several things at once:
-
-- **`unavailabilityType: "Unplanned"` observed.** With `Planned` in the spec's
-  example, both expected values are now seen. The full value set is still not
-  enumerated anywhere.
-- **Revision in action.** One `mrid` appeared at revisions 4, 5 and 6 within an
-  hour. Between revisions the `eventEndTime` moved earlier and `eventStatus`
-  went from `Active` to `Dismissed`. Every revision remains retrievable, so the
-  full history of an outage notice can be reconstructed.
-- **`eventStatus: "Dismissed"` observed**, alongside `Active` and the spec's
-  `Inactive`. Value set not enumerated.
-- **Fields can be entirely absent.** The live rows carried no `outageProfile`
-  and no `durationUncertainty` keys at all. A parse using `result["outageProfile"]`
-  will raise `KeyError` on most messages; use `.get()` for the optional fields
-  and know which those are.
-- A gas unit (`T_ROCK-1`, 748 MW normal, 388 MW unavailable) reporting an
-  unplanned outage is precisely the event class the thesis is about.
+`tests/fixtures/elexon/remit_stream.json` holds a two-hour publish window
+from 2026-08-20. One `mrid` appears at revisions 4, 5 and 6 within an hour:
+between them `eventEndTime` moves earlier and `eventStatus` goes from
+`Active` to `Dismissed`. Every revision stays retrievable, so the history of
+a notice can be reconstructed. The same window holds a gas unit (`T_ROCK-1`,
+748 MW normal, 388 MW unavailable) reporting an unplanned outage, the event
+class the thesis is about.
 
 ## Open questions
 
@@ -175,9 +169,3 @@ confirmed several things at once:
 - Do `assetId` values always match BM unit identifiers cleanly, or is the join
   to `PN` and `B1610` dirty? (`E_LYNE2` against `affectedUnit: LNMTH-2`
   suggests not always.)
-- Which fields are guaranteed present versus optional. Observed so far:
-  `outageProfile`, `durationUncertainty` and `relatedInformation` are optional.
-  The spec is blunter: it marks **every field nullable except
-  `revisionNumber`, `publishTime`, `createdTime` and `eventStartTime`** —
-  including `eventEndTime` and all three capacities. Parse defensively
-  throughout, not just on the three observed absentees.

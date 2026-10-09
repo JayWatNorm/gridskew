@@ -22,8 +22,13 @@ def process_rows(
     parse_rows,
     load_rows,
     payload_dumps=None,
+    log_missing_optional_fields=True,
 ):
-    """Quarantine rejected rows, load compatible rows and return the rejected count."""
+    """Quarantine rejected rows, load compatible rows and return the rejected count.
+
+    Pass log_missing_optional_fields=False for a source that leaves out a
+    field when it has no value.
+    """
 
     rejected_findings = []
     compatible_findings = []
@@ -33,7 +38,13 @@ def process_rows(
         else:
             compatible_findings.append(finding)
 
-    _log_warnings(compatible_findings, dataset, retrieved_at, request_context)
+    _log_warnings(
+        compatible_findings,
+        dataset,
+        retrieved_at,
+        request_context,
+        log_missing_optional_fields,
+    )
 
     if rejected_findings:
         quarantine_rows(
@@ -55,7 +66,9 @@ def process_rows(
     return len(rejected_findings)
 
 
-def _log_warnings(findings, dataset, retrieved_at, request_context):
+def _log_warnings(
+    findings, dataset, retrieved_at, request_context, log_missing_optional_fields
+):
     """Log each distinct warning once, with how many rows it affects."""
 
     source_indexes_by_warning = {}
@@ -67,6 +80,8 @@ def _log_warnings(findings, dataset, retrieved_at, request_context):
 
     for warning, source_indexes in source_indexes_by_warning.items():
         reason, field = warning.split(": ", 1)
+        if reason == "Optional field is missing" and not log_missing_optional_fields:
+            continue
         payload = {
             "dataset": dataset,
             "retrieved_at": retrieved_at.isoformat(),
@@ -81,7 +96,7 @@ def _log_warnings(findings, dataset, retrieved_at, request_context):
 
 
 def quarantine_rows(
-    rows,
+    rejected_findings,
     conn,
     dataset,
     retrieved_at,
@@ -96,7 +111,6 @@ def quarantine_rows(
         "INSERT INTO raw.endpoint_quarantine (dataset, retrieved_at, request_context,"
         "validation_errors, observed_fields, payload, quarantined_at) VALUES %s"
     )
-    rejected_findings = rows
     insert_values = []
     for finding in rejected_findings:
         source_row = finding["row"]

@@ -20,13 +20,13 @@ models:
 
   - name: int_elexon__b1610_period
     description: >
-      Private S6 incremental table. One row per B1610 BM unit and settlement
+      Private incremental table. One row per B1610 BM unit and settlement
       period, with the first captured and the latest settlement-run value.
       "First captured" is the earliest retrieved_at (ties broken by run
       order): it is first observed, not the lowest run now available. Live
-      dates normally start at II; backfilled dates start at SF or later, so S8
-      must filter or label on first_run_code before it treats a first value as
-      II. "Latest" is the highest run_order in the settlement-run seed. Each
+      dates normally start at II; backfilled dates start at SF or later, so a
+      consumer must filter or label on first_run_code before it treats a
+      first value as II. "Latest" is the highest run_order in the settlement-run seed. Each
       run recomputes only periods with a source row captured since the stored
       watermark minus capture_margin; this equals a full rebuild while every
       new raw row becomes visible within the margin. After a manual load, a
@@ -63,7 +63,7 @@ models:
 
   - name: int_elexon__pn_period_mwh
     description: >
-      Private S6 incremental table. One row per PN National Grid BM unit and
+      Private incremental table. One row per PN National Grid BM unit and
       settlement period, integrated to MWh from one capture. The chosen
       capture is the latest one that is not an echo: an echo only repeats
       segments already captured for that period (the next day's poll re-sends

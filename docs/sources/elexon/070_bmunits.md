@@ -1,6 +1,6 @@
 # BM Unit registry
 
-**S4 capture and observed-history snapshot are deployed.** See
+**The capture and observed-history snapshot are deployed.** See
 [071_bmunits_ingestion.md](071_bmunits_ingestion.md) for the complete-extract
 gate, raw/current/snapshot lineage and recovery steps.
 
@@ -113,7 +113,7 @@ until dated evidence supports a label.
 The registry is a **current-state** view. Ask it today and you get today's
 answer, with no history.
 
-The endpoint has no reliable updated-at field, so the S4 dbt snapshot uses
+The endpoint has no reliable updated-at field, so the dbt snapshot uses
 the `check` strategy. It compares descriptive attributes on each poll and
 records a new version when one changes. A settlement-period join can
 use a captured version only from the start of collection onwards; earlier

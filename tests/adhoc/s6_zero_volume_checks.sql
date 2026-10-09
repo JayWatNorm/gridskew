@@ -1,4 +1,4 @@
--- How much of the S6 input is zero, and does the zero carry information?
+-- How much of the period-table input is zero, and does the zero carry information?
 --
 -- Read-only. Run as gridskew_dbt against gridskew_prod with psql:
 --   psql -X -v ON_ERROR_STOP=1 -f tests/adhoc/s6_zero_volume_checks.sql
@@ -7,7 +7,7 @@
 --   Z1  Zero share of B1610 rows (full history), and units that are always zero.
 --   Z2  Zero share of PN segments (full history).
 --   Z3  August 2026 at unit-period grain: PN zero or not against metered zero
---       or not, for units in both sources (the S8 shortfall population).
+--       or not, for units in both sources (the shortfall population).
 --   Z4  August 2026: PN zero periods next to a non-zero period (ramp edges).
 --   Z5  B1610 zero rows with and without a National Grid ID.
 

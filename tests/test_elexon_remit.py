@@ -20,10 +20,11 @@ from ingestion.elexon.remit_poller import run as run_poller
 from ingestion.validation import validate_rows
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "remit_publications.json"
-RETRIEVED_AT = datetime(2026, 10, 8, 9, 15, 4, tzinfo=timezone.utc)
 RUN_TIME = datetime(2026, 10, 8, 9, 15, 4, tzinfo=timezone.utc)
 FRACTIONAL_CAPACITY_ROW = 5
 NO_UNIT_FIELDS_ROW = 4
+FIRST_OPTIONAL_COLUMN = 4
+EVENT_START_TIME_COLUMN = 14
 EVENT_END_TIME_COLUMN = 15
 PAYLOAD_COLUMN = 16
 
@@ -75,7 +76,7 @@ def test_the_fixture_satisfies_the_contract(source_rows):
 
 
 def test_parse_maps_a_message_to_the_database_tuple(source_rows):
-    parsed_rows = parse(source_rows, RETRIEVED_AT)
+    parsed_rows = parse(source_rows, RUN_TIME)
     parsed_row = parsed_rows[FRACTIONAL_CAPACITY_ROW]
 
     assert len(parsed_rows) == len(source_rows)
@@ -98,11 +99,11 @@ def test_parse_maps_a_message_to_the_database_tuple(source_rows):
         datetime(2026, 10, 10, 11, 0, tzinfo=timezone.utc),
     )
     assert parsed_row[PAYLOAD_COLUMN].adapted == source_rows[FRACTIONAL_CAPACITY_ROW]
-    assert parsed_row[PAYLOAD_COLUMN + 1] == RETRIEVED_AT
+    assert parsed_row[PAYLOAD_COLUMN + 1] == RUN_TIME
 
 
 def test_parse_stores_null_for_the_fields_a_message_does_not_carry(source_rows):
-    parsed_rows = parse(source_rows, RETRIEVED_AT)
+    parsed_rows = parse(source_rows, RUN_TIME)
 
     assert parsed_rows[NO_UNIT_FIELDS_ROW][:PAYLOAD_COLUMN] == (
         "20260927STATKRA1-ELXP-RMT-00000001",
@@ -129,10 +130,43 @@ def test_a_message_with_no_end_time_is_accepted_and_stored_with_null(source_rows
     del open_ended_row["eventEndTime"]
 
     findings = validate_rows([open_ended_row], spec=REMIT_SPEC)
-    parsed_rows = parse([open_ended_row], RETRIEVED_AT)
+    parsed_rows = parse([open_ended_row], RUN_TIME)
 
     assert findings[0]["errors"] == []
     assert parsed_rows[0][EVENT_END_TIME_COLUMN] is None
+
+
+def test_a_message_with_only_the_key_and_start_time_is_accepted(source_rows):
+    full_row = source_rows[NO_UNIT_FIELDS_ROW]
+    minimal_row = {
+        "mrid": full_row["mrid"],
+        "revisionNumber": full_row["revisionNumber"],
+        "publishTime": full_row["publishTime"],
+        "createdTime": full_row["createdTime"],
+        "eventStartTime": full_row["eventStartTime"],
+    }
+
+    findings = validate_rows([minimal_row], spec=REMIT_SPEC)
+    parsed_row = parse([minimal_row], RUN_TIME)[0]
+
+    assert findings[0]["errors"] == []
+    assert parsed_row[FIRST_OPTIONAL_COLUMN:EVENT_START_TIME_COLUMN] == (None,) * 10
+    assert parsed_row[EVENT_END_TIME_COLUMN] is None
+
+
+@pytest.mark.parametrize(
+    "required_field",
+    ["mrid", "revisionNumber", "publishTime", "createdTime", "eventStartTime"],
+)
+def test_a_message_without_a_key_field_or_start_time_is_rejected(
+    source_rows, required_field
+):
+    row = dict(source_rows[NO_UNIT_FIELDS_ROW])
+    del row[required_field]
+
+    findings = validate_rows([row], spec=REMIT_SPEC)
+
+    assert findings[0]["errors"] == [f"Missing required field: {required_field}"]
 
 
 def test_the_payload_keeps_capacities_as_published(source_rows):
@@ -251,10 +285,11 @@ def test_run_passes_rows_and_request_context_to_shared_routing(source_rows):
         parse_rows=parse,
         load_rows=load,
         payload_dumps=decimal_json_dumps,
+        log_missing_optional_fields=False,
     )
 
 
-def test_run_ignores_a_message_that_was_stored_before_its_publish_time():
+def test_run_reads_the_newest_publish_time_only_from_rows_stored_after_it():
     conn = database_with(RUN_TIME - timedelta(minutes=30))
 
     with patch("ingestion.elexon.remit_poller.fetch", return_value=[]):

@@ -101,6 +101,7 @@ def run(conn, first_publish_time=None):
             parse_rows=parse,
             load_rows=load,
             payload_dumps=decimal_json_dumps,
+            log_missing_optional_fields=False,
         )
 
     # Counted from the table, not from this run: a later run starts after
@@ -165,11 +166,11 @@ def _parse_row(source_row, retrieved_at):
     revision_number = source_row["revisionNumber"]
     publish_time = _utc_from_text_with_seconds(source_row["publishTime"])
     created_time = _utc_from_text_with_seconds(source_row["createdTime"])
-    message_type = source_row["messageType"]
+    message_type = source_row.get("messageType")
     event_type = source_row.get("eventType")
     unavailability_type = source_row.get("unavailabilityType")
-    event_status = source_row["eventStatus"]
-    asset_id = source_row["assetId"]
+    event_status = source_row.get("eventStatus")
+    asset_id = source_row.get("assetId")
     affected_unit = source_row.get("affectedUnit")
     fuel_type = source_row.get("fuelType")
     normal_capacity = source_row.get("normalCapacity")
