@@ -4,7 +4,9 @@ import pytest
 
 from tests.adhoc.check_scheduled_set import (
     nightly_default_commands,
+    nightly_guarded_tables,
     scheduled_set_problems,
+    unguarded_incremental_models,
 )
 
 PERIOD_TABLE = "model.gridskew.int_period"
@@ -12,6 +14,7 @@ FACT_VIEW = "model.gridskew.fct_view"
 MART_TABLE = "model.gridskew.mart_table"
 SEED = "seed.gridskew.codes"
 RUN_THE_PERIOD_TABLE = ["run", "--select", "int_period"]
+RUN_THE_INCREMENTAL_MODELS = ["run", "--selector", "nightly_models"]
 
 
 def model(materialized, **other_config):
@@ -29,8 +32,14 @@ def seed(**config):
     return {"resource_type": "seed", "name": "codes", "config": config}
 
 
-def manifest_with(nodes, child_map):
-    return {"nodes": nodes, "child_map": child_map}
+def manifest_with(nodes, child_map, selectors=None):
+    if selectors is None:
+        selectors = {}
+    return {"nodes": nodes, "child_map": child_map, "selectors": selectors}
+
+
+def selector(definition):
+    return {"definition": definition}
 
 
 def released_manifest():
@@ -43,12 +52,19 @@ def released_manifest():
             SEED: seed(),
         },
         child_map={PERIOD_TABLE: [FACT_VIEW]},
+        selectors={
+            "nightly_models": selector(
+                {"method": "config.materialized", "value": "incremental"}
+            ),
+            "everything": selector({"method": "fqn", "value": "*"}),
+        },
     )
 
 
 def test_the_released_shape_has_no_problems():
     commands = [
-        ["test", "--select", "int_period+", "--exclude", "tag:full_population"],
+        ["test", "--selector", "everything"],
+        RUN_THE_INCREMENTAL_MODELS,
         RUN_THE_PERIOD_TABLE,
     ]
 
@@ -56,14 +72,41 @@ def test_the_released_shape_has_no_problems():
 
 
 def test_the_nightly_dag_supplies_its_default_commands():
-    update_period_tables = [
-        "run",
-        "--select",
+    assert RUN_THE_INCREMENTAL_MODELS in nightly_default_commands()
+
+
+def test_the_nightly_dag_supplies_its_guarded_tables():
+    assert nightly_guarded_tables() == (
         "int_elexon__b1610_period",
         "int_elexon__pn_period_mwh",
-    ]
+    )
 
-    assert update_period_tables in nightly_default_commands()
+
+def test_a_scheduled_run_by_selector_must_name_a_selector_that_exists():
+    commands = [["run", "--selector", "renamed_away"]]
+
+    (problem,) = scheduled_set_problems(released_manifest(), commands)
+
+    assert "no selector is named 'renamed_away'" in problem
+
+
+def test_a_scheduled_run_by_selector_must_select_incremental_models_only():
+    commands = [["run", "--selector", "everything"]]
+
+    (problem,) = scheduled_set_problems(released_manifest(), commands)
+
+    assert "'everything' must select config.materialized:incremental" in problem
+
+
+def test_the_nightly_guard_must_name_every_incremental_model():
+    (problem,) = unguarded_incremental_models(released_manifest(), ("another_table",))
+
+    assert PERIOD_TABLE in problem
+    assert "PERIOD_TABLES does not name" in problem
+
+
+def test_a_guard_that_names_every_incremental_model_has_no_problems():
+    assert unguarded_incremental_models(released_manifest(), ("int_period",)) == []
 
 
 def test_a_scheduled_run_must_not_select_a_view():
@@ -83,6 +126,10 @@ def test_a_scheduled_run_must_not_select_a_view():
         pytest.param(
             ["run", "--select", "int_period", "--exclude", "int_period"],
             id="another-option",
+        ),
+        pytest.param(
+            ["run", "--selector", "nightly_models", "--exclude", "int_period"],
+            id="selector-with-another-option",
         ),
     ],
 )

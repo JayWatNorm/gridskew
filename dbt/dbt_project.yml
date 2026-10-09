@@ -26,6 +26,12 @@ vars:
   forecast_trajectory_min_slots: 90
   forecast_trajectory_first_horizon_hours: 47
   forecast_trajectory_final_horizon_hours: 0.5
+  # How long record_run_results keeps a node result.
+  node_results_retention_days: 180
+
+# Writes nothing unless the invocation passes --vars '{audit: true}'.
+on-run-end:
+  - "{{ record_run_results(results) }}"
 
 models:
   gridskew:

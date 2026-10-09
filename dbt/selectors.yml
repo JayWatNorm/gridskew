@@ -1,0 +1,39 @@
+selectors:
+  - name: nightly_run_code_check
+    description: >
+      The generic tests of stg_elexon__b1610. The nightly job runs them
+      first: an unknown settlement-run code stops the job before a period
+      table is written.
+    definition:
+      intersection:
+        - method: fqn
+          value: stg_elexon__b1610
+        - method: test_type
+          value: generic
+
+  - name: nightly_models
+    description: >
+      Every incremental model. These are the only relations a scheduled job
+      writes; it adds rows and never replaces a table or a view.
+    definition:
+      method: config.materialized
+      value: incremental
+
+  - name: nightly_tests
+    description: >
+      Every data test in the project except the tests that re-read all
+      history (tag full_population, run with a full refresh) and any test of
+      the BM-unit snapshot, which the BM-unit job owns. Unit tests are left
+      to CI: they check model logic against fixed rows, not the stored data,
+      and each one creates a temporary table.
+    definition:
+      union:
+        - method: fqn
+          value: "*"
+        - exclude:
+            - method: test_type
+              value: unit
+            - method: tag
+              value: full_population
+            - method: fqn
+              value: snap_elexon__bm_units

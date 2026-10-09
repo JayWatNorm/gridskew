@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: read
+  # A pull-request run reads the manifest that the last main run uploaded.
+  actions: read
 
 # A main run is never cancelled: a release needs a completed run for its SHA.
 concurrency:
@@ -99,6 +101,23 @@ jobs:
           dbt parse --project-dir dbt
           dbt build --project-dir dbt
 
+      # Copied out of target/ at once: later dbt commands rewrite that folder,
+      # and dbt must not compare a project with the folder it writes.
+      - name: Copy the main manifest for pull-request comparison
+        if: github.event_name == 'push'
+        run: |
+          mkdir main-manifest
+          cp dbt/target/manifest.json main-manifest/manifest.json
+
+      - name: Upload the main manifest
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-manifest
+          path: main-manifest/manifest.json
+          retention-days: 90
+          if-no-files-found: error
+
       - name: Check scheduled dbt jobs cannot replace a relation
         env:
           PYTHONPATH: .
@@ -126,6 +145,54 @@ jobs:
           DBT_PASSWORD: password
           DBT_DBNAME: gridskew_dev
         run: python tests/adhoc/check_outturn_gap_refetch.py
+
+      - name: Run the nightly dbt commands and check their audit rows
+        env:
+          PYTHONPATH: .
+          GRIDSKEW_DISPOSABLE_TEST: "1"
+          DBT_PROFILES_DIR: dbt_profiles
+          DBT_HOST: localhost
+          DBT_PORT: 5432
+          DBT_USER: postgres
+          DBT_PASSWORD: password
+          DBT_DBNAME: gridskew_dev
+        run: python tests/adhoc/check_nightly_run.py
+
+      # The full build above stays the proof. This step shows what a change
+      # touches: it rebuilds the changed nodes with everything above and
+      # below them. Without a manifest from main it is skipped.
+      - name: Fetch the manifest of the last successful main run
+        id: main_manifest
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
+            --branch main --event push --status success --limit 1 \
+            --json databaseId --jq '.[0].databaseId // empty') || run_id=""
+          if [ -n "$run_id" ] && gh run download "$run_id" \
+            --repo "$GITHUB_REPOSITORY" --name dbt-manifest --dir main-manifest
+          then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No manifest from a main run: the changed-nodes build was skipped." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Build the nodes changed since main, with ancestors and descendants
+        if: steps.main_manifest.outputs.found == 'true'
+        env:
+          DBT_PROFILES_DIR: dbt_profiles
+          DBT_HOST: localhost
+          DBT_PORT: 5432
+          DBT_USER: postgres
+          DBT_PASSWORD: password
+          DBT_DBNAME: gridskew_dev
+        run: >
+          dbt build --project-dir dbt
+          --select +state:modified+
+          --state "$GITHUB_WORKSPACE/main-manifest"
 
   # The S6 checks assert that their tables start empty, so they run in their
   # own job against a database that holds no CI fixtures.

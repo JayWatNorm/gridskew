@@ -106,7 +106,8 @@ Linux server, with separate development and production databases. Ten
 Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`, two
 standing `B1610` settlement runs, a bounded `B1610` R1 capture, the BM unit
 registry, balancing instructions (`BOALF`) and outage notices (`REMIT`). Two
-more run dbt: hourly source-freshness checks and the nightly period models.
+more run dbt: hourly source-freshness checks, and a nightly job that updates
+the period tables and runs the project's data tests.
 
 The sources use different scheduling and backfill strategies because their
 time behaviour differs. See
@@ -196,8 +197,12 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - dbt sources, production freshness checks and eight source-grain staging views
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
-- Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`
-  and a deterministic fixture-backed `dbt build`
+- Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
+  a deterministic fixture-backed `dbt build`, the nightly dbt commands run
+  against that build, and a rebuild of the nodes changed since `main`
+- A nightly dbt job on named selectors: it runs the project's data tests
+  without recreating a view, records each node's result in a table and
+  publishes dbt's manifest and run results
 
 **Period facts**
 

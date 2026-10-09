@@ -40,7 +40,8 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `check_bmu_snapshot_lifecycle.py` | Real dbt snapshot transitions for the BM-unit registry | Disposable PostgreSQL |
 | `check_outturn_gap_refetch.py` | The outturn history gap query, inside one transaction that is rolled back | Disposable PostgreSQL |
 | `check_s6_facts.py` | The period tables: an incremental run equals a full refresh; runs in its own job on an empty database | Disposable PostgreSQL |
-| `check_scheduled_set.py` | The nightly DAG's default dbt commands, and the rules that stop a model or seed replacing a relation | dbt's manifest and the nightly DAG |
+| `check_scheduled_set.py` | The nightly DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
+| `check_nightly_run.py` | The nightly DAG's default dbt commands, run for real after the full build: each succeeds, each node gets one audit row, no view is recreated, and audit rows past retention are deleted | Disposable PostgreSQL |
 
 The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
 database is a local `gridskew_dev`.
