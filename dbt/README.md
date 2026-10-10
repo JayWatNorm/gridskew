@@ -297,8 +297,11 @@ runs a full build against an ephemeral PostgreSQL service, then the nightly
 commands; it does not deploy relations to the homelab.
 
 On a pull request CI also runs
-`dbt build --select +state:modified+ --state <manifest of the last main run>`.
-It rebuilds the changed nodes with everything above and below them. The
+`dbt build --select +state:modified+ --state <manifest of the last main run>`
+with cautious indirect selection. It rebuilds the changed nodes with
+everything above and below them; a test is run only when every model it
+reads is in that set, because rebuilding a view drops a dependant view that
+is not. The
 manifest is a workflow artifact that each `main` run uploads; when none
 exists the step is skipped and the full build stands alone.
 

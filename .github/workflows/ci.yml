@@ -180,6 +180,11 @@ jobs:
               >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # Rebuilding a view drops its dependants (DROP ... CASCADE), and a
+      # dependant that is not itself an ancestor or descendant of a changed
+      # node is not rebuilt here, so a test on such a sibling view would
+      # error. Cautious selection runs only tests whose every parent is
+      # selected. Nothing in this job runs after this step.
       - name: Build the nodes changed since main, with ancestors and descendants
         if: steps.main_manifest.outputs.found == 'true'
         env:
@@ -193,6 +198,7 @@ jobs:
           dbt build --project-dir dbt
           --select +state:modified+
           --state "$GITHUB_WORKSPACE/main-manifest"
+          --indirect-selection cautious
 
   # The S6 checks assert that their tables start empty, so they run in their
   # own job against a database that holds no CI fixtures.
