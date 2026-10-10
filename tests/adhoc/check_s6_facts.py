@@ -3,7 +3,8 @@
 Loads small, controlled raw rows, runs the real dbt models and asserts the S6
 plan revision 4 acceptance matrix: the incremental period tables recompute
 only touched unit-periods and equal a full refresh; the fact views show
-current registry evidence. It mutates the target database, so it refuses to
+current registry evidence; the shortfall tables follow acceptances, registry
+changes and late settlement runs and equal a full refresh. It mutates the target database, so it refuses to
 run unless explicitly pointed at a local disposable gridskew_dev. The raw
 tables must exist first: apply sql/migrations to the empty database.
 
@@ -31,6 +32,8 @@ B1610_PERIODS = "dbt_dev.int_elexon__b1610_period"
 PN_PERIODS = "dbt_dev.int_elexon__pn_period_mwh"
 GENERATION = "dbt_dev.fct_generation"
 COMMITMENTS = "dbt_dev.fct_commitments"
+INTERVALS = "dbt_dev.int_elexon__instruction_intervals"
+SHORTFALL = "dbt_dev.int_shortfall_by_unit_period"
 LONDON = ZoneInfo("Europe/London")
 T0 = datetime(2026, 9, 1, tzinfo=timezone.utc)
 DAY = timedelta(days=1)
@@ -112,10 +115,21 @@ def rewritten(before, after):
     return {key for key, version in after.items() if before.get(key) != version}
 
 
+def build_upstream_of(fact):
+    """The build command for a fact and everything above it.
+
+    Cautious selection keeps out a test with a parent outside the selection,
+    such as the shortfall table's checks, which read the fact views but belong
+    to a later model.
+    """
+
+    return ["build", "--select", f"+{fact}", "--indirect-selection", "cautious"]
+
+
 def build(conn, fact, table, expected_rewrites=None, expect_success=True):
     """Build a fact and its upstream; optionally check which rows were rewritten."""
     before = row_versions(conn, table)
-    dbt("build", "--select", f"+{fact}", expect_success=expect_success)
+    dbt(*build_upstream_of(fact), expect_success=expect_success)
     if expected_rewrites is not None:
         changed = rewritten(before, row_versions(conn, table))
         assert changed == expected_rewrites, f"rewrote {sorted(changed)}"
@@ -125,7 +139,7 @@ def assert_equals_full_refresh(conn, fact, table):
     """The incremental table equals a full rebuild of the same data, and a full
     refresh selected with its descendants keeps the fact view."""
     incremental = table_rows(conn, table)
-    dbt("build", "--select", f"+{fact}", "--full-refresh")
+    dbt(*build_upstream_of(fact), "--full-refresh")
     assert table_rows(conn, table) == incremental, "incremental != full refresh"
     assert exists(conn, f"dbt_dev.{fact}"), f"{fact} view missing after refresh"
 
@@ -313,7 +327,7 @@ def check_generation(conn):
     insert_b1610(conn, [("S6_A", None, AUG10, 3, "R2", "8", T0)])
     build_b1610()
     assert generation(conn)[a3][3:5] == (Decimal(6), "SF")
-    dbt("build", "--select", "+fct_generation", "--full-refresh")
+    dbt(*build_upstream_of("fct_generation"), "--full-refresh")
     assert generation(conn)[a3][3:5] == (Decimal(8), "R2")
 
     # Normal arrivals: the window is measured from the watermark stored before
@@ -562,6 +576,235 @@ def check_commitments(conn):
     print("PN period table and fct_commitments: all acceptance checks passed")
 
 
+# ------------------------------------------------------------- shortfall
+
+
+def insert_boalf(conn, captures):
+    """Each capture: (unit, bm_unit, acceptance, issued, seen, [(from, to, MW, MW)]).
+
+    Minutes count from the start of settlement period 1 of AUG10."""
+    for unit, bm_unit, acceptance, issued, seen, ramps in captures:
+        start = period_start(AUG10, 1)
+        for minute_from, minute_to, level_from, level_to in ramps:
+            execute(
+                conn,
+                "INSERT INTO raw.elexon_boalf (national_grid_bm_unit, bm_unit, "
+                "acceptance_number, acceptance_time, settlement_date, "
+                "settlement_period_from, settlement_period_to, time_from, time_to, "
+                "level_from, level_to, so_flag, deemed_bo_flag, stor_flag, rr_flag, "
+                "amendment_flag, retrieved_at) "
+                "VALUES (%s, %s, %s, %s, %s, 1, 2, %s, %s, %s, %s, "
+                "false, false, false, false, 'ORI', %s)",
+                (
+                    unit,
+                    bm_unit,
+                    acceptance,
+                    issued,
+                    AUG10,
+                    start + minute_from * MINUTE,
+                    start + minute_to * MINUTE,
+                    level_from,
+                    level_to,
+                    seen,
+                ),
+            )
+
+
+def shortfall(conn):
+    rows = fetch(
+        conn,
+        "SELECT national_grid_bm_unit, settlement_date, settlement_period, "
+        "fuel_group, instruction_status, instructed_seconds, expected_mwh, "
+        "metered_mwh, metered_run_code, unexplained_shortfall_mwh, determinability "
+        f"FROM {SHORTFALL}",
+    )
+    return {row[:3]: row[3:] for row in rows}
+
+
+def stretches(conn):
+    """Interval rows without the placeholders a recomputed half-hour may keep."""
+    return {
+        row[:3]: row[3:]
+        for row in fetch(
+            conn, f"SELECT * FROM {INTERVALS} WHERE interval_from IS NOT NULL"
+        )
+    }
+
+
+def build_shortfall_tables():
+    dbt("run", "--select", "int_elexon__instruction_intervals", SHORTFALL.split(".")[1])
+
+
+def rebuild_shortfall_tables():
+    """A full refresh of the cohort view, both tables and their data tests.
+
+    Unit tests are CI's job 1: they mock staging views this partial database
+    does not hold."""
+    dbt(
+        "build",
+        "--select",
+        "int_elexon__bm_unit_cohort+",
+        "int_elexon__instruction_intervals+",
+        "--exclude",
+        "test_type:unit",
+        "--full-refresh",
+        "--indirect-selection",
+        "cautious",
+    )
+
+
+def assert_shortfall_equals_full_refresh(conn):
+    incremental_stretches = stretches(conn)
+    incremental_shortfall = shortfall(conn)
+    rebuild_shortfall_tables()
+    assert_same_rows("intervals", incremental_stretches, stretches(conn))
+    assert_same_rows("shortfall", incremental_shortfall, shortfall(conn))
+
+
+def assert_same_rows(name, incremental, full):
+    """The incremental table equals the full refresh; name the first rows that differ."""
+    differing = [
+        (key, incremental.get(key), full.get(key))
+        for key in sorted(set(incremental) | set(full))
+        if incremental.get(key) != full.get(key)
+    ]
+    assert not differing, f"{name}: incremental != full refresh: {differing[:3]}"
+
+
+def check_shortfall(conn):
+    """The shortfall tables after the period tables: expected output follows the
+    acceptance in force, a shortened acceptance releases its half-hours, a
+    registry change and a late metering row reach the rows, and each
+    incremental step equals a full refresh."""
+    # What a release creates before the tables are first built: the seed, the
+    # snapshot and the staging view the intervals read.
+    dbt("seed", "--select", "elexon_fuel_codes")
+    # The earlier `build +fct_commitments --full-refresh` rebuilt the registry
+    # view and so dropped fct_generation; a release recreates the views.
+    dbt("run", "--select", "stg_elexon__boalf", "fct_generation", "fct_commitments")
+    rebuild_shortfall_tables()
+    p1, p2 = ("S6NG_A", AUG10, 1), ("S6NG_A", AUG10, 2)
+    rows = shortfall(conn)
+    # (fuel_group, status, seconds, expected, metered, run, shortfall, determinability)
+    assert rows[p1][:3] == ("gas_turbine", "uninstructed", 0)
+    assert rows[p1][4:6] == (Decimal(53), "R2")
+    # Energies in the shortfall table are rounded to six decimal places.
+    assert rows[p1][3] == Decimal("50.616667")
+    assert rows[p1][7] == "determinable"
+    assert ("S6NG_Z", AUG10, 10) not in rows, "a unit outside the cohort has a row"
+
+    # An acceptance at a flat 100 MW over period 1 and half of period 2:
+    # period 1 is fully instructed (50 MWh expected), period 2 partly (the
+    # PN's 4 MW is replaced for 15 minutes: 2 - 1 + 25 = 26 MWh expected).
+    issued = period_start(AUG10, 1) - HOUR
+    insert_boalf(
+        conn, [("S6NG_A", "S6_A", 1, issued, T0 + 3 * DAY, [(0, 45, 100, 100)])]
+    )
+    build_shortfall_tables()
+    rows = shortfall(conn)
+    assert rows[p1][1:4] == ("fully_instructed", 1800, Decimal(50))
+    assert rows[p1][6] == Decimal(-3)
+    assert rows[p2][1:4] == ("partially_instructed", 900, Decimal(26))
+    assert_shortfall_equals_full_refresh(conn)
+
+    # The shortfall watermark moves on (a PN capture two days later with a new
+    # level; an identical one would be an echo and move nothing), so the
+    # acceptance's first capture is outside the margin when it is shortened.
+    insert_pn(conn, [("S6NG_A", "S6_A", AUG10, 10, T0 + 5 * DAY, full_period(3))])
+    dbt("run", "--select", "int_elexon__pn_period_mwh")
+    build_shortfall_tables()
+
+    # A later capture shortens the acceptance to 20 minutes: period 2 loses
+    # its stretch (a placeholder row replaces it, stamped with this capture
+    # so the shortfall table sees it) and period 1 is partly instructed. Only
+    # the two half-hours the acceptance ever touched are recomputed.
+    before = row_versions(conn, INTERVALS)
+    shortened = (
+        "S6NG_A",
+        "S6_A",
+        1,
+        issued,
+        T0 + 5 * DAY + 10 * MINUTE,
+        [(0, 20, 100, 100)],
+    )
+    insert_boalf(conn, [shortened])
+    build_shortfall_tables()
+    touched = {key[:2] for key in rewritten(before, row_versions(conn, INTERVALS))}
+    assert touched == {
+        ("S6NG_A", period_start(AUG10, 1)),
+        ("S6NG_A", period_start(AUG10, 2)),
+    }
+    placeholders = fetch(
+        conn,
+        f"SELECT national_grid_bm_unit, period_start_utc FROM {INTERVALS} "
+        "WHERE interval_from IS NULL",
+    )
+    assert placeholders == [("S6NG_A", period_start(AUG10, 2))]
+    rows = shortfall(conn)
+    assert rows[p1][1:3] == ("partially_instructed", 1200)
+    assert rows[p2][1:3] == ("uninstructed", 0)
+    assert_shortfall_equals_full_refresh(conn)
+
+    # A registry change moves the unit to another fuel group; the next run
+    # rewrites the unit's rows.
+    insert_registry(conn, [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:]], step=3)
+    build_shortfall_tables()
+    assert shortfall(conn)[p1][0] == "nuclear"
+    assert_shortfall_equals_full_refresh(conn)
+
+    # A registry change renames the unit's Elexon ID: its metered rows no
+    # longer map, and the next run rewrites the unit's rows to say so; the
+    # rename back restores them.
+    insert_registry(conn, [("S6NG_A", "S6_A2", "NUCLEAR"), *REGISTRY[1:]], step=4)
+    build_shortfall_tables()
+    assert shortfall(conn)[p1][7] == "no_metered_value"
+    assert_shortfall_equals_full_refresh(conn)
+    insert_registry(conn, [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:]], step=5)
+    build_shortfall_tables()
+    assert shortfall(conn)[p1][7] == "determinable"
+
+    # A late settlement run for period 1 reaches the shortfall row. First the
+    # watermark moves past the instruction stamp (a changed PN capture), so
+    # only the metered branch of the touched set can reach period 1.
+    insert_pn(conn, [("S6NG_A", "S6_A", AUG10, 10, T0 + 7 * DAY, full_period(5))])
+    dbt("run", "--select", "int_elexon__pn_period_mwh")
+    build_shortfall_tables()
+    insert_b1610(
+        conn, [("S6_A", None, AUG10, 1, "R3", "60", T0 + 7 * DAY + 10 * MINUTE)]
+    )
+    # The period table only, as the nightly job runs it: rebuilding the
+    # registry view would drop the cohort and fact views that depend on it.
+    dbt("run", "--select", "int_elexon__b1610_period")
+    build_shortfall_tables()
+    assert shortfall(conn)[p1][4:6] == (Decimal(60), "R3")
+    assert_shortfall_equals_full_refresh(conn)
+
+    # A later run that arrives with another National Grid ID makes the
+    # metered mapping a conflict; the row loses its metered value. Again
+    # only the metered branch can reach period 1.
+    insert_pn(conn, [("S6NG_A", "S6_A", AUG10, 10, T0 + 8 * DAY, full_period(6))])
+    dbt("run", "--select", "int_elexon__pn_period_mwh")
+    build_shortfall_tables()
+    conflicting = (
+        "S6_A",
+        "S6NG_OTHER",
+        AUG10,
+        1,
+        "RF",
+        "61",
+        T0 + 8 * DAY + 10 * MINUTE,
+    )
+    insert_b1610(conn, [conflicting])
+    dbt("run", "--select", "int_elexon__b1610_period")
+    build_shortfall_tables()
+    assert shortfall(conn)[p1][7] == "no_metered_value"
+    assert_shortfall_equals_full_refresh(conn)
+
+    dbt("test", "--select", "assert_shortfall_recent_keys_present")
+    dbt("test", "--select", "assert_instruction_intervals_recent_periods_present")
+    print("Shortfall tables: all acceptance checks passed")
+
+
 def check_job_commands_keep_views(conn):
     """Scheduled jobs write data; only releases recreate views. Rebuilding a
     view drops its dependants (DROP ... CASCADE), so the nightly S6 commands and
@@ -570,8 +813,23 @@ def check_job_commands_keep_views(conn):
     # rebuilt the registry view and so dropped fct_generation, which is the
     # hazard this check guards against.)
     dbt("seed", "--select", "elexon_fuel_codes")
-    dbt("run", "--select", "dim_bm_unit", "fct_generation", "fct_commitments")
-    views = (GENERATION, COMMITMENTS, "dbt_dev.dim_bm_unit")
+    dbt(
+        "run",
+        "--select",
+        "dim_bm_unit",
+        "fct_generation",
+        "fct_commitments",
+        # The shortfall tables' upstream views; the nightly run builds the
+        # tables themselves here, as a full refresh does in production.
+        "stg_elexon__boalf",
+        "int_elexon__bm_unit_cohort",
+    )
+    views = (
+        GENERATION,
+        COMMITMENTS,
+        "dbt_dev.dim_bm_unit",
+        "dbt_dev.int_elexon__bm_unit_cohort",
+    )
     assert all(exists(conn, view) for view in views)
     # Nightly job. Its whole-project test step needs every view, so
     # check_nightly_run.py runs it after a full build; here the period tables'
@@ -585,6 +843,9 @@ def check_job_commands_keep_views(conn):
         "int_elexon__pn_period_mwh+",
         "--exclude",
         "tag:full_population",
+        # Unit tests are CI job 1's: they mock staging views this partial
+        # database does not hold.
+        "test_type:unit",
     )
     # Registry job checks (test, not build).
     dbt("test", "--select", "+dim_bm_unit")
@@ -609,6 +870,7 @@ def main():
     try:
         check_generation(conn)
         check_commitments(conn)
+        check_shortfall(conn)
         check_job_commands_keep_views(conn)
     finally:
         conn.close()

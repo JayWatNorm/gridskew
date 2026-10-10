@@ -1,0 +1,185 @@
+models:
+  - name: int_elexon__bm_unit_cohort
+    description: >
+      Private view. The analysis cohort: one row per registry unit with a
+      published fuel type, with the fuel group from elexon_fuel_codes
+      (unclassified when the code is not in the seed). A unit without a fuel
+      type has no physical baseline and is outside every shortfall result.
+      The cohort rule lives here only.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid BM-unit identifier. The grain.
+        data_tests: [unique, not_null]
+      - name: elexon_bm_unit
+        description: The unit's Elexon identifier, used to find its metered rows.
+      - name: fuel_type
+        description: The published fuel code.
+      - name: fuel_group
+        description: The code's group from the seed.
+        data_tests:
+          - not_null
+
+  - name: int_elexon__instruction_intervals
+    description: >
+      Private incremental table. One row per National Grid BM unit,
+      settlement half-hour and stretch of time in which one acceptance is in
+      force. Acceptances overlap, and a later acceptance supersedes an earlier
+      one only for the minutes they share, which is how the balancing
+      mechanism settles them. Each half-hour is cut wherever an acceptance
+      starts or stops and every piece goes to the most recently issued
+      acceptance covering it. Minutes no acceptance covers have no row; the
+      PN applies there. Built from the latest capture of each ramp point,
+      like int_elexon__boa_by_period. Each run recomputes every half-hour
+      touched by any capture of a ramp point captured since the stored
+      watermark minus capture_margin, replacing all of that half-hour's rows;
+      a half-hour recomputed to no stretch keeps one row with a null
+      interval_from so that its old rows are replaced. After a manual load, a
+      raw edit or a logic change, run
+      `--select int_elexon__instruction_intervals+ --full-refresh`.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid BM-unit identifier. Part of the grain.
+      - name: period_start_utc
+        description: UTC start of the settlement half-hour. Part of the grain.
+      - name: interval_from
+        description: >
+          Start of the stretch, UTC. Part of the grain. Null on the one
+          placeholder row of a half-hour that a later capture left with no
+          stretch; readers skip those rows.
+      - name: interval_to
+        description: End of the stretch, UTC, exclusive.
+      - name: acceptance_number
+        description: The acceptance in force for the stretch.
+      - name: acceptance_time
+        description: When the system operator issued it, UTC.
+      - name: so_flag
+        description: Its so_flag.
+      - name: instructed_mwh
+        description: >
+          Energy of the instructed level over the stretch: the mean of the MW
+          at its two ends times its hours, rounded to six decimal places.
+      - name: retrieved_at
+        description: When the chosen capture of the ramp point was polled.
+      - name: last_captured_at
+        description: >
+          Latest retrieved_at over every ramp point touching the half-hour;
+          the source of the incremental watermark.
+
+  - name: int_shortfall_by_unit_period
+    description: >
+      Private incremental table. One row per cohort unit and settlement period
+      that has a PN. The cohort is every registry unit with a published fuel
+      type, grouped by elexon_fuel_codes; a unit without a fuel type has no
+      physical baseline and is outside the table. Expected output is the PN
+      with the instructed level in its place for the minutes an acceptance
+      was in force. metered_mwh is the latest settlement run captured; the first
+      captured value is carried for the restatement check. Each run recomputes
+      only unit-periods with a PN, metered or acceptance capture since the
+      stored watermark minus capture_margin, and every period of a unit whose
+      fuel type or Elexon ID in the cohort differs from the ones stored or that
+      has no rows yet. Two registry events need a full refresh: a unit that
+      loses its fuel type keeps its rows (the analyses join the cohort, so it
+      leaves the results at once), and another unit starting or stopping to
+      share this unit's Elexon ID changes the metered mapping without
+      touching this unit's registry row; the nightly warning
+      warn_cohort_elexon_id_shared names the units concerned. After a manual load, a raw edit,
+      a seed change or a logic change, run
+      `--select int_shortfall_by_unit_period+ --full-refresh`. Every result
+      read from this table is conditional on the cohort; the coverage analysis
+      reports what the cohort leaves out.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid BM-unit identifier. Part of the key.
+        data_tests:
+          - not_null:
+              config:
+                tags: [full_population]
+      - name: settlement_date
+        description: Settlement date, British local time. Part of the key.
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50. Part of the key.
+      - name: period_start_utc
+        description: UTC start of the half-hour.
+      - name: elexon_bm_unit
+        description: >
+          The unit's Elexon identifier when the row was last built, used to
+          find its metered rows; a change rebuilds the unit's rows the next
+          night.
+      - name: fuel_type
+        description: >
+          The registry's published fuel code for the unit when the row was
+          last built; a registry change rebuilds the unit's rows the next
+          night.
+      - name: fuel_group
+        description: >
+          The code's group from elexon_fuel_codes (gas_turbine, nuclear, wind,
+          bioenergy, hydro, coal, oil, pumped_storage, interconnector, other);
+          unclassified when the code is not in the seed.
+      - name: pn_mwh
+        description: The notified energy from fct_commitments; null unless complete.
+      - name: pn_coverage_status
+        description: complete, incomplete or invalid, from fct_commitments.
+      - name: metered_mwh
+        description: Energy of the latest settlement run captured, from fct_generation.
+      - name: metered_run_code
+        description: The run that metered_mwh comes from (II, SF, R1 ...).
+      - name: first_metered_mwh
+        description: Energy of the first run captured for the period.
+      - name: first_run_code
+        description: The run that first_metered_mwh comes from.
+      - name: metered_row_count
+        description: >
+          Metered rows mapped to this unit and period; more than one means two
+          Elexon IDs map to the unit and the period is ambiguous_metered.
+      - name: acceptance_count
+        description: Distinct acceptances in force at some point in the half-hour.
+      - name: latest_acceptance_time
+        description: When the most recent of them was issued; null when uninstructed.
+      - name: any_so_flag
+        description: True when any acceptance in force carries so_flag.
+      - name: instructed_seconds
+        description: Seconds of the half-hour an acceptance was in force, 0 to 1,800.
+      - name: instruction_status
+        description: >
+          uninstructed (0 s), partially_instructed or fully_instructed
+          (1,800 s). Each is determinable; the status only says how much of
+          the expected output came from acceptances.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [uninstructed, fully_instructed, partially_instructed]
+      - name: instructed_mwh
+        description: Energy of the acceptances in force over their minutes; null when uninstructed.
+      - name: pn_in_instructed_mwh
+        description: PN energy over those same minutes, from the chosen PN capture.
+      - name: expected_mwh
+        description: >
+          pn_mwh minus pn_in_instructed_mwh plus instructed_mwh; instructed_mwh
+          alone when the acceptances cover the whole half-hour. Null when the
+          PN is not complete and the acceptances do not cover it.
+      - name: unexplained_shortfall_mwh
+        description: expected_mwh minus metered_mwh. Positive means under-delivery.
+      - name: deviation_from_pn_mwh
+        description: pn_mwh minus metered_mwh, whatever the instruction.
+      - name: instructed_deviation_mwh
+        description: >
+          pn_mwh minus expected_mwh: the part of the deviation from PN that
+          the acceptances asked for. deviation_from_pn_mwh equals
+          instructed_deviation_mwh plus unexplained_shortfall_mwh.
+      - name: determinability
+        description: >
+          determinable, or why not: no_metered_value, ambiguous_metered,
+          pn_incomplete, pn_invalid.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - determinable
+                  - no_metered_value
+                  - ambiguous_metered
+                  - pn_incomplete
+                  - pn_invalid
+      - name: last_captured_at
+        description: >
+          Latest capture among the PN, the metered row and the acceptances;
+          the source of the incremental watermark.

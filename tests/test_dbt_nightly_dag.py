@@ -52,14 +52,24 @@ def test_full_refresh_rebuilds_descendants_after_contract_tests(nightly):
     assert commands[-1] == [
         "build",
         "--select",
+        "int_elexon__bm_unit_cohort+",
         "int_elexon__b1610_period+",
         "int_elexon__pn_period_mwh+",
+        "int_elexon__instruction_intervals+",
+        "int_shortfall_by_unit_period+",
         "--full-refresh",
     ]
 
 
 def test_missing_period_table_is_reported(nightly):
-    conn = connection_returning((None, "dbt_dev.int_elexon__pn_period_mwh"))
+    conn = connection_returning(
+        (
+            None,
+            "dbt_dev.int_elexon__pn_period_mwh",
+            "dbt_dev.int_elexon__instruction_intervals",
+            "dbt_dev.int_shortfall_by_unit_period",
+        )
+    )
     assert nightly["missing_period_tables"](conn) == ["int_elexon__b1610_period"]
 
 

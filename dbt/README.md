@@ -31,7 +31,9 @@ before running a command that creates or updates relations. Use a full
 | `../dbt_profiles/` | Local profile; credentials come from environment variables |
 
 Models are materialised as views unless a model defines a different strategy.
-Staging models must not join, aggregate or deduplicate source rows.
+Staging models must not aggregate or deduplicate source rows, and join only
+to attach a capture's own metadata (`stg_elexon__bm_units` reads its
+extract's retrieval time from the manifest).
 
 ## BM-unit registry lineage
 
@@ -109,7 +111,9 @@ input handling later diverges through casting, renaming or filtering.
 
 ## Period facts
 
-The two period tables recompute only settlement periods with new captures.
+The four incremental tables recompute only settlement periods with new
+captures: the two period tables that feed the fact views, and the two
+shortfall tables below them.
 
 The following is the normal nightly command sequence for reference. Live runs
 use the guarded Airflow task in the shared `gridskew_dbt` pool; these commands
@@ -124,7 +128,7 @@ dbt test --selector nightly_tests
 | Selector | Selects |
 |---|---|
 | `nightly_run_code_check` | The generic tests of `stg_elexon__b1610`; an unknown settlement-run code stops the job before a table is written |
-| `nightly_models` | Every incremental model |
+| `nightly_models` | Every incremental model: the two period tables, then the instruction intervals and the shortfall table |
 | `nightly_tests` | Every data test except those tagged `full_population` and any test of the BM-unit snapshot |
 
 The job never recreates a view. `nightly_tests` covers the sources, the
@@ -140,8 +144,7 @@ incremental model is added to that list in the same change; CI fails
 otherwise.
 
 A manual load outside the capture-time margin, a raw edit, a settlement-run
-seed change, a model-logic change or the monthly recovery requires an observed
-full refresh. Trigger `gridskew__dbt_nightly` with `full_refresh=true` through
+seed change or a model-logic change requires an observed full refresh. Trigger `gridskew__dbt_nightly` with `full_refresh=true` through
 the platform runbook. Its source/run-code checks block before the write, and
 its descendant build restores the fact views. Coordinate the shared dbt pool,
 verify all descendants and tests afterwards, and follow the runbook's recovery
@@ -189,7 +192,45 @@ instructed ramp into settlement half-hours and integrates it to MWh with the
 `ramp_mwh` macro; it reads the latest capture of each ramp point, because an
 acceptance that crosses midnight arrives in two daily polls. No model yet
 chooses the current row of a REMIT notice. The nightly job runs the data
-tests of these models; no scheduled job builds them.
+tests of these views; no scheduled job builds them.
+
+## Shortfall
+
+Two private incremental tables in the `analysis` group answer how far a
+unit's metered output is from what it was expected to produce.
+
+`int_elexon__bm_unit_cohort` is the cohort: every registry unit with a
+published fuel type, grouped by `elexon_fuel_codes`. A unit without a fuel
+type has no physical baseline and is outside every shortfall result.
+
+`int_elexon__instruction_intervals` holds, for each unit and half-hour, the
+stretches of time in which one acceptance was in force. Acceptances overlap,
+and a later acceptance supersedes an earlier one for the minutes they share
+and no others, which is how the balancing mechanism settles them. Each
+half-hour is cut wherever an acceptance starts or stops and every piece goes
+to the most recently issued acceptance that covers it; the PN applies where
+no acceptance does.
+
+`int_shortfall_by_unit_period` has one row per cohort unit and half-hour
+with a PN. Expected output is the PN energy outside the instructed stretches
+plus the instructed energy inside them; `unexplained_shortfall_mwh` is the
+expected energy minus the latest settlement run's metered energy, and
+`deviation_from_pn_mwh` splits into `instructed_deviation_mwh` plus that
+shortfall. A period that cannot be judged keeps its row and says why in
+`determinability`. Both tables use the period tables' incremental rule and
+are named in the nightly DAG's `PERIOD_TABLES`. A registry change that
+alters a cohort unit's fuel type or Elexon ID reaches its rows the next
+night. Two registry events do not, and need a full refresh: a unit that
+loses its fuel type keeps its rows (the analyses join the cohort, so it
+leaves the results at once), and another unit starting or stopping to
+share a cohort unit's Elexon ID, which `warn_cohort_elexon_id_shared`
+reports each night.
+
+Three analyses read the table and no job runs them:
+`q3_metered_vs_notified.sql` (median and interquartile range of the
+deviation per fuel group), `q12_instructed_vs_residual.sql` (the instructed
+share of the deviation) and `q3_coverage.sql` (what the cohort holds against
+every mapped unit-period). Every result is conditional on the cohort.
 
 ## Carbon forecast trajectory
 
@@ -256,8 +297,11 @@ runs a full build against an ephemeral PostgreSQL service, then the nightly
 commands; it does not deploy relations to the homelab.
 
 On a pull request CI also runs
-`dbt build --select +state:modified+ --state <manifest of the last main run>`.
-It rebuilds the changed nodes with everything above and below them. The
+`dbt build --select +state:modified+ --state <manifest of the last main run>`
+with cautious indirect selection. It rebuilds the changed nodes with
+everything above and below them; a test is run only when every model it
+reads is in that set, because rebuilding a view drops a dependant view that
+is not. The
 manifest is a workflow artifact that each `main` run uploads; when none
 exists the step is skipped and the full build stands alone.
 

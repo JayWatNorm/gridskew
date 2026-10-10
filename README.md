@@ -210,6 +210,14 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   `int_elexon__pn_period_mwh`, maintain metered and committed energy.
   `fct_generation` and `fct_commitments` expose those values as views joined
   to current registry evidence.
+- Two more private incremental tables carry the shortfall question:
+  `int_elexon__instruction_intervals` holds, for each half-hour, the
+  stretches in which a bid-offer acceptance was in force, and
+  `int_shortfall_by_unit_period` compares each registry unit with a fuel
+  type against its expected output, the PN with the instructed level in its
+  place for those stretches. Three analyses read it: metered against
+  notified by fuel group, instructed against unexplained deviation, and the
+  coverage the cohort gives against the whole source.
 - `elexon_settlement_run_codes` supplies settlement-run ordering and
   `elexon_fuel_codes` supports registry validation.
 
@@ -217,7 +225,7 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 
 - Four views trace each half-hour's carbon forecast from its first to its
   final version under a reading rule fixed in advance. The drift result is
-  read once, when 60 days of complete trajectories exist; see
+  read once, when 2,880 complete half-hours exist; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 
 **Available reference data**
@@ -228,13 +236,15 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 
 **Next**
 
-- First results from data already held: how carbon-intensity forecasts drift
-  as a period approaches, how forecast accuracy changes with lead time, and a
-  check that settlement revisions do not change the headline
 - How metered output is revised between settlement runs, from the bounded R1
   capture
-- Shortfall separated into instructed and residual parts, from the balancing
-  instructions and outage notices now held
+- The first shortfall results: metered against notified by fuel group, and
+  the instructed share of the deviation, with coverage beside them
+- How carbon-intensity forecasts drift as a period approaches and how
+  forecast accuracy changes with lead time, once 2,880 complete half-hours
+  exist
+- Outage notices joined to the shortfall as the market knew them at the
+  period start
 - Airflow 3 upgrade (October to early November)
 
 Demand, system prices and weather remain later extensions.

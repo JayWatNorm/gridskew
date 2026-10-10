@@ -5,7 +5,7 @@ The validator is offline and source-independent: callers provide decoded rows
 and the matching contract.
 
 **Deployment:** Runtime validation and quarantine are deployed for PN, QPN,
-B1610 and both Carbon datasets. Carbon forecast and outturn completeness checks
+B1610, BOALF, REMIT and both Carbon datasets. Carbon forecast and outturn completeness checks
 are also deployed. The BM-unit complete-response path is deployed separately;
 its gate publishes only successful complete extracts.
 
@@ -29,7 +29,10 @@ an error finding and does not stop later rows from being checked.
 
 Pollers validate the response envelope before row validation. Elexon expects a
 non-empty list; Carbon expects a dictionary containing a non-empty `data` list.
-Invalid envelopes fail without parsing, loading or quarantine.
+Invalid envelopes fail without parsing, loading or quarantine. REMIT is the
+exception: an empty list is a normal window in which nothing was published,
+and the run continues (see
+[REMIT ingestion](elexon/031_remit_ingestion.md)).
 
 Carbon also checks semantic period coverage after compatible rows are loaded.
 Forecast requires consecutive half-hour periods that contain the request time
@@ -73,18 +76,23 @@ the run then fails.
 `process_rows` returns the rejected-row count. Each poller uses that count to
 set its final task status after successful writes. Available compatible data is
 therefore retained even when the task reports an incomplete or invalid response.
+REMIT counts from the table instead: every run fails while any `REMIT` row is
+in `raw.endpoint_quarantine`, so a rejected message is not forgotten by the
+next window. Recovery is in [REMIT ingestion](elexon/031_remit_ingestion.md).
 
 ## Components
 
 | File | Responsibility |
 |---|---|
 | [`validation.py`](../../ingestion/validation.py) | Generic flat and nested contract checks |
-| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN, B1610 and BM-unit contracts |
+| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN, B1610, BOALF, REMIT and BM-unit contracts |
 | [`contracts.py`](../../ingestion/carbon_intensity/contracts.py) | Forecast and outturn contracts |
 | [`routing.py`](../../ingestion/routing.py) | Shared warning, quarantine and compatible-row routing |
 | [`pn_poller.py`](../../ingestion/elexon/pn_poller.py) | PN response window, parser and loader |
 | [`qpn_poller.py`](../../ingestion/elexon/qpn_poller.py) | QPN response window, parser and loader |
 | [`b1610_poller.py`](../../ingestion/elexon/b1610_poller.py) | B1610 response window, parser, loader and Decimal encoder |
+| [`boalf_poller.py`](../../ingestion/elexon/boalf_poller.py) | BOALF response window, parser and loader |
+| [`remit_poller.py`](../../ingestion/elexon/remit_poller.py) | REMIT watermark windows, parser, loader and quarantine gate |
 | [`bmunits_poller.py`](../../ingestion/elexon/bmunits_poller.py) | Complete registry gate, manifest and raw-row loader |
 | [`V006__endpoint_quarantine.sql`](../../sql/migrations/V006__endpoint_quarantine.sql) | Rejected-row table |
 

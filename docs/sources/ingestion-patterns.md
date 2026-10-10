@@ -147,7 +147,8 @@ you would simply be blocked.
 - **Identify yourself.** Both sets of terms prohibit concealing an application's
   identity. `gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
 - **Add expected-volume checks, not just status-code and container checks.**
-  The current Elexon pollers reject empty and malformed outer responses. A
+  The current Elexon pollers reject empty and malformed outer responses
+  (REMIT accepts an empty window, because nothing may have been published). A
   truncated or throttled response could still return 200 with a non-empty list
   whose returned rows satisfy the schema but whose total row count is
   unexpectedly low. The pollers would load those returned rows normally;
@@ -185,6 +186,10 @@ a run rather than of a row.
 | Carbon intensity outturn | `catchup=False`, rolling 7-day window, weekly re-fetch of any gap in history | Addressable, but actuals arrive late for every period. Volume so small the overlap is free |
 | Elexon PN, QPN and B1610 II | `catchup=True`, daily chunks | Addressable, high volume, and responsible for the historical load |
 | Elexon B1610 SF | `catchup=False`, fixed 35-day lag | Runs forwards only to capture SF while it is available |
+| Elexon B1610 R1 cohort | event timetable, one capture per listed date | A bounded cohort: each date is fetched once, on the day its run is published |
+| Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |
+| Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap | Event stream with no cadence; the overlap catches late rows, and the key rejects repeats |
+| Elexon BM units | `catchup=False`, daily complete extract | A reference set published whole; a partial response is never published |
 
-Four behaviours, four justifications. The differences follow from source
-behaviour, volume and whether the DAG must load history.
+The differences follow from source behaviour, volume and whether the DAG
+must load history.

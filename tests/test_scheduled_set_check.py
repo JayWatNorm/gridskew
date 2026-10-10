@@ -79,6 +79,8 @@ def test_the_nightly_dag_supplies_its_guarded_tables():
     assert nightly_guarded_tables() == (
         "int_elexon__b1610_period",
         "int_elexon__pn_period_mwh",
+        "int_elexon__instruction_intervals",
+        "int_shortfall_by_unit_period",
     )
 
 

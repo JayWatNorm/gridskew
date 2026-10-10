@@ -3,8 +3,8 @@
 Scheduled runs only write rows: they run the incremental models, then every
 test except those that re-read all history, and never recreate a view. Trigger
 with {"full_refresh": true} after a load outside Airflow, a raw edit, a
-settlement-run seed change, a model logic change, and monthly; that run
-rebuilds the tables and fact views and runs every test of them. The DAG is
+settlement-run seed change or a model logic change; that run rebuilds the
+tables and fact views and runs every test of them. The DAG is
 created paused; enable it after an observed full refresh.
 
 Each dbt command records its node results in dbt_dev.dbt_node_results. A run
@@ -25,7 +25,15 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
 DBT_PROJECT = f"{PROJECT_PATH}/dbt"
 DBT_PROFILES = "/opt/airflow/dbt_profiles"
 DBT_LOGS = "/opt/airflow/data/gridskew/dbt_logs"
-PERIOD_TABLES = ("int_elexon__b1610_period", "int_elexon__pn_period_mwh")
+PERIOD_TABLES = (
+    "int_elexon__b1610_period",
+    "int_elexon__pn_period_mwh",
+    "int_elexon__instruction_intervals",
+    "int_shortfall_by_unit_period",
+)
+# Views the tables read that no scheduled command builds; a full refresh
+# creates them first, so a new view reaches production with its table.
+REFRESH_VIEWS = ("int_elexon__bm_unit_cohort",)
 RECORD_NODE_RESULTS = ("--vars", "{audit: true}")
 ARTIFACTS = "/opt/airflow/data/gridskew/artifacts"
 ARTIFACT_FILES = ("manifest.json", "run_results.json")
@@ -97,8 +105,8 @@ def dbt_commands(full_refresh):
     """
 
     period_tables_and_descendants = []
-    for table in PERIOD_TABLES:
-        period_tables_and_descendants.append(f"{table}+")
+    for relation in (*REFRESH_VIEWS, *PERIOD_TABLES):
+        period_tables_and_descendants.append(f"{relation}+")
 
     test_run_codes = ["test", "--selector", "nightly_run_code_check"]
     test_sources = [
@@ -214,7 +222,9 @@ def gridskew__dbt_nightly():
         ) as work_dir:
             env = dbt_environment(work_dir, run_id)
             for args in dbt_commands(full_refresh):
-                run_dbt(env, args, timeout_minutes=110 if full_refresh else 30)
+                # 45 minutes: the first night after a catch-up capture can
+                # recompute every half-hour with an acceptance (about 25 min).
+                run_dbt(env, args, timeout_minutes=110 if full_refresh else 45)
             publish_artifacts(
                 env["DBT_TARGET_PATH"], ARTIFACTS, datetime.now(timezone.utc)
             )
