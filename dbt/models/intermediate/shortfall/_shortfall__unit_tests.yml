@@ -1,0 +1,109 @@
+unit_tests:
+  - name: test_instruction_intervals_latest_acceptance_wins_its_minutes
+    description: >
+      UNIT-1 has acceptance 1 (issued 09:00) at a flat 20 MW for the whole
+      half-hour and acceptance 2 (issued 09:05) at a flat 60 MW for its last
+      15 minutes. Acceptance 2 wins only the minutes it covers: 10:00 to
+      10:15 stay with acceptance 1 (5 MWh) and 10:15 to 10:30 go to
+      acceptance 2 (15 MWh). UNIT-2's single acceptance covers 10:10 to
+      10:20 at 30 MW (5 MWh) and the rest of its half-hour has no row.
+    model: int_elexon__instruction_intervals
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_elexon__boalf')
+        format: csv
+        rows: |
+          national_grid_bm_unit,bm_unit,acceptance_number,acceptance_time,time_from,time_to,level_from,level_to,so_flag,retrieved_at
+          UNIT-1,T_UNIT-1,1,2026-01-15 09:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,20,20,false,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,2,2026-01-15 09:05:00+00,2026-01-15 10:15:00+00,2026-01-15 10:30:00+00,60,60,true,2026-01-16 00:00:00+00
+          UNIT-2,T_UNIT-2,3,2026-01-15 09:00:00+00,2026-01-15 10:10:00+00,2026-01-15 10:20:00+00,30,30,false,2026-01-16 00:00:00+00
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,period_start_utc,interval_from,interval_to,acceptance_number,so_flag,instructed_mwh
+        UNIT-1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:15:00+00,1,false,5.000000
+        UNIT-1,2026-01-15 10:00:00+00,2026-01-15 10:15:00+00,2026-01-15 10:30:00+00,2,true,15.000000
+        UNIT-2,2026-01-15 10:00:00+00,2026-01-15 10:10:00+00,2026-01-15 10:20:00+00,3,false,5.000000
+
+  - name: test_shortfall_expected_output_rules
+    description: >
+      A: uninstructed uses the PN (shortfall 5). B: an acceptance in force
+      for the last 15 minutes replaces the PN for those minutes only, so the
+      expected energy is 25 of PN plus 15 instructed = 40 (shortfall 10,
+      deviation from PN 20, instructed deviation 10). C: no metered value is
+      labelled. D: an incomplete PN with no acceptance is labelled. F: two
+      metered rows for one period are reported, not summed. G: an acceptance
+      covering the whole half-hour makes the period determinable even though
+      its PN is incomplete. H: a PN capture with a segment of no duration is
+      invalid; its acceptance does not cover the half-hour, so the period is
+      labelled and nothing divides by zero. A unit outside the cohort has no
+      row.
+    model: int_shortfall_by_unit_period
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('int_elexon__bm_unit_cohort')
+        format: csv
+        rows: |
+          national_grid_bm_unit,elexon_bm_unit,fuel_type,fuel_group
+          A,T_A,CCGT,gas_turbine
+          B,T_B,CCGT,gas_turbine
+          C,T_C,WIND,wind
+          D,T_D,WIND,wind
+          F,T_F,NUCLEAR,nuclear
+          G,T_G,WIND,wind
+          H,T_H,WIND,wind
+      - input: ref('fct_commitments')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at
+          A,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
+          B,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
+          C,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
+          D,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00
+          E,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
+          F,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
+          G,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00
+          H,2026-01-15,21,2026-01-15 10:00:00+00,,invalid,2026-01-16 00:00:00+00
+      - input: ref('stg_elexon__pn')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
+          B,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,100,100,2026-01-16 00:00:00+00
+          B,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,999,999,2026-01-15 00:00:00+00
+          G,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:10:00+00,80,80,2026-01-16 00:00:00+00
+          H,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:05:00+00,2026-01-15 10:05:00+00,50,50,2026-01-16 00:00:00+00
+      - input: ref('fct_generation')
+        format: csv
+        rows: |
+          bm_unit,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code
+          T_A,2026-01-15 10:00:00+00,mapped,A,45,SF,2026-01-20 00:00:00+00,44,II
+          T_B,2026-01-15 10:00:00+00,mapped,B,30,SF,2026-01-20 00:00:00+00,30,SF
+          T_D,2026-01-15 10:00:00+00,mapped,D,40,SF,2026-01-20 00:00:00+00,40,SF
+          T_E,2026-01-15 10:00:00+00,mapped,E,40,SF,2026-01-20 00:00:00+00,40,SF
+          T_F,2026-01-15 10:00:00+00,mapped,F,40,SF,2026-01-20 00:00:00+00,40,SF
+          T_F,2026-01-15 10:00:00+00,mapped,F,41,SF,2026-01-21 00:00:00+00,41,SF
+          T_G,2026-01-15 10:00:00+00,mapped,G,20,SF,2026-01-20 00:00:00+00,20,SF
+          T_H,2026-01-15 10:00:00+00,mapped,H,20,SF,2026-01-20 00:00:00+00,20,SF
+      - input: ref('int_elexon__instruction_intervals')
+        format: csv
+        rows: |
+          national_grid_bm_unit,period_start_utc,interval_from,interval_to,acceptance_number,acceptance_time,so_flag,instructed_mwh,last_captured_at
+          B,2026-01-15 10:00:00+00,2026-01-15 10:15:00+00,2026-01-15 10:30:00+00,2,2026-01-15 09:05:00+00,true,15,2026-01-17 00:00:00+00
+          G,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,7,2026-01-15 09:50:00+00,false,20,2026-01-17 00:00:00+00
+          H,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:10:00+00,8,2026-01-15 09:50:00+00,false,5,2026-01-17 00:00:00+00
+    # dbt compares numbers as text: the rounded energies carry six decimals.
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,fuel_group,instruction_status,instructed_seconds,pn_in_instructed_mwh,expected_mwh,metered_mwh,unexplained_shortfall_mwh,deviation_from_pn_mwh,instructed_deviation_mwh,metered_row_count,determinability,last_captured_at
+        A,gas_turbine,uninstructed,0,,50.000000,45,5.000000,5.000000,0.000000,1,determinable,2026-01-20 00:00:00+00
+        B,gas_turbine,partially_instructed,900,25.000000,40.000000,30,10.000000,20.000000,10.000000,1,determinable,2026-01-20 00:00:00+00
+        C,wind,uninstructed,0,,50.000000,,,,0.000000,0,no_metered_value,2026-01-16 00:00:00+00
+        D,wind,uninstructed,0,,,40,,,,1,pn_incomplete,2026-01-20 00:00:00+00
+        F,nuclear,uninstructed,0,,50.000000,41,9.000000,9.000000,0.000000,2,ambiguous_metered,2026-01-21 00:00:00+00
+        G,wind,fully_instructed,1800,13.333333,20.000000,20,0.000000,,,1,determinable,2026-01-20 00:00:00+00
+        H,wind,partially_instructed,600,,,20,,,,1,pn_invalid,2026-01-20 00:00:00+00

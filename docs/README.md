@@ -50,7 +50,7 @@ docs/sources/
     041_boalf_ingestion.md      daily, catchup=True, every poll kept
     050_demand.md             Expected versus actual usage             [later]
     060_system-prices.md      The cost of fixing the imbalance         [later]
-    070_bmunits.md            The address book                         [deployed]
+    070_bmunits.md            The address book                         [running]
     071_bmunits_ingestion.md    daily registry capture and observed history
     080_mels-mils.md          The headroom                             [optional]
 ```

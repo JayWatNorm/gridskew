@@ -13,6 +13,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from airflow.decorators import dag, task
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 # Namespaced per project, matching the bind-mount declared in the Airflow
 # compose file. Deliberately not a global PYTHONPATH:
@@ -30,7 +31,8 @@ def settlement_date_to_capture(data_interval_start):
 
 @dag(
     dag_id="gridskew_elexon_b1610_SF",
-    schedule="@daily",
+    # Not "@daily": this timetable keeps a full-day data interval on Airflow 3.
+    schedule=CronDataIntervalTimetable("0 0 * * *", timezone="UTC"),
     start_date=datetime(2025, 9, 26, tzinfo=timezone.utc),
     catchup=False,
     max_active_runs=1,

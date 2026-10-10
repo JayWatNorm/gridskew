@@ -36,6 +36,8 @@ def load_dag_file(monkeypatch, file_name, connections=None):
     timetables.__path__ = []
     events = ModuleType("airflow.timetables.events")
     events.EventsTimetable = fake_events_timetable
+    interval = ModuleType("airflow.timetables.interval")
+    interval.CronDataIntervalTimetable = FakeCronDataIntervalTimetable
     pendulum = ModuleType("pendulum")
     pendulum.datetime = utc_datetime
 
@@ -45,12 +47,23 @@ def load_dag_file(monkeypatch, file_name, connections=None):
     monkeypatch.setitem(sys.modules, "airflow.hooks.base", base)
     monkeypatch.setitem(sys.modules, "airflow.timetables", timetables)
     monkeypatch.setitem(sys.modules, "airflow.timetables.events", events)
+    monkeypatch.setitem(sys.modules, "airflow.timetables.interval", interval)
     monkeypatch.setitem(sys.modules, "pendulum", pendulum)
     return runpy.run_path(str(DAGS_DIRECTORY / file_name))
 
 
-def replace_with_do_nothing(**_settings):
-    """Stand in for @dag(...) and @task(...), so loading a DAG file runs no task."""
+DAG_SETTINGS = {}
+
+
+def replace_with_do_nothing(**settings):
+    """Stand in for @dag(...) and @task(...), so loading a DAG file runs no task.
+
+    The settings of each @dag(...) are kept in DAG_SETTINGS by dag_id, so a
+    test can read a schedule without Airflow.
+    """
+
+    if "dag_id" in settings:
+        DAG_SETTINGS[settings["dag_id"]] = settings
 
     def replace(_function):
         return do_nothing
@@ -64,6 +77,14 @@ def do_nothing():
 
 def fake_events_timetable(**_settings):
     return None
+
+
+class FakeCronDataIntervalTimetable:
+    """Stand in for Airflow's CronDataIntervalTimetable; keeps its arguments."""
+
+    def __init__(self, cron, timezone):
+        self.cron = cron
+        self.timezone = timezone
 
 
 def utc_datetime(year, month, day, hour, tz):
