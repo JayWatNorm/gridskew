@@ -14,8 +14,8 @@ prediction drift in a consistent direction?
 
 ---
 
-Every forecast the model has ever published for a given settlement period, from
-roughly 48 hours ahead down to minutes before.
+Every forecast polled for a given settlement period since the archive started,
+from roughly 48 hours ahead down to minutes before.
 
 The source overwrites its forecast every 30 minutes, so this sequence exists
 nowhere else and cannot be reconstructed after the fact. This is the dataset
@@ -31,10 +31,11 @@ GET https://api.carbonintensity.org.uk/intensity/{from}/fw48h
 |---|---|---|
 | `from` | path | `YYYY-MM-DDTHH:MMZ`. The poller passes the current UTC time |
 
-Returns **96 or 97** half-hourly periods covering the next 48 hours. The count
-varies: a request landing exactly on a half-hour boundary returns 97, one
-mid-period returns 96. Scheduled runs fire at `:05` and `:35`, so the count is
-not treated as a fixed response contract.
+Normally returns **96 or 97** half-hourly periods covering the next 48 hours:
+97 for a request exactly on a half-hour boundary, 96 for one mid-period. When
+the source feed stops extending, it returns fewer. The poller checks the periods
+rather than a fixed count; see
+[011_forecast_ingestion.md](011_forecast_ingestion.md).
 
 ## Response
 
@@ -100,11 +101,9 @@ See [011_forecast_ingestion.md](011_forecast_ingestion.md).
 
 ## Traps
 
-**`retrieved_at` must be captured once per poll**, before the HTTP request, and
-written identically to every row in the batch. Generate it per row and the
-batch dissolves into near-identical timestamps, losing the thing the archive
-exists to record.
+**`retrieved_at` is captured once per poll.** See
+[011_forecast_ingestion.md](011_forecast_ingestion.md).
 
-**Two columns are `integer` and two are `timestamptz`**, so a positional swap in
+**Two columns are `integer` and three are `timestamptz`**, so a positional swap in
 the parse tuple is accepted silently by Postgres. `tests/test_forecast_poller.py`
 pins every column position with a golden value for exactly this reason.

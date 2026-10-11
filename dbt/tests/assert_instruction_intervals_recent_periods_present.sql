@@ -3,7 +3,7 @@
 -- capture_margin, up to the watermark) has a row in the intervals table.
 -- Returns the missing half-hours. A half-hour that only an older capture of
 -- the ramp point reached has no row after a full refresh and a placeholder
--- after an incremental run; neither is missing. Cheap: the literal watermark
+-- after an incremental run; neither is missing. The literal watermark
 -- lets it read only recent raw rows through the index. A row committed
 -- between the build and this test can fail it once; the next build picks that
 -- row up.

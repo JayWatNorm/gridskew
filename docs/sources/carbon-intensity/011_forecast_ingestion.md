@@ -4,8 +4,7 @@ How `raw.carbon_intensity_forecast` is loaded. For what the data means, see
 [010_forecast.md](010_forecast.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: running in production since 2026-08-17. Runtime validation,
-quarantine and period-completeness checks are deployed.**
+**Status: running in production since 2026-08-17.**
 
 | | |
 |---|---|
@@ -17,14 +16,13 @@ quarantine and period-completeness checks are deployed.**
 | `catchup` | **`False`** |
 | Task SLA | **35 minutes**: the 30-minute interval plus five minutes to complete |
 
-A scheduled task that misses this deadline is recorded as an SLA miss in
-Airflow; it is not cancelled, failed or retried.
+A run due at `10:05` has a deadline of `10:10`. A task that misses it is
+recorded as an SLA miss in Airflow; it is not cancelled, failed or retried.
 
 The five-minute schedule offset reduces the risk of polling while NESO is still
 publishing its boundary update. The API response has no publication timestamp
 or revision identifier, so a successful request at exactly `:00` or `:30`
-cannot prove that it received the new forecast vintage. With the offset, a run
-due at `10:05` has an SLA deadline of `10:10`.
+cannot prove that it received the new forecast vintage.
 
 ## `catchup=False` is load-bearing here
 
@@ -34,14 +32,10 @@ returns the final revision, not the forecast that existed then.
 
 A backfilled run would therefore fetch **current** data for every historical
 logical interval. The poller uses the actual execution time for `retrieved_at`,
-so those runs would create hundreds of near-identical current observations, not
-the missing historical revisions.
+so those runs would store copies of the current forecast, not the missing
+historical revisions.
 
-> Setting `catchup=True` here would not backfill history. It would write today's
-> forecast hundreds of times with slightly different current timestamps and
-> pollute the archive with scheduler-created duplicates of one forecast state.
-
-This is the opposite of the Elexon datasets, which are fully addressable and use
+This is the opposite of the addressable Elexon time series such as PN, which use
 `catchup=True`. The setting follows from the source, not from preference.
 
 ## There is no backfill, and there never can be
@@ -74,7 +68,7 @@ plausible.
 
 The poller requires a dictionary containing a non-empty `data` list, then
 validates each period against the forecast contract. `forecast` and `index` are
-required; future `actual` is required but may be null.
+required and non-null; `actual` must be present but may be null.
 
 Warning-only rows remain loadable. Rejected rows are quarantined with the
 request timestamp and 48-hour horizon, compatible rows are loaded, and the task
@@ -93,7 +87,7 @@ succeeds, because a retry would store the same rows again. A poll with fewer
 than 96 rows is therefore a repeat of a frozen feed, not a new forecast, and
 models must not count it as one.
 
-## Question running against this table
+## The question this table answers
 
 Does the forecast drift one way between its first and its final version? The
 rule for reading the answer is fixed before any drift value is read, and the

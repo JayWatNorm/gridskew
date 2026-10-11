@@ -1,6 +1,6 @@
 # Demand forecast and outturn
 
-**Not yet ingested.** Planned for Phase 1, step 3 of the thesis.
+**Not ingested.**
 
 Several related datasets, documented together because they share a shape.
 
@@ -14,28 +14,27 @@ comes in above forecast, one reason is that generators fell short and gas
 filled the gap. Another, entirely different reason is that the country simply
 used more electricity than expected, so more had to be generated.
 
-Without demand data you cannot separate those two stories, and the thesis would
-be claiming a mechanism it had not isolated. This is the control dataset for
-that competing explanation.
+Without demand data the two cannot be separated. This is the control dataset
+for that competing explanation.
 
 ---
 
 ## The datasets
 
-Definitions below are quoted from the API's own endpoint descriptions rather
-than paraphrased, because the difference between the two families is precisely
-what makes them easy to misuse.
+Definitions follow the API's endpoint descriptions. The two families include
+different flows, which is what makes them easy to misuse.
 
 | Dataset | Meaning |
 |---|---|
 | `NDF` | National Demand forecast. **Includes** transmission losses. **Excludes** interconnector flows, and demand from station transformers and pumped storage units |
 | `TSDF` | Transmission System Demand forecast. **Includes** interconnector flows, and demand from station transformers and pumped storage units |
-| `INDO` | Initial National Demand outturn. What `NDF` forecast |
-| `ITSDO` | Initial Transmission System Demand outturn. What `TSDF` forecast |
+| `INDO` | Initial National Demand outturn. Outturn on the `NDF` basis |
+| `ITSDO` | Initial Transmission System Demand outturn. Outturn on the `TSDF` basis |
 
-Both forecasts are expressed as an **average MW value for each settlement
-period**, based on historically metered generation output for Great Britain,
-and are received daily from NGESO showing values for the day ahead.
+Both forecasts are an **average MW value for each settlement period**, based on
+historically metered generation output for Great Britain. The API description
+says they come daily from NGESO (now NESO) for the day ahead; observed
+publications are more frequent and cover a longer horizon (see below).
 
 `NDF` and `TSDF` pair with `INDO` and `ITSDO` respectively. **Do not mix a
 forecast from one family with an outturn from the other**: the inclusions
@@ -48,21 +47,20 @@ differ, so the gap between them is definitional, not error.
 | `NDFD` / `TSDFD` | Day-ahead to a few days |
 | `NDFW` / `TSDFW` | Week-ahead and beyond |
 
-Useful later if forecast horizon matters for demand the way it does for carbon.
+Relevant where forecast horizon matters for demand, as it does for carbon.
 
 ## Endpoints and their limits
 
-**These have documented maximum ranges, unlike PN and B1610.**
+**The forecast endpoints have documented maximum ranges, unlike PN and B1610.**
 
-**All of these filter on publish time, not on `from`/`to` datetimes.** The
-stream variants of NDF and TSDF take `publishDateTimeFrom` / `publishDateTimeTo`
-(optional), unlike PN and B1610 whose streams take `from`/`to`. Omit the
-parameters and you get the latest published forecast.
+**All of these filter on publish time.** The `/stream` variants of NDF and TSDF
+take optional `publishDateTimeFrom` / `publishDateTimeTo` rather than the
+`from`/`to` used by PN and B1610. Omit them to get the latest published
+forecast.
 
-Every documented cap sits on the base endpoint only. The spec contains no
-equivalent cap sentence for these `/stream` endpoints, and the developer portal
-describes streams as having no restrictions on data return. Whether that holds
-in practice for large publish windows remains untested.
+Every documented cap is on the base endpoint. The spec documents none for the
+`/stream` endpoints, and the developer portal describes streams as having no
+restrictions on data return.
 
 | Endpoint | Documented max range | Notes |
 |---|---|---|
@@ -75,14 +73,9 @@ in practice for large publish windows remains untested.
 | `/datasets/INDO` | not documented | `publishDateTimeFrom` / `To`. No stream variant |
 | `/datasets/ITSDO` | not documented | As above |
 
-Since the parameters are publish times, the base endpoint's 1 day cap
-presumably applies to the **publish window**, though the description does not
-say so explicitly. Through the base endpoint, **a year of NDF history is
-roughly 365 requests**. Through the stream, with no documented cap, it may be
-far fewer — worth one test with a multi-day publish window before building the
-ingestion, since the difference is 365 requests against a handful.
-
-`INDO` and `ITSDO` did not appear with stream variants.
+The 1 day cap presumably applies to the **publish window**, since publish times
+are the only time parameters. On that reading, **a year of NDF history through
+the base endpoint is about 365 requests**. The stream has no documented cap.
 
 ### Observed live, 2026-08-20
 
@@ -90,9 +83,9 @@ A one-hour publish window on `/datasets/NDF` returned **two complete forecast
 vintages**, published at 10:16 and 10:49, each covering roughly the next two
 days (~85 settlement periods). See `tests/fixtures/elexon/ndf_truncated.json`.
 
-So NDF publishes roughly every 30 minutes, each publication re-forecasts the
-whole horizon, and it has the same horizon-resolved structure as the carbon
-intensity forecast.
+In that window NDF published twice, 33 minutes apart. Each publication
+re-forecasts the whole horizon, the same horizon-resolved structure as the
+carbon intensity forecast.
 
 `INDO` and `ITSDO` returned one row per settlement period, published within
 about 30 minutes of the period ending, with `INDO` below `ITSDO` as the
@@ -115,28 +108,20 @@ Same shape across all of them:
 
 `INDO` and `ITSDO` are described as **updated at 15 minute intervals**.
 
-## The archive question: answered
+## Forecast history
 
 Every one of these carries a `publishTime`, and without publish-time filters
 you get the latest published forecast, the same serving pattern as the Carbon
 Intensity API.
 
-The question that mattered was whether earlier versions stay retrievable or
-are overwritten. **Answered live on 2026-08-20: retrievable.** A single
-publish-time window returned two distinct forecast vintages side by side, so
-Elexon keeps forecast history and serves it on request.
+**Earlier versions are retrievable for recent windows.** On 2026-08-20 a
+single publish-time window returned two distinct forecast vintages side by
+side. How far back Elexon keeps them is not known. If it keeps the range a
+forecast-error study needs, no self-built archive is required, unlike the
+carbon intensity forecast.
 
-Demand forecast error is therefore reconstructable from the API at any time,
-and **no self-built archive is needed** for it, unlike the carbon intensity
-forecast.
+## Storage shape
 
-One narrower question remains: **how far back publish history is retained.**
-Two vintages an hour apart prove recent history exists; they do not prove a
-year of it does. Worth one query with a publish window from a year ago before
-Phase 1 leans on deep history.
-
-## Proposed tables
-
-One table per dataset rather than a combined table with a `dataset` column.
-They have different definitions and different revision behaviour, and separate
-tables make a wrong join visible instead of silent.
+These suit one table per dataset rather than a combined table with a `dataset`
+column. They have different definitions and different revision behaviour, and
+separate tables make a wrong join visible instead of silent.

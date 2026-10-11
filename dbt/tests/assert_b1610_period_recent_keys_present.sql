@@ -1,6 +1,6 @@
 -- Nightly missing-row check: every B1610 key with a source row captured in
 -- the last build's window (watermark minus capture_margin, up to the
--- watermark) has a period row. Returns the missing keys. Cheap: the literal
+-- watermark) has a period row. Returns the missing keys. The literal
 -- watermark lets it read only recent source rows through the index. A row
 -- committed between the build and this test can fail it once; the next build
 -- picks that row up.

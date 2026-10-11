@@ -66,15 +66,16 @@ These hold for every table in the `raw` schema.
 than overwriting, so revisions stay visible and every downstream read collapses
 to one row per key.
 
-**`retrieved_at` on every table.** Captured once per run, immediately before
-the first HTTP request, and written identically to every row in that batch.
+**`retrieved_at` on every capture.** Captured once per run, immediately before
+the first HTTP request, and written identically to every row in that batch; the
+BM-unit registry records it once per extract, in `raw.elexon_bm_units_extracts`.
 
 **It is part of the primary key where the source carries no revision marker** —
-`PN`, `QPN` and both carbon intensity tables — because there it is the only way
-to tell a revision from the original. Where the source labels its own revisions
-it is not: `raw.elexon_b1610` keys on `settlement_run_type` instead, so a
-re-poll finding nothing new inserts nothing and `retrieved_at` records when a
-run was first seen. Each dataset's page states which applies.
+`PN`, `QPN`, `BOALF` and both carbon intensity tables — because there it is the
+only way to tell a revision from the original. Where the source labels its own
+revisions it is not: `raw.elexon_b1610` keys on `settlement_run_type` instead,
+so a re-poll finding nothing new inserts nothing and `retrieved_at` records
+when a run was first seen. Each dataset's page states which applies.
 
 **Never Airflow's logical date.** A retried task would be stamped with its
 scheduled time rather than its actual execution time, corrupting anything
@@ -84,14 +85,14 @@ derived from it.
 in typed tables with names kept close to the source. They do not carry a blanket
 copy of every source field, so a new warning-only field can be reported without
 being retained in the typed row. Rejected rows retain their complete source
-payload in `raw.endpoint_quarantine` before typed loading. Value-level
-expectations are tested in dbt rather than enforced as constraints. A `NOT NULL`
-on a value column can reject the row and destroy evidence that the source sent
-something unexpected.
+payload in `raw.endpoint_quarantine` before typed loading. A field the endpoint
+contract requires is `NOT NULL`: a row without it is quarantined before typed
+loading, so the constraint never rejects source evidence. Other value-level
+expectations are tested in dbt rather than enforced as constraints.
 
-**Structural constraints only.** Primary keys, types, and not-null on identity
-columns. Those define what a row is. Everything else is a belief, and beliefs
-get tested.
+**Structural constraints only.** Primary keys, foreign keys, types, and not-null
+on identity columns and contract-required fields. Those define what a row is.
+Everything else is a belief, and beliefs get tested.
 
 ## Reading a dataset page
 

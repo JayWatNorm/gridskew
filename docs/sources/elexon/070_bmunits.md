@@ -1,8 +1,6 @@
 # BM Unit registry
 
-**The capture and observed-history snapshot are deployed.** See
-[071_bmunits_ingestion.md](071_bmunits_ingestion.md) for the complete-extract
-gate, raw/current/snapshot lineage and recovery steps.
+How it is loaded: [071_bmunits_ingestion.md](071_bmunits_ingestion.md).
 
 ## In plain terms
 
@@ -10,15 +8,14 @@ gate, raw/current/snapshot lineage and recovery steps.
 
 Every other Elexon dataset identifies things by codes like `T_DRAXX-1`. On
 their own those tell you little. This registry adds names, capacities,
-operators and sometimes a fuel type. Those fields help identify a unit, but
-fuel can be null and no single field proves that it is a physical generator.
+operators and sometimes a fuel type.
 
 Two jobs for this project:
 
-- **Scoping.** The shortfall analysis starts with verified physical generators.
-  Batteries, interconnectors and demand units need separate treatment.
-  `fuelType`, `bmUnitType`, `fpnFlag`, capacities and unit identity are evidence
-  for that decision; none is a complete generator filter on its own.
+- **Scoping.** The shortfall cohort, `int_elexon__bm_unit_cohort`, is every
+  registry unit with a published `fuelType`. Batteries, interconnectors and
+  demand units need separate treatment; `fuelType` alone does not prove a unit
+  is a physical generator.
 - **Labelling.** Turning `T_DRAXX-1` into "Drax unit 1, biomass, 645 MW" so
   results are readable when the label is supported by source data.
 
@@ -72,8 +69,7 @@ nulls and blanks.
 ## Observed live, 2026-08-20
 
 An alphabetical sample of 120 units, with the first 10 retained in
-`tests/fixtures/elexon/bmunits_truncated.json`, establishes the following
-properties:
+`tests/fixtures/elexon/bmunits_truncated.json`, shows:
 
 - **`fuelType` was null on 112 of 120 units.** It is sparsely populated, at
   least across this alphabetical slice, which was dominated by supplier and
@@ -87,8 +83,6 @@ properties:
   from the identifier prefixes, not documentation.
 - **Even identity fields can be null.** One unit had null `elexonBmUnit` and
   null `bmUnitType`. `eic` is frequently null.
-- The sample is not suitable for a market-wide unit count or null-rate
-  estimate. Those require loading the complete response.
 
 ## Full-registry checkpoint, 2026-09-22
 
@@ -96,17 +90,12 @@ The complete `/reference/bmunits/all` response contained 3,088 units. Of
 those, 588 had a non-null `fuelType` (19 distinct codes) and 2,500 had a null
 value. This is a dated unit count, not the share of generation with known fuel.
 
-For a bounded check, the project's 10–16 August 2026 `B1610` `SF` unit
-aggregate contained 468 `T_` or `E_` units with positive metered energy.
-Matching them to the 22 September registry found fuel labels for 348 units,
-covering 98.46% of their positive MWh. The remaining 120 units represented
-1.54% of those MWh; 100 had a null fuel and 20 were absent from the current
-registry. `T_` and `E_` are only a candidate cohort: it includes storage and
-interconnector units, and positive metering does not prove physical generation.
-The aggregate does not contain date or run-type fields, so the stated `SF`
-scope comes from the query used to create it. This current-registry match also
-does not establish each unit's fuel in August. Keep unsupported fuels null
-until dated evidence supports a label.
+Matching the 468 `T_` and `E_` units with positive `SF` metered energy for
+10–16 August 2026 to the 22 September registry found fuel labels for 348 units,
+covering 98.46% of their positive MWh. Of the other 120 units (1.54% of the
+MWh), 100 had a null fuel and 20 were absent from the registry. A
+current-registry match does not establish each unit's fuel in August, so
+unsupported fuels stay null until dated evidence supports a label.
 
 ## Why a snapshot rather than a table
 
@@ -127,7 +116,8 @@ fuel types. These are dated checks, not fixed expected counts.
 
 ## Relevance to the README's limitations
 
-The README notes that Physical Notifications mean different things by unit type,
-so the shortfall analysis will be scoped to physical generators first. The registry
-provides candidate signals such as `bmUnitType` and `fpnFlag`, but the eligible
-cohort needs documented unit-role evidence and an explicit unknown category.
+The README scopes the analysis to physical generators first, because Physical
+Notifications mean different things by unit type. The current cohort uses
+`fuelType` only, so it can include units that are not physical generators. The
+registry's `bmUnitType` and `fpnFlag` are candidate signals for a narrower
+scope; neither is applied today.

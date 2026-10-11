@@ -33,11 +33,11 @@ either at once or after a stoppage that lasts beyond its date.
 On an empty table the range starts at 2024-08-22, one year before the first
 PN day. The first run therefore makes about 780 requests, 0.2 seconds apart,
 and commits each day as it goes. If it stops part-way, the next run continues
-from the newest day stored. The API served 2020-06-01 when asked on
+from the newest message stored. The API served 2020-06-01 when asked on
 2026-10-07, so the start date is a choice and not a limit of the source.
 
-The request includes both ends of its window and filters on the full publish
-time. The one-hour step back re-reads messages already stored; the key makes
+The request gives its window to the minute, both ends included. The one-hour
+step back re-reads messages already stored; the key makes
 that a no-op.
 
 ## One row per publication
@@ -80,7 +80,8 @@ To clear it:
    parser.
 2. Load the range again from the earliest `publishDateTimeFrom` in the
    quarantined rows' `request_context`:
-   `run(conn, first_publish_time=<that time>)`. The key makes the rows
+   `run(conn, first_publish_time=datetime.fromisoformat('<that value>'))`.
+   The key makes the rows
    already stored a no-op. This run also fails, because the quarantine is
    not yet empty; a row it rejects is quarantined again.
 3. Delete only the quarantined rows whose message is now stored:
@@ -117,8 +118,8 @@ message was published on 2026-04-25 or 2026-04-26. The longest gap in
 September 2026 was three and a half hours. A message stored before its own
 publish time is left out of the check, as it is from the poller's window.
 
-## Not proven
+## Limit
 
 A message that appears in the API more than one hour after its own
-`publish_time` would be missed. None has been looked for: that needs two
-reads of the same window some time apart.
+`publish_time` is missed. Detecting one needs two reads of the same window
+some time apart.

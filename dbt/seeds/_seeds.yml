@@ -33,11 +33,8 @@ seeds:
 
   - name: elexon_fuel_codes
     description: >
-      One row per exact published Elexon fuel-type reference code. Codes are
-      checked against the BM-unit registry and the Elexon fuel-type reference
-      list. The group describes the publisher's code, including technologies
-      and interconnector roles; it does not verify a BM unit's actual fuel,
-      physical generation, sustainability or emissions.
+      One row per published Elexon fuel-type code, with a broad group. The
+      group describes the code, not a unit's measured fuel or emissions.
 
     config:
       column_types:
@@ -55,10 +52,8 @@ seeds:
 
       - name: code_group
         description: >
-          Broad code category. BIOMASS is bioenergy but this makes no claim
-          about sustainable feedstock, lifecycle emissions or zero carbon.
-          Gas-turbine codes name plant technology rather than measured fuel.
-          The unclassified value preserves a code with unresolved meaning.
+          Broad category of the code. Gas-turbine codes name the plant
+          technology; unclassified keeps a code whose meaning is not established.
         data_tests:
           - not_null
           - accepted_values:

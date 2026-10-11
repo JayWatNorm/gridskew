@@ -1,4 +1,4 @@
-"""Source Freshness Check"""
+"""Run dbt source freshness every hour against the raw tables."""
 
 import os
 import subprocess

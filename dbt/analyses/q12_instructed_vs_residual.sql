@@ -8,9 +8,9 @@
 -- two parts are reported as sums of absolute energy and the instructed part
 -- as a share of their total. A period determinable without a PN (its
 -- acceptances cover the whole half-hour) has a shortfall but no deviation to
--- split, so it is left out here and counted in q3_coverage.sql. Instructed energy is never added up across
--- overlapping acceptances (decision 020): the interval model keeps the
--- acceptance in force for each minute only.
+-- split, so it is left out here and counted in q3_coverage.sql. Instructed
+-- energy is never added up across overlapping acceptances: the interval
+-- model keeps the acceptance in force for each minute only.
 
 with determinable as (
     select

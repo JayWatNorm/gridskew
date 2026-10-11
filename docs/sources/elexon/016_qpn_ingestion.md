@@ -19,7 +19,7 @@ applicable writes commit.
 | DDL | `sql/migrations/V004__elexon_qpn.sql` |
 | Tests | `tests/test_elexon_qpn.py`, against `qpn_stream.json` |
 | DAG | `dags/gridskew_elexon_qpn_dag.py` |
-| Schedule | `@daily` |
+| Schedule | Daily at 00:00 UTC (`CronDataIntervalTimetable`) |
 | `start_date` | 2025-08-22 |
 | `catchup` | **`True`** |
 
@@ -57,22 +57,20 @@ are missing an Elexon identifier in both datasets, so both raw tables key on the
 National Grid identifier.
 
 **18,300 rows are non-zero — 0.044%.** That works out at exactly **50 per run,
-every run, for a year.** Zero variance. See [015_qpn.md](015_qpn.md), where that
-number turns out to describe a single BM unit.
+every run, for a year.** Zero variance. See [015_qpn.md](015_qpn.md), which
+shows that number comes from a single BM unit.
 
 ## Built as a separate module, deliberately
 
 A single parameterised module taking the dataset name would also fit the API's
 shared schema. Separate files keep each ingestion path readable and allow the
-sources to diverge later. Both modules are tested against paired captured
-fixtures so their shared fields remain aligned.
+sources to diverge later. The paired fixtures cover the same units and windows.
 
 ## Zero rows are normal
 
 **99.96% of this table is zeros, and that is correct.** Units file even when
 there is nothing to deduct, so a table that looks empty of signal is not a broken
-poller. Anyone reviewing this table for the first time will assume otherwise,
-which is why it is stated in the table comment as well as here.
+poller. The table comment says so too.
 
 **Submission is optional**, so a missing row means "this unit does not submit
 QPN", not "the deduction is zero". Only an outer join is safe when combining with
@@ -86,23 +84,18 @@ either, so `retrieved_at` is again the only instrument.
 
 Run both experiments over the same four weeks so the results are comparable.
 
-## Settlement-shortfall decision: answered
+## Settlement shortfall
 
 QPN does not alter the settlement-shortfall calculation. Use integrated
 `PN MWh - B1610 MWh`; do not subtract QPN. The BSC glossary states that QPN is
 not used in Settlement and scopes the net operating level to Dynamic Data.
 
-The independently reproduced 10–16 August 2026 cohort corroborates that rule.
+The 10–16 August 2026 cohort corroborates that rule.
 Across all 336 `WILCT-1` periods, `PN - B1610` had +0.309 MWh mean error;
 `(PN - QPN) - B1610` introduced a +30.309 MWh mean error. The complete decision,
 including the limits of that one-unit comparison, is in
 [015_qpn.md](015_qpn.md).
 
-QPN remains useful for Dynamic Data comparisons. Those models must align PN
-and QPN on the union of their segment boundaries, preserve QPN's sign and keep
-an absent optional submission distinct from a submitted zero.
-
-## Restatement-experiment result
-
-*Not yet recorded.* This is the PN/QPN re-polling experiment above, not the
-settlement-shortfall decision, which is closed.
+QPN remains useful for Dynamic Data comparisons. Any such comparison must align
+PN and QPN on the union of their segment boundaries, preserve QPN's sign and
+keep an absent optional submission distinct from a submitted zero.

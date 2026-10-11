@@ -80,6 +80,7 @@ def test_validate_row_rejects_a_forbidden_null(pn_row):
 
 def test_validate_row_accepts_an_allowed_null(pn_row):
     pn_row["bmUnit"] = None
+    pn_row["dataset"] = None
 
     errors, warnings = validate_row(pn_row, PN_SPEC)
 

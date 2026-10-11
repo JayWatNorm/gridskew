@@ -5,8 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from airflow.decorators import dag, task
 
-# Namespaced per project, matching the bind-mount declared in the Airflow
-# compose file. Deliberately not a global PYTHONPATH:
+# The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 
 
@@ -16,10 +15,12 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
     start_date=datetime(2026, 8, 17, tzinfo=timezone.utc),
     catchup=False,
     max_active_runs=1,
+    # Two-minute limits: a hung try cannot run into the next half-hourly
+    # capture, provided the scheduler starts each try promptly.
     default_args={
         "retries": 3,
-        "retry_delay": timedelta(minutes=5),
-        "execution_timeout": timedelta(minutes=15),
+        "retry_delay": timedelta(minutes=2),
+        "execution_timeout": timedelta(minutes=2),
     },
     tags=["gridskew", "carbon-intensity"],
 )

@@ -4,10 +4,9 @@ Every ingested endpoint has an explicit contract checked before typed parsing.
 The validator is offline and source-independent: callers provide decoded rows
 and the matching contract.
 
-**Deployment:** Runtime validation and quarantine are deployed for PN, QPN,
-B1610, BOALF, REMIT and both Carbon datasets. Carbon forecast and outturn completeness checks
-are also deployed. The BM-unit complete-response path is deployed separately;
-its gate publishes only successful complete extracts.
+Validation and quarantine cover PN, QPN, B1610, BOALF, REMIT, both Carbon
+datasets and the BM-unit registry. Carbon forecast and outturn also have
+period-completeness checks.
 
 ## Behavior
 
@@ -35,29 +34,25 @@ and the run continues (see
 [REMIT ingestion](elexon/031_remit_ingestion.md)).
 
 Carbon also checks semantic period coverage after compatible rows are loaded.
-Forecast requires consecutive half-hour periods that contain the request time
-in the first period. A forecast window shorter than 48 hours is stored and
+Forecast requires consecutive half-hour periods, the first of which contains
+the request time. A forecast window shorter than 48 hours is stored and
 logged as a warning without failing the task: the source feed has stopped
 extending. Outturn requires consecutive periods covering the endpoint's
 observed inclusive request boundaries. These rules do not assume a fixed
 response size.
 
-Each B1610 capture checks period coverage for its settlement date after
-compatible rows are loaded, and fails when a period is missing or another
-settlement run is returned.
+Each B1610 capture refuses a response before any write when a row holds
+another settlement date or a period outside that date. After compatible rows
+are loaded, it fails when a period is missing or another settlement run is
+returned.
 
 ## Routing
 
-The BM-unit registry uses a stricter complete-response rule. Any invalid row
-blocks the entire extract. Rejected rows are quarantined, but compatible rows
-from that response are not published. Its row/unit-count and key-loss checks
-also block suspiciously small responses. See
-[Elexon BM-unit ingestion](elexon/071_bmunits_ingestion.md).
-
 Rows with no errors remain compatible, including warning-only rows. Warnings
 are grouped by reason and field, with the affected count and at most five source
-indexes. REMIT leaves out a field that has no value, so its poller does not
-log the missing-optional-field warning.
+indexes. The BM-unit poller logs its warnings per row. REMIT leaves out a
+field that has no value, so its poller does not log the missing-optional-field
+warning.
 
 Rejected rows are written to `raw.endpoint_quarantine` before compatible rows
 are parsed and loaded. Evidence includes the dataset, capture time, request
@@ -66,19 +61,26 @@ observed fields include nested dotted paths.
 
 Mixed responses retain both compatible data and rejected evidence before the
 task fails. All-rejected responses skip typed parsing and loading. Outturn
-applies this per request window, continues after validation-rejected chunks and
-raises once after all requested windows. HTTP, envelope, parsing, quarantine
-and database failures still stop immediately, with one exception: when outturn
-re-fetches a history window on a Monday, a failure there is logged and counted
-as an incomplete window, the remaining history windows are still attempted, and
-the run then fails.
+applies this per request window: it continues after rejected or incomplete
+windows and raises once after all requested windows. HTTP, envelope, parsing,
+quarantine and database failures stop immediately. The exception is the Monday
+re-fetch of outturn history: a failed history window is logged and counted as
+incomplete, the remaining history windows are still attempted, and the run then
+fails.
 
-`process_rows` returns the rejected-row count. Each poller uses that count to
-set its final task status after successful writes. Available compatible data is
-therefore retained even when the task reports an incomplete or invalid response.
+`process_rows` returns the rejected-row count. Each poller that calls it uses
+that count to set its final task status after successful writes. Available
+compatible data is therefore retained even when the task reports an incomplete
+or invalid response.
 REMIT counts from the table instead: every run fails while any `REMIT` row is
 in `raw.endpoint_quarantine`, so a rejected message is not forgotten by the
 next window. Recovery is in [REMIT ingestion](elexon/031_remit_ingestion.md).
+
+The BM-unit registry uses a stricter complete-response rule. Any invalid row
+blocks the entire extract. Rejected rows are quarantined, but compatible rows
+from that response are not published. Its row/unit-count and key-loss checks
+also block suspiciously small responses. See
+[Elexon BM-unit ingestion](elexon/071_bmunits_ingestion.md).
 
 ## Components
 
@@ -90,18 +92,21 @@ next window. Recovery is in [REMIT ingestion](elexon/031_remit_ingestion.md).
 | [`routing.py`](../../ingestion/routing.py) | Shared warning, quarantine and compatible-row routing |
 | [`pn_poller.py`](../../ingestion/elexon/pn_poller.py) | PN response window, parser and loader |
 | [`qpn_poller.py`](../../ingestion/elexon/qpn_poller.py) | QPN response window, parser and loader |
-| [`b1610_poller.py`](../../ingestion/elexon/b1610_poller.py) | B1610 response window, parser, loader and Decimal encoder |
+| [`b1610_poller.py`](../../ingestion/elexon/b1610_poller.py) | B1610 response window, settlement-date coverage check, parser, loader and Decimal encoder |
 | [`boalf_poller.py`](../../ingestion/elexon/boalf_poller.py) | BOALF response window, parser and loader |
 | [`remit_poller.py`](../../ingestion/elexon/remit_poller.py) | REMIT watermark windows, parser, loader and quarantine gate |
 | [`bmunits_poller.py`](../../ingestion/elexon/bmunits_poller.py) | Complete registry gate, manifest and raw-row loader |
+| [`completeness.py`](../../ingestion/carbon_intensity/completeness.py) | Carbon period-coverage checks |
+| [`forecast_poller.py`](../../ingestion/carbon_intensity/forecast_poller.py) | Forecast envelope, parser, loader and 48-hour warning |
+| [`outturn_poller.py`](../../ingestion/carbon_intensity/outturn_poller.py) | Outturn windows, history re-fetch, parser and loader |
 | [`V006__endpoint_quarantine.sql`](../../sql/migrations/V006__endpoint_quarantine.sql) | Rejected-row table |
 
 ## Source-specific notes
 
 Type checks use exact Python types, so booleans do not satisfy integer fields.
-B1610 accepts integer and `Decimal` quantities. Its response and quarantine
-serializers keep decimal values as JSON numbers without converting them to
-binary floats or strings.
+B1610 quantities and REMIT capacities accept integer and `Decimal` values. Both
+pollers decode responses with `Decimal` and write payloads as JSON numbers,
+never binary floats or strings.
 
 Target-key duplicates handled by `ON CONFLICT DO NOTHING` are not validation
 failures and do not enter quarantine.

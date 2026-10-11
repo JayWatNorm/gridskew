@@ -22,8 +22,7 @@ for browsing.
 
 ## How the GB electricity market works, briefly
 
-You do not need to be an industry expert to use this data, but four ideas make
-every dataset here make sense.
+Four ideas make every dataset here make sense.
 
 **1. Electricity has to balance, second by second.** What is generated must
 equal what is used, continuously. Britain has a growing fleet of grid-scale
@@ -33,7 +32,7 @@ so supply still has to be adjusted constantly to follow demand.
 **2. Everything happens in half hours.** The market is settled in
 **settlement periods**, normally 48 per day. Every dataset here is stamped with
 a settlement date and period. Clock-change days have 46 or 50, which is why the
-API accepts a period as high as 50 and why this is a recurring source of implementation errors.
+API accepts a period as high as 50.
 
 **3. Generators declare, then deliver, and the operator fixes the difference.**
 
@@ -74,15 +73,16 @@ Unit counts quoted in these pages are approximate. To get the current figure:
 
 ## Datasets
 
-PN, QPN and B1610 measure the shortfalls. The remaining datasets support the
-decomposition in step 3 of the thesis.
+PN and B1610 measure the shortfalls. QPN is kept for Dynamic Data comparisons.
+The remaining datasets support the decomposition in step 3 of the question in
+the project README.
 
 Numbered in build order, not alphabetically.
 
 | Page | Ingestion | Dataset | In a phrase | Status |
 |---|---|---|---|---|
 | [010_pn.md](010_pn.md) | [011](011_pn_ingestion.md) | `PN` | The promise | Running |
-| [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | Dynamic Data; not subtracted from PN | Running |
+| [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | Dynamic Data only; not in the shortfall | Running |
 | [020_b1610.md](020_b1610.md) | [021](021_b1610_ingestion.md) | `B1610` | The receipt | Running |
 | [030_remit.md](030_remit.md) | [031](031_remit_ingestion.md) | `REMIT` | Outage notice, planned or unplanned | Running |
 | [040_boalf.md](040_boalf.md) | [041](041_boalf_ingestion.md) | `BOALF` | The intervention | Running |
@@ -95,9 +95,8 @@ The BM-unit ingestion page describes the deployed capture and snapshot
 path. The patterns behind the collectors are in
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Steps 1 and 3** refer to the thesis in the project README: find the
-shortfalls, then explain them. Only `PN`, `QPN` and `B1610` are needed to find
-them.
+**Steps 1 and 3** refer to the question in the project README: find the
+shortfalls, then explain them. Only `PN` and `B1610` are needed to find them.
 
 ## Use the `/stream` variants
 
@@ -123,10 +122,8 @@ silently iterate the wrong thing.
 REMIT's stream requires `publishDateTimeFrom`/`To`, and the demand forecasts'
 streams take the same publish-time pair optionally. Check per dataset.
 
-**Repeating the `bmUnit` parameter is unverified.** The spec types it as an
-array, but the tooling used for these checks collapsed repeated query keys, so
-multi-unit filtering has not been observed working. Test before relying on it;
-ingestion does not filter by unit anyway.
+**Repeating the `bmUnit` parameter is untested.** The spec types it as an
+array. Ingestion does not filter by unit.
 
 **Window caps vary by endpoint, are documented per endpoint, and sit on the
 BASE endpoints only.** There is no single platform-wide rule, and — verified
@@ -150,7 +147,7 @@ treat an undocumented stream cap as untested rather than absent.
 For the undocumented ones, a 92 day B1610 request returned the full range,
 4,417 rows for one BM unit, with no truncation. Note that 92 days is also the
 documented cap for `NDFD` and `TSDFD`, so **92 may be a platform default rather
-than "no limit"**. Worth retesting at 100 days or more before relying on it.
+than "no limit"**.
 
 **The boundary period is included.** 92 days is 4,416 half hours; the extra row
 is the period containing the requested `from`. Chunks overlap by one, same as
@@ -272,13 +269,10 @@ So:
 - **Backfills**: daily Airflow intervals are serialised through the one-slot
   `elexon` pool. The completed PN backfill averaged about 1.4 requests per
   minute, so the current implementation needs no additional client-side delay.
-- **Add expected-volume checks, not just status-code and container checks.**
-  `raise_for_status()` catches 4xx and 5xx, and the current pollers reject empty
-  or malformed outer responses. With no rate-limit headers, a future throttle
-  could still return 200 with a non-empty list whose returned rows satisfy the
-  schema but whose total row count is unexpectedly low. The current pollers
-  would load those returned rows normally; absent rows have no payload to
-  quarantine. No expected-volume check currently detects and fails that case.
+- **Expected volume is not checked.** `raise_for_status()` catches 4xx and
+  5xx, and the pollers reject empty or malformed outer responses. With no
+  rate-limit headers, a throttle could still return 200 with valid rows but too
+  few of them, and those rows would load normally.
 - **Identify yourself.** The terms prohibit concealing an application's
   identity, and a descriptive `User-Agent` means an operator can contact you
   rather than simply blocking the address.

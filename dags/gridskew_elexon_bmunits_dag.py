@@ -120,14 +120,17 @@ def gridskew_elexon_bmunits():
                 run_dbt(env, "seed", "--select", "elexon_fuel_codes")
                 # Test, not build: rebuilding these views would drop the views that
                 # depend on them (DROP ... CASCADE). Releases recreate views.
-                run_dbt(env, "test", "--select", "+dim_bm_unit")
+                # Cautious selection: only tests whose parents are all in the
+                # registry chain or the seed above, so no test that also reads
+                # B1610 runs here; the nightly job runs those.
                 run_dbt(
                     env,
                     "test",
                     "--select",
-                    "assert_bm_units_staging_grain",
-                    "assert_bm_units_current_extract_count",
-                    "assert_bm_units_duplicate_attributes_agree",
+                    "+dim_bm_unit",
+                    "elexon_fuel_codes",
+                    "--indirect-selection",
+                    "cautious",
                 )
                 run_dbt(env, "snapshot", "--select", "snap_elexon__bm_units")
         finally:

@@ -1,6 +1,6 @@
 # MELS and MILS, export and import limits
 
-**Not yet ingested.** Optional context for Phase 1.
+**Not ingested.**
 
 ## In plain terms
 
@@ -10,7 +10,8 @@
 - **MILS**, Maximum Import Limit: the most it could consume.
 
 Where `PN` says what a unit *intends* to do, these say what it *could* do. The
-gap between them is spare capacity the operator can call on.
+gap between a unit's PN and its export limit is spare capacity the operator can
+call on.
 
 Why that is useful here: a generator running at 200 MW with a 600 MW limit has
 plenty of headroom, so a shortfall elsewhere can be covered cheaply. A grid
@@ -18,8 +19,8 @@ where everything is already at its limit has nowhere to go but the expensive,
 fast-starting plant. **Tight headroom is a scarcity signal**, and it may explain
 why some shortfalls move carbon intensity more than others.
 
-It also catches a specific case: if a unit's export limit drops to zero
-mid-period, that is a breakdown showing up in the data before REMIT reports it.
+It also catches a specific case: a unit's export limit dropping to zero
+mid-period often signals a breakdown, and can appear before the REMIT notice.
 
 ---
 
@@ -30,7 +31,7 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/MELS/stream?from=&to=
 GET https://data.elexon.co.uk/bmrs/api/v1/datasets/MILS/stream?from=&to=
 ```
 
-Same parameters as PN and B1610.
+Takes `from` and `to`, as PN and B1610 do.
 
 ## Response fields
 
@@ -69,13 +70,7 @@ Documented for MELS and MILS, unlike B1610.
 during a period, for instance after a fault reduces what it can deliver. Take
 the latest sequence per unit per time window, and note that the *sequence of
 revisions is itself informative*: a limit revised sharply downward mid-period
-is a breakdown in progress.
+can signal a fault in progress.
 
-**Two datasets, one shape.** Worth a single parse function parameterised by
-dataset name rather than two near-identical modules. This is the one place in
-the Elexon set where sharing is clearly right.
-
-## Priority
-
-Lower than PN, B1610 and REMIT. It refines the explanation rather than
-establishing it, so it belongs after step 1 of the thesis produces a result.
+**Two datasets, one shape.** One parser parameterised by dataset name covers
+both.

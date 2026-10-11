@@ -110,7 +110,7 @@ unit_tests:
 
   - name: test_stg_elexon__pn_period_start_utc_spring_clock_change
     description: >
-      Confirms that a settlement period effected by the spring clock change starts with the expected UTC
+      Confirms that a settlement period affected by the spring clock change starts with the expected UTC
       instant.
     model: stg_elexon__pn
 
@@ -205,11 +205,9 @@ unit_tests:
           settlement_period: 47
           period_start_utc: null
 
-
-
   - name: test_stg_elexon__pn_period_start_utc_autumn_clock_change
     description: >
-      Confirms that a settlement period effected by the autumn clock change starts with the expected UTC
+      Confirms that a settlement period affected by the autumn clock change starts with the expected UTC
       instant.
     model: stg_elexon__pn
 

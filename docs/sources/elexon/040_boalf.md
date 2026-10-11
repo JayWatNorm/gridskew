@@ -17,7 +17,7 @@ came out. Together they distinguish "a generator failed to deliver" from "the
 operator told it to do something different".
 
 Without BOALF you cannot tell those apart, which is why it belongs in the
-decomposition even though it is not needed for step 1.
+decomposition.
 
 ---
 
@@ -30,7 +30,7 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream
 | Parameter | Required |
 |---|---|
 | `from`, `to` | yes |
-| `settlementPeriodFrom`, `settlementPeriodTo` | no. Documented as switching `from`/`to` to settlement-date filtering; see below. Untested on this dataset — the no-effect observation was on B1610, not BOALF |
+| `settlementPeriodFrom`, `settlementPeriodTo` | no. Documented as switching `from`/`to` to settlement-date filtering; see below. Not tested on BOALF |
 | `bmUnit` | no |
 
 ## Response fields
@@ -55,9 +55,9 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/BOALF/stream
 | `nationalGridBmUnit` | `str` | |
 | `bmUnit` | `str` | |
 
-**None of the flag fields carry descriptions in the API spec** — verified: no
-field on this schema has one. The readings above are industry convention and
-inference from the names, not documented behaviour.
+**No field on this schema has a description in the API spec.** The readings
+above are industry convention and inference from the names, not documented
+behaviour.
 
 ## One day, counted
 
@@ -86,7 +86,7 @@ than `ORI`.
 
 **`storFlag` is the same on every row of a day.** It is true on all 36,200
 rows of 2026-03-29 and all 31,613 rows of 2026-03-28, and false on every row
-of the other seven days. It does not single out individual acceptances.
+of every other day checked. It does not single out individual acceptances.
 
 ## Things to know before modelling it
 
@@ -110,23 +110,22 @@ instructed level per half hour must first choose the acceptance in force.
 
 **`soFlag` is believed to mark actions taken for system reasons** such as
 network constraints or voltage, rather than to balance energy. If so, treating
-them as energy balancing would misattribute the cause. **Not documented in the
-API. Confirm before relying on it.**
+them as energy balancing would misattribute the cause.
 
-**`amendmentFlag` looks like a revision axis**, given that every observed
-value is `ORI`. What an amended acceptance looks like is not known. A
-warning-level dbt test on `stg_elexon__boalf` reports any other value except
-null. `int_elexon__boa_by_period` keeps the latest capture of each ramp
-point: an amendment that removed a ramp point or moved its start would leave
-the old point in the view. Check how amendments arrive before the view feeds
-an analysis.
+**`amendmentFlag` looks like a revision marker**, with `ORI` for original.
+Every observed value is `ORI`, and what an amended acceptance looks like is
+not known. A warning-level dbt test on `stg_elexon__boalf` reports any value
+other than `ORI`; nulls pass. `int_elexon__boa_by_period` keeps the latest
+capture of each ramp point: an amendment that removed a ramp point or moved
+its start would leave the old point in the view. Check how amendments arrive
+before the view feeds an analysis.
 
 **`from` and `to` filter on `timeFrom`, and both ends are included.** Two
 consecutive daily requests therefore both return the ramp points that start
 at the midnight between them: 12 points on 2026-10-06. Supplying
 `settlementPeriodFrom` or `settlementPeriodTo` switches the filter to
 settlement **date**, with the time portion ignored. This is documented for
-BOALF, unlike B1610.
+BOALF but not tested.
 
 **An acceptance that crosses midnight is split across two daily requests.**
 38 acceptances were in both the 2026-10-05 and the 2026-10-06 responses. Only

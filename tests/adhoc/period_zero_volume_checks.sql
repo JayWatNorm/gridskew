@@ -1,7 +1,7 @@
 -- How much of the period-table input is zero, and does the zero carry information?
 --
 -- Read-only. Run as gridskew_dbt against gridskew_prod with psql:
---   psql -X -v ON_ERROR_STOP=1 -f tests/adhoc/s6_zero_volume_checks.sql
+--   psql -X -v ON_ERROR_STOP=1 -f tests/adhoc/period_zero_volume_checks.sql
 -- Temporary tables are session-local.
 --
 --   Z1  Zero share of B1610 rows (full history), and units that are always zero.

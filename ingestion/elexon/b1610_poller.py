@@ -160,7 +160,6 @@ def british_day_window(settlement_date):
     """Return inclusive period-start API bounds for one British date.
 
     B1610 filters on period starts, despite returning halfHourEndTime.
-    Live one-unit requests verified this boundary behaviour on 1 Oct 2026.
     """
 
     start = london_midnight_utc(settlement_date)

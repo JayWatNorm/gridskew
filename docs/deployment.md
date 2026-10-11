@@ -7,7 +7,7 @@ GridSkew to Homelab**, is dispatched manually from that repository.
 The workflow takes exact commits from GridSkew and homelab-platform. It
 requires a passing GridSkew CI run, pauses and drains the affected GridSkew
 DAGs, updates both host checkouts, verifies Airflow, and then restores or
-holds schedules according to the selected release mode. GridSkew's `dags/`,
+holds schedules according to the selected activation mode. GridSkew's `dags/`,
 `ingestion/` and `dbt/` directories are mounted into Airflow from the
 GridSkew checkout, so a DAG change needs only a GridSkew commit.
 

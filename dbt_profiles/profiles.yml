@@ -1,9 +1,9 @@
-# Local development only. The homelab deployment uses its own separate
-# profiles.yml in homelab-platform/dbt/, per the house pattern.
+# Local development. The Airflow deployment keeps its own profile in the
+# platform repository.
 #
-# Points at the PROD database deliberately: dev holds only test loads, and
-# models need real data. Safety comes from the role, not the config -
-# gridskew_dbt has SELECT on raw and owns dbt_dev, nothing more.
+# Points at the production database on purpose: the development database
+# holds only test loads, and models need real data. Safety comes from the
+# role: gridskew_dbt can read raw and owns dbt_dev, nothing more.
 gridskew:
   target: dev
   outputs:

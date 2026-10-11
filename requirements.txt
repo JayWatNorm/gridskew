@@ -1,6 +1,5 @@
-# Runtime dependencies — everything the poller needs to run in production.
-# Direct dependencies only; pip resolves the transitive ones (certifi, idna,
-# urllib3, charset-normalizer) itself.
+# Runtime dependencies of the pollers, pinned for local runs and CI. Direct
+# dependencies only. Production installs its own copies in the Airflow image.
 
 psycopg2-binary==2.9.12
 python-dotenv==1.2.3

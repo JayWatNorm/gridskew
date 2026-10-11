@@ -3,9 +3,10 @@
 How this project decides to load a source, and why the pollers do not all look
 alike. The per-dataset pages carry the settings; this page carries the reasoning.
 
-Each dataset has two pages: `0N0_name.md` for what the data is and what the
-columns mean, and `0N1_name_ingestion.md` for how it is loaded. Anything that
-would otherwise be repeated across those ingestion pages lives here.
+Each ingested dataset has two pages: one for what the data is and what the
+columns mean (for example `010_pn.md`), and one numbered one higher for how it
+is loaded (`011_pn_ingestion.md`). Anything that would otherwise be repeated
+across those ingestion pages lives here.
 
 ---
 
@@ -41,13 +42,9 @@ different value on every parse. Since Airflow derives which intervals exist from
 `start_date`, a moving anchor shifts the schedule underneath the scheduler: runs
 are skipped or duplicated and the DAG's history stops being coherent.
 
-This is the same rule as mutable default arguments — **the expression is
-evaluated when the module executes**, and a DAG module executes constantly.
-
 The consequence to accept: redeploying onto a fresh Airflow instance years later
-re-backfills from that date. That is a documented property of the design. If the
-required history changes, edit the literal explicitly rather than computing it
-at parse time.
+re-backfills from that date. If the required history changes, edit the literal
+explicitly rather than computing it at parse time.
 
 ## The second question: load once, or keep re-checking?
 
@@ -99,14 +96,14 @@ appeared.
 | Approach | Rows fetched |
 |---|---|
 | Blind re-fetch of a day | 449,673 |
-| Probe one BM unit, then decide | 48, plus the full day only if it changed |
+| Probe four BM units, then decide | 192, plus the full day only if it changed |
 
 **0.04% of the cost on the days nothing changed**, which will be most of them,
 because settlement runs complete in waves rather than gradually.
 
-The assumption to validate first: that settlement runs advance uniformly across
-units. Probe three or four units on the same day and check they agree. It does
-not hold exactly: a few B1610 unit-periods never progress past the interim run
+The approach assumes settlement runs advance uniformly across units, so a probe
+checks three or four units on the same day. The assumption holds only
+approximately: a few B1610 unit-periods never progress past the interim run
 (see [elexon/020_b1610.md](elexon/020_b1610.md)), so a probe can decide when to
 fetch a day, not which rows changed.
 
@@ -143,7 +140,8 @@ you would simply be blocked.
 - **Scheduled daily runs**: one or two requests. No delay needed.
 - **Backfills**: Airflow runs daily intervals one at a time through the one-slot
   `elexon` pool. The measured PN backfill averaged about 1.4 requests per minute,
-  so no additional client-side delay is required.
+  so no additional client-side delay is required. REMIT, which fetches its own
+  history in day windows, waits 0.2 seconds between requests.
 - **Identify yourself.** Both sets of terms prohibit concealing an application's
   identity. `gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
 - **Add expected-volume checks, not just status-code and container checks.**
@@ -151,21 +149,23 @@ you would simply be blocked.
   (REMIT accepts an empty window, because nothing may have been published). A
   truncated or throttled response could still return 200 with a non-empty list
   whose returned rows satisfy the schema but whose total row count is
-  unexpectedly low. The pollers would load those returned rows normally;
-  absent rows have no payload to quarantine. B1610 captures fail when a
-  settlement period is missing for their date; no check detects a response
-  with every period but too few units, and PN and QPN have no volume check.
+  unexpectedly low. PN, QPN, BOALF and REMIT would load those returned rows
+  normally, and absent rows have no payload to quarantine. B1610 captures fail
+  when a settlement period is missing for their date, but no check detects a
+  response with every period and too few units. The BM-unit extract is blocked
+  when its rows or units fall by more than five percent.
 
 ## How `retrieved_at` participates in raw identity
 
-Every raw table records `retrieved_at`, but it is not part of every primary
-key. It is part of the key when the source has no revision marker: PN, QPN and
-both carbon intensity tables. Each poll can then store a new observation of the
-same source row.
+Every raw table records `retrieved_at`; BM-unit rows hold it in their extract
+manifest. It is part of the primary key when the source has no revision marker:
+PN, QPN, BOALF and both Carbon Intensity tables. Each poll can then store a
+new observation of the same source row.
 
-B1610 carries `settlementRunType`, so its primary key uses that source revision
-marker instead. Excluding `retrieved_at` makes a re-poll of the same settlement
-run idempotent while still recording when that run was first seen.
+B1610 and REMIT carry revision markers (`settlementRunType`, `revisionNumber`),
+so their primary keys use those instead. Excluding `retrieved_at` makes a
+re-poll of the same revision idempotent while still recording when it was first
+seen.
 
 It also means backfill rows and daily rows need no flag to tell apart:
 
@@ -173,7 +173,7 @@ It also means backfill rows and daily rows need no flag to tell apart:
 SELECT retrieved_at - time_from AS observation_lag FROM raw.elexon_pn;
 ```
 
-A lag of three hundred days is a backfill; a lag of thirty hours is the daily
+A lag of three hundred days is a backfill; a lag of about a day is the daily
 job. **Do not store what can be derived** — and note that a backfill produces a
 *range* of lags, from a year down to nearly zero, so "backfill" is a property of
 a run rather than of a row.
@@ -188,7 +188,7 @@ a run rather than of a row.
 | Elexon B1610 SF | `catchup=False`, fixed 35-day lag | Runs forwards only to capture SF while it is available |
 | Elexon B1610 R1 cohort | event timetable, one capture per listed date | A bounded cohort: each date is fetched once, on the day its run is published |
 | Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |
-| Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap | Event stream with no cadence; the overlap catches late rows, and the key rejects repeats |
+| Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap | Event stream with no cadence; the overlap catches late rows, and the key skips repeats |
 | Elexon BM units | `catchup=False`, daily complete extract | A reference set published whole; a partial response is never published |
 
 The differences follow from source behaviour, volume and whether the DAG

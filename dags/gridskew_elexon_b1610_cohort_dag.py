@@ -12,14 +12,13 @@ import pendulum
 from airflow.decorators import dag, task
 from airflow.timetables.events import EventsTimetable
 
-# Namespaced per project, matching the bind-mount declared in the Airflow
-# compose file. Deliberately not a global PYTHONPATH:
+# The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 
 CAPTURE_HOUR_UTC = 6
 
 # Capture date (UTC) -> (settlement run, British settlement date).
-# R1: +56 days (plan of record, 2026-09-11 decision).
+# R1: +56 days.
 COHORT_CAPTURES = {
     date(2026, 10, 5): ("R1", date(2026, 8, 10)),
     date(2026, 10, 6): ("R1", date(2026, 8, 11)),
@@ -59,7 +58,7 @@ def cohort_capture(capture_date):
     default_args={
         "retries": 3,
         "retry_delay": timedelta(minutes=10),
-        "execution_timeout": timedelta(minutes=45),
+        "execution_timeout": timedelta(minutes=10),
     },
     tags=["gridskew", "elexon", "cohort"],
 )

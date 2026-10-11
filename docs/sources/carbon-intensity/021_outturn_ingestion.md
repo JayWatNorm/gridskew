@@ -4,8 +4,7 @@ How `raw.carbon_intensity_outturn` is loaded. For what the data means, see
 [020_outturn.md](020_outturn.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: running in production since 2026-08-19. Runtime validation,
-quarantine and period-completeness checks are deployed.**
+**Status: running in production since 2026-08-19.**
 
 | | |
 |---|---|
@@ -22,16 +21,16 @@ This source **is** addressable in time, unlike the forecast — a request for la
 March returns last March. So `catchup=True` would work for loading history.
 
 It is off because the poller has a second job that `catchup` cannot do:
-**re-polling recent periods to pick up late actuals.** A `catchup=True` run
-fetches its own interval and never returns, so an `actual` landing three days
-after the period would never be captured.
+**re-polling recent periods to pick up revisions.** A `catchup=True` run
+fetches its own interval and never returns, so a value revised after that run
+would never be captured.
 
 Instead, `run` takes its window from the database. `stored_period_summary`
 reads the stored row count and minimum/maximum `period_start`. An empty table,
 or an earliest stored period later than the one-year horizon, triggers a
 **365 day backfill in 30 day windows**; otherwise the poller requests a
-**7 day look-back**. The maximum period and row count do not establish complete
-historical coverage.
+**7 day look-back**. The row count and latest period are logged only; gaps are
+found by the Monday check below.
 
 ## Re-fetching gaps in history
 
@@ -46,9 +45,9 @@ logs a warning naming each window and its missing count.
 
 - **The look-back runs first.** A failing history request cannot stop late
   actuals from landing.
-- **History is re-fetched on Mondays only.** The day of the week is the limit,
-  so it holds whatever the source returns, including nothing. A gap waits up to
-  six days for its first attempt.
+- **History is re-fetched on Mondays only.** The limit is the day of the week,
+  not an attempt count, so a period the source never supplies is requested once
+  a week, not every day. A gap waits up to six days for its first attempt.
 - **A history request that fails does not stop the others.** The failure is
   logged, the remaining windows are still attempted, and the run then fails.
 - **Airflow retries on a Monday repeat the history requests**, 12 per attempt
@@ -77,7 +76,7 @@ hard-coded count. Incomplete chunks remain stored for diagnosis, do not block
 later chunks and cause the run to fail after all requested windows have been
 attempted.
 
-## Why it is acceptable here and would be ruinous on PN
+## Why a 7-day look-back suits this source and not PN
 
 The 7 day look-back re-fetches every period seven times.
 
@@ -87,29 +86,19 @@ The 7 day look-back re-fetches every period seven times.
 | Elexon PN | 126,203 | 883,421 rows/day — **~57 GB/year** |
 
 **At forty-eight rows a day there is no reason to separate the two jobs.** At a
-hundred and twenty-six thousand, the same design would consume most of a
-terabyte within a few years, which is why the Elexon pollers split "load history"
-from "check for revisions" and this one does not.
+hundred and twenty-six thousand, the same design would add about 57 GB a year,
+which is why the Elexon pollers split "load history" from "check for revisions"
+and this one does not.
 
 > The PN figures are measured across the completed backfill: 126,203 rows per
 > run at 177 bytes per row. See
 > [../elexon/011_pn_ingestion.md](../elexon/011_pn_ingestion.md).
 
-> The DAGs use different patterns because the source volumes and revision
-> behaviour differ. This poller combines the historical and recent-data paths
-> because the repeated volume is negligible.
+## Window cap: 30 days
 
-## Window cap: 30 days, partially tested
-
-`from`/`to` appears to cap at **30 days**, which is what `build_windows` uses. A
-year is 13 requests.
-
-**31 days has not been tested**, so whether the API errors or truncates silently
-beyond 30 is unconfirmed. Silent truncation is the dangerous case — it returns
-200 and looks healthy. Worth establishing before the chunk size is ever raised.
-
-Contrast with Elexon PN, where no truncation was observed in requests up to 18
-days. Neither result proves an unlimited range.
+`build_windows` requests at most 30 days per call, so a year is 13 requests. A
+response that ends before its requested window fails the period-completeness
+check. See [020_outturn.md](020_outturn.md#endpoint).
 
 ## Chunk boundaries overlap by one period
 
@@ -117,9 +106,8 @@ Each chunk starts where the last ended, and the API returns the period containin
 that instant. With `retrieved_at` constant across a run, that is a **guaranteed**
 primary key violation, so the insert carries `ON CONFLICT DO NOTHING`.
 
-The duplicate depends on the endpoint's inclusive boundary alignment, not
-whether a run was scheduled or manual. Adjacent backfill windows can return
-the same aligned boundary period; the loader preserves one row per target key.
+The same applies where adjacent backfill windows meet and where a Monday
+history window overlaps the look-back; the loader keeps one row per target key.
 
 The overlap is deliberate: **a duplicate is caught by the primary key, a gap is
 silent.**
@@ -138,6 +126,4 @@ history window with a gap (12 at most). No throttling needed.
 
 ## Findings from this table
 
-The hour-zero asymmetry test ran against a year of it on 2026-08-19. Median of
-`actual - forecast_final` was -1 gCO2/kWh over 17,522 periods, with actual above
-forecast 47.5% of the time excluding ties, deduplicated with `DISTINCT ON`.
+See [020_outturn.md](020_outturn.md#findings-from-this-table).

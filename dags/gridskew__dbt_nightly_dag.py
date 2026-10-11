@@ -197,7 +197,7 @@ def day_named_by(folder):
     dagrun_timeout=timedelta(hours=2, minutes=30),
     params={"full_refresh": False},
     default_args={"retries": 0},
-    tags=["gridskew", "dbt", "s6"],
+    tags=["gridskew", "dbt"],
 )
 def gridskew__dbt_nightly():
     # One task holds the one-slot pool for the whole run, so another GridSkew
