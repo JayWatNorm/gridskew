@@ -1,0 +1,88 @@
+models:
+  - name: int_remit__revisions
+    description: >
+      Private view. One row per stored publication of a REMIT notice, in
+      publication order under decision 022: publish_time, then created_time,
+      then revision_number. Each publication is in force from its
+      publish_time until the next publication's. The notice as known at t is
+      the row with valid_from <= t and (valid_to is null or t < valid_to);
+      a publication tied on publish_time with a later one has an empty
+      validity and is never selected.
+    columns:
+      - name: mrid
+        description: Message identifier, shared by every publication of a notice.
+      - name: publication_order
+        description: 1 for the first publication of the notice, then 2, 3 and so on.
+      - name: valid_from
+        description: The publication's publish_time.
+      - name: valid_to
+        description: >
+          The next publication's publish_time, exclusive. Null on the current
+          publication.
+      - name: is_current
+        description: True on the last publication of the notice.
+      - name: mapping_rule
+        description: >
+          asset_id when this publication's asset_id is the Elexon ID of
+          exactly one registry unit; affected_unit when, failing that, its
+          affected_unit is a registry National Grid ID; ambiguous when the
+          asset_id is the Elexon ID of more than one unit and the
+          affected_unit matches none; otherwise unmapped. The registry is the
+          latest extract.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['asset_id', 'affected_unit', 'ambiguous', 'unmapped']
+      - name: national_grid_bm_unit
+        description: >
+          The unit this publication names under mapping_rule. Null when
+          ambiguous or unmapped. A correction that names another unit changes
+          it from the correction's publish_time.
+
+  - name: int_remit__notices
+    description: >
+      Private view. One row per REMIT notice: its first publication, its
+      current publication (decision 022) and the BM unit its current
+      publication names. Q6 reads publication_lag_seconds. The unit comes
+      from the latest registry extract.
+    columns:
+      - name: mrid
+        description: Message identifier. The grain.
+        data_tests: [unique, not_null]
+      - name: publication_count
+        description: How many publications of the notice are stored.
+      - name: first_published_at
+        description: publish_time of the first publication.
+      - name: first_event_start_time
+        description: event_start_time of the first publication.
+      - name: first_unavailability_type
+        description: Planned or Unplanned as first published; null on other market information.
+      - name: publication_lag_seconds
+        description: >
+          first_published_at minus first_event_start_time, in whole seconds.
+          Positive when the notice was first published after the event began.
+      - name: mapping_rule
+        description: The current publication's mapping_rule (see int_remit__revisions).
+      - name: national_grid_bm_unit
+        description: The current publication's unit. Null when ambiguous or unmapped.
+
+  - name: int_remit__known_outage_periods
+    description: >
+      Private view. One row per BM unit and settlement half-hour in which an
+      outage of the unit was already published at the half-hour's start: the
+      notice's publication in force at that moment names the unit, is an
+      Active production unavailability and has an event that overlaps the
+      half-hour. Q5 joins it to the shortfall table. Half-hours up to now.
+    columns:
+      - name: national_grid_bm_unit
+        description: >
+          National Grid BM-unit identifier, as named by the publication in
+          force. Part of the grain.
+      - name: period_start_utc
+        description: UTC start of the settlement half-hour. Part of the grain.
+      - name: known_class
+        description: >
+          planned, unplanned or both, from the known notices'
+          unavailability_type; unclassified if none of them has one.
+      - name: notice_count
+        description: Distinct notices known for the unit in the half-hour.

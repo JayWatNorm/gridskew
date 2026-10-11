@@ -161,11 +161,40 @@ a notice can be reconstructed. The same window holds a gas unit (`T_ROCK-1`,
 748 MW normal, 388 MW unavailable) reporting an unplanned outage, the event
 class the thesis is about.
 
+## The models
+
+`int_remit__revisions` puts the publications of each notice in order:
+`publishTime`, then `createdTime`, then `revisionNumber`. Under REMIT a
+participant updates a notice by publishing it again, so the latest
+publication is the version in force; the revision number only breaks the
+last tie. Each publication is in force from its `publishTime` until the
+next one's. A publication that shares its `publishTime` with a later one is
+never in force alone. The notice as known at a time *t* is the publication
+with `valid_from <= t` and either no `valid_to` or `t < valid_to`.
+
+`int_remit__notices` has one row per notice: its first publication, its
+current publication and the BM unit it names. The publication lag is the
+first publication's `publishTime` minus its `eventStartTime`, in seconds,
+positive when the notice appeared after the event began.
+
+Each publication names its own unit: an `assetId` that is the Elexon ID of
+exactly one unit in the latest registry, otherwise an `affectedUnit` that is
+a National Grid ID. `int_remit__notices` takes the unit of the current
+publication. The known-outage model takes the unit of the publication in
+force at each half-hour, so a correction that names another unit counts for
+that unit only from the correction's `publishTime`. In October 2026 the
+`assetId` rule mapped 31,960 of 32,101 unavailability notices (current
+publications) and the `affectedUnit` rule 131 more.
+
+The history starts on 2024-08-22. A notice first published before then is
+stored from its first later revision, so its stored first publication is
+late. The publication-lag analysis (`dbt/analyses/q6_publication_lag.sql`)
+therefore starts its population at the `remit_q6_first_publication_from`
+variable and leaves out events that began before the history.
+
 ## Open questions
 
 - Whether `unavailabilityType` and `eventStatus` take values other than the
-  ones observed.
-- Which row of a notice is current when revision numbers repeat or fall.
-- Do `assetId` values always match BM unit identifiers cleanly, or is the join
-  to `PN` and `B1610` dirty? (`E_LYNE2` against `affectedUnit: LNMTH-2`
-  suggests not always.)
+  ones observed (`Planned`, `Unplanned`; `Active`, `Inactive`, `Dismissed`).
+- Whether a unit's registry identifiers at publication time differ from the
+  latest registry for any mapped notice.

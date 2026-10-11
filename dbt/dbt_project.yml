@@ -26,6 +26,10 @@ vars:
   forecast_trajectory_min_slots: 90
   forecast_trajectory_first_horizon_hours: 47
   forecast_trajectory_final_horizon_hours: 0.5
+  # The Q6 population starts with notices first stored on or after this
+  # date; earlier "first" publications are often later revisions of notices
+  # published before the REMIT history began (22 August 2024).
+  remit_q6_first_publication_from: '2024-11-01 00:00:00+00'
   # How long record_run_results keeps a node result.
   node_results_retention_days: 180
 
