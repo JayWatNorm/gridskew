@@ -18,6 +18,12 @@ models:
       - name: source_row_count
         description: Number of source rows contributing to this unit.
 
+  - name: int_elexon__bm_unit_ids
+    description: >
+      Private view. The National Grid and Elexon identifiers of every unit in
+      the latest registry extract, without the eics array, so that unit tests
+      can mock the registry. The REMIT notice mapping reads it.
+
   - name: int_elexon__b1610_period
     description: >
       Private incremental table. One row per B1610 BM unit and settlement

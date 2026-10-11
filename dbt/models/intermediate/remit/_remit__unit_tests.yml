@@ -1,0 +1,207 @@
+unit_tests:
+  - name: test_remit_revisions_publication_order
+    description: >
+      Notice M is published five times. Revision numbers fall between the
+      first two publications, so they cannot set the order. B and C share a
+      publish_time and are ordered by created_time, against their revision
+      numbers. D and E share publish_time and created_time and are ordered
+      by revision_number. B is in force for no time at all, because C was
+      published at the same moment. Notice N has one publication, which is
+      current.
+    model: int_remit__revisions
+    given:
+      - input: ref('stg_elexon__remit')
+        format: csv
+        rows: |
+          mrid,revision_number,publish_time,created_time
+          M,3,2026-01-15 10:00:00+00,2026-01-15 09:00:00+00
+          M,5,2026-01-15 11:00:00+00,2026-01-15 10:30:00+00
+          M,2,2026-01-15 11:00:00+00,2026-01-15 10:45:00+00
+          M,4,2026-01-15 12:00:00+00,2026-01-15 11:30:00+00
+          M,6,2026-01-15 12:00:00+00,2026-01-15 11:30:00+00
+          N,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00
+      - input: ref('int_elexon__bm_unit_ids')
+        format: csv
+        rows: |
+          national_grid_bm_unit,elexon_bm_unit
+          NG_A,T_A
+    expect:
+      format: csv
+      rows: |
+        mrid,revision_number,publication_order,valid_to,is_current
+        M,3,1,2026-01-15 11:00:00+00,false
+        M,5,2,2026-01-15 11:00:00+00,false
+        M,2,3,2026-01-15 12:00:00+00,false
+        M,4,4,2026-01-15 12:00:00+00,false
+        M,6,5,,true
+        N,1,1,,true
+
+  - name: test_remit_revisions_unit_mapping
+    description: >
+      M1's asset_id is NG_A's Elexon ID. M2's asset_id matches nothing and
+      its affected_unit is NG_B. M3 names NG_A by asset_id and NG_B by
+      affected_unit, and the asset_id wins. T_SHARED is the Elexon ID of two
+      units: M4 is ambiguous, and M6 falls through to its affected_unit.
+      M5 matches nothing. M7 names NG_A when first published and NG_B in its
+      correction: each publication keeps its own unit.
+    model: int_remit__revisions
+    given:
+      - input: ref('stg_elexon__remit')
+        format: csv
+        rows: |
+          mrid,revision_number,publish_time,created_time,asset_id,affected_unit
+          M1,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,T_A,
+          M2,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,X,NG_B
+          M3,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,T_A,NG_B
+          M4,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,T_SHARED,
+          M5,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,X,Y
+          M6,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,T_SHARED,NG_B
+          M7,1,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,T_A,
+          M7,2,2026-01-15 12:00:00+00,2026-01-15 12:00:00+00,T_B,
+      - input: ref('int_elexon__bm_unit_ids')
+        format: csv
+        rows: |
+          national_grid_bm_unit,elexon_bm_unit
+          NG_A,T_A
+          NG_B,T_B
+          NG_C,T_SHARED
+          NG_D,T_SHARED
+    expect:
+      format: csv
+      rows: |
+        mrid,publication_order,mapping_rule,national_grid_bm_unit
+        M1,1,asset_id,NG_A
+        M2,1,affected_unit,NG_B
+        M3,1,asset_id,NG_A
+        M4,1,ambiguous,
+        M5,1,unmapped,
+        M6,1,affected_unit,NG_B
+        M7,1,asset_id,NG_A
+        M7,2,asset_id,NG_B
+
+  - name: test_remit_notices_first_and_current_publication
+    description: >
+      P1 is first published 30 minutes after its event began, as Planned and
+      Active, naming NG_A; its second, current publication moves the start
+      earlier, makes it Unplanned and Dismissed and names NG_B. The lag and
+      the class come from the first publication and everything else,
+      including the unit, from the current one. P2 is published an hour
+      before its event (a negative lag) and P3 at the moment its event
+      starts (zero).
+    model: int_remit__notices
+    given:
+      - input: ref('int_remit__revisions')
+        format: csv
+        rows: |
+          mrid,revision_number,publish_time,publication_order,is_current,unavailability_type,event_status,event_start_time,mapping_rule,national_grid_bm_unit
+          P1,1,2026-01-15 10:00:00+00,1,false,Planned,Active,2026-01-15 09:30:00+00,asset_id,NG_A
+          P1,2,2026-01-15 12:00:00+00,2,true,Unplanned,Dismissed,2026-01-15 08:00:00+00,affected_unit,NG_B
+          P2,1,2026-01-15 09:00:00+00,1,true,Unplanned,Active,2026-01-15 10:00:00+00,unmapped,
+          P3,1,2026-01-15 10:00:00+00,1,true,Unplanned,Active,2026-01-15 10:00:00+00,unmapped,
+    expect:
+      format: csv
+      rows: |
+        mrid,publication_count,first_published_at,first_unavailability_type,publication_lag_seconds,current_published_at,current_revision_number,unavailability_type,event_status,event_start_time,mapping_rule,national_grid_bm_unit
+        P1,2,2026-01-15 10:00:00+00,Planned,1800,2026-01-15 12:00:00+00,2,Unplanned,Dismissed,2026-01-15 08:00:00+00,affected_unit,NG_B
+        P2,1,2026-01-15 09:00:00+00,Unplanned,-3600,2026-01-15 09:00:00+00,1,Unplanned,Active,2026-01-15 10:00:00+00,unmapped,
+        P3,1,2026-01-15 10:00:00+00,Unplanned,0,2026-01-15 10:00:00+00,1,Unplanned,Active,2026-01-15 10:00:00+00,unmapped,
+
+  - name: test_known_outage_published_at_or_before_the_start
+    description: >
+      Both notices are planned outages of 10:00 to 11:00. N1 (unit A) is
+      published at exactly 10:00, so both of A's half-hours are known. N2
+      (unit B) is published one second later, so B's 10:00 half-hour is not
+      known and its 10:30 half-hour is.
+    model: int_remit__known_outage_periods
+    given:
+      - input: ref('int_remit__revisions')
+        format: csv
+        rows: |
+          mrid,valid_from,valid_to,message_type,event_type,unavailability_type,event_status,event_start_time,event_end_time,mapping_rule,national_grid_bm_unit
+          N1,2026-01-15 10:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Planned,Active,2026-01-15 10:00:00+00,2026-01-15 11:00:00+00,asset_id,A
+          N2,2026-01-15 10:00:01+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Planned,Active,2026-01-15 10:00:00+00,2026-01-15 11:00:00+00,asset_id,B
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,period_start_utc,known_class,notice_count
+        A,2026-01-15 10:00:00+00,planned,1
+        A,2026-01-15 10:30:00+00,planned,1
+        B,2026-01-15 10:30:00+00,planned,1
+
+  - name: test_known_outage_follows_the_publication_in_force
+    description: >
+      N3 is published Active at 09:00 for an event of 10:00 to 11:30 and
+      republished as Dismissed at 10:30. The 10:00 half-hour is known; from
+      10:30 the publication in force is dismissed, so 10:30 and 11:00 are
+      not. Nothing before 10:00 is known, because the event has not begun.
+      N11 is published at 10:00 naming unit A for an event of 10:00 to
+      13:00, and corrected at 12:00 to name unit B: A is known from 10:00
+      to 11:30 and B only from 12:00, never before its correction.
+    model: int_remit__known_outage_periods
+    given:
+      - input: ref('int_remit__revisions')
+        format: csv
+        rows: |
+          mrid,valid_from,valid_to,message_type,event_type,unavailability_type,event_status,event_start_time,event_end_time,mapping_rule,national_grid_bm_unit
+          N3,2026-01-15 09:00:00+00,2026-01-15 10:30:00+00,UnavailabilitiesOfElectricityFacilities,Production unavailability,Unplanned,Active,2026-01-15 10:00:00+00,2026-01-15 11:30:00+00,affected_unit,C
+          N3,2026-01-15 10:30:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Unplanned,Dismissed,2026-01-15 10:00:00+00,2026-01-15 11:30:00+00,affected_unit,C
+          N11,2026-01-15 10:00:00+00,2026-01-15 12:00:00+00,UnavailabilitiesOfElectricityFacilities,Production unavailability,Unplanned,Active,2026-01-15 10:00:00+00,2026-01-15 13:00:00+00,asset_id,A
+          N11,2026-01-15 12:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Unplanned,Active,2026-01-15 10:00:00+00,2026-01-15 13:00:00+00,asset_id,B
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,period_start_utc,known_planned,known_unplanned,known_class,notice_count
+        C,2026-01-15 10:00:00+00,false,true,unplanned,1
+        A,2026-01-15 10:00:00+00,false,true,unplanned,1
+        A,2026-01-15 10:30:00+00,false,true,unplanned,1
+        A,2026-01-15 11:00:00+00,false,true,unplanned,1
+        A,2026-01-15 11:30:00+00,false,true,unplanned,1
+        B,2026-01-15 12:00:00+00,false,true,unplanned,1
+        B,2026-01-15 12:30:00+00,false,true,unplanned,1
+
+  - name: test_known_outage_overlap_edges
+    description: >
+      Unit D's event runs 09:00 to 10:00: the 09:00 and 09:30 half-hours are
+      known and the 10:00 half-hour, which the event only touches at its
+      start, is not. Unit E's event runs 10:29:59 to 10:45: one second of
+      it falls in the 10:00 half-hour, which is known, as is 10:30, where
+      it ends mid-way.
+    model: int_remit__known_outage_periods
+    given:
+      - input: ref('int_remit__revisions')
+        format: csv
+        rows: |
+          mrid,valid_from,valid_to,message_type,event_type,unavailability_type,event_status,event_start_time,event_end_time,mapping_rule,national_grid_bm_unit
+          N4,2026-01-15 08:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Planned,Active,2026-01-15 09:00:00+00,2026-01-15 10:00:00+00,asset_id,D
+          N5,2026-01-15 08:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Planned,Active,2026-01-15 10:29:59+00,2026-01-15 10:45:00+00,asset_id,E
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,period_start_utc,known_class,notice_count
+        D,2026-01-15 09:00:00+00,planned,1
+        D,2026-01-15 09:30:00+00,planned,1
+        E,2026-01-15 10:00:00+00,planned,1
+        E,2026-01-15 10:30:00+00,planned,1
+
+  - name: test_known_outage_class_and_filters
+    description: >
+      Unit F has a planned (N6) and an unplanned (N7) outage in the 10:00
+      half-hour: one row, class both, two notices. Unit G's notices are each
+      excluded by one rule: a consumption unavailability (N8), an Inactive
+      publication (N9) and an unmapped notice (N10).
+    model: int_remit__known_outage_periods
+    given:
+      - input: ref('int_remit__revisions')
+        format: csv
+        rows: |
+          mrid,valid_from,valid_to,message_type,event_type,unavailability_type,event_status,event_start_time,event_end_time,mapping_rule,national_grid_bm_unit
+          N6,2026-01-15 08:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Planned,Active,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,asset_id,F
+          N7,2026-01-15 08:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Unplanned,Active,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,asset_id,F
+          N8,2026-01-15 08:00:00+00,,UnavailabilitiesOfElectricityFacilities,Consumption unavailability,Planned,Active,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,asset_id,G
+          N9,2026-01-15 08:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Planned,Inactive,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,asset_id,G
+          N10,2026-01-15 08:00:00+00,,UnavailabilitiesOfElectricityFacilities,Production unavailability,Planned,Active,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,unmapped,
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,period_start_utc,known_planned,known_unplanned,known_class,notice_count
+        F,2026-01-15 10:00:00+00,true,true,both,2
