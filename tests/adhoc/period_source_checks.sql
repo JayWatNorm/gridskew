@@ -1,7 +1,7 @@
 -- Source checks for the period tables.
 --
 -- Read-only. Run as gridskew_dbt against gridskew_prod with psql:
---   psql -X -v ON_ERROR_STOP=1 -f tests/adhoc/s6_source_checks.sql
+--   psql -X -v ON_ERROR_STOP=1 -f tests/adhoc/period_source_checks.sql
 -- Temporary tables are session-local and disappear on disconnect. The script
 -- writes nothing else; gridskew_dbt has only SELECT on raw.
 --

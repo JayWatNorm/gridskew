@@ -22,10 +22,11 @@ selectors:
   - name: nightly_tests
     description: >
       Every data test in the project except the tests that re-read all
-      history (tag full_population, run with a full refresh) and any test of
-      the BM-unit snapshot, which the BM-unit job owns. Unit tests are left
-      to CI: they check model logic against fixed rows, not the stored data,
-      and each one creates a temporary table.
+      history (tag full_population, run with a full refresh), any test of
+      the BM-unit snapshot, which the BM-unit job owns, and the run-code
+      tests, which run first. Unit tests are left to CI: they check model
+      logic against fixed rows, not the stored data, and each one creates a
+      temporary table.
     definition:
       union:
         - method: fqn
@@ -37,3 +38,5 @@ selectors:
               value: full_population
             - method: fqn
               value: snap_elexon__bm_units
+            - method: selector
+              value: nightly_run_code_check

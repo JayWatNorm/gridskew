@@ -19,7 +19,7 @@ applicable writes commit.
 | DDL | `sql/migrations/V003__elexon_pn.sql` |
 | Tests | `tests/test_elexon_pn.py`, against `pn_stream.json` |
 | DAG | `dags/gridskew_elexon_pn_dag.py` |
-| Schedule | `@daily` |
+| Schedule | Daily at 00:00 UTC (`CronDataIntervalTimetable`) |
 | `start_date` | 2025-08-22 |
 | `catchup` | **`True`** |
 
@@ -38,7 +38,7 @@ not in the signature — a default of `datetime.now()` would freeze at import, a
 a DAG file is re-parsed constantly.
 
 That single signature is why there is no separate backfill mode: the same
-function serves 365 historical runs and every future daily one.
+function serves every historical run and every future daily one.
 
 ## Validation and quarantine
 
@@ -64,7 +64,7 @@ empty result. The poller does not check expected volume: a non-empty response
 whose rows satisfy the schema but whose total is unexpectedly low loads as an
 ordinary run. See [../ingestion-patterns.md](../ingestion-patterns.md).
 
-## Window cap: tested and closed, 2026-08-21
+## Window size, tested 2026-08-21
 
 Market-wide requests, no `bmUnit` filter:
 
@@ -110,10 +110,9 @@ rather than an edge case. The **11.9% negative share** rules out any check
 constraint assuming generation is positive. The **70.3% zero share** is why
 filtering happens at the registry join downstream rather than at ingest.
 
-**Single-day samples run about 5% high.** The 132,728 measured on 2026-08-22 sits
-above the 126,203 yearly mean, so any figure extrapolated from one day inherits
-that day's weather and market conditions. Volumes stated as annual totals in this
-repository should be counted, not multiplied.
+**One day is not a year.** The 132,728 measured on 2026-08-22 sits about 5% above
+the 126,203 yearly mean. Volumes stated as annual totals in this repository are
+counted, not multiplied.
 
 > **Count, do not infer.** A response's byte size is not a row count — measuring
 > tools truncate, and a truncated response looks like a small one. Every volume
@@ -121,12 +120,9 @@ repository should be counted, not multiplied.
 
 ## Backfill verification
 
-Two queries confirm a backfill landed intact. Neither can use an index — the
-primary key leads on `national_grid_bm_unit` — so both are full scans, and
-questions should be batched into as few passes as possible.
-
-The second is the useful one, because **its answer is predictable from a
-calendar before it runs**:
+A full-scan query confirms a backfill landed intact. The primary key leads on
+`national_grid_bm_unit`, so it cannot use an index. Its answer is predictable
+from a calendar before it runs:
 
 ```sql
 SELECT settlement_date, count(DISTINCT settlement_period) AS periods
@@ -186,7 +182,7 @@ Each run fetches its own `data_interval`, which means:
   steady state
 - one red square in the grid view if a single day fails, retried by
   `default_args` without touching any other day
-- `max_active_runs=1` serialises the 365 runs
+- `max_active_runs=1` serialises the backfill runs
 
 ### Pacing, on unpausing
 
@@ -209,9 +205,8 @@ and unpausing resumes where it left off — each run is independent and idempote
 one DAG but does not prevent another Elexon DAG from running at the same time.
 Every Elexon request task uses the `elexon` pool, so only one can materialise
 a response on the shared worker at once. The
-[homelab CD overview](../../deployment.md) explains the deployment boundary;
-pool setup is in `homelab-platform/docs/gridskew-release.md` in the platform
-checkout.
+[deployment page](../../deployment.md) explains the deployment boundary. The
+platform creates the pool.
 
 ### `start_date` is the history window
 
@@ -247,8 +242,9 @@ for four weeks, then compare the captures.
 `national_grid_bm_unit, settlement_date, settlement_period, retrieved_at`:
 both time endpoints, both level endpoints and the source unit identity. A
 later capture made up entirely of previously seen segments is an echo, not a
-new submission; this is the rule `fct_commitments` uses. Segments from
-different captures are never mixed into one plan.
+new submission. `int_elexon__pn_period_mwh` applies the same rule when it
+chooses a capture. Segments from different captures are never mixed into one
+plan.
 
 **Decision rule:**
 
@@ -260,11 +256,6 @@ different captures are never mixed into one plan.
   schedule decision; a query result does not change production polling by
   itself.
 
-**The ladder is the experiment, not the permanent design.** Planning
-estimates: about 7.3M extra rows and 1.3 GB for four weeks. Permanent
+**The ladder is the experiment, not the permanent design.** Permanent
 `1, 8, 30, 90` polling would be about four times the single-cadence storage:
 32.6 GB/year for PN and 61.9 GB/year with QPN.
-
-## Result
-
-*Not yet recorded.* No run of the ladder is recorded either.

@@ -1,6 +1,7 @@
 -- Run with psql -v snapshot_schema=<verified target schema> -v dbt_role=<verified role>.
--- S4 uses dbt_dev_snapshots locally and on the homelab. Confirm the target
--- database, dbt role and existing schema owners before this administrator step.
+-- The snapshot schema is dbt_dev_snapshots, locally and in production.
+-- Confirm the target database, the dbt role and the existing schema owners
+-- before running this administrator step.
 \set ON_ERROR_STOP on
 
 BEGIN;

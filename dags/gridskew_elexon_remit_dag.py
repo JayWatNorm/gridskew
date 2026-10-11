@@ -10,8 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from airflow.decorators import dag, task
 
-# Namespaced per project, matching the bind-mount declared in the Airflow
-# compose file. Deliberately not a global PYTHONPATH:
+# The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 
 
@@ -25,7 +24,7 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
     default_args={
         "retries": 2,
         "retry_delay": timedelta(minutes=10),
-        "execution_timeout": timedelta(minutes=45),
+        "execution_timeout": timedelta(minutes=10),
     },
     tags=["gridskew", "elexon"],
 )

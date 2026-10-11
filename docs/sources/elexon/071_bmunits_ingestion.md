@@ -3,18 +3,18 @@
 GridSkew polls `GET /reference/bmunits/all` once per day. The endpoint gives
 the current registry, with no historical backfill or source update timestamp.
 Collection starts an **observed** history; it cannot recover earlier changes.
-S4 capture and snapshots are deployed. The [homelab CD overview](../../deployment.md) explains
-the release boundary; host checks and recovery live in
-`homelab-platform/docs/gridskew-release.md` in the platform checkout.
+Capture and the snapshot are deployed. The
+[deployment page](../../deployment.md) explains the release boundary.
 
 ## Complete-extract gate
 
 The poller requires a successful HTTP response and a non-empty list in which
 every row passes the 22-field contract. Each row needs a nonblank National Grid
 BM-unit ID. Populated capacity strings must use ordinary decimal/scientific
-notation within PostgreSQL numeric limits. ASCII whitespace is trimmed;
-whitespace-only strings become null in dbt staging. A repeated unit ID is accepted only when
-its EICs are distinct and populated and every other source attribute agrees.
+notation within PostgreSQL numeric limits. Staging trims ASCII whitespace from
+capacity strings and treats whitespace-only values as null. A repeated unit ID
+is accepted only when its EICs are distinct and populated and every other
+source attribute agrees.
 The raw table keeps both EIC rows; the current model aggregates their EICs into
 one sorted set.
 
@@ -42,26 +42,27 @@ append-only.
 numeric. `int_elexon__bm_units_current` selects the latest manifest and yields
 one row per National Grid ID. `dim_bm_unit` exposes that current state. The
 `snap_elexon__bm_units` dbt check snapshot records observed changes and closes
-versions for genuine disappearances. Its validity timestamps are observation
-times, not business effective dates. Null fuel stays unknown. A historical PN
-or B1610 unit is not required to occur in today's registry.
+the version of a unit that leaves a complete extract. Its validity timestamps
+are observation times, not business effective dates. Null fuel stays unknown.
+A historical PN or B1610 unit is not required to occur in today's registry.
 
 ## Recovery
 
 The single `gridskew_elexon_bmunits` Airflow DAG runs capture, the fuel seed,
 registry tests and snapshot in order, with one active run at a time. Capture
-writes production raw tables; its dbt task reads the same database through the
+writes production raw tables. The dbt task reads the same database through the
 separate `gridskew_dbt` connection, selects the `dev` target and writes only to
 `dbt_dev` and `dbt_dev_snapshots`. Existing views are tested rather than
-rebuilt. If capture fails, inspect the source and quarantine evidence, then retry the DAG.
-If dbt fails after a successful capture, repair the model or database issue
-and retry the dbt task against that manifest. The task holds PostgreSQL SHARE
-locks on both raw registry tables while it checks the expected manifest and
-runs dbt seed/test/snapshot in the shared `gridskew_dbt` pool. Other database
-writers wait; readers can continue. Lock acquisition times out after 30 seconds. A different latest
-manifest stops the task. The guard connection must remain alive for the task;
-do not terminate it during a run. Temporary dbt target/package directories are
-unique per attempt; logs remain under `dbt_logs/bmunits/<attempt-uuid>`.
+rebuilt. If capture fails, inspect the source and quarantine evidence, then
+retry the DAG. If dbt fails after a successful capture, repair the model or
+database issue and retry the dbt task against that manifest. The task holds
+PostgreSQL SHARE locks on both raw registry tables while it checks the
+expected manifest and runs dbt seed/test/snapshot in the shared `gridskew_dbt`
+pool. Other database writers wait; readers can continue. Lock acquisition
+times out after 30 seconds. A different latest manifest stops the task. The
+guard connection must remain alive for the task; do not terminate it during a
+run. Temporary dbt target/package directories are unique per attempt; logs
+remain under `dbt_logs/bmunits/<attempt-uuid>`.
 
 If a newer capture superseded a failed task, run from a fresh capture. Retained
 raw extracts preserve the evidence, but this snapshot does not automatically

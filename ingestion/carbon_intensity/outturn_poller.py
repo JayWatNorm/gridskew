@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 HALF_HOUR = timedelta(minutes=30)
 MONDAY = 0
-# One fixed day a week bounds the requests for a period the source itself
-# lacks, whatever the response to the last attempt stored.
+# Missing history is requested again on one day a week only, so a period the
+# source never publishes is not requested every day.
 HISTORY_REFETCH_WEEKDAY = MONDAY
 
 

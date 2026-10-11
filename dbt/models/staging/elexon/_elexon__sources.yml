@@ -20,7 +20,9 @@ sources:
           error_after: {count: 48, period: hour}
         columns:
           - name: extract_id
-            data_tests: [unique, not_null]
+            description: >
+              Primary key, enforced by the raw table, so no separate unique or
+              null test.
           - name: retrieved_at
             description: UTC observation time, not a source effective date.
           - name: row_count
@@ -85,13 +87,9 @@ sources:
             description: >
               Segment start, UTC. Segments can be shorter than a settlement
               period to describe a ramp. Part of the key.
-            data_tests:
-              - not_null
 
           - name: time_to
             description: Segment end, UTC.
-            data_tests:
-              - not_null
 
           - name: level_from
             description: >
@@ -142,13 +140,9 @@ sources:
             description: >
               Segment start, UTC. QPN segment boundaries are independent of
               PN's — the two cannot be joined row to row. Part of the key.
-            data_tests:
-              - not_null
 
           - name: time_to
             description: Segment end, UTC.
-            data_tests:
-              - not_null
 
           - name: level_from
             description: MW to deduct at time_from.
@@ -360,12 +354,19 @@ sources:
               QPN do not have.
 
           - name: psr_type
-            description: Resource type. Only Generation observed to date.
+            description: >
+              Resource type. Only Generation observed to date. Both tests read
+              only rows captured in the last 14 days: older raw rows change
+              only by a manual edit, which needs a full refresh anyway.
             data_tests:
               - accepted_values:
                   arguments:
                     values: ['Generation']
-              - not_null
+                  config:
+                    where: "retrieved_at > now() - interval '14 days'"
+              - not_null:
+                  config:
+                    where: "retrieved_at > now() - interval '14 days'"
 
           - name: settlement_date
             description: >

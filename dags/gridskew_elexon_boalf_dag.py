@@ -10,8 +10,7 @@ from datetime import datetime, timedelta, timezone
 from airflow.decorators import dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
 
-# Namespaced per project, matching the bind-mount declared in the Airflow
-# compose file. Deliberately not a global PYTHONPATH:
+# The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 
 

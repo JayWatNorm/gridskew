@@ -15,8 +15,7 @@ from datetime import datetime, timedelta, timezone
 from airflow.decorators import dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
 
-# Namespaced per project, matching the bind-mount declared in the Airflow
-# compose file. Deliberately not a global PYTHONPATH:
+# The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 
 RUN_TYPE = "II"
@@ -36,10 +35,14 @@ def settlement_date_to_capture(data_interval_start):
     start_date=datetime(2025, 9, 5, tzinfo=timezone.utc),
     catchup=True,
     max_active_runs=1,
+    # Elexon outages last hours: back off up to 4 hours between tries. Each
+    # try is short, so a hung poll frees the one elexon pool slot quickly.
     default_args={
-        "retries": 3,
-        "retry_delay": timedelta(minutes=5),
-        "execution_timeout": timedelta(minutes=45),
+        "retries": 6,
+        "retry_delay": timedelta(minutes=15),
+        "retry_exponential_backoff": True,
+        "max_retry_delay": timedelta(hours=4),
+        "execution_timeout": timedelta(minutes=10),
     },
     tags=["gridskew", "elexon"],
 )

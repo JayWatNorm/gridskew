@@ -1,11 +1,9 @@
-# Development dependencies. Installing this file also installs the runtime
-# dependencies, so `pip install -r requirements-dev.txt` sets up a full
-# working environment in one command.
+# Development dependencies. Includes the runtime dependencies.
 
 -r requirements.txt
 
 pytest==9.1.1
 tzdata==2026.5
 ruff==0.16.3
-dbt-core==1.11.12 #matches homelab airflow
-dbt-postgres==1.10.2 #matches homelab airflow
+dbt-core==1.11.12  # same version as the Airflow image
+dbt-postgres==1.10.2  # same version as the Airflow image

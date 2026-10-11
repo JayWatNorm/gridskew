@@ -90,6 +90,16 @@ def test_forecast_rejects_a_period_with_the_wrong_duration():
             datetime(2026, 8, 20, 12, 30, tzinfo=timezone.utc),
             id="request-inside-period",
         ),
+        pytest.param(
+            datetime(2026, 8, 20, 12, 10, tzinfo=timezone.utc),
+            datetime(2026, 8, 20, 12, 0, tzinfo=timezone.utc),
+            id="request-in-first-half",
+        ),
+        pytest.param(
+            datetime(2026, 8, 20, 12, 30, tzinfo=timezone.utc),
+            datetime(2026, 8, 20, 12, 0, tzinfo=timezone.utc),
+            id="request-on-half-hour",
+        ),
     ],
 )
 def test_outturn_accepts_its_observed_inclusive_window(

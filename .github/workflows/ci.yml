@@ -20,6 +20,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -28,7 +29,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_DB: gridskew_dev
-        
+
         ports:
           - 5432:5432
 
@@ -37,8 +38,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-
 
     steps:
       - name: Check out the repository
@@ -200,10 +199,11 @@ jobs:
           --state "$GITHUB_WORKSPACE/main-manifest"
           --indirect-selection cautious
 
-  # The S6 checks assert that their tables start empty, so they run in their
+  # These checks assert that their tables start empty, so they run in their
   # own job against a database that holds no CI fixtures.
-  s6-acceptance:
+  period-tables:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -248,7 +248,7 @@ jobs:
           -schemas=raw -locations=filesystem:/flyway/sql
           migrate
 
-      - name: Check S6 period tables and fact views
+      - name: Check the period tables and fact views
         env:
           GRIDSKEW_DISPOSABLE_TEST: "1"
           DBT_HOST: localhost
@@ -256,4 +256,4 @@ jobs:
           DBT_USER: postgres
           DBT_PASSWORD: password
           DBT_DBNAME: gridskew_dev
-        run: python -m tests.adhoc.check_s6_facts
+        run: python -m tests.adhoc.check_period_tables

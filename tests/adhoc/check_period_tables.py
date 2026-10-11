@@ -1,7 +1,7 @@
-"""S6 acceptance checks for the period models in a disposable PostgreSQL.
+"""Acceptance checks for the period models in a disposable PostgreSQL.
 
-Loads small, controlled raw rows, runs the real dbt models and asserts the S6
-plan revision 4 acceptance matrix: the incremental period tables recompute
+Loads small, controlled raw rows, runs the real dbt models and asserts the
+acceptance matrix: the incremental period tables recompute
 only touched unit-periods and equal a full refresh; the fact views show
 current registry evidence; the shortfall tables follow acceptances, registry
 changes and late settlement runs and equal a full refresh. It mutates the target database, so it refuses to
@@ -10,7 +10,7 @@ tables must exist first: apply sql/migrations to the empty database.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
-    python -m tests.adhoc.check_s6_facts
+    python -m tests.adhoc.check_period_tables
 """
 
 import os
@@ -848,7 +848,14 @@ def check_job_commands_keep_views(conn):
         "test_type:unit",
     )
     # Registry job checks (test, not build).
-    dbt("test", "--select", "+dim_bm_unit")
+    dbt(
+        "test",
+        "--select",
+        "+dim_bm_unit",
+        "elexon_fuel_codes",
+        "--indirect-selection",
+        "cautious",
+    )
     missing = [view for view in views if not exists(conn, view)]
     assert not missing, f"views dropped by scheduled commands: {missing}"
     print("Scheduled job commands: all views kept")

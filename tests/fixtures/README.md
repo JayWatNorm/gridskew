@@ -1,9 +1,9 @@
 # Test fixtures
 
-Real API responses, captured verbatim unless marked truncated, grouped by
-source to mirror `ingestion/` and `docs/sources/`. Hand-written fixtures encode
-what you think an API returns; captured ones record what it actually returned,
-which is the point.
+Real API responses, grouped by source to mirror `ingestion/` and
+`docs/sources/`. Rows are verbatim; fixtures marked composite or truncated are
+not the full payload. A captured fixture records what the API returned, not
+what it was assumed to return.
 
 ## Validator test usage
 
@@ -14,7 +14,7 @@ decimal quantities are decoded as they are in the poller. Deliberate mutations
 are made in memory, and validation must leave its input unchanged.
 
 Poller and routing tests reuse the fixtures for parsing and response-envelope
-behavior. The automated tests make no live API or database calls. See
+behaviour. The pytest suite makes no live API or database calls. See
 [endpoint validation](../../docs/sources/endpoint-validation.md).
 
 ## carbon_intensity/
@@ -30,10 +30,10 @@ behavior. The automated tests make no live API or database calls. See
 |---|---|---|---|
 | `pn_stream.json` | `/datasets/PN/stream`, two windows, **5 units** | 2026-08-22 | **Composite** — see note below. 28 rows: five unit types, segments of 1 to 30 minutes, four multi-segment periods, five rows where `levelFrom != levelTo`, a negative level, three `nationalGridBmUnit` naming shapes. **Periods 32–35 are absent** |
 | `qpn_stream.json` | `/datasets/QPN/stream`, two windows, **same 5 units as `pn_stream.json`** | 2026-08-22 | **Composite.** 24 rows, deliberately the same units and windows as the PN fixture so the two are directly comparable. **Every segment is 30 minutes** — QPN does not mirror PN's sub-period segmentation. Includes `T_WILCT-1` at −60 MW, the only unit with a non-zero QPN in the completed one-year backfill |
-| `pn_stream_ramp.json` | `/datasets/PN/stream`, 1h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for PN ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
+| `pn_stream_ramp.json` | `/datasets/PN/stream`, 2h, `T_DRAXX-1` | 2026-08-22 | **Multi-segment periods.** Drax starting up 2026-08-21: SP29 and SP30 each split into two segments, one of them a single minute. The test case for PN ramp integration — naive period-endpoint integration is 47.6% wrong on SP29 |
 | `b1610_stream.json` | `/datasets/B1610/stream`, 4h straddling a settlement-day boundary, **3 units** | 2026-08-23 | **Composite**, built by `tests/adhoc/b1610_capture_fixture.py`. 27 rows, two settlement dates, **periods 1 and 2 both present** — period 1 is the only period where `settlementDate` disagrees with the UTC date of `halfHourEndTime`. Naive `halfHourEndTime`, run type `II` only |
 | `boalf_stream.json` | `/datasets/BOALF/stream`, one request for the UTC day 2026-10-05, **5 acceptances** | 2026-10-07 | **Composite**, built by `tests/adhoc/boalf_capture_fixture.py`. 10 rows: whole acceptances chosen for a three-point ramp, a point that spans two settlement periods, a system-flagged point, a negative level, a point that starts at the end of the window, and one acceptance number held by two units |
-| `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | One mrid at revisions 4, 5, 6. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
+| `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | 4 rows: one mrid at revisions 4, 5, 6 and one other message. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
 | `remit_publications.json` | `/datasets/REMIT/stream`, one request for the UTC day 2026-09-26, **6 of 186 messages** | 2026-10-07 | **Composite**, built by `tests/adhoc/remit_capture_fixture.py`. One publication stored twice with the same `mrid`, `revisionNumber` and `publishTime` and a different `createdTime` and `eventEndTime`; a planned and a dismissed message; an `OtherMarketInformation` message with no unit fields; a three-segment `outageProfile`; a fractional capacity |
 | `mels_stream.json` | `/datasets/MELS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
 | `mils_stream.json` | `/datasets/MILS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
@@ -77,14 +77,14 @@ ignoring `levelTo` entirely — passes every assertion. Five rows differ, so it
 cannot.
 
 **Negative levels are covered** by `T_WILCT-1`, at −14 MW in the PN fixture and
-−60 MW in the QPN one. Non-zero units are rare enough that picking candidates by
-name does not work; this one came from scanning a full market-wide day.
+−60 MW in the QPN one. Non-zero units are rare; this one comes from a full
+market-wide day.
 
 That unit is also the entire `PN - QPN` question in one row: **−14 minus −60 is
 +46**, so applying the deduction flips it from importing to exporting. See
 `docs/sources/elexon/015_qpn.md`.
 
-## The second composite fixture
+## The B1610 composite fixture
 
 `b1610_stream.json` is **assembled from one real four-hour request** straddling a
 settlement-day boundary, keeping every row of three units chosen to cover the
@@ -106,13 +106,11 @@ the only way to prove local-versus-UTC handling rather than assume it — one al
 could pass by accident.
 
 The selection is done by `tests/adhoc/b1610_capture_fixture.py`, which reports
-trait coverage. **Do not hand-edit this file**; recapture it, or the fixture stops
-recording what the API returned and starts recording what someone assumed.
+trait coverage. **Do not hand-edit this file**; recapture it.
 
 Only run type `II` appears in this fixture, so it cannot show that a parse
 reads `settlementRunType`.
 
-`pn_stream_ramp.json` is retained as the **verbatim single-request capture** of
-those ramp rows. Its contents are now a subset of `pn_stream.json`; it is kept
-because provenance matters and every other fixture here is a real single
+`pn_stream_ramp.json` is the **verbatim single-request capture** of those ramp
+rows. Its rows are a subset of `pn_stream.json`; it is kept as the unaltered
 response. Tests should use `pn_stream.json`.

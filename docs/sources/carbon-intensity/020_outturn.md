@@ -18,9 +18,8 @@ is irreplaceable.
 What carbon intensity actually was, per settlement period, alongside the
 forecast as it stood at settlement time.
 
-Unlike the forecast archive, this data is **permanently re-fetchable**, which
-means missing windows can be fetched again and a deliberate rebuild remains
-possible without making truncation part of the normal append-only workflow.
+Unlike the forecast archive, this data can be fetched again, so missing windows
+are re-fetched and a full rebuild remains possible.
 
 ## Endpoint
 
@@ -31,12 +30,11 @@ GET https://api.carbonintensity.org.uk/intensity/{from}/{to}
 | Parameter | Type | Notes |
 |---|---|---|
 | `from` | path | `YYYY-MM-DDTHH:MMZ` |
-| `to` | path | Same format. Window appears to cap at **30 days** |
+| `to` | path | Same format. The poller requests at most **30 days** per call |
 
-30 days is confirmed to work and is what the poller chunks on; a year needs 13
-requests. **31 days has not been tested**, so whether the API errors or
-truncates silently beyond 30 is unconfirmed. Silent truncation is the dangerous
-case, so this is worth establishing if the chunk size is ever raised.
+Requests of up to 30 days return complete data, so the poller splits a year into
+13 requests. A response that ends before the requested window fails the
+period-completeness check.
 
 History is deep. January 2024 returns data with both forecast and actual
 populated, and the API's own examples reach back to 2017.
@@ -67,9 +65,10 @@ populated, and the API's own examples reach back to 2017.
 | `intensity.actual` | `int` or `None` | Null until the period has settled |
 | `intensity.index` | `str` | Band at time of publication |
 
-**`actual` appears roughly 15 minutes after a period closes.** Whether it is
-subsequently revised is not documented and is being measured from this table's
-own history.
+**`actual` appears roughly 15 minutes after a period closes.** The API does not
+document whether it is revised later. Every poll is kept, so a revision that a
+poll captures stays visible in this table's history; a revision made after the
+7-day look-back is not captured.
 
 ## Table
 
@@ -123,6 +122,9 @@ means one period can have several rows. Use `DISTINCT ON (period_start)` with
 
 ## Findings from this table
 
-The hour-zero asymmetry test ran against a year of it on 2026-08-19. Median of
-`actual - forecast_final` was -1 gCO2/kWh over 17,522 periods, with actual above
-forecast 47.5% of the time excluding ties. See the README's mechanism section.
+The root README's first prediction, that actual intensity exceeds the forecast
+more often than not, was tested against a year of this table on 2026-08-19.
+Median of `actual - forecast_final` was -1 gCO2/kWh over 17,522 periods,
+deduplicated with `DISTINCT ON`, with actual above forecast 47.5% of the time
+excluding ties. See
+[the mechanism being tested](../../../README.md#the-mechanism-being-tested).

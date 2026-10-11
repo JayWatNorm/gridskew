@@ -53,7 +53,7 @@ retrieval time. This creates a forecast trajectory that the source does not
 retain. The archive only extends forwards from the day collection started;
 missed revisions cannot be recovered.
 
-## Honest limitations
+## Limitations
 
 - Published historical forecast error is attenuated because the stored
   forecast is a late revision.
@@ -66,14 +66,14 @@ missed revisions cannot be recovered.
   and is later restated, so the full analysis trails real time.
 - The project measures associations and accounting relationships, not causal
   proof.
-- Weather data planned for a later phase is a proxy for the inputs used by the
+- Weather data, a later extension, can only approximate the inputs used by the
   national forecast model.
 
 ## Data and architecture
 
 | Source | Role |
 |---|---|
-| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions and outage notices; later phases add demand and prices |
+| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions and outage notices |
 | **NESO Carbon Intensity API** | Half-hourly national carbon intensity forecasts and outturn |
 
 The platform uses a medallion structure inside PostgreSQL:
@@ -251,7 +251,6 @@ Demand, system prices and weather remain later extensions.
 
 `QPN` does not alter the settlement-shortfall calculation. The model compares
 integrated `PN MWh` with `B1610 MWh` without subtracting QPN; QPN remains
-available for Dynamic Data comparisons. The completed one-unit comparison
-supports this rule: only 18,300 of 41.5 million observed QPN rows were non-zero,
-all for one BM unit. See the
+available for Dynamic Data comparisons. Across a full year, only 18,300 of 41.5
+million QPN rows were non-zero, all for one BM unit. See the
 [QPN dataset notes](docs/sources/elexon/015_qpn.md).

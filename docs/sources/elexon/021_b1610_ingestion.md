@@ -4,17 +4,16 @@ How `raw.elexon_b1610` is loaded. For what the data means and what the columns
 are, see [020_b1610.md](020_b1610.md). For the reasoning behind these patterns,
 see [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: II and SF rungs deployed.** The II backfill completed 2026-08-23:
-354 runs covering settlement days 2025-08-22 to 2026-08-10, with 139,316,985
-rows at that checkpoint and no unexpected gaps. Scheduled II and SF capture
-then continued; the exact table total was **159,151,689 rows on 2026-09-21**.
+**Status: II and SF rungs and the bounded R1 cohort deployed.** The II
+backfill covers settlement days 2025-08-22 to 2026-08-10 in 354 runs, with no
+unexpected gaps; scheduled II and SF capture continues from there.
 
 For the 2026-08-10 through 2026-08-16 cohort, II and SF each contain
 3,083,376 rows with periods 1–48 present on every date. R1 for the same dates
 is captured from 2026-10-05 through 2026-10-11.
 
 Endpoint validation and quarantine are deployed. The poller's Decimal-aware
-JSON encoder needs `simplejson`, which the Airflow image includes.
+JSON encoder needs `simplejson`, pinned in `requirements.txt`.
 
 | | |
 |---|---|
@@ -23,8 +22,8 @@ JSON encoder needs `simplejson`, which the Airflow image includes.
 | DDL | `sql/migrations/V005__elexon_b1610.sql` |
 | Tests | `tests/test_elexon_b1610.py`, against `b1610_stream.json` |
 | DAGs | `gridskew_elexon_b1610_II_dag.py`, `..._SF_dag.py`, `..._cohort_dag.py` |
-| Schedule | II/SF: `@daily`; cohort: seven fixed events at 06:00 UTC |
-| `catchup` | II **`True`**, SF **`False`** |
+| Schedule | II/SF: daily at 00:00 UTC; cohort: seven fixed events at 06:00 UTC |
+| `catchup` | II **`True`**, SF **`False`**, cohort `True` (starts paused) |
 
 ## Validation and quarantine
 
@@ -39,7 +38,7 @@ conversion to binary floats or strings. See
 | Rung | Settlement date captured | `start_date` | Requests |
 |---|---|---|---|
 | **II** | `data_interval_start - 14d` | 2025-09-05 | `II` |
-| **SF** | `data_interval_start - 35d` | forward only | `SF` |
+| **SF** | `data_interval_start - 35d` | 2025-09-26, no catchup | `SF` |
 
 Each daily run captures one British settlement date, names its run in the
 request and then checks what is stored. See
@@ -67,31 +66,30 @@ calculation would misalign the two tables used by the thesis join.
 II is live from day 7, but publication counts **working** days. Five working days
 is seven calendar days in a normal week and about twelve around Christmas.
 
-The poller rejects an empty response and fails visibly, so retries can
-recover a transient publication delay. The 14-day offset gives a working-day
-publication margin at the cost of a week of freshness. It is a margin, not a
+The poller rejects an empty response and fails visibly, so a retry or a
+cleared task instance can repeat the capture once the date is published. The
+14-day offset gives a working-day publication margin at the cost of a week of
+freshness. It is a margin, not a
 guarantee: the capture check below fails a run whose settlement date is not
 yet fully published.
 
 The 35-day rung can capture a later settlement run for a date missed by the
 head poll. It does not recover the missing earlier II reading: settlement
-runs that the endpoint has replaced may no longer be retrievable. Record
+runs that the endpoint has replaced are no longer retrievable. Record
 any missing or unexpected run type rather than treating SF as equivalent
 evidence for II.
 
 ### Why SF does not backfill
 
-`catchup=False`, deliberately. A backfill would re-fetch settlement days the II
-DAG has already stored — and at a *more mature* run type, since the II backfill
-captured whatever was current when it ran rather than II itself. Every row would
-conflict and nothing would insert.
+`catchup=False`, deliberately. SF has been superseded for settlement dates older
+than about 42 days, so a backfill asking for SF would receive empty responses
+and fail; the II backfill already stored the SF rows that were current when it
+ran.
 
-> **A backfill does not capture the run its DAG is named after.** All 354 II runs
-> executed within a few hours of each other, so each fetched whatever was current
-> on the day the backfill ran. Only settlement days from about 2026-08-02 hold
-> genuine `II`; everything older is SF, R1, R2 or R3. A DAG's name describes its
-> steady-state behaviour, not what its backfill collected — worth knowing before
-> writing a model that filters on run type.
+> **The II backfill holds whichever run was in force when it ran.** It did not
+> name a run type, and all 354 runs executed within a few hours of each other,
+> so only settlement days from about 2026-08-02 hold `II`; older days hold SF,
+> R1, R2 or R3.
 
 ## One settlement date per run
 
@@ -109,15 +107,14 @@ settlement date. Clock-change days have 46 or 50 periods rather than 48.
 Before routing or writing, the capture refuses a response containing a typed
 settlement date different from the requested date or an integer period outside
 1 through that date's expected count. Either mismatch rejects the entire
-batch. Missing or wrongly typed fields still follow the existing quarantine
-route.
+batch. Missing or wrongly typed fields follow the quarantine route.
 
 After compatible rows commit, the task requires every returned row to have the
 requested run type and the stored period numbers for that settlement date and
 run type to be exactly 1–46, 1–48 or 1–50 as appropriate. It logs the
 requested date and run, returned run counts, stored rows, periods and units.
 Mixed runs or missing or unexpected stored periods fail visibly while keeping
-already committed data. The existing key makes a repeated insert idempotent.
+already committed data. The primary key makes a repeated insert idempotent.
 This check is period coverage; it does not prove every unit is complete.
 
 A run whose settlement date is not yet fully published therefore fails
@@ -125,8 +122,7 @@ instead of succeeding with part of the date. A run asked for a superseded run
 type receives an empty response and fails.
 
 **Clear a task instance to repeat a capture**, while the run is still in
-force. Do not manually trigger an old date: manual triggering is not a
-reliable way to select a past capture. A run without a data interval or
+force. Do not manually trigger an old date: a run without a data interval or
 logical date is refused.
 
 The stored-coverage query filters on `settlement_date`; the block-range index
@@ -141,9 +137,8 @@ uses the existing `elexon` pool and enables catchup for a late unpause.
 The date mapping in the DAG is the schedule's sole source; an unlisted date
 is refused.
 
-RF is a later addition to the same bounded mapping: +430 days,
-2027-10-14 through 2027-10-20. Those RF events are not yet scheduled. A filter
-cannot restore a run that the source has superseded.
+RF for the same dates is planned at +430 days, 2027-10-14 through 2027-10-20;
+it is not in the mapping.
 
 ## The poll offset determines which run is available
 
@@ -161,33 +156,31 @@ check still verifies what the source returned:
 | 300 days | `R3` |
 | 450 days | `RF` |
 
-II and SF therefore remain two standing DAGs at fixed offsets; each names its
-run and checks the returned run, as the bounded cohort does.
-**A missed settlement-run revision cannot be recovered later** once the source
-supersedes it. A later rung can still recover the underlying period at a more
-mature run type.
+II and SF are therefore two standing DAGs at fixed offsets; each names its run
+and checks the returned run, as the bounded cohort does.
 
 ## Chunking and volumes
 
-**One settlement date per request.** Counted after the backfill:
+**One settlement date per request.** For a 48-period date:
 
 | | |
 |---|---|
 | Rows fetched and stored per run | 440,496 — 9,177 units x 48 periods |
 | Density | 177 bytes/row |
 
-The boundary is inclusive at **both** ends. The backfill and the daily runs
-before the one-date windows used UTC-day windows, which return 49 periods:
-periods 3 to 48 of one settlement day, periods 1 and 2 of the next, and
-period 3 twice.
+The boundary is inclusive at **both** ends. UTC-day windows, used by the
+backfill and the earlier daily runs, return 49 periods: periods 3 to 48 of one
+settlement day, periods 1 and 2 of the next, and period 3 twice.
 
 **`retrieved_at` is not in the key**, so a repeated capture of the same run
-stores nothing. Verified in dev: the same window loaded twice leaves the row
-count unchanged. That is what makes clearing a failed capture safe.
+stores nothing. Loading the same window twice leaves the row count unchanged.
+That is what makes clearing a failed capture safe.
 
 ### Storage
 
-At 48 periods per settlement day and a mean of 8,234 units across the year:
+Each figure counts 48 periods per settlement day. The single pass uses the
+year's mean of 8,234 units; each rung uses the unit count at its age (9,177 at
+II and SF):
 
 | Strategy | Rows/year | Size |
 |---|---|---|
@@ -208,9 +201,9 @@ of a blind append, and storage collapses to the initial load plus genuine
 changes.
 
 **Deferred rather than rejected, because the change rate cannot be measured from
-history.** The II and SF DAGs now run daily and preserve both positions. Once the
-same unit-periods have been captured at both run types, their measured difference
-will determine whether change-only append is worthwhile.
+history.** The II and SF captures, and the bounded R1 cohort, hold the same
+unit-periods at more than one run type; their measured difference determines
+whether change-only append is worthwhile.
 
 **Both designs share the same table and key**, so switching later needs no
 migration — only a change to the poller's insert.
@@ -235,7 +228,7 @@ Result for the 2025-08-22 backfill — exactly four rows, all predicted:
 | 2025-08-22 | 46 | first run; periods 1 and 2 precede the earliest window |
 | 2025-10-26 | **50** | clocks go back, 25-hour local day |
 | 2026-03-29 | 46 | clocks go forward, 23-hour local day |
-| 2026-08-10 | 3 | current head |
+| 2026-08-10 | 3 | last backfill window; periods 1 to 3 only |
 
 **The 50 is the load-bearing one.** This table keys on `settlement_date` and
 `settlement_period` directly rather than on a UTC timestamp, so if the repeated

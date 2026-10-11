@@ -75,6 +75,6 @@ forecast.
 
 ## Where the models run
 
-The four models are views in the private `analysis` group. No scheduled job
+The four models are private views in the `analysis` group. No scheduled job
 builds them. The nightly job runs their data tests, which return a count of
 failing rows and no forecast value; the verdict is read once, by hand.

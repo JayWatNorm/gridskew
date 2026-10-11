@@ -1,13 +1,11 @@
 # Ad-hoc checks
 
-**pytest does not collect anything here.** Some scripts are exploratory checks,
-kept so documented measurements remain reproducible. Others are checks that CI
-runs.
+Some scripts are exploratory checks, kept so documented measurements remain
+reproducible. Others are checks that CI runs.
 
-They are **excluded from pytest** by `norecursedirs = ["adhoc"]` in
-`pyproject.toml`. That exclusion is load-bearing: the exploratory scripts **call
-the live API at import time**, so if pytest ever collected one it would make real HTTP
-requests during collection — including on a CI runner.
+pytest skips this directory (`norecursedirs = ["adhoc"]` in `pyproject.toml`).
+This matters: the exploratory scripts **call the live API at import time**, so
+collecting one would make real HTTP requests, including on a CI runner.
 
 **Do not name anything in here `test_*.py`.** The exclusion covers the directory,
 but the naming convention is the second line of defence.
@@ -39,12 +37,19 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `load_ci_fixtures.py` | Loads the captured fixtures through the real routing and loaders; the raw tables come from `sql/migrations` first | Disposable PostgreSQL |
 | `check_bmu_snapshot_lifecycle.py` | Real dbt snapshot transitions for the BM-unit registry | Disposable PostgreSQL |
 | `check_outturn_gap_refetch.py` | The outturn history gap query, inside one transaction that is rolled back | Disposable PostgreSQL |
-| `check_s6_facts.py` | The period tables: an incremental run equals a full refresh; runs in its own job on an empty database | Disposable PostgreSQL |
+| `check_period_tables.py` | The period tables: an incremental run equals a full refresh; runs in its own job on an empty database | Disposable PostgreSQL |
 | `check_scheduled_set.py` | The nightly DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
 | `check_nightly_run.py` | The nightly DAG's default dbt commands, run for real after the full build: each succeeds, each node gets one audit row, no view is recreated, and audit rows past retention are deleted | Disposable PostgreSQL |
 
 The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
 database is a local `gridskew_dev`.
+
+## SQL checks
+
+`period_source_checks.sql` and `period_zero_volume_checks.sql` are read-only
+`psql` scripts that profile the period-table inputs: settlement-run codes,
+registry identifiers, PN capture coverage and the share of zero volumes. They
+create only session-local temporary tables.
 
 ## Fixture capture
 
@@ -61,8 +66,8 @@ shows each trait the tests need.
 `remit_capture_fixture.py` writes `tests/fixtures/elexon/remit_publications.json`:
 one real day, keeping the first message that shows each trait the tests need.
 
-Re-run it rather than hand-editing the fixture. The moment a fixture is edited by
-hand it stops recording what the API returned.
+Re-run the capture script rather than hand-editing a fixture. A hand-edited
+fixture stops recording what the API returned.
 
 A script that produced a number is better evidence than a number in a sentence,
 and it can be re-run when the answer might have changed. Anything quoted as a

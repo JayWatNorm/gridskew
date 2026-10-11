@@ -1,8 +1,9 @@
 # System prices and imbalance volume
 
-**Not yet ingested.** Planned for Phase 1, step 3 of the thesis.
+**Not ingested.**
 
-Historically referred to as **DISEBSP**. It is not at `/datasets/DISEBSP`.
+The dataset is **`DISEBSP`**, served from `/balancing/settlement/system-prices`,
+not `/datasets/DISEBSP`.
 
 ## In plain terms
 
@@ -18,14 +19,16 @@ Two numbers matter here:
   `systemSellPrice`. Under the current single-price arrangements the two are
   equal. A high value is a market-stress signal.
 - **`netImbalanceVolume`** says how short or long the system actually was, in
-  MWh. Positive and negative have opposite meanings.
+  MWh. [Positive means a short system, negative a long
+  one](https://www.elexon.co.uk/bsc/settlement/imbalance-pricing/).
 
 Of the two, **the volume is the more direct measure** for this project. Price
 is the market's reaction to scarcity and is affected by bidding behaviour;
 volume is the scarcity itself.
 
-If the thesis holds, periods with large positive imbalance volumes and high buy
-prices should be the periods where carbon intensity overshot its forecast.
+If shortfalls drive carbon forecast error, periods with large positive imbalance
+volumes and high system prices should be the periods where carbon intensity
+overshot its forecast.
 
 ---
 
@@ -36,9 +39,8 @@ GET /balancing/settlement/system-prices/{settlementDate}
 GET /balancing/settlement/system-prices/{settlementDate}/{settlementPeriod}
 ```
 
-**Note there is no stream variant and no date range.** This is per settlement
-date, so ingesting a year means a 365-iteration day loop. Different pattern
-from the `/datasets/*/stream` endpoints.
+**There is no stream variant and no date range.** Requests are per settlement
+date, so a year is 365 requests, unlike the `/datasets/*/stream` endpoints.
 
 `settlementDate` must be exactly `yyyy-MM-dd`.
 
@@ -57,10 +59,8 @@ Prices are produced by the SAA (Settlement Administration Agent) per settlement
 run, and this endpoint hands back only the most recent. **Price revisions
 cannot be reconstructed from history.**
 
-If revision history matters for prices, it has the same archive-it-yourself
-shape as the carbon intensity forecast: poll repeatedly and keep every version,
-starting from whenever you notice. Worth deciding deliberately rather than
-discovering later.
+Keeping price revisions needs the same approach as the carbon intensity
+forecast: poll repeatedly and keep every version from the first poll onward.
 
 There is also `/data-status/DISEBSP`, which reports publication status rather
 than data.
@@ -74,7 +74,7 @@ than data.
 | `startTime` | `str` | Period start |
 | `createdDateTime` | `str` | When this figure was produced |
 | `systemSellPrice` | `float` | GBP/MWh |
-| `systemBuyPrice` | `float` | GBP/MWh. Equal to the sell price in the spec's own example. Whether they routinely differ is an open question below |
+| `systemBuyPrice` | `float` | GBP/MWh. Equal to `systemSellPrice` under single imbalance pricing |
 | `bsadDefaulted` | `bool` | Balancing Services Adjustment Data defaulted |
 | `priceDerivationCode` | `str` or `null` | How the price was arrived at, e.g. `P` |
 | `reserveScarcityPrice` | `float` or `null` | Scarcity adder |
@@ -109,11 +109,11 @@ available calculation.
 figures that get aggregated.
 
 **Nearly everything after the prices is nullable.** The spec marks **fourteen**
-fields nullable — every adjustment,
-volume and system-tagged field, plus `priceDerivationCode` and
-`reserveScarcityPrice`. Only the identifiers, `startTime`, `createdDateTime`,
-the two prices, `bsadDefaulted` and `netImbalanceVolume` are non-nullable.
-Build the table with nullable columns as the default, not the exception.
+fields nullable: every adjustment, replacement, volume and system-tagged field,
+plus `priceDerivationCode` and `reserveScarcityPrice`. Only the identifiers,
+`startTime`, `createdDateTime`, the two prices, `bsadDefaulted` and
+`netImbalanceVolume` are non-nullable. Build the table with nullable columns as
+the default, not the exception.
 
 ## Observed live, 2026-08-20
 
@@ -121,21 +121,13 @@ One settlement period fetched
 (`/balancing/settlement/system-prices/2026-08-01/5`, see
 `tests/fixtures/elexon/system_prices.json`):
 
-- **The response wraps rows in `{"metadata": {"datasets": ["DISEBSP"]}, "data": [...]}`**,
-  a different envelope again from the datasets endpoints. Three envelope shapes
-  now observed across the API: bare array (streams), `{data}` (dataset base
-  endpoints), `{metadata, data}` (here).
+- **The response wraps rows in `{"metadata": {"datasets": ["DISEBSP"]}, "data": [...]}`.**
+  Observed envelopes across the API: bare array (streams), `{data}` (dataset
+  base endpoints), `{metadata, data}` (here).
 - `systemSellPrice` equalled `systemBuyPrice` (160.0) in the observed period,
   consistent with GB's single imbalance price arrangements.
 - `netImbalanceVolume` was positive (344.25 MWh) in a period where accepted
   offers exceeded accepted bids.
 - `createdDateTime` was **the day after** the settlement date, so this sample
   was the D+1 refresh rather than the earlier indicative calculation.
-- Values carry up to 18 decimal places. `numeric`, not `float`, confirmed.
-
-## Open questions
-
-- Sign convention on `netImbalanceVolume`: [Elexon defines positive as a short
-  system and negative as a long system](https://www.elexon.co.uk/bsc/settlement/imbalance-pricing/).
-- Are these figures revised as settlement runs advance? Only the latest run is
-  served, so revision would be invisible without polling.
+- Values carry up to 18 decimal places.

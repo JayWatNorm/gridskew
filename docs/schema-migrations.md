@@ -9,7 +9,7 @@ records, with a checksum, in `raw.flyway_schema_history`.
 | Path | Holds | Applied by |
 |---|---|---|
 | `sql/migrations/` | Versioned migrations for the `raw` schema | Flyway |
-| `sql/provision/` | psql scripts with `-v` variables: roles, grants, and schemas outside `raw` | an administrator, per environment |
+| `sql/provision/` | psql scripts with `-v` variables: grants and schemas outside `raw` | an administrator, per environment |
 
 ## Rules
 

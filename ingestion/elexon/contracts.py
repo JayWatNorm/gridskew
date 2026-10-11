@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 PN_SPEC = {
-    "dataset": {"type": str, "required": False, "nullable": False},
+    "dataset": {"type": str, "required": False, "nullable": True},
     "settlementDate": {"type": str, "required": True, "nullable": False},
     "settlementPeriod": {"type": int, "required": True, "nullable": False},
     "timeFrom": {"type": str, "required": True, "nullable": False},
@@ -13,7 +13,7 @@ PN_SPEC = {
 }
 
 QPN_SPEC = {
-    "dataset": {"type": str, "required": False, "nullable": False},
+    "dataset": {"type": str, "required": False, "nullable": True},
     "settlementDate": {"type": str, "required": True, "nullable": False},
     "settlementPeriod": {"type": int, "required": True, "nullable": False},
     "timeFrom": {"type": str, "required": True, "nullable": False},
@@ -25,7 +25,7 @@ QPN_SPEC = {
 }
 
 BOALF_SPEC = {
-    "dataset": {"type": str, "required": False, "nullable": False},
+    "dataset": {"type": str, "required": False, "nullable": True},
     "settlementDate": {"type": str, "required": True, "nullable": False},
     "settlementPeriodFrom": {"type": int, "required": True, "nullable": False},
     "settlementPeriodTo": {"type": int, "required": True, "nullable": False},
@@ -39,7 +39,7 @@ BOALF_SPEC = {
     "soFlag": {"type": bool, "required": True, "nullable": False},
     "amendmentFlag": {"type": str, "required": True, "nullable": True},
     "storFlag": {"type": bool, "required": True, "nullable": False},
-    "rrFlag": {"type": bool, "required": True, "nullable": False},
+    "rrFlag": {"type": bool, "required": True, "nullable": True},
     "nationalGridBmUnit": {"type": str, "required": True, "nullable": False},
     "bmUnit": {"type": str, "required": True, "nullable": True},
 }
@@ -49,7 +49,7 @@ BOALF_SPEC = {
 # optional, however often it has been seen. A field without a value is
 # absent, not null: an open-ended event has no eventEndTime.
 REMIT_SPEC = {
-    "dataset": {"type": str, "required": False, "nullable": False},
+    "dataset": {"type": str, "required": False, "nullable": True},
     "mrid": {"type": str, "required": True, "nullable": False},
     "revisionNumber": {"type": int, "required": True, "nullable": False},
     "publishTime": {"type": str, "required": True, "nullable": False},
@@ -88,7 +88,7 @@ REMIT_SPEC = {
 }
 
 B1610_SPEC = {
-    "dataset": {"type": str, "required": False, "nullable": False},
+    "dataset": {"type": str, "required": False, "nullable": True},
     "psrType": {"type": str, "required": True, "nullable": True},
     "bmUnit": {"type": str, "required": True, "nullable": False},
     "nationalGridBmUnitId": {"type": str, "required": True, "nullable": True},

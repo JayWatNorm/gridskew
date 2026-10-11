@@ -3,14 +3,15 @@
 -- fct_generation uses (one registry unit for the Elexon ID, letter case
 -- ignored). A registry rename shows here within days: periods captured across
 -- the rename hold the old ID from the first run and the new ID from a later
--- one. Returns one row per unit and never blocks the run. Cheap: the literal
--- watermark lets it read only recent period rows through the index.
+-- one. Returns one row per unit and never blocks the run. The literal
+-- watermark and the materialised CTE let it read only recent period rows
+-- through the index.
 
 {{ config(group='elexon_facts', severity='warn') }}
 
 {% set watermark = capture_watermark(ref('int_elexon__b1610_period')) %}
 
-with recent_periods as (
+with recent_periods as materialized (
     select
         bm_unit,
         first_source_national_grid_bm_unit_id,

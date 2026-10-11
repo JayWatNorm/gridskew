@@ -61,10 +61,12 @@ validity dates are when GridSkew observed a state, not Elexon's business
 effective dates. The endpoint provides no pre-collection attribute history.
 
 The deployed daily Airflow DAG captures a complete extract, loads
-`elexon_fuel_codes`, runs `dbt test --select +dim_bm_unit` and the three
-registry singular tests, then runs the snapshot. It rechecks the manifest
-immediately before snapshotting. It tests existing views rather than rebuilding
-them, because recreating upstream views can drop their dependants.
+`elexon_fuel_codes`, runs `dbt test --select +dim_bm_unit elexon_fuel_codes
+--indirect-selection cautious` (the tests of the registry chain and that seed,
+including the three registry singular tests), then runs the snapshot. It
+rechecks the manifest immediately before snapshotting. It tests existing views
+rather than rebuilding them, because recreating upstream views can drop their
+dependants.
 
 Use the guarded Airflow task for live retries. Do not replace its tests with
 `dbt build --select +dim_bm_unit` as a scheduled or standalone repair.
@@ -77,8 +79,7 @@ create a fresh snapshot over existing production history.
 
 ## Seeds
 
-`dbt seed` loads each CSV as a physical table in the target schema. The three
-seeds are:
+The project has three seeds:
 
 | Seed | Grain and purpose |
 |---|---|
@@ -105,9 +106,9 @@ inputs.
 
 PN is the test harness for the shared macro. QPN and B1610 call it with the
 same `settlement_date` and `settlement_period` arguments, so they do not repeat
-the same fixture matrix. The combined three-model build verifies their macro
-integration. A consumer-specific unit test belongs with either model if its
-input handling later diverges through casting, renaming or filtering.
+the same fixture matrix. CI's full build runs all three models, which checks
+their macro calls. A consumer-specific unit test belongs with either model if
+its input handling later diverges through casting, renaming or filtering.
 
 ## Period facts
 
@@ -129,7 +130,7 @@ dbt test --selector nightly_tests
 |---|---|
 | `nightly_run_code_check` | The generic tests of `stg_elexon__b1610`; an unknown settlement-run code stops the job before a table is written |
 | `nightly_models` | Every incremental model: the two period tables, then the instruction intervals and the shortfall table |
-| `nightly_tests` | Every data test except those tagged `full_population` and any test of the BM-unit snapshot |
+| `nightly_tests` | Every data test except those tagged `full_population`, any test of the BM-unit snapshot, and the run-code test, which runs first |
 
 The job never recreates a view. `nightly_tests` covers the sources, the
 staging and intermediate views, the registry dimension and the seeds, so
@@ -144,14 +145,14 @@ incremental model is added to that list in the same change; CI fails
 otherwise.
 
 A manual load outside the capture-time margin, a raw edit, a settlement-run
-seed change or a model-logic change requires an observed full refresh. Trigger `gridskew__dbt_nightly` with `full_refresh=true` through
-the platform runbook. Its source/run-code checks block before the write, and
+seed change or a model-logic change requires an observed full refresh.
+Trigger `gridskew__dbt_nightly` with `full_refresh=true` through the platform
+runbook (`homelab-platform/docs/gridskew-release.md` in the platform
+checkout). Its run-code and source tests run before anything is written, and
 its descendant build restores the fact views. Coordinate the shared dbt pool,
 verify all descendants and tests afterwards, and follow the runbook's recovery
 sequence if a cascade fails. A standalone full-refresh command omits those
 controls.
-
-See `homelab-platform/docs/gridskew-release.md` in the platform checkout.
 
 ## Node results and artifacts
 
@@ -199,9 +200,10 @@ tests of these views; no scheduled job builds them.
 Two private incremental tables in the `analysis` group answer how far a
 unit's metered output is from what it was expected to produce.
 
-`int_elexon__bm_unit_cohort` is the cohort: every registry unit with a
-published fuel type, grouped by `elexon_fuel_codes`. A unit without a fuel
-type has no physical baseline and is outside every shortfall result.
+`int_elexon__bm_unit_cohort`, a private view, is the cohort: every registry
+unit with a published fuel type, grouped by `elexon_fuel_codes`. A unit
+without a fuel type has no physical baseline and is outside every shortfall
+result.
 
 `int_elexon__instruction_intervals` holds, for each unit and half-hour, the
 stretches of time in which one acceptance was in force. Acceptances overlap,
@@ -220,11 +222,10 @@ shortfall. A period that cannot be judged keeps its row and says why in
 `determinability`. Both tables use the period tables' incremental rule and
 are named in the nightly DAG's `PERIOD_TABLES`. A registry change that
 alters a cohort unit's fuel type or Elexon ID reaches its rows the next
-night. Two registry events do not, and need a full refresh: a unit that
-loses its fuel type keeps its rows (the analyses join the cohort, so it
-leaves the results at once), and another unit starting or stopping to
-share a cohort unit's Elexon ID, which `warn_cohort_elexon_id_shared`
-reports each night.
+night. Two registry events do not, and need a full refresh: a unit losing
+its fuel type (its rows stay, but the analyses join the cohort, so it leaves
+the results at once), and another unit starting or ceasing to share a cohort
+unit's Elexon ID, which `warn_cohort_elexon_id_shared` reports each night.
 
 Three analyses read the table and no job runs them:
 `q3_metered_vs_notified.sql` (median and interquartile range of the
@@ -274,7 +275,7 @@ dbt test --select "source:*"
 dbt test --select "test_type:unit"
 ```
 
-Seed loads on a verified disposable database only; live seed changes follow
+Load seeds only on a verified disposable database; live seed changes follow
 the release runbook:
 
 ```powershell
@@ -282,19 +283,16 @@ dbt seed --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity
 dbt test --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity_bands
 ```
 
-Use `dbt seed --full-refresh` after changing a seed's columns or configured
-types. Ordinary value changes need only a normal `dbt seed` run.
-
 Raw read-only permissions protect raw records, but do not protect downstream
 views or snapshots from replacement. Live model changes and full refreshes
 follow the observed platform release workflow with prechecks, explicit
 selectors, descendant recovery and the shared dbt pool.
 
 Freshness runs hourly. The BM-unit job loads `elexon_fuel_codes`, tests the
-registry and records its snapshot. The nightly job updates the two private
-period tables and runs the project's data tests without recreating views. CI
-runs a full build against an ephemeral PostgreSQL service, then the nightly
-commands; it does not deploy relations to the homelab.
+registry and records its snapshot. The nightly job updates the four
+incremental tables and runs the project's data tests without recreating
+views. CI runs a full build against an ephemeral PostgreSQL service, then the
+nightly commands; it does not deploy relations to the homelab.
 
 On a pull request CI also runs
 `dbt build --select +state:modified+ --state <manifest of the last main run>`
@@ -305,7 +303,7 @@ is not. The
 manifest is a workflow artifact that each `main` run uploads; when none
 exists the step is skipped and the full build stands alone.
 
-`elexon_settlement_run_codes` is consumed by the B1610 period model and
-`elexon_fuel_codes` by registry validation. `carbon_intensity_bands` has no
-current model consumer; do not infer a production load from its presence in
-the repository.
+`elexon_settlement_run_codes` is consumed by the B1610 period model, and
+`elexon_fuel_codes` by registry validation and the shortfall cohort.
+`carbon_intensity_bands` has no current model consumer; do not infer a
+production load from its presence in the repository.

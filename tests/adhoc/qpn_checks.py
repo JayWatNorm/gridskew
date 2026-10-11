@@ -1,10 +1,10 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from ingestion.elexon.qpn_poller import fetch  # same shape; QPN poller not built yet
+from ingestion.elexon.qpn_poller import fetch
 
 to_d = datetime(2026, 8, 22, tzinfo=timezone.utc)
-rows = fetch(to_d - timedelta(days=1), to_d)  # point this at /QPN/stream
+rows = fetch(to_d - timedelta(days=1), to_d)
 
 print(f"total rows        : {len(rows):,}")
 print(f"null bmUnit       : {sum(1 for r in rows if not r['bmUnit']):,}")
