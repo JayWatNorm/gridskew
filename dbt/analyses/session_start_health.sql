@@ -9,7 +9,11 @@
 -- captured per UTC day over the last 14 days for each source, a day with
 -- none shown as 0 (each count filters on the source's capture time, indexed
 -- except on the small REMIT table); 3, dbt nodes that did not pass, recorded
--- since health_since (default: the last 7 days).
+-- since health_since.
+--
+-- For the node-results section, pass health_since as the timestamp of the
+-- previous GridSkew session; the seven-day default is only a fallback when
+-- that timestamp is unavailable.
 
 {% set since = var('health_since', none) %}
 {% set node_results = adapter.get_relation(
