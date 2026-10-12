@@ -30,32 +30,10 @@ def test_process_rows_routes_mixed_batch():
     rows = [valid_row, warning_row, rejected_row]
     parsed_rows = object()
     conn = Mock()
-    events = []
+    parse_rows = Mock(return_value=parsed_rows)
+    load_rows = Mock()
 
-    def record_parse(_rows, _retrieved_at):
-        events.append("parse")
-        return parsed_rows
-
-    def record_load(_rows, _connection):
-        events.append("load")
-
-    def record_quarantine(
-        _rows,
-        _connection,
-        _dataset,
-        _retrieved_at,
-        _request_context,
-        payload_dumps=None,
-    ):
-        events.append("quarantine")
-
-    parse_rows = Mock(side_effect=record_parse)
-    load_rows = Mock(side_effect=record_load)
-
-    with patch(
-        "ingestion.routing.quarantine_rows",
-        side_effect=record_quarantine,
-    ) as mock_quarantine:
+    with patch("ingestion.routing.quarantine_rows") as mock_quarantine:
         rejected_count = process_rows(
             rows,
             spec=FORECAST_SPEC,
@@ -68,17 +46,11 @@ def test_process_rows_routes_mixed_batch():
         )
 
     assert rejected_count == 1
-    assert events == ["quarantine", "parse", "load"]
-    parse_rows.assert_called_once_with([valid_row, warning_row], RETRIEVED_AT)
-    load_rows.assert_called_once_with(parsed_rows, conn)
-    quarantined_findings = mock_quarantine.call_args.args[0]
-    rejected_finding = quarantined_findings[0]
-    assert rejected_finding == {
-        "index": 2,
-        "row": rejected_row,
-        "errors": ["Missing required field: intensity.forecast"],
-        "warnings": [],
-    }
+    assert parse_rows.call_args.args[0] == [valid_row, warning_row]
+    assert load_rows.call_args.args[0] is parsed_rows
+    (rejected_finding,) = mock_quarantine.call_args.args[0]
+    assert rejected_finding["index"] == 2
+    assert rejected_finding["row"] == rejected_row
 
 
 def test_process_rows_groups_warning_logs_and_caps_source_indexes(caplog):

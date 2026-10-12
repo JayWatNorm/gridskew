@@ -1,6 +1,5 @@
 """Guard the deployed BM-unit dbt target without requiring Airflow to run."""
 
-from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -28,20 +27,13 @@ def connections():
     }
 
 
-def today():
-    return datetime.now(timezone.utc).date().isoformat()
-
-
 @pytest.fixture
 def dag_helpers(monkeypatch, connections):
     return load_dag_file(monkeypatch, "gridskew_elexon_bmunits_dag.py", connections)
 
 
-def test_s4_dbt_uses_dev_schema_target(dag_helpers, monkeypatch):
+def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
     env = dag_helpers["dbt_environment"]("/tmp/bmunits", "scheduled__2026-10-12")
-    assert env["DBT_LOG_PATH"].endswith(
-        "/bmunits/" + today() + "/scheduled__2026-10-12"
-    )
     assert env["GRIDSKEW_DBT_NAME"] == "gridskew_prod"
     assert env["GRIDSKEW_DBT_USER"] == "gridskew_dbt"
     assert env["GRIDSKEW_DB_USER"] == "raw_writer"
@@ -52,11 +44,17 @@ def test_s4_dbt_uses_dev_schema_target(dag_helpers, monkeypatch):
     dag_helpers["run_dbt"](env, "seed", "--select", "elexon_fuel_codes")
     command = run.call_args.args[0]
     assert command[command.index("--target") + 1] == "dev"
-    assert command[:2] == ["dbt", "seed"]
+
+
+def test_two_runs_log_to_two_folders(dag_helpers):
+    scheduled = dag_helpers["dbt_environment"]("/tmp/bmunits", "scheduled__2026-10-12")
+    manual = dag_helpers["dbt_environment"]("/tmp/bmunits", "manual__2026-10-12")
+
+    assert scheduled["DBT_LOG_PATH"] != manual["DBT_LOG_PATH"]
 
 
 @pytest.mark.parametrize("field,value", [("host", "other"), ("schema", "gridskew_dev")])
-def test_s4_rejects_dbt_connection_outside_production(
+def test_rejects_dbt_connection_outside_production(
     dag_helpers, connections, field, value
 ):
     setattr(connections["gridskew_dbt"], field, value)

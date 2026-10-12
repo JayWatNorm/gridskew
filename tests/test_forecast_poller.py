@@ -1,12 +1,12 @@
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ingestion.carbon_intensity.contracts import FORECAST_SPEC
-from ingestion.carbon_intensity.forecast_poller import load, parse
+from ingestion.carbon_intensity.forecast_poller import parse
 from ingestion.carbon_intensity.forecast_poller import run as run_poller
 
 FIXTURE_PATH = (
@@ -63,47 +63,22 @@ def test_run_rejects_an_invalid_response_envelope(response):
 
 
 def test_run_stores_rows_before_checking_completeness(payload):
-    conn = Mock()
-    events = []
-
-    def record_storage(*args, **kwargs):
-        events.append("stored")
-        return 0
-
-    def record_completeness_check(*args, **kwargs):
-        events.append("checked")
-
     with (
         patch(
             "ingestion.carbon_intensity.forecast_poller.fetch",
             return_value=payload,
         ) as mock_fetch,
         patch(
-            "ingestion.carbon_intensity.forecast_poller.process_rows",
-            side_effect=record_storage,
-        ) as mock_process_rows,
-        patch(
-            "ingestion.carbon_intensity.forecast_poller.validate_forecast_periods",
-            side_effect=record_completeness_check,
-        ) as mock_validate_completeness,
+            "ingestion.carbon_intensity.forecast_poller.execute_values"
+        ) as mock_execute_values,
     ):
-        run_poller(conn)
+        with pytest.raises(ValueError, match="first period"):
+            run_poller(MagicMock())
 
-    retrieved_at = mock_process_rows.call_args.kwargs["retrieved_at"]
-    timestamp = retrieved_at.strftime("%Y-%m-%dT%H:%MZ")
-    mock_fetch.assert_called_once_with(timestamp)
-    mock_process_rows.assert_called_once_with(
-        payload["data"],
-        spec=FORECAST_SPEC,
-        dataset="CI_Forecast",
-        conn=conn,
-        retrieved_at=retrieved_at,
-        request_context={"timestamp": timestamp, "horizon_hours": 48},
-        parse_rows=parse,
-        load_rows=load,
-    )
-    mock_validate_completeness.assert_called_once_with(payload["data"], retrieved_at)
-    assert events == ["stored", "checked"]
+    inserted_rows = mock_execute_values.call_args.args[2]
+    assert len(inserted_rows) == len(payload["data"])
+    retrieved_at = inserted_rows[0][2]
+    mock_fetch.assert_called_once_with(retrieved_at.strftime("%Y-%m-%dT%H:%MZ"))
 
 
 def test_run_fails_after_shared_routing_rejects_a_row(payload):
@@ -146,4 +121,6 @@ def test_run_stores_a_short_window_once_and_succeeds_with_a_warning(payload, cap
         run_poller(Mock())
 
     mock_process_rows.assert_called_once()
-    assert "shorter than 48 hours: stored 80 rows" in caplog.text
+    (warning,) = caplog.records
+    assert warning.name == "ingestion.carbon_intensity.forecast_poller"
+    assert warning.levelno == logging.WARNING

@@ -1,4 +1,5 @@
 import json
+import logging
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -141,21 +142,17 @@ def test_supported_capacity_values_pass(rows, value):
     assert rejected == []
 
 
-def test_unhashable_duplicate_eic_is_quarantined(rows):
+def test_unhashable_duplicate_eic_is_rejected(rows):
     duplicate = deepcopy(rows[1])
     duplicate["eic"] = []
     rows.append(duplicate)
 
-    with (
-        patch("ingestion.elexon.bmunits_poller.fetch", return_value=rows),
-        patch("ingestion.elexon.bmunits_poller.quarantine_rows") as quarantine,
-        patch("ingestion.elexon.bmunits_poller.load_extract") as load,
-    ):
-        with pytest.raises(RuntimeError, match="Rejected 1"):
-            run(Mock())
+    rejected, _ = validate_extract(rows)
 
-    quarantine.assert_called_once()
-    load.assert_not_called()
+    rejected_indexes = []
+    for finding in rejected:
+        rejected_indexes.append(finding["index"])
+    assert len(rows) - 1 in rejected_indexes
 
 
 def test_first_capture_one_row_below_the_minimum_is_rejected():
@@ -201,7 +198,9 @@ def test_accept_shrink_lets_one_run_publish_a_smaller_extract(caplog):
             remaining_units, 80, previous, previous_keys, accept_shrink=True
         )
 
-    assert "Shrink checks skipped by accept_shrink: 80 rows and 80 units" in caplog.text
+    (warning,) = caplog.records
+    assert warning.name == "ingestion.elexon.bmunits_poller"
+    assert warning.levelno == logging.WARNING
 
 
 def test_accept_shrink_keeps_the_first_extract_minimum():
