@@ -537,7 +537,12 @@ def test_a_later_run_in_force_means_the_wanted_run_is_replaced():
         assert replaced_by_a_later_run(date(2026, 8, 12), "SF") == "R1"
 
 
-@pytest.mark.parametrize("in_force", [None, "II", "SF", "DF"])
+def test_a_dispute_final_run_replaces_rf():
+    with patch("ingestion.elexon.b1610_poller.run_in_force", return_value="DF"):
+        assert replaced_by_a_later_run(date(2024, 6, 3), "RF") == "DF"
+
+
+@pytest.mark.parametrize("in_force", [None, "II", "SF", "XX"])
 def test_the_wanted_run_is_not_replaced_by_itself_an_earlier_or_an_unknown_run(
     in_force,
 ):

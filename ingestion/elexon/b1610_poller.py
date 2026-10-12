@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 LONDON = ZoneInfo("Europe/London")
 HALF_HOUR = timedelta(minutes=30)
 # Settlement runs in the order Elexon publishes them; a later run replaces an
-# earlier one, which the API then no longer serves.
-RUN_ORDER = ("II", "SF", "R1", "R2", "R3", "RF")
+# earlier one, which the API then no longer serves. DF (Dispute Final) is
+# rare and comes after RF, at about 28 months.
+RUN_ORDER = ("II", "SF", "R1", "R2", "R3", "RF", "DF")
 
 
 def decimal_json_dumps(values):
