@@ -17,15 +17,23 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-# The reading rule for the forecast drift question
-# (docs/carbon-forecast-trajectory.md). The values are fixed before any drift
-# result is read.
 vars:
+  # The reading rule for the forecast drift question
+  # (docs/carbon-forecast-trajectory.md). The values are fixed before any
+  # drift result is read.
   forecast_full_poll_rows: 96
   forecast_no_change_run_polls: 4
   forecast_trajectory_min_slots: 90
   forecast_trajectory_first_horizon_hours: 47
   forecast_trajectory_final_horizon_hours: 0.5
+  # The drift population: half-hours from this start, read once it holds
+  # this many complete half-hours (60 days). Part of the same reading rule.
+  forecast_drift_population_from: '2026-08-17 00:00:00+00'
+  forecast_drift_half_hours_needed: 2880
+  # The analyses leave out half-hours that start after this time (Q6: notices
+  # first published after it), so a one-look result can be reproduced. Null
+  # reads all stored history.
+  analysis_read_until: null
   # The Q6 population starts with notices first stored on or after this
   # date; earlier "first" publications are often later revisions of notices
   # published before the REMIT history began (22 August 2024).

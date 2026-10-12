@@ -57,9 +57,8 @@ gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)
 **`intensity.index` is not stable over time.** The bands (`very low`, `low`,
 `moderate`, `high`, `very high`) get redefined, so the field is stored but
 should not be relied on across long periods.
-The [dbt band seed](../../../dbt/seeds/carbon_intensity_bands.csv) records their
-publisher order only; it does not assign fixed gCO2/kWh thresholds or replace
-unexpected or null source labels.
+GridSkew stores the label as published and assigns it no fixed gCO2/kWh
+thresholds.
 
 ## Why the forecast archive exists
 

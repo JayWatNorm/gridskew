@@ -15,15 +15,30 @@ from ingestion.elexon.b1610_poller import (
     fetch,
     load,
     parse,
+    recent_unit_count,
+    replaced_by_a_later_run,
+    run_in_force,
     stored_coverage,
 )
 from ingestion.elexon.b1610_poller import run as run_poller
 from ingestion.elexon.contracts import B1610_SPEC
+from ingestion.routing import ContractRejected
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "b1610_stream.json"
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)
 WINDOW_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
 WINDOW_END = datetime(2026, 8, 21, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def no_earlier_dates_of_the_run():
+    """Capture tests about periods and run types see no earlier date, so the
+    unit-count check is skipped; the unit-count tests below set it."""
+
+    with patch(
+        "ingestion.elexon.b1610_poller.recent_unit_count", return_value=None
+    ) as recent_units:
+        yield recent_units
 
 
 @pytest.fixture
@@ -34,11 +49,29 @@ def source_rows():
     )
 
 
+def parsed_row_for(parsed_rows, wanted_bm_unit, wanted_period):
+    for parsed_row in parsed_rows:
+        (
+            bm_unit,
+            _national_grid_bm_unit_id,
+            _psr_type,
+            _settlement_date,
+            settlement_period,
+            _half_hour_end_time,
+            _settlement_run_type,
+            _quantity,
+            _retrieved_at,
+        ) = parsed_row
+        if bm_unit == wanted_bm_unit and settlement_period == wanted_period:
+            return parsed_row
+    raise AssertionError(f"No parsed row for {wanted_bm_unit} period {wanted_period}")
+
+
 def test_parse_maps_a_source_row_to_the_database_tuple(source_rows):
     parsed_rows = parse(source_rows, RETRIEVED_AT)
 
     assert len(parsed_rows) == len(source_rows)
-    assert parsed_rows[10] == (
+    assert parsed_row_for(parsed_rows, "E__MDRX001", 2) == (
         "E__MDRX001",
         "DRAXD-1",
         "Generation",
@@ -164,7 +197,7 @@ def test_run_fails_after_shared_routing_rejects_a_row(source_rows):
         patch("ingestion.elexon.b1610_poller.fetch", return_value=source_rows),
         patch("ingestion.elexon.b1610_poller.process_rows", return_value=1),
     ):
-        with pytest.raises(RuntimeError, match="Quarantined 1 row"):
+        with pytest.raises(ContractRejected, match="Quarantined 1 row"):
             run_poller(conn, WINDOW_START, WINDOW_END)
 
 
@@ -239,6 +272,49 @@ def test_stored_coverage_is_scoped_to_date_and_run():
     sql, params = cursor_of(conn).execute.call_args.args
     assert "WHERE settlement_date = %s AND settlement_run_type = %s" in sql
     assert params == (date(2026, 8, 10), "R1")
+
+
+def test_recent_unit_count_reads_the_seven_earlier_dates_of_the_run():
+    conn = connection_returning((9177,))
+
+    assert recent_unit_count(conn, date(2026, 8, 10), "SF") == 9177
+
+    sql, params = cursor_of(conn).execute.call_args.args
+    assert "max(units)" in sql
+    assert "GROUP BY settlement_date" in sql
+    assert params == ("SF", date(2026, 8, 3), date(2026, 8, 10))
+
+
+def capture_with_units(source_rows, stored_units, recent_units):
+    settlement_date = date(2026, 8, 10)
+    rows = one_row_per_period(source_rows, settlement_date, 48)
+    conn = connection_returning((48, list(range(1, 49)), stored_units))
+    with (
+        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows),
+        patch("ingestion.elexon.b1610_poller.execute_values"),
+        patch(
+            "ingestion.elexon.b1610_poller.recent_unit_count",
+            return_value=recent_units,
+        ),
+    ):
+        return capture_settlement_date(conn, settlement_date, "R1")
+
+
+def test_capture_fails_with_fewer_than_95_percent_of_recent_units(source_rows):
+    with pytest.raises(RuntimeError, match="stored 9499 units; the most in the"):
+        capture_with_units(source_rows, stored_units=9499, recent_units=10000)
+
+
+def test_capture_accepts_exactly_95_percent_of_recent_units(source_rows):
+    summary = capture_with_units(source_rows, stored_units=9500, recent_units=10000)
+
+    assert summary["most_units_in_previous_seven_dates"] == 10000
+
+
+def test_capture_without_an_earlier_date_checks_periods_only(source_rows):
+    summary = capture_with_units(source_rows, stored_units=1, recent_units=None)
+
+    assert summary["stored_units"] == 1
 
 
 def cohort_rows(source_rows):
@@ -426,3 +502,44 @@ def test_capture_rejects_the_right_count_of_wrong_stored_periods(source_rows):
 
     conn.commit.assert_called_once_with()
     conn.rollback.assert_called_once_with()
+
+
+def test_run_in_force_is_the_latest_run_any_unit_carries():
+    rows_with_one_unit_still_at_ii = [
+        {"settlementRunType": "II"},
+        {"settlementRunType": "R3"},
+        {"settlementRunType": "R3"},
+    ]
+    response = Mock()
+    response.json.return_value = {"data": rows_with_one_unit_still_at_ii}
+    with patch(
+        "ingestion.elexon.b1610_poller.requests.get", return_value=response
+    ) as mock_get:
+        in_force = run_in_force(date(2025, 8, 25))
+
+    assert in_force == "R3"
+    assert mock_get.call_args.kwargs["params"] == {
+        "settlementDate": "2025-08-25",
+        "settlementPeriod": 1,
+        "format": "json",
+    }
+
+
+def test_run_in_force_is_none_before_the_date_is_published():
+    response = Mock()
+    response.json.return_value = {"data": []}
+    with patch("ingestion.elexon.b1610_poller.requests.get", return_value=response):
+        assert run_in_force(date(2026, 10, 8)) is None
+
+
+def test_a_later_run_in_force_means_the_wanted_run_is_replaced():
+    with patch("ingestion.elexon.b1610_poller.run_in_force", return_value="R1"):
+        assert replaced_by_a_later_run(date(2026, 8, 12), "SF") == "R1"
+
+
+@pytest.mark.parametrize("in_force", [None, "II", "SF", "DF"])
+def test_the_wanted_run_is_not_replaced_by_itself_an_earlier_or_an_unknown_run(
+    in_force,
+):
+    with patch("ingestion.elexon.b1610_poller.run_in_force", return_value=in_force):
+        assert replaced_by_a_later_run(date(2026, 9, 5), "SF") is None

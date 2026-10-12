@@ -59,13 +59,18 @@ models:
           run currently in force, so the poll offset decides which run
           exists; a request for a superseded run returns nothing.
           Blocking check: every code must exist in the settlement-run seed,
-          so an unknown run stops the build before the facts. NOT NULL is
-          enforced by the raw table, so no separate null test.
+          so an unknown run stops the build before the facts. It reads rows
+          captured in the last 14 days, as the source's psr_type tests:
+          older rows passed when they arrived and change only by a manual
+          edit. NOT NULL is enforced by the raw table, so no separate null
+          test.
         data_tests:
           - relationships:
               arguments:
                 to: ref('elexon_settlement_run_codes')
                 field: settlement_run_code
+              config:
+                where: "retrieved_at > now() - interval '14 days'"
       - name: quantity
         description: >
           MWh for the whole period, not MW. Negative for units that
@@ -229,7 +234,19 @@ models:
       - name: unavailability_type
         description: >
           Planned or Unplanned observed. Null on OtherMarketInformation
-          messages
+          messages. The Q5 and Q6 classes assume one of the two on every
+          unavailability message; the tests warn otherwise.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Planned', 'Unplanned']
+              config:
+                where: "message_type = 'UnavailabilitiesOfElectricityFacilities'"
+                severity: warn
+          - not_null:
+              config:
+                where: "message_type = 'UnavailabilitiesOfElectricityFacilities'"
+                severity: warn
       - name: asset_id
         description: Usually an Elexon BM-unit identifier, but free text
       - name: outage_profile

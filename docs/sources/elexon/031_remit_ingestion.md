@@ -66,8 +66,8 @@ response that is not a list fails the run.
 Validation and quarantine routing are as in
 [011_pn_ingestion.md](011_pn_ingestion.md): a rejected row is quarantined
 and the compatible rows are loaded. The run then fails, and so does every
-later run while any `REMIT` row is in `raw.endpoint_quarantine`. Each of
-those runs still loads the new messages first.
+later run while `raw.endpoint_quarantine` holds a `REMIT` row whose message
+is not stored. Each of those runs still loads the new messages first.
 
 The failure has to last because the window moves on. A later run starts
 after the rejected message and never requests it again, so a failure only in
@@ -81,31 +81,18 @@ To clear it:
 2. Load the range again from the earliest `publishDateTimeFrom` in the
    quarantined rows' `request_context`:
    `run(conn, first_publish_time=datetime.fromisoformat('<that value>'))`.
-   The key makes the rows
-   already stored a no-op. This run also fails, because the quarantine is
-   not yet empty; a row it rejects is quarantined again.
-3. Delete only the quarantined rows whose message is now stored:
+   The key makes the rows already stored a no-op. A quarantined row whose
+   message this load stores no longer counts, so the run succeeds once every
+   message is stored. The quarantine rows stay as the record of what was
+   rejected.
 
-   ```sql
-   DELETE FROM raw.endpoint_quarantine AS quarantined
-   USING raw.elexon_remit AS stored
-   WHERE quarantined.dataset = 'REMIT'
-     AND stored.mrid = quarantined.payload ->> 'mrid'
-     AND stored.revision_number::text = quarantined.payload ->> 'revisionNumber'
-     AND to_char(stored.publish_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-         = quarantined.payload ->> 'publishTime'
-     AND to_char(stored.created_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-         = quarantined.payload ->> 'createdTime';
-   ```
+A row is matched to its stored message on `mrid`, `revisionNumber`,
+`publishTime` and `createdTime`, compared as text, so a row with a malformed
+or missing key field matches nothing and keeps counting.
 
-   The statement compares text and converts nothing from the payload, so a
-   quarantined row with a malformed or missing key field cannot stop it;
-   that row matches nothing and stays.
-
-A row that remains was not recovered: its message is still missing, and the
-run keeps failing for it. Never delete a `REMIT` quarantine row for any
-other reason than that its message is stored, or that the message is
-knowingly given up.
+A row that keeps counting was not recovered: its message is still missing,
+and the run keeps failing for it. Delete a `REMIT` quarantine row only when
+the message is knowingly given up.
 
 A message leaves out a field that has no value, so the run does not log a
 warning for an absent optional field. An unexpected field still logs one.

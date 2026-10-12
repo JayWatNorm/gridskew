@@ -9,8 +9,6 @@ on:
 
 permissions:
   contents: read
-  # A pull-request run reads the manifest that the last main run uploaded.
-  actions: read
 
 # A main run is never cancelled: a release needs a completed run for its SHA.
 concurrency:
@@ -21,6 +19,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    # The CI database; every step that reaches it reads these.
+    env:
+      DBT_HOST: localhost
+      DBT_PORT: 5432
+      DBT_USER: postgres
+      DBT_PASSWORD: password
+      DBT_DBNAME: gridskew_dev
 
     services:
       postgres:
@@ -81,41 +87,14 @@ jobs:
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-          DBT_HOST: localhost
-          DBT_PORT: 5432
-          DBT_USER: postgres
-          DBT_PASSWORD: password
-          DBT_DBNAME: gridskew_dev
         run: python tests/adhoc/load_ci_fixtures.py
 
       - name: Run dbt commands
         env:
           DBT_PROFILES_DIR: dbt_profiles
-          DBT_HOST: localhost
-          DBT_PORT: 5432
-          DBT_USER: postgres
-          DBT_PASSWORD: password
-          DBT_DBNAME: gridskew_dev
         run: |
           dbt parse --project-dir dbt
           dbt build --project-dir dbt
-
-      # Copied out of target/ at once: later dbt commands rewrite that folder,
-      # and dbt must not compare a project with the folder it writes.
-      - name: Copy the main manifest for pull-request comparison
-        if: github.event_name == 'push'
-        run: |
-          mkdir main-manifest
-          cp dbt/target/manifest.json main-manifest/manifest.json
-
-      - name: Upload the main manifest
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: dbt-manifest
-          path: main-manifest/manifest.json
-          retention-days: 90
-          if-no-files-found: error
 
       - name: Check scheduled dbt jobs cannot replace a relation
         env:
@@ -127,22 +106,12 @@ jobs:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
           DBT_PROFILES_DIR: dbt_profiles
-          DBT_HOST: localhost
-          DBT_PORT: 5432
-          DBT_USER: postgres
-          DBT_PASSWORD: password
-          DBT_DBNAME: gridskew_dev
         run: python tests/adhoc/check_bmu_snapshot_lifecycle.py
 
       - name: Check outturn gap re-fetch queries
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-          DBT_HOST: localhost
-          DBT_PORT: 5432
-          DBT_USER: postgres
-          DBT_PASSWORD: password
-          DBT_DBNAME: gridskew_dev
         run: python tests/adhoc/check_outturn_gap_refetch.py
 
       - name: Run the nightly dbt commands and check their audit rows
@@ -150,60 +119,27 @@ jobs:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
           DBT_PROFILES_DIR: dbt_profiles
-          DBT_HOST: localhost
-          DBT_PORT: 5432
-          DBT_USER: postgres
-          DBT_PASSWORD: password
-          DBT_DBNAME: gridskew_dev
         run: python tests/adhoc/check_nightly_run.py
 
-      # The full build above stays the proof. This step shows what a change
-      # touches: it rebuilds the changed nodes with everything above and
-      # below them. Without a manifest from main it is skipped.
-      - name: Fetch the manifest of the last successful main run
-        id: main_manifest
-        if: github.event_name == 'pull_request'
+      - name: Run every analysis against the fixtures
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
-            --branch main --event push --status success --limit 1 \
-            --json databaseId --jq '.[0].databaseId // empty') || run_id=""
-          if [ -n "$run_id" ] && gh run download "$run_id" \
-            --repo "$GITHUB_REPOSITORY" --name dbt-manifest --dir main-manifest
-          then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No manifest from a main run: the changed-nodes build was skipped." \
-              >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      # Rebuilding a view drops its dependants (DROP ... CASCADE), and a
-      # dependant that is not itself an ancestor or descendant of a changed
-      # node is not rebuilt here, so a test on such a sibling view would
-      # error. Cautious selection runs only tests whose every parent is
-      # selected. Nothing in this job runs after this step.
-      - name: Build the nodes changed since main, with ancestors and descendants
-        if: steps.main_manifest.outputs.found == 'true'
-        env:
-          DBT_PROFILES_DIR: dbt_profiles
-          DBT_HOST: localhost
-          DBT_PORT: 5432
-          DBT_USER: postgres
-          DBT_PASSWORD: password
-          DBT_DBNAME: gridskew_dev
-        run: >
-          dbt build --project-dir dbt
-          --select +state:modified+
-          --state "$GITHUB_WORKSPACE/main-manifest"
-          --indirect-selection cautious
+          PYTHONPATH: .
+          GRIDSKEW_DISPOSABLE_TEST: "1"
+        run: python -m tests.adhoc.check_analyses_compile
 
   # These checks assert that their tables start empty, so they run in their
   # own job against a database that holds no CI fixtures.
   period-tables:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    # The CI database; every step that reaches it reads these.
+    env:
+      DBT_HOST: localhost
+      DBT_PORT: 5432
+      DBT_USER: postgres
+      DBT_PASSWORD: password
+      DBT_DBNAME: gridskew_dev
 
     services:
       postgres:
@@ -251,9 +187,4 @@ jobs:
       - name: Check the period tables and fact views
         env:
           GRIDSKEW_DISPOSABLE_TEST: "1"
-          DBT_HOST: localhost
-          DBT_PORT: 5432
-          DBT_USER: postgres
-          DBT_PASSWORD: password
-          DBT_DBNAME: gridskew_dev
         run: python -m tests.adhoc.check_period_tables

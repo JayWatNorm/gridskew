@@ -47,8 +47,8 @@ get a successful manifest, so the last good state stays current.
 `stg_elexon__bm_units` preserves every accepted raw row and converts blank
 capacity strings to null numeric MW. `int_elexon__bm_units_current` selects the
 latest successful manifest and combines a unit's sorted distinct EICs after
-checking its other attributes agree. `dim_bm_unit` exposes one current row per
-National Grid ID. It preserves null fuel values; no unit name or identifier is
+checking its other attributes agree. It is one current row per National Grid
+ID. It preserves null fuel values; no unit name or identifier is
 used to infer fuel or physical generation. A scoped relationship test checks
 populated fuel codes against `elexon_fuel_codes`. It does not require historical
 PN or B1610 IDs to occur in today's registry.
@@ -61,7 +61,7 @@ validity dates are when GridSkew observed a state, not Elexon's business
 effective dates. The endpoint provides no pre-collection attribute history.
 
 The deployed daily Airflow DAG captures a complete extract, loads
-`elexon_fuel_codes`, runs `dbt test --select +dim_bm_unit elexon_fuel_codes
+`elexon_fuel_codes`, runs `dbt test --select +int_elexon__bm_units_current elexon_fuel_codes
 --indirect-selection cautious` (the tests of the registry chain and that seed,
 including the three registry singular tests), then runs the snapshot. It
 rechecks the manifest immediately before snapshotting. It tests existing views
@@ -69,7 +69,7 @@ rather than rebuilding them, because recreating upstream views can drop their
 dependants.
 
 Use the guarded Airflow task for live retries. Do not replace its tests with
-`dbt build --select +dim_bm_unit` as a scheduled or standalone repair.
+`dbt build --select +int_elexon__bm_units_current` as a scheduled or standalone repair.
 
 Schema creation, grants and structural changes follow the administrator-run
 SQL and observed release sequence in
@@ -79,20 +79,18 @@ create a fresh snapshot over existing production history.
 
 ## Seeds
 
-The project has three seeds:
+The project has two seeds:
 
 | Seed | Grain and purpose |
 |---|---|
 | `elexon_settlement_run_codes` | One row per settlement-run code, ordering II → SF → R1 → R2 → R3 → RF |
 | `elexon_fuel_codes` | One row per published Elexon fuel-type code, grouped by code meaning |
-| `carbon_intensity_bands` | One row per API index label, ordered from very low to very high |
 
 The CSVs are version-controlled sources of truth; their `dbt_dev` tables are
 reloadable copies. `elexon_fuel_codes.code_group` includes plant technologies,
 storage and interconnectors, so it does not verify an individual BM unit's
 fuel, renewable status or emissions. `INTELE` remains unclassified because
-its published meaning is unresolved. The Carbon Intensity seed stores label
-order only, not fixed gCO2/kWh boundaries.
+its published meaning is unresolved.
 
 ## Settlement periods
 
@@ -184,13 +182,15 @@ A nightly run that succeeds copies `manifest.json` and the `run_results.json`
 of its last command to `/opt/airflow/data/gridskew/artifacts/<UTC day>/` and
 to `artifacts/latest/` in the Airflow container. Each file is replaced whole.
 Day folders older than 30 days are removed. A failed run publishes nothing.
+A scheduled run refuses to start while a period table, or a view below one,
+has changed since the published manifest; trigger a full refresh once.
 
 ## Balancing instructions and outage notices
 
 `stg_elexon__boalf` and `stg_elexon__remit` are source-grain views.
-`int_elexon__boa_by_period`, in the private `analysis` group, splits each
-instructed ramp into settlement half-hours and integrates it to MWh with the
-`ramp_mwh` macro; it reads the latest capture of each ramp point, because an
+`int_elexon__instruction_intervals` splits each instructed ramp into
+settlement half-hours and keeps, minute by minute, only the acceptance in
+force (BSC T3.4); it reads the latest capture of each ramp point, because an
 acceptance that crosses midnight arrives in two daily polls. No model yet
 chooses the current row of a REMIT notice. The nightly job runs the data
 tests of these views; no scheduled job builds them.
@@ -225,7 +225,8 @@ alters a cohort unit's fuel type or Elexon ID reaches its rows the next
 night. Two registry events do not, and need a full refresh: a unit losing
 its fuel type (its rows stay, but the analyses join the cohort, so it leaves
 the results at once), and another unit starting or ceasing to share a cohort
-unit's Elexon ID, which `warn_cohort_elexon_id_shared` reports each night.
+unit's Elexon ID, which `warn_cohort_elexon_id_shared` reports each night
+until a full refresh rebuilds the unit's rows.
 
 Three analyses read the table and no job runs them:
 `q3_metered_vs_notified.sql` (median and interquartile range of the
@@ -279,8 +280,8 @@ Load seeds only on a verified disposable database; live seed changes follow
 the release runbook:
 
 ```powershell
-dbt seed --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity_bands
-dbt test --select elexon_settlement_run_codes elexon_fuel_codes carbon_intensity_bands
+dbt seed --select elexon_settlement_run_codes elexon_fuel_codes
+dbt test --select elexon_settlement_run_codes elexon_fuel_codes
 ```
 
 Raw read-only permissions protect raw records, but do not protect downstream
@@ -294,16 +295,6 @@ incremental tables and runs the project's data tests without recreating
 views. CI runs a full build against an ephemeral PostgreSQL service, then the
 nightly commands; it does not deploy relations to the homelab.
 
-On a pull request CI also runs
-`dbt build --select +state:modified+ --state <manifest of the last main run>`
-with cautious indirect selection. It rebuilds the changed nodes with
-everything above and below them; a test is run only when every model it
-reads is in that set, because rebuilding a view drops a dependant view that
-is not. The
-manifest is a workflow artifact that each `main` run uploads; when none
-exists the step is skipped and the full build stands alone.
 
 `elexon_settlement_run_codes` is consumed by the B1610 period model, and
 `elexon_fuel_codes` by registry validation and the shortfall cohort.
-`carbon_intensity_bands` has no current model consumer; do not infer a
-production load from its presence in the repository.

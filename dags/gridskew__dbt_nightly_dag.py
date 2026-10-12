@@ -4,8 +4,10 @@ Scheduled runs only write rows: they run the incremental models, then every
 test except those that re-read all history, and never recreate a view. Trigger
 with {"full_refresh": true} after a load outside Airflow, a raw edit, a
 settlement-run seed change or a model logic change; that run rebuilds the
-tables and fact views and runs every test of them. The DAG is
-created paused; enable it after an observed full refresh.
+tables and fact views and runs every test of them. A scheduled run refuses
+to start while a period table or a view below one has changed since the last
+published run, so a model change cannot reach the tables without that full
+refresh. The DAG is created paused; enable it after an observed full refresh.
 
 Each dbt command records its node results in dbt_dev.dbt_node_results. A run
 that succeeds publishes dbt's manifest and its last run results.
@@ -17,7 +19,6 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from uuid import uuid4
 
 from airflow.decorators import dag, task
 
@@ -38,6 +39,11 @@ RECORD_NODE_RESULTS = ("--vars", "{audit: true}")
 ARTIFACTS = "/opt/airflow/data/gridskew/artifacts"
 ARTIFACT_FILES = ("manifest.json", "run_results.json")
 ARTIFACT_DAYS_KEPT = 30
+LOG_DAYS_KEPT = 30
+# One budget for the whole task: a full refresh, about an hour today, grows
+# with the B1610 table. A scheduled command stops sooner (run_dbt below).
+TASK_TIME_LIMIT = timedelta(hours=4)
+SCHEDULED_COMMAND_MINUTES = 45
 
 
 def dbt_environment(work_dir, airflow_run_id):
@@ -61,7 +67,7 @@ def dbt_environment(work_dir, airflow_run_id):
     task_env = os.environ.copy()
     task_env["DBT_TARGET_PATH"] = f"{work_dir}/target"
     task_env["DBT_PACKAGES_INSTALL_PATH"] = f"{work_dir}/packages"
-    task_env["DBT_LOG_PATH"] = f"{DBT_LOGS}/nightly/{uuid4()}"
+    task_env["DBT_LOG_PATH"] = log_folder(airflow_run_id)
     task_env["GRIDSKEW_DBT_HOST"] = conn.host
     task_env["GRIDSKEW_DBT_PORT"] = str(conn.port or 5432)
     task_env["GRIDSKEW_DBT_USER"] = conn.login
@@ -69,6 +75,13 @@ def dbt_environment(work_dir, airflow_run_id):
     task_env["GRIDSKEW_DBT_NAME"] = conn.schema
     task_env["GRIDSKEW_AIRFLOW_RUN_ID"] = airflow_run_id
     return task_env
+
+
+def log_folder(airflow_run_id, today=None):
+    """A folder per run inside a folder per UTC day, so old days can be pruned."""
+
+    today = today or datetime.now(timezone.utc).date()
+    return f"{DBT_LOGS}/nightly/{today.isoformat()}/{airflow_run_id}"
 
 
 def run_dbt(env, args, timeout_minutes):
@@ -91,7 +104,7 @@ def run_dbt(env, args, timeout_minutes):
         text=True,
         check=False,
         env=env,
-        timeout=timeout_minutes * 60,
+        timeout=None if timeout_minutes is None else timeout_minutes * 60,
     )
     print(result.stdout)
     print(result.stderr)
@@ -127,6 +140,52 @@ def dbt_commands(full_refresh):
     if full_refresh:
         return [test_run_codes, test_sources, rebuild_period_tables_and_descendants]
     return [test_run_codes, update_incremental_models, test_project]
+
+
+def models_needing_full_refresh(env, state_dir):
+    """Period tables, and the views below them, whose SQL, configuration or
+    upstream (a seed, a macro) changed since the published manifest. A
+    scheduled run would leave their stored rows on the old logic. Nothing is
+    reported before the first published manifest."""
+
+    if not (Path(state_dir) / "manifest.json").exists():
+        return []
+    changed_below_a_period_table = []
+    for relation in (*REFRESH_VIEWS, *PERIOD_TABLES):
+        changed_below_a_period_table.append(f"state:modified+,{relation}+")
+    command = [
+        "dbt",
+        "--quiet",
+        "ls",
+        "--resource-type",
+        "model",
+        "--output",
+        "name",
+        "--select",
+        *changed_below_a_period_table,
+        "--state",
+        str(state_dir),
+        *RECORD_NODE_RESULTS,
+        "--project-dir",
+        DBT_PROJECT,
+        "--profiles-dir",
+        DBT_PROFILES,
+        "--target",
+        "dev",
+        "--log-path",
+        env["DBT_LOG_PATH"],
+    ]
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+        timeout=SCHEDULED_COMMAND_MINUTES * 60,
+    )
+    print(result.stderr)
+    result.check_returncode()
+    return sorted(set(result.stdout.split()))
 
 
 def missing_period_tables(conn, tables=PERIOD_TABLES):
@@ -194,7 +253,7 @@ def day_named_by(folder):
     catchup=False,
     max_active_runs=1,
     is_paused_upon_creation=True,
-    dagrun_timeout=timedelta(hours=2, minutes=30),
+    dagrun_timeout=TASK_TIME_LIMIT + timedelta(minutes=30),
     params={"full_refresh": False},
     default_args={"retries": 0},
     tags=["gridskew", "dbt"],
@@ -202,7 +261,7 @@ def day_named_by(folder):
 def gridskew__dbt_nightly():
     # One task holds the one-slot pool for the whole run, so another GridSkew
     # dbt job cannot start between its commands.
-    @task(pool="gridskew_dbt", execution_timeout=timedelta(hours=2))
+    @task(pool="gridskew_dbt", execution_timeout=TASK_TIME_LIMIT)
     def update_period_tables(params=None, run_id=None):
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
@@ -217,14 +276,33 @@ def gridskew__dbt_nightly():
                 f"Period tables missing: {missing}. Trigger once with "
                 '{"full_refresh": true} and observe it before scheduled runs.'
             )
+        today = datetime.now(timezone.utc).date()
+        Path(log_folder(run_id, today)).mkdir(parents=True, exist_ok=True)
+        # The BM-unit DAG writes its dbt logs the same way.
+        for job in ("nightly", "bmunits"):
+            job_logs = Path(DBT_LOGS) / job
+            job_logs.mkdir(parents=True, exist_ok=True)
+            remove_day_folders_before(job_logs, today - timedelta(days=LOG_DAYS_KEPT))
         with TemporaryDirectory(
             prefix="nightly-", dir="/opt/airflow/data/gridskew"
         ) as work_dir:
             env = dbt_environment(work_dir, run_id)
+            if not full_refresh:
+                changed = models_needing_full_refresh(env, Path(ARTIFACTS) / "latest")
+                if changed:
+                    raise RuntimeError(
+                        f"Models changed since the last published run: {changed}. "
+                        'Trigger once with {"full_refresh": true}.'
+                    )
             for args in dbt_commands(full_refresh):
                 # 45 minutes: the first night after a catch-up capture can
                 # recompute every half-hour with an acceptance (about 25 min).
-                run_dbt(env, args, timeout_minutes=110 if full_refresh else 45)
+                # A full refresh is bounded by the task's time limit only.
+                run_dbt(
+                    env,
+                    args,
+                    timeout_minutes=None if full_refresh else SCHEDULED_COMMAND_MINUTES,
+                )
             publish_artifacts(
                 env["DBT_TARGET_PATH"], ARTIFACTS, datetime.now(timezone.utc)
             )

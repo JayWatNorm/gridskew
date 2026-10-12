@@ -49,12 +49,13 @@ logs a warning naming each window and its missing count.
   not an attempt count, so a period the source never supplies is requested once
   a week, not every day. A gap waits up to six days for its first attempt.
 - **A history request that fails does not stop the others.** The failure is
-  logged, the remaining windows are still attempted, and the run then fails.
+  logged and the remaining windows are still attempted.
 - **Airflow retries on a Monday repeat the history requests**, 12 per attempt
   at most.
-- **A re-fetched window that is still incomplete fails the run** after its rows
-  are stored, like any other incomplete chunk. A period the source never
-  supplies therefore fails every Monday run.
+- **A re-fetched window that is still incomplete is a logged warning**, after
+  its rows are stored. A period the source never supplies stays missing in
+  every re-fetch, so failing on it would turn every Monday run red for a year.
+  An incomplete recent window, and any rejected row, still fails the run.
 
 ## Validation and quarantine
 

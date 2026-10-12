@@ -34,27 +34,27 @@ sources:
           - name: forecast_final
             description: >
               Final-revision forecast for the settlement period, in gCO2/kWh.
-              Expected to be non-null in outturn ingestion.
-            data_tests:
-              - not_null
+              Never null: the outturn poller's contract quarantines a null.
 
           - name: actual
             description: >
               Observed carbon intensity for the settlement period, in
-              gCO2/kWh. Expected to be non-null in outturn ingestion.
-            data_tests:
-              - not_null
+              gCO2/kWh. Never null: the outturn poller's contract quarantines
+              a null.
 
           - name: intensity_index
             description: >
               API-defined qualitative band for the observed intensity.
-              Expected to be non-null. Band thresholds may change over time,
-              so long-term comparisons require care.
+              Never null: the poller's contract quarantines a null. Band
+              thresholds may change over time, so long-term comparisons require
+              care. The band test reads all history, so it warns: a new band
+              name is a question for the analysis, not a reason to stop.
             data_tests:
               - accepted_values:
                   arguments:
                     values: ['very high', 'high', 'moderate', 'low', 'very low']
-              - not_null
+                  config:
+                    severity: warn
 
       # ------------------------------------------------------------------
       - name: carbon_intensity_forecast
@@ -91,11 +91,14 @@ sources:
           - name: intensity_index
             description: >
               API-defined qualitative band for the forecast intensity.
-              Expected to be non-null. Band thresholds may change over time,
-              so long-term comparisons require care.
+              Never null: the poller's contract quarantines a null. Band
+              thresholds may change over time, so long-term comparisons require
+              care. The band test reads all history, so it warns: a new band
+              name is a question for the analysis, not a reason to stop.
             data_tests:
               - accepted_values:
                   arguments:
                     values: ['very high', 'high', 'moderate', 'low', 'very low']
-              - not_null
+                  config:
+                    severity: warn
     

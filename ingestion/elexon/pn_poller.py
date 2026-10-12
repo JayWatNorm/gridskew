@@ -1,16 +1,12 @@
 """Fetch, validate, quarantine and load Elexon Physical Notifications."""
 
-import logging
-import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 
-import psycopg2
 import requests
-from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
 from ingestion.elexon.contracts import PN_SPEC
-from ingestion.routing import process_rows
+from ingestion.routing import ContractRejected, process_rows
 
 
 def fetch(from_date, to_date):
@@ -31,14 +27,10 @@ def fetch(from_date, to_date):
     return response.json()
 
 
-def run(conn, from_date=None, to_date=None):
-    """Validate and load one PN window, defaulting to the previous UTC day."""
+def run(conn, from_date, to_date):
+    """Validate and load one PN window."""
 
     retrieved_at = datetime.now(timezone.utc)
-    day_start = retrieved_at.replace(hour=0, minute=0, second=0, microsecond=0)
-    if from_date is None or to_date is None:
-        from_date = day_start - timedelta(days=1)
-        to_date = day_start
 
     rows = fetch(from_date, to_date)
     if not isinstance(rows, list) or not rows:
@@ -57,7 +49,7 @@ def run(conn, from_date=None, to_date=None):
         load_rows=load,
     )
     if rejected_count:
-        raise RuntimeError(
+        raise ContractRejected(
             f"Quarantined {rejected_count} rows due to validation errors"
         )
 
@@ -110,20 +102,3 @@ def load(parsed_rows, conn):
     with conn.cursor() as cursor:
         execute_values(cursor, insert_sql, parsed_rows, page_size=1000)
     conn.commit()
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    logging.basicConfig(level=logging.INFO)
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-    )
-
-    try:
-        run(conn)
-    finally:
-        conn.close()

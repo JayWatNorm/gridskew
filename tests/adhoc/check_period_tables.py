@@ -24,6 +24,8 @@ from zoneinfo import ZoneInfo
 import psycopg2
 from psycopg2 import errors
 
+from tests.adhoc.check_scheduled_set import bmunit_job_commands
+
 PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 # The repository profile reads the guarded DBT_* variables; pinning it and the
 # target stops an inherited DBT_PROFILES_DIR sending dbt to another database.
@@ -371,9 +373,11 @@ def check_generation(conn):
 
     # Unknown run code: the staging test fails and the table is unchanged. The
     # failed build dropped the dependent views (DROP ... CASCADE); a clean
-    # build restores them.
+    # build restores them. Captured now: the run-code test reads only rows
+    # captured in the last 14 days.
     stored = table_rows(conn, B1610_PERIODS)
-    insert_b1610(conn, [("S6_A", None, AUG11, 1, "XX", "1", T0 + 4 * DAY)])
+    unknown_run = ("S6_A", None, AUG11, 1, "XX", "1", datetime.now(timezone.utc))
+    insert_b1610(conn, [unknown_run])
     build_b1610(expect_success=False)
     assert table_rows(conn, B1610_PERIODS) == stored
     execute(conn, "DELETE FROM raw.elexon_b1610 WHERE settlement_run_type = 'XX'")
@@ -661,6 +665,17 @@ def assert_shortfall_equals_full_refresh(conn):
     assert_same_rows("shortfall", incremental_shortfall, shortfall(conn))
 
 
+def units_needing_shared_id_refresh(conn):
+    """The units the warn_cohort_elexon_id_shared test names."""
+    dbt("test", "--select", "warn_cohort_elexon_id_shared", "--store-failures")
+    rows = fetch(
+        conn,
+        "SELECT national_grid_bm_unit "
+        "FROM dbt_dev_dbt_test__audit.warn_cohort_elexon_id_shared",
+    )
+    return {unit for (unit,) in rows}
+
+
 def assert_same_rows(name, incremental, full):
     """The incremental table equals the full refresh; name the first rows that differ."""
     differing = [
@@ -759,9 +774,30 @@ def check_shortfall(conn):
     build_shortfall_tables()
     assert shortfall(conn)[p1][7] == "no_metered_value"
     assert_shortfall_equals_full_refresh(conn)
-    insert_registry(conn, [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:]], step=5)
+    registry_now = [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:]]
+    insert_registry(conn, registry_now, step=5)
     build_shortfall_tables()
     assert shortfall(conn)[p1][7] == "determinable"
+
+    # Another unit starts sharing the unit's Elexon ID. The unit's own
+    # registry row is unchanged, so the next run keeps its metered values and
+    # the warning names the unit until a full refresh. When sharing stops, the
+    # stored rows lack metered values the registry now maps, and the warning
+    # names it again until the next full refresh. S6NG_C1 and S6NG_C2 share
+    # an ID throughout; no stored row of theirs disagrees, so neither is named.
+    assert units_needing_shared_id_refresh(conn) == set()
+    insert_registry(conn, [*registry_now, ("S6NG_TWIN", "S6_A", None)], step=6)
+    build_shortfall_tables()
+    assert units_needing_shared_id_refresh(conn) == {"S6NG_A"}
+    rebuild_shortfall_tables()
+    assert shortfall(conn)[p1][7] == "no_metered_value"
+    assert units_needing_shared_id_refresh(conn) == set()
+    insert_registry(conn, registry_now, step=7)
+    build_shortfall_tables()
+    assert units_needing_shared_id_refresh(conn) == {"S6NG_A"}
+    rebuild_shortfall_tables()
+    assert shortfall(conn)[p1][7] == "determinable"
+    assert units_needing_shared_id_refresh(conn) == set()
 
     # A late settlement run for period 1 reaches the shortfall row. First the
     # watermark moves past the instruction stamp (a changed PN capture), so
@@ -808,7 +844,7 @@ def check_shortfall(conn):
 def check_job_commands_keep_views(conn):
     """Scheduled jobs write data; only releases recreate views. Rebuilding a
     view drops its dependants (DROP ... CASCADE), so the nightly S6 commands and
-    the registry job's checks must leave every view in place."""
+    the registry job's commands must leave every view in place."""
     # Release: create every view once. (The earlier `build +fct_commitments`
     # rebuilt the registry view and so dropped fct_generation, which is the
     # hazard this check guards against.)
@@ -816,7 +852,6 @@ def check_job_commands_keep_views(conn):
     dbt(
         "run",
         "--select",
-        "dim_bm_unit",
         "fct_generation",
         "fct_commitments",
         # The shortfall tables' upstream views; the nightly run builds the
@@ -827,7 +862,6 @@ def check_job_commands_keep_views(conn):
     views = (
         GENERATION,
         COMMITMENTS,
-        "dbt_dev.dim_bm_unit",
         "dbt_dev.int_elexon__bm_unit_cohort",
     )
     assert all(exists(conn, view) for view in views)
@@ -847,15 +881,9 @@ def check_job_commands_keep_views(conn):
         # database does not hold.
         "test_type:unit",
     )
-    # Registry job checks (test, not build).
-    dbt(
-        "test",
-        "--select",
-        "+dim_bm_unit",
-        "elexon_fuel_codes",
-        "--indirect-selection",
-        "cautious",
-    )
+    # Registry job: the DAG's own commands.
+    for args in bmunit_job_commands():
+        dbt(*args)
     missing = [view for view in views if not exists(conn, view)]
     assert not missing, f"views dropped by scheduled commands: {missing}"
     print("Scheduled job commands: all views kept")

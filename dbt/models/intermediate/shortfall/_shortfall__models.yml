@@ -28,8 +28,8 @@ models:
       mechanism settles them. Each half-hour is cut wherever an acceptance
       starts or stops and every piece goes to the most recently issued
       acceptance covering it. Minutes no acceptance covers have no row; the
-      PN applies there. Built from the latest capture of each ramp point,
-      like int_elexon__boa_by_period. Each run recomputes every half-hour
+      PN applies there. Built from the latest capture of each ramp point.
+      Each run recomputes every half-hour
       touched by any capture of a ramp point captured since the stored
       watermark minus capture_margin, replacing all of that half-hour's rows;
       a half-hour recomputed to no stretch keeps one row with a null
@@ -148,6 +148,8 @@ models:
           - accepted_values:
               arguments:
                 values: [uninstructed, fully_instructed, partially_instructed]
+              config:
+                tags: [full_population]
       - name: instructed_mwh
         description: Energy of the acceptances in force over their minutes; null when uninstructed.
       - name: pn_in_instructed_mwh
@@ -179,6 +181,8 @@ models:
                   - ambiguous_metered
                   - pn_incomplete
                   - pn_invalid
+              config:
+                tags: [full_population]
       - name: last_captured_at
         description: >
           Latest capture among the PN, the metered row and the acceptances;

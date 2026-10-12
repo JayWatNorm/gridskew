@@ -3,8 +3,8 @@
 import pytest
 
 from tests.adhoc.check_scheduled_set import (
+    bmunit_job_commands,
     nightly_default_commands,
-    nightly_guarded_tables,
     scheduled_set_problems,
     unguarded_incremental_models,
 )
@@ -75,13 +75,8 @@ def test_the_nightly_dag_supplies_its_default_commands():
     assert RUN_THE_INCREMENTAL_MODELS in nightly_default_commands()
 
 
-def test_the_nightly_dag_supplies_its_guarded_tables():
-    assert nightly_guarded_tables() == (
-        "int_elexon__b1610_period",
-        "int_elexon__pn_period_mwh",
-        "int_elexon__instruction_intervals",
-        "int_shortfall_by_unit_period",
-    )
+def test_the_bmunit_dag_commands_never_replace_a_relation():
+    assert scheduled_set_problems(released_manifest(), bmunit_job_commands()) == []
 
 
 def test_a_scheduled_run_by_selector_must_name_a_selector_that_exists():

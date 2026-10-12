@@ -2,6 +2,5 @@
 # dependencies only. Production installs its own copies in the Airflow image.
 
 psycopg2-binary==2.9.12
-python-dotenv==1.2.3
 requests==2.34.2
 simplejson==4.1.1

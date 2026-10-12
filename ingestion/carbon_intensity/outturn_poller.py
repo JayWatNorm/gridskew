@@ -1,12 +1,9 @@
 """Fetch, validate, quarantine and load Carbon Intensity outturn windows."""
 
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 
-import psycopg2
 import requests
-from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
 from ingestion.carbon_intensity.completeness import validate_outturn_window
@@ -179,20 +176,23 @@ def run(conn):
                 conn, horizon_start, recent_start, request_end
             )
 
-    outcomes = []
-    for window_start, window_end in windows:
-        outcomes.append(process_window(conn, window_start, window_end, retrieved_at))
-    for window_start, window_end in history_windows:
-        outcomes.append(
-            process_history_window(conn, window_start, window_end, retrieved_at)
-        )
-
     rejected_count = 0
     incomplete_count = 0
-    for window_rejected_count, incomplete in outcomes:
+    for window_start, window_end in windows:
+        window_rejected_count, incomplete = process_window(
+            conn, window_start, window_end, retrieved_at
+        )
         rejected_count += window_rejected_count
         if incomplete:
             incomplete_count += 1
+    # A half-hour the source never published stays missing in every re-fetch,
+    # so an incomplete history window is a logged warning, not a failure that
+    # would recur every Monday for a year. The recent window above still fails.
+    for window_start, window_end in history_windows:
+        window_rejected_count, _ = process_history_window(
+            conn, window_start, window_end, retrieved_at
+        )
+        rejected_count += window_rejected_count
 
     if rejected_count and incomplete_count:
         raise RuntimeError(
@@ -311,20 +311,3 @@ def load(parsed_rows, conn):
     with conn.cursor() as cursor:
         execute_values(cursor, insert_sql, parsed_rows)
     conn.commit()
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    logging.basicConfig(level=logging.INFO)
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-    )
-
-    try:
-        run(conn)
-    finally:
-        conn.close()

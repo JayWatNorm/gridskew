@@ -9,6 +9,7 @@ from fakes import single_spaced
 from ingestion.elexon.boalf_poller import load, parse
 from ingestion.elexon.boalf_poller import run as run_poller
 from ingestion.elexon.contracts import BOALF_SPEC
+from ingestion.routing import ContractRejected
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "boalf_stream.json"
 RETRIEVED_AT = datetime(2026, 10, 7, 0, 0, 13, tzinfo=timezone.utc)
@@ -149,5 +150,5 @@ def test_run_fails_after_shared_routing_rejects_a_row(source_rows):
         patch("ingestion.elexon.boalf_poller.fetch", return_value=source_rows),
         patch("ingestion.elexon.boalf_poller.process_rows", return_value=1),
     ):
-        with pytest.raises(RuntimeError, match="Quarantined 1 row"):
+        with pytest.raises(ContractRejected, match="Quarantined 1 row"):
             run_poller(conn, WINDOW_START, WINDOW_END)

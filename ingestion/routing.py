@@ -11,6 +11,11 @@ from ingestion.validation import validate_rows
 logger = logging.getLogger(__name__)
 
 
+class ContractRejected(RuntimeError):
+    """Rows failed the source contract. A retry fetches the same rows, so
+    the DAGs fail the task at once instead of retrying."""
+
+
 def process_rows(
     rows,
     *,

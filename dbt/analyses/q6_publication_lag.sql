@@ -16,10 +16,14 @@
 -- history may have been published before it too. Both exclusions read
 -- dates only, never the lag.
 --
--- Section 1 is the headline by class; section 2 splits it by the current
--- event type; section 3 counts every notice once by the first reason it is
--- left out, then one count inside the population that excludes nothing.
--- Run once, by hand, after the rule is recorded.
+-- Section 1 is the headline by class, with n the notices that have a lag
+-- and the range of the population's first publications; section 2 splits
+-- it by the current event type; section 3 counts every notice once by the
+-- first reason it is left out (first, a first publication after
+-- analysis_read_until), then one count inside the population that excludes
+-- nothing. Run once, by hand, after the rule is recorded.
+
+{% set read_until = var('analysis_read_until') %}
 
 with notices as (
     select
@@ -33,6 +37,10 @@ with notices as (
         first_event_start_time,
         publication_lag_seconds,
         case
+{% if read_until is not none %}
+            when first_published_at > timestamptz '{{ read_until }}'
+                then '0 first published after analysis_read_until'
+{% endif %}
             when message_type is distinct from 'UnavailabilitiesOfElectricityFacilities'
                 then '1 other market information'
             when event_status = 'Dismissed'
@@ -58,11 +66,13 @@ headline as (
         first_unavailability_type as outage_class,
         null::text as event_type,
         null::text as item,
-        count(*) as notices,
+        count(publication_lag_seconds) as notices,
         round((percentile_cont(0.5) within group (order by publication_lag_seconds) / 60)::numeric, 1)
             as median_lag_minutes,
         round((percentile_cont(0.9) within group (order by publication_lag_seconds) / 60)::numeric, 1)
-            as p90_lag_minutes
+            as p90_lag_minutes,
+        min(first_published_at) as first_published_from,
+        max(first_published_at) as first_published_to
     from population
     group by first_unavailability_type
 ),
@@ -73,11 +83,13 @@ by_event_type as (
         first_unavailability_type as outage_class,
         event_type,
         null::text as item,
-        count(*) as notices,
+        count(publication_lag_seconds) as notices,
         round((percentile_cont(0.5) within group (order by publication_lag_seconds) / 60)::numeric, 1)
             as median_lag_minutes,
         round((percentile_cont(0.9) within group (order by publication_lag_seconds) / 60)::numeric, 1)
-            as p90_lag_minutes
+            as p90_lag_minutes,
+        min(first_published_at) as first_published_from,
+        max(first_published_at) as first_published_to
     from population
     group by first_unavailability_type, event_type
 ),
@@ -90,7 +102,9 @@ coverage as (
         coverage_reason as item,
         count(*) as notices,
         null::numeric as median_lag_minutes,
-        null::numeric as p90_lag_minutes
+        null::numeric as p90_lag_minutes,
+        null::timestamptz as first_published_from,
+        null::timestamptz as first_published_to
     from notices
     group by coverage_reason
 
@@ -102,6 +116,8 @@ coverage as (
         null,
         '6 in the population: class changed after the first publication',
         count(*),
+        null,
+        null,
         null,
         null
     from population

@@ -309,10 +309,11 @@ def test_run_fails_while_a_row_from_an_earlier_run_is_in_quarantine():
         with pytest.raises(RuntimeError, match="2 REMIT rows are in quarantine"):
             run_at_run_time(conn)
 
-    quarantine_query = cursor_of(conn).execute.call_args_list[1].args
-    assert quarantine_query == (
-        "SELECT count(*) FROM raw.endpoint_quarantine WHERE dataset = 'REMIT'",
-    )
+    (quarantine_query,) = cursor_of(conn).execute.call_args_list[1].args
+    assert "FROM raw.endpoint_quarantine AS quarantined" in quarantine_query
+    assert "quarantined.dataset = 'REMIT'" in quarantine_query
+    assert "NOT EXISTS" in quarantine_query
+    assert "FROM raw.elexon_remit AS stored" in quarantine_query
 
 
 def test_run_loads_the_compatible_rows_before_it_fails(source_rows):

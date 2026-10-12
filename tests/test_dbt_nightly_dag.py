@@ -1,6 +1,6 @@
 """Guard the nightly dbt commands without requiring Airflow to run."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -151,3 +151,39 @@ def test_only_day_folders_older_than_thirty_days_are_removed(nightly, dbt_target
     for folder in sorted(artifacts.iterdir()):
         folder_names.append(folder.name)
     assert folder_names == ["2026-09-09", "2026-10-09", "latest", "not-a-day"]
+
+
+def test_logs_go_in_a_folder_per_day_and_run(nightly):
+    folder = nightly["log_folder"]("scheduled__2026-10-09", date(2026, 10, 9))
+
+    assert folder.endswith("/dbt_logs/nightly/2026-10-09/scheduled__2026-10-09")
+
+
+def test_no_published_manifest_needs_no_full_refresh(nightly, monkeypatch, tmp_path):
+    run = Mock()
+    monkeypatch.setattr(nightly["subprocess"], "run", run)
+
+    assert nightly["models_needing_full_refresh"]({}, tmp_path) == []
+    run.assert_not_called()
+
+
+def test_changed_models_below_a_period_table_need_a_full_refresh(
+    nightly, monkeypatch, tmp_path
+):
+    (tmp_path / "manifest.json").write_text("{}")
+    env = nightly["dbt_environment"]("/tmp/nightly", "scheduled__2026-10-09")
+    listed = SimpleNamespace(
+        stdout="int_shortfall_by_unit_period\nfct_generation\nfct_generation\n",
+        stderr="",
+        check_returncode=Mock(),
+    )
+    run = Mock(return_value=listed)
+    monkeypatch.setattr(nightly["subprocess"], "run", run)
+
+    changed = nightly["models_needing_full_refresh"](env, tmp_path)
+
+    assert changed == ["fct_generation", "int_shortfall_by_unit_period"]
+    command = run.call_args.args[0]
+    assert command[command.index("--state") + 1] == str(tmp_path)
+    assert "state:modified+,int_shortfall_by_unit_period+" in command
+    assert "state:modified+,int_elexon__bm_unit_cohort+" in command

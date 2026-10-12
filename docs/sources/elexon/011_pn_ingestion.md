@@ -181,14 +181,15 @@ Each run fetches its own `data_interval`, which means:
 - no database-state check, no window builder, no branch between backfill and
   steady state
 - one red square in the grid view if a single day fails, retried by
-  `default_args` without touching any other day
-- `max_active_runs=1` serialises the backfill runs
+  `default_args` for about four days without touching any other day
+- up to three runs at once, so a day that keeps retrying does not hold up
+  the days after it
 
 ### Pacing, on unpausing
 
-The scheduler creates runs in batches as intervals close, but `max_active_runs=1`
-means exactly one executes at a time. Each run is roughly 30 to 60 seconds,
-dominated by the insert of 132,000 rows.
+The scheduler creates runs in batches as intervals close, and the one-slot
+`elexon` pool (below) means exactly one request executes at a time. Each run is
+roughly 30 to 60 seconds, dominated by the insert of 132,000 rows.
 
 ```
 365 runs x ~45s          ~ 4.5 hours
@@ -202,7 +203,7 @@ Against the **30 requests per second** measured with no throttling, that is abou
 and unpausing resumes where it left off — each run is independent and idempotent.
 
 **A one-slot Airflow Pool serialises all Elexon work.** `max_active_runs` limits
-one DAG but does not prevent another Elexon DAG from running at the same time.
+one DAG to three runs but does not stop another Elexon DAG running at the same time.
 Every Elexon request task uses the `elexon` pool, so only one can materialise
 a response on the shared worker at once. The
 [deployment page](../../deployment.md) explains the deployment boundary. The

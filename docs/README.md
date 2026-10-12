@@ -43,7 +43,7 @@ docs/sources/
     015_qpn.md                Dynamic Data; not subtracted from PN     [running]
     016_qpn_ingestion.md        as PN
     020_b1610.md              The receipt                              [running]
-    021_b1610_ingestion.md      II at 14d, SF at 35d, bounded R1 cohort
+    021_b1610_ingestion.md      II at 14d, SF at 35d, RF at 450d; one R1 week
     030_remit.md              The outage notice                        [running]
     031_remit_ingestion.md      hourly, window from the table, every publication kept
     040_boalf.md              The intervention                         [running]

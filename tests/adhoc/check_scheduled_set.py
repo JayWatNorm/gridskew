@@ -2,13 +2,11 @@
 
 dbt-postgres drops dependent views when it replaces a table or a view
 (DROP ... CASCADE). Scheduled jobs therefore only write rows, and releases
-change structure. This reads the nightly DAG's default commands and dbt's
-manifest, and reports every command, model or seed that would break that rule.
-It also reports an incremental model that the nightly DAG's missing-table guard
-does not name: the first scheduled run would build that table in full.
-
-The BM-unit DAG builds its dbt commands inside its task, so they are not read
-here.
+change structure. This reads the dbt commands of the nightly DAG's default run
+and of the BM-unit DAG, and dbt's manifest, and reports every command, model or
+seed that would break that rule. It also reports an incremental model that the
+nightly DAG's missing-table guard does not name: the first scheduled run would
+build that table in full.
 
 Run after `dbt parse`, from the repository root, with PYTHONPATH set to it:
     python tests/adhoc/check_scheduled_set.py dbt/target/manifest.json
@@ -71,10 +69,20 @@ def nightly_guarded_tables():
     return _nightly_dag()["PERIOD_TABLES"]
 
 
+def bmunit_job_commands():
+    """The dbt commands the daily BM-unit registry run executes."""
+
+    return _dag_names("gridskew_elexon_bmunits_dag.py")["dbt_commands"]()
+
+
 def _nightly_dag():
+    return _dag_names("gridskew__dbt_nightly_dag.py")
+
+
+def _dag_names(file_name):
     monkeypatch = MonkeyPatch()
     try:
-        return load_dag_file(monkeypatch, "gridskew__dbt_nightly_dag.py")
+        return load_dag_file(monkeypatch, file_name)
     finally:
         monkeypatch.undo()
 
@@ -235,15 +243,16 @@ def _seed_problems(node_id, node):
 def main():
     manifest_path = Path(sys.argv[1])
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    problems = scheduled_set_problems(manifest, nightly_default_commands())
+    scheduled_commands = nightly_default_commands() + bmunit_job_commands()
+    problems = scheduled_set_problems(manifest, scheduled_commands)
     problems += unguarded_incremental_models(manifest, nightly_guarded_tables())
     for problem in problems:
         print(problem)
     if problems:
         raise SystemExit(1)
     print(
-        "Scheduled dbt set: no nightly command, model or seed replaces a relation, "
-        "and the nightly guard names every incremental model"
+        "Scheduled dbt set: no nightly or BM-unit command, model or seed replaces "
+        "a relation, and the nightly guard names every incremental model"
     )
 
 
