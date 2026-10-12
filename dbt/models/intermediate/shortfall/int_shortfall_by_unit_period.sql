@@ -126,6 +126,7 @@ commitments as (
         commitments.pn_mwh,
         commitments.coverage_status,
         commitments.pn_retrieved_at,
+        commitments.last_captured_at,
         cohort.elexon_bm_unit,
         cohort.fuel_type,
         cohort.fuel_group
@@ -147,6 +148,7 @@ commitments as (
         commitments.pn_mwh,
         commitments.coverage_status,
         commitments.pn_retrieved_at,
+        commitments.last_captured_at,
         cohort.elexon_bm_unit,
         cohort.fuel_type,
         cohort.fuel_group
@@ -167,6 +169,11 @@ metered as (
         generation.latest_quantity_mwh,
         generation.latest_run_code,
         generation.latest_retrieved_at,
+        -- Across all of the period's metered rows, so the watermark also
+        -- passes a capture of a row that is not the one kept.
+        max(generation.last_captured_at) over (
+            partition by commitments.national_grid_bm_unit, commitments.period_start_utc
+        ) as last_captured_at,
         generation.first_quantity_mwh,
         generation.first_run_code,
         count(*) over (
@@ -291,9 +298,12 @@ joined as (
             end,
             6
         ) as expected_mwh,
+        -- The same capture times the touched set filters on, so a
+        -- recomputed period's watermark moves past every capture that
+        -- touched it (a later capture of a lower-order run included).
         greatest(
-            commitments.pn_retrieved_at,
-            metered.latest_retrieved_at,
+            commitments.last_captured_at,
+            metered.last_captured_at,
             instruction.last_captured_at
         ) as last_captured_at
     from commitments

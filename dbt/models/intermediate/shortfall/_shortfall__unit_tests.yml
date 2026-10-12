@@ -61,15 +61,15 @@ unit_tests:
       - input: ref('fct_commitments')
         format: csv
         rows: |
-          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at
-          A,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
-          B,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
-          C,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
-          D,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00
-          E,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
-          F,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00
-          G,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00
-          H,2026-01-15,21,2026-01-15 10:00:00+00,,invalid,2026-01-16 00:00:00+00
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at,last_captured_at
+          A,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          B,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          C,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-18 00:00:00+00
+          D,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          E,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          F,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          G,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          H,2026-01-15,21,2026-01-15 10:00:00+00,,invalid,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
       - input: ref('stg_elexon__pn')
         format: csv
         rows: |
@@ -81,15 +81,15 @@ unit_tests:
       - input: ref('fct_generation')
         format: csv
         rows: |
-          bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code
-          T_A,2026-01-15,21,2026-01-15 10:00:00+00,mapped,A,45,SF,2026-01-20 00:00:00+00,44,II
-          T_B,2026-01-15,21,2026-01-15 10:00:00+00,mapped,B,30,SF,2026-01-20 00:00:00+00,30,SF
-          T_D,2026-01-15,21,2026-01-15 10:00:00+00,mapped,D,40,SF,2026-01-20 00:00:00+00,40,SF
-          T_E,2026-01-15,21,2026-01-15 10:00:00+00,mapped,E,40,SF,2026-01-20 00:00:00+00,40,SF
-          T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,40,SF,2026-01-20 00:00:00+00,40,SF
-          T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,41,SF,2026-01-21 00:00:00+00,41,SF
-          T_G,2026-01-15,21,2026-01-15 10:00:00+00,mapped,G,20,SF,2026-01-20 00:00:00+00,20,SF
-          T_H,2026-01-15,21,2026-01-15 10:00:00+00,mapped,H,20,SF,2026-01-20 00:00:00+00,20,SF
+          bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code,last_captured_at
+          T_A,2026-01-15,21,2026-01-15 10:00:00+00,mapped,A,45,SF,2026-01-20 00:00:00+00,44,II,2026-01-22 00:00:00+00
+          T_B,2026-01-15,21,2026-01-15 10:00:00+00,mapped,B,30,SF,2026-01-20 00:00:00+00,30,SF,2026-01-20 00:00:00+00
+          T_D,2026-01-15,21,2026-01-15 10:00:00+00,mapped,D,40,SF,2026-01-20 00:00:00+00,40,SF,2026-01-20 00:00:00+00
+          T_E,2026-01-15,21,2026-01-15 10:00:00+00,mapped,E,40,SF,2026-01-20 00:00:00+00,40,SF,2026-01-20 00:00:00+00
+          T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,40,SF,2026-01-20 00:00:00+00,40,SF,2026-01-23 00:00:00+00
+          T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,41,SF,2026-01-21 00:00:00+00,41,SF,2026-01-21 00:00:00+00
+          T_G,2026-01-15,21,2026-01-15 10:00:00+00,mapped,G,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
+          T_H,2026-01-15,21,2026-01-15 10:00:00+00,mapped,H,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
       - input: ref('int_elexon__instruction_intervals')
         format: csv
         rows: |
@@ -102,10 +102,10 @@ unit_tests:
       format: csv
       rows: |
         national_grid_bm_unit,fuel_group,instruction_status,instructed_seconds,pn_in_instructed_mwh,expected_mwh,metered_mwh,unexplained_shortfall_mwh,deviation_from_pn_mwh,instructed_deviation_mwh,metered_row_count,determinability,last_captured_at
-        A,gas_turbine,uninstructed,0,,50.000000,45,5.000000,5.000000,0.000000,1,determinable,2026-01-20 00:00:00+00
+        A,gas_turbine,uninstructed,0,,50.000000,45,5.000000,5.000000,0.000000,1,determinable,2026-01-22 00:00:00+00
         B,gas_turbine,partially_instructed,900,25.000000,40.000000,30,10.000000,20.000000,10.000000,1,determinable,2026-01-20 00:00:00+00
-        C,wind,uninstructed,0,,50.000000,,,,0.000000,0,no_metered_value,2026-01-16 00:00:00+00
+        C,wind,uninstructed,0,,50.000000,,,,0.000000,0,no_metered_value,2026-01-18 00:00:00+00
         D,wind,uninstructed,0,,,40,,,,1,pn_incomplete,2026-01-20 00:00:00+00
-        F,nuclear,uninstructed,0,,50.000000,41,9.000000,9.000000,0.000000,2,ambiguous_metered,2026-01-21 00:00:00+00
+        F,nuclear,uninstructed,0,,50.000000,41,9.000000,9.000000,0.000000,2,ambiguous_metered,2026-01-23 00:00:00+00
         G,wind,fully_instructed,1800,13.333333,20.000000,20,0.000000,,,1,determinable,2026-01-20 00:00:00+00
         H,wind,partially_instructed,600,,,20,,,,1,pn_invalid,2026-01-20 00:00:00+00

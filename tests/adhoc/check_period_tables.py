@@ -619,7 +619,8 @@ def shortfall(conn):
         conn,
         "SELECT national_grid_bm_unit, settlement_date, settlement_period, "
         "fuel_group, instruction_status, instructed_seconds, expected_mwh, "
-        "metered_mwh, metered_run_code, unexplained_shortfall_mwh, determinability "
+        "metered_mwh, metered_run_code, unexplained_shortfall_mwh, determinability, "
+        "last_captured_at "
         f"FROM {SHORTFALL}",
     )
     return {row[:3]: row[3:] for row in rows}
@@ -839,6 +840,19 @@ def check_shortfall(conn):
     dbt("run", "--select", "int_elexon__b1610_period")
     build_shortfall_tables()
     assert shortfall(conn)[p1][4:6] == (Decimal(60), "R3")
+    assert_shortfall_equals_full_refresh(conn)
+
+    # A lower-order run captured late (an R1 after the R2 already in use)
+    # leaves R2 in use, but the row's watermark still moves past the
+    # capture, so the next night does not recompute period 3 again. A full
+    # refresh cannot show this: it computes the watermark the same way.
+    p3 = ("S6NG_A", AUG10, 3)
+    late_r1_capture = T0 + 7 * DAY + 20 * MINUTE
+    insert_b1610(conn, [("S6_A", None, AUG10, 3, "R1", "7", late_r1_capture)])
+    dbt("run", "--select", "int_elexon__b1610_period")
+    build_shortfall_tables()
+    assert shortfall(conn)[p3][4:6] == (Decimal(8), "R2")
+    assert shortfall(conn)[p3][8] == late_r1_capture
     assert_shortfall_equals_full_refresh(conn)
 
     # A later run that arrives with another National Grid ID makes the
