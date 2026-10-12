@@ -2,12 +2,15 @@
 
 Scheduled runs only write rows: they run the incremental models, then every
 test except those that re-read all history, and never recreate a view. Trigger
-with {"full_refresh": true} after a load outside Airflow, a raw edit, a
-settlement-run seed change or a model logic change; that run rebuilds the
-tables and fact views and runs every test of them. A scheduled run refuses
-to start while a period table or a view below one has changed since the last
-published run, so a model change cannot reach the tables without that full
-refresh. The DAG is created paused; enable it after an observed full refresh.
+with {"full_refresh": true} after a model logic change or a settlement-run
+seed change: that run rebuilds the tables and views that changed since the
+last published run, with everything below them, and runs their tests. When
+nothing changed, or a period table is missing, it rebuilds them all. After a
+load outside Airflow or a raw edit, add "rebuild_all": true. A scheduled run
+refuses to start while a period table or a view below one has changed since
+the last published run, so a model change cannot reach the tables without
+that full refresh. The DAG is created paused; enable it after an observed
+full refresh.
 
 Each dbt command records its node results in dbt_dev.dbt_node_results. A run
 that succeeds publishes dbt's manifest and its last run results.
@@ -111,14 +114,15 @@ def run_dbt(env, args, timeout_minutes):
     result.check_returncode()
 
 
-def dbt_commands(full_refresh):
-    """The run-code test blocks before any period table is written.
+def dbt_commands(full_refresh, rebuild=(*REFRESH_VIEWS, *PERIOD_TABLES)):
+    """The run-code test blocks before any period table is written. A full
+    refresh rebuilds `rebuild` and everything below it.
 
     The selectors are in dbt/selectors.yml.
     """
 
     period_tables_and_descendants = []
-    for relation in (*REFRESH_VIEWS, *PERIOD_TABLES):
+    for relation in rebuild:
         period_tables_and_descendants.append(f"{relation}+")
 
     test_run_codes = ["test", "--selector", "nightly_run_code_check"]
@@ -188,6 +192,16 @@ def models_needing_full_refresh(env, state_dir):
     return sorted(set(result.stdout.split()))
 
 
+def relations_to_rebuild(changed, missing, rebuild_all):
+    """What a full refresh rebuilds, with everything below: the models that
+    changed. Every period table and view when nothing changed (a raw edit or
+    a load outside Airflow cannot be seen), a table is missing, or rebuild_all."""
+
+    if changed and not missing and not rebuild_all:
+        return tuple(changed)
+    return (*REFRESH_VIEWS, *PERIOD_TABLES)
+
+
 def missing_period_tables(conn, tables=PERIOD_TABLES):
     qualified_names = []
     relation_per_table = []
@@ -254,7 +268,7 @@ def day_named_by(folder):
     max_active_runs=1,
     is_paused_upon_creation=True,
     dagrun_timeout=TASK_TIME_LIMIT + timedelta(minutes=30),
-    params={"full_refresh": False},
+    params={"full_refresh": False, "rebuild_all": False},
     default_args={"retries": 0},
     tags=["gridskew", "dbt"],
 )
@@ -266,6 +280,7 @@ def gridskew__dbt_nightly():
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
         full_refresh = bool((params or {}).get("full_refresh"))
+        rebuild_all = bool((params or {}).get("rebuild_all"))
         conn = PostgresHook(postgres_conn_id="gridskew_dbt").get_conn()
         try:
             missing = missing_period_tables(conn)
@@ -287,14 +302,18 @@ def gridskew__dbt_nightly():
             prefix="nightly-", dir="/opt/airflow/data/gridskew"
         ) as work_dir:
             env = dbt_environment(work_dir, run_id)
-            if not full_refresh:
-                changed = models_needing_full_refresh(env, Path(ARTIFACTS) / "latest")
-                if changed:
-                    raise RuntimeError(
-                        f"Models changed since the last published run: {changed}. "
-                        'Trigger once with {"full_refresh": true}.'
-                    )
-            for args in dbt_commands(full_refresh):
+            changed = models_needing_full_refresh(env, Path(ARTIFACTS) / "latest")
+            if changed and not full_refresh:
+                raise RuntimeError(
+                    f"Models changed since the last published run: {changed}. "
+                    'Trigger once with {"full_refresh": true}.'
+                )
+            rebuild = relations_to_rebuild(changed, missing, rebuild_all)
+            if full_refresh:
+                print(
+                    f"Full refresh rebuilds {sorted(rebuild)} and everything below them"
+                )
+            for args in dbt_commands(full_refresh, rebuild):
                 # 45 minutes: the first night after a catch-up capture can
                 # recompute every half-hour with an acceptance (about 25 min).
                 # A full refresh is bounded by the task's time limit only.
