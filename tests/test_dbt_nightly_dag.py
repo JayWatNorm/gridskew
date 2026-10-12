@@ -187,3 +187,35 @@ def test_changed_models_below_a_period_table_need_a_full_refresh(
     assert command[command.index("--state") + 1] == str(tmp_path)
     assert "state:modified+,int_shortfall_by_unit_period+" in command
     assert "state:modified+,int_elexon__bm_unit_cohort+" in command
+
+
+def test_a_full_refresh_rebuilds_only_what_changed(nightly):
+    changed = ["int_elexon__instruction_intervals", "int_shortfall_by_unit_period"]
+
+    assert nightly["relations_to_rebuild"](changed, [], False) == tuple(changed)
+
+
+@pytest.mark.parametrize(
+    "changed,missing,rebuild_all",
+    [
+        pytest.param([], [], False, id="nothing-changed"),
+        pytest.param(
+            ["int_shortfall_by_unit_period"], ["x"], False, id="table-missing"
+        ),
+        pytest.param(["int_shortfall_by_unit_period"], [], True, id="rebuild-all"),
+    ],
+)
+def test_a_full_refresh_rebuilds_everything_when_it_cannot_tell(
+    nightly, changed, missing, rebuild_all
+):
+    everything = (*nightly["REFRESH_VIEWS"], *nightly["PERIOD_TABLES"])
+
+    assert nightly["relations_to_rebuild"](changed, missing, rebuild_all) == everything
+
+
+def test_a_full_refresh_builds_the_chosen_relations_and_below(nightly):
+    commands = nightly["dbt_commands"](True, ("int_shortfall_by_unit_period",))
+
+    rebuild = commands[-1]
+    assert rebuild[:3] == ["build", "--select", "int_shortfall_by_unit_period+"]
+    assert rebuild[-1] == "--full-refresh"

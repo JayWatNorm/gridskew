@@ -142,12 +142,15 @@ missing, and `PERIOD_TABLES` in the DAG names the tables it requires. A new
 incremental model is added to that list in the same change; CI fails
 otherwise.
 
-A manual load outside the capture-time margin, a raw edit, a settlement-run
-seed change or a model-logic change requires an observed full refresh.
-Trigger `gridskew__dbt_nightly` with `full_refresh=true` through the platform
-runbook (`homelab-platform/docs/gridskew-release.md` in the platform
-checkout). Its run-code and source tests run before anything is written, and
-its descendant build restores the fact views. Coordinate the shared dbt pool,
+A model-logic or settlement-run seed change requires an observed full
+refresh: trigger `gridskew__dbt_nightly` with `full_refresh=true`; it rebuilds
+the tables and views that changed since the last published run, with
+everything below them, and runs their tests. After a manual load outside the
+capture-time margin or a raw edit, add `rebuild_all=true`, because that change
+cannot be detected. Use the platform runbook
+(`homelab-platform/docs/gridskew-release.md` in the platform checkout). Its
+run-code and source tests run before anything is written, and its descendant
+build restores the fact views. Coordinate the shared dbt pool,
 verify all descendants and tests afterwards, and follow the runbook's recovery
 sequence if a cascade fails. A standalone full-refresh command omits those
 controls.
