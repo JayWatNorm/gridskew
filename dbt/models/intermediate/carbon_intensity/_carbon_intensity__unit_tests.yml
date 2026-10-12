@@ -188,6 +188,34 @@ unit_tests:
         2026-09-10 18:00:00+00,4,200,210,220,230,30,false,true,6,30,true
         2026-09-11 06:00:00+00,3,300,310,320,320,20,false,false,4,20,true
 
+  - name: test_by_period_band_comes_from_the_first_forecast_poll
+    description: >
+      The band is the one on the poll that gives the first forecast. At 12:00
+      a later poll's band differs and is not used. At 13:00 an earlier
+      partial poll is not counted, so its band is not used either. At 14:00
+      the first counted poll has no band; the half-hour has none, and the
+      later poll's band is not used instead.
+    model: int_carbon_forecast__by_period
+    given:
+      - input: ref('int_carbon_forecast__revisions')
+        format: csv
+        rows: |
+          period_start,retrieved_at,horizon_seconds,forecast,intensity_index,is_first_poll_in_slot,is_partial_poll,is_counted_poll
+          2026-09-12 12:00:00+00,2026-09-10 12:00:00+00,172800,100,low,true,false,true
+          2026-09-12 12:00:00+00,2026-09-12 11:30:00+00,1800,200,high,true,false,true
+          2026-09-12 13:00:00+00,2026-09-10 12:30:00+00,174600,90,very high,true,true,false
+          2026-09-12 13:00:00+00,2026-09-10 13:00:00+00,172800,100,moderate,true,false,true
+          2026-09-12 13:00:00+00,2026-09-12 12:30:00+00,1800,110,high,true,false,true
+          2026-09-12 14:00:00+00,2026-09-10 14:00:00+00,172800,100,,true,false,true
+          2026-09-12 14:00:00+00,2026-09-12 13:30:00+00,1800,120,low,true,false,true
+    expect:
+      format: csv
+      rows: |
+        period_start,first_forecast,first_intensity_index
+        2026-09-12 12:00:00+00,100,low
+        2026-09-12 13:00:00+00,100,moderate
+        2026-09-12 14:00:00+00,100,
+
   - name: test_by_period_complete_trajectory_limits
     description: >
       Each completeness limit on its own, with three slots needed. The 12:00

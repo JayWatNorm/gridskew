@@ -15,6 +15,8 @@ models:
         data_tests: [not_null]
       - name: forecast
         description: Forecast carbon intensity for the half-hour, in gCO2/kWh.
+      - name: intensity_index
+        description: The source's band for the forecast (very low to very high).
       - name: horizon_seconds
         description: >
           Exact seconds from the poll to the start of the half-hour. Negative
@@ -76,6 +78,10 @@ models:
         description: Horizon of the final forecast, rounded to four places.
       - name: first_forecast
         description: Forecast of the counted poll with the largest horizon.
+      - name: first_intensity_index
+        description: >
+          The source's band on the poll that gives first_forecast; null when
+          that poll has none (a later poll's band is never used).
       - name: forecast_24h
         description: >
           Forecast of the counted poll nearest to 24 hours ahead; null when
@@ -135,6 +141,8 @@ models:
         description: Observed carbon intensity.
       - name: first_forecast
         description: First archived forecast.
+      - name: first_intensity_index
+        description: The source's band on the poll of the first forecast.
       - name: forecast_24h
         description: Forecast about 24 hours ahead.
       - name: forecast_4h
