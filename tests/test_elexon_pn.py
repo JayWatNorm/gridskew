@@ -59,15 +59,29 @@ def test_parse_maps_each_source_field_to_its_own_column():
     }
 
 
+PN_CONFLICT_KEY = "national_grid_bm_unit, time_from, retrieved_at"
+BOALF_CONFLICT_KEY = "national_grid_bm_unit, acceptance_number, time_from, retrieved_at"
+
+
 @pytest.mark.parametrize(
-    "poller,table,columns",
+    "poller,table,columns,conflict_key",
     [
-        pytest.param(pn_poller, "raw.elexon_pn", PN_COLUMNS, id="PN"),
-        pytest.param(qpn_poller, "raw.elexon_qpn", QPN_COLUMNS, id="QPN"),
-        pytest.param(boalf_poller, "raw.elexon_boalf", BOALF_COLUMNS, id="BOALF"),
+        pytest.param(pn_poller, "raw.elexon_pn", PN_COLUMNS, PN_CONFLICT_KEY, id="PN"),
+        pytest.param(
+            qpn_poller, "raw.elexon_qpn", QPN_COLUMNS, PN_CONFLICT_KEY, id="QPN"
+        ),
+        pytest.param(
+            boalf_poller,
+            "raw.elexon_boalf",
+            BOALF_COLUMNS,
+            BOALF_CONFLICT_KEY,
+            id="BOALF",
+        ),
     ],
 )
-def test_load_inserts_the_rows_into_its_own_table_and_commits(poller, table, columns):
+def test_load_inserts_the_rows_into_its_own_table_and_commits(
+    poller, table, columns, conflict_key
+):
     parsed_rows = [Mock(name="parsed_row")]
     conn = MagicMock()
 
@@ -78,9 +92,10 @@ def test_load_inserts_the_rows_into_its_own_table_and_commits(poller, table, col
     assert cursor is cursor_of(conn)
     # The columns in the order parse builds each tuple, which the parse tests
     # check by name: a reordered column list would load values into the
-    # wrong columns of the same type.
-    assert single_spaced(insert_sql).startswith(
-        f"INSERT INTO {table} ({', '.join(columns)}) VALUES"
+    # wrong columns of the same type. A repeated capture is ignored.
+    assert single_spaced(insert_sql) == (
+        f"INSERT INTO {table} ({', '.join(columns)}) VALUES %s "
+        f"ON CONFLICT ({conflict_key}) DO NOTHING"
     )
     assert inserted_rows == parsed_rows
     conn.commit.assert_called_once_with()
