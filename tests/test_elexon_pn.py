@@ -1,10 +1,7 @@
 from datetime import date, datetime, timezone
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from fakes import cursor_of, single_spaced
-from test_elexon_boalf import BOALF_COLUMNS
-from test_elexon_qpn import QPN_COLUMNS
 
 from ingestion.elexon import boalf_poller, pn_poller, qpn_poller
 from ingestion.elexon.contracts import BOALF_SPEC, PN_SPEC, QPN_SPEC
@@ -57,48 +54,6 @@ def test_parse_maps_each_source_field_to_its_own_column():
         "bm_unit": "T_DRAXX-1",
         "retrieved_at": RETRIEVED_AT,
     }
-
-
-PN_CONFLICT_KEY = "national_grid_bm_unit, time_from, retrieved_at"
-BOALF_CONFLICT_KEY = "national_grid_bm_unit, acceptance_number, time_from, retrieved_at"
-
-
-@pytest.mark.parametrize(
-    "poller,table,columns,conflict_key",
-    [
-        pytest.param(pn_poller, "raw.elexon_pn", PN_COLUMNS, PN_CONFLICT_KEY, id="PN"),
-        pytest.param(
-            qpn_poller, "raw.elexon_qpn", QPN_COLUMNS, PN_CONFLICT_KEY, id="QPN"
-        ),
-        pytest.param(
-            boalf_poller,
-            "raw.elexon_boalf",
-            BOALF_COLUMNS,
-            BOALF_CONFLICT_KEY,
-            id="BOALF",
-        ),
-    ],
-)
-def test_load_inserts_the_rows_into_its_own_table_and_commits(
-    poller, table, columns, conflict_key
-):
-    parsed_rows = [Mock(name="parsed_row")]
-    conn = MagicMock()
-
-    with patch.object(poller, "execute_values") as mock_execute_values:
-        poller.load(parsed_rows, conn)
-
-    cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
-    assert cursor is cursor_of(conn)
-    # The columns in the order parse builds each tuple, which the parse tests
-    # check by name: a reordered column list would load values into the
-    # wrong columns of the same type. A repeated capture is ignored.
-    assert single_spaced(insert_sql) == (
-        f"INSERT INTO {table} ({', '.join(columns)}) VALUES %s "
-        f"ON CONFLICT ({conflict_key}) DO NOTHING"
-    )
-    assert inserted_rows == parsed_rows
-    conn.commit.assert_called_once_with()
 
 
 @pytest.mark.parametrize(

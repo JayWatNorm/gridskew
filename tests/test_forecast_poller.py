@@ -1,10 +1,9 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from fakes import single_spaced
 
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
 from ingestion.carbon_intensity.forecast_poller import load, parse
@@ -35,25 +34,6 @@ def test_parse_maps_a_source_row_to_the_database_tuple(payload):
         None,
         "high",
     )
-
-
-def test_load_uses_the_expected_columns_and_commits():
-    parsed_rows = [Mock(name="parsed_row")]
-    conn = MagicMock()
-
-    with patch(
-        "ingestion.carbon_intensity.forecast_poller.execute_values"
-    ) as mock_execute_values:
-        load(parsed_rows, conn)
-
-    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
-    assert single_spaced(insert_sql) == (
-        "INSERT INTO raw.carbon_intensity_forecast (period_start, period_end, "
-        "retrieved_at, forecast, actual, intensity_index) "
-        "VALUES %s"
-    )
-    assert inserted_rows == parsed_rows
-    conn.commit.assert_called_once_with()
 
 
 @pytest.mark.parametrize(

@@ -114,7 +114,3 @@ def cursor_of(conn):
     """Return the fake cursor that `with conn.cursor() as cursor:` yields."""
 
     return conn.cursor.return_value.__enter__.return_value
-
-
-def single_spaced(sql):
-    return " ".join(sql.split())

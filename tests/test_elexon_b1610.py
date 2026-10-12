@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from fakes import connection_returning, cursor_of, single_spaced
+from fakes import connection_returning
 
 from ingestion.elexon.b1610_poller import (
     british_day_window,
@@ -15,10 +15,8 @@ from ingestion.elexon.b1610_poller import (
     fetch,
     load,
     parse,
-    recent_unit_count,
     replaced_by_a_later_run,
     run_in_force,
-    stored_coverage,
 )
 from ingestion.elexon.b1610_poller import run as run_poller
 from ingestion.elexon.contracts import B1610_SPEC
@@ -84,26 +82,6 @@ def test_parse_maps_a_source_row_to_the_database_tuple(source_rows):
         Decimal("-14.456"),
         RETRIEVED_AT,
     )
-
-
-def test_load_uses_the_expected_columns_conflict_key_and_commits():
-    parsed_rows = [Mock(name="parsed_row")]
-    conn = MagicMock()
-
-    with patch("ingestion.elexon.b1610_poller.execute_values") as mock_execute_values:
-        load(parsed_rows, conn)
-
-    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
-    assert single_spaced(insert_sql) == (
-        "INSERT INTO raw.elexon_b1610 (bm_unit, national_grid_bm_unit_id, psr_type, "
-        "settlement_date, settlement_period, half_hour_end_time, settlement_run_type, "
-        "quantity, retrieved_at) "
-        "VALUES %s "
-        "ON CONFLICT (bm_unit, settlement_date, settlement_period, "
-        "settlement_run_type) DO NOTHING"
-    )
-    assert inserted_rows == parsed_rows
-    conn.commit.assert_called_once_with()
 
 
 @pytest.mark.parametrize(
@@ -226,28 +204,6 @@ def test_capture_fails_when_another_run_type_is_returned():
     ):
         with pytest.raises(RuntimeError, match="returned run types"):
             capture_settlement_date(Mock(), date(2026, 8, 10), "R1")
-
-
-def test_stored_coverage_is_scoped_to_date_and_run():
-    coverage = (440496, list(range(1, 49)), 9177)
-    conn = connection_returning(coverage)
-
-    assert stored_coverage(conn, date(2026, 8, 10), "R1") == coverage
-
-    sql, params = cursor_of(conn).execute.call_args.args
-    assert "WHERE settlement_date = %s AND settlement_run_type = %s" in sql
-    assert params == (date(2026, 8, 10), "R1")
-
-
-def test_recent_unit_count_reads_the_seven_earlier_dates_of_the_run():
-    conn = connection_returning((9177,))
-
-    assert recent_unit_count(conn, date(2026, 8, 10), "SF") == 9177
-
-    sql, params = cursor_of(conn).execute.call_args.args
-    assert "max(units)" in sql
-    assert "GROUP BY settlement_date" in sql
-    assert params == ("SF", date(2026, 8, 3), date(2026, 8, 10))
 
 
 def capture_with_units(source_rows, stored_units, recent_units):

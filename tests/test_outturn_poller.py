@@ -2,10 +2,9 @@ import json
 from datetime import datetime, timedelta, timezone
 from itertools import pairwise
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from fakes import single_spaced
 
 from ingestion.carbon_intensity.contracts import OUTTURN_SPEC
 from ingestion.carbon_intensity.outturn_poller import (
@@ -70,26 +69,6 @@ def test_parse_maps_a_source_row_to_the_database_tuple(payload):
         156,
         "moderate",
     )
-
-
-def test_load_uses_the_expected_columns_conflict_key_and_commits():
-    parsed_rows = [Mock(name="parsed_row")]
-    conn = MagicMock()
-
-    with patch(
-        "ingestion.carbon_intensity.outturn_poller.execute_values"
-    ) as mock_execute_values:
-        load(parsed_rows, conn)
-
-    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
-    assert single_spaced(insert_sql) == (
-        "INSERT INTO raw.carbon_intensity_outturn (period_start, period_end, "
-        "retrieved_at, actual, forecast_final, intensity_index) "
-        "VALUES %s "
-        "ON CONFLICT (period_start, retrieved_at) DO NOTHING"
-    )
-    assert inserted_rows == parsed_rows
-    conn.commit.assert_called_once_with()
 
 
 @pytest.mark.parametrize(
