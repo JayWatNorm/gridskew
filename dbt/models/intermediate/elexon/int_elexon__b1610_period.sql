@@ -67,10 +67,10 @@ runs as (
         on selected_rows.settlement_run_type = run_codes.settlement_run_code
 ),
 
--- Each run is ranked twice inside its period, then one grouped pass keeps
--- the rank-1 values (one row each, so max() returns that row's value). This
--- sorts the rows once by the key, where one array_agg per column sorted
--- inside every period; on a full refresh of 160M rows it is the faster form.
+-- Each source row is ranked twice within its period, then one grouped pass
+-- selects the rank-1 values (one row each, so max() returns that row's
+-- value). On the recorded synthetic benchmark this form was faster than the
+-- prior per-period ordered aggregates.
 -- First captured: earliest retrieved_at, ties broken by run order.
 -- Latest: highest run order. An unknown run code (NULL run_order) would sort
 -- first here; it never reaches this model because the staging relationship
