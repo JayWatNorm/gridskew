@@ -230,9 +230,7 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 
 **Available reference data**
 
-- Three version-controlled seeds have explicit PostgreSQL types and data tests.
-  `carbon_intensity_bands` provides label ordering; no current model consumes
-  it.
+- Two version-controlled seeds have explicit PostgreSQL types and data tests.
 
 **Next**
 

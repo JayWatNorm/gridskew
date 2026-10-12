@@ -4,13 +4,12 @@ How `raw.elexon_b1610` is loaded. For what the data means and what the columns
 are, see [020_b1610.md](020_b1610.md). For the reasoning behind these patterns,
 see [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: II and SF rungs and the bounded R1 cohort deployed.** The II
+**Status: II and SF rungs deployed; the RF rung starts on 2026-11-15.** The II
 backfill covers settlement days 2025-08-22 to 2026-08-10 in 354 runs, with no
 unexpected gaps; scheduled II and SF capture continues from there.
 
-For the 2026-08-10 through 2026-08-16 cohort, II and SF each contain
-3,083,376 rows with periods 1–48 present on every date. R1 for the same dates
-is captured from 2026-10-05 through 2026-10-11.
+For the 2026-08-10 through 2026-08-16 cohort, II, SF and R1 each contain
+3,083,376 rows with periods 1–48 present on every date.
 
 Endpoint validation and quarantine are deployed. The poller's Decimal-aware
 JSON encoder needs `simplejson`, pinned in `requirements.txt`.
@@ -21,9 +20,10 @@ JSON encoder needs `simplejson`, pinned in `requirements.txt`.
 | Table | `raw.elexon_b1610` |
 | DDL | `sql/migrations/V005__elexon_b1610.sql` |
 | Tests | `tests/test_elexon_b1610.py`, against `b1610_stream.json` |
-| DAGs | `gridskew_elexon_b1610_II_dag.py`, `..._SF_dag.py`, `..._cohort_dag.py` |
-| Schedule | II/SF: daily at 00:00 UTC; cohort: seven fixed events at 06:00 UTC |
-| `catchup` | II **`True`**, SF **`False`**, cohort `True` (starts paused) |
+| DAGs | `gridskew_elexon_b1610_II_dag.py`, `..._SF_dag.py`, `..._RF_dag.py` |
+| Schedule | daily at 00:00 UTC |
+| `catchup` | `True` |
+| Retries | 16, backing off to 8 hours: about four days |
 
 ## Validation and quarantine
 
@@ -33,23 +33,37 @@ Decimal-aware encoder so rejected quantities remain JSON numbers without
 conversion to binary floats or strings. See
 [../endpoint-validation.md](../endpoint-validation.md).
 
-## Two standing rungs currently implemented
+## Three standing rungs
 
 | Rung | Settlement date captured | `start_date` | Requests |
 |---|---|---|---|
 | **II** | `data_interval_start - 14d` | 2025-09-05 | `II` |
-| **SF** | `data_interval_start - 35d` | 2025-09-26, no catchup | `SF` |
+| **SF** | `data_interval_start - 35d` | 2025-09-26 | `SF` |
+| **RF** | `data_interval_start - 450d` | 2026-11-15 | `RF` |
 
 Each daily run captures one British settlement date, names its run in the
 request and then checks what is stored. See
 [One settlement date per run](#one-settlement-date-per-run).
 
-`R1` through `RF` are not standing full-history rungs. They can be added without
-changing the schema, but only prospectively: Elexon stops serving a run after a
-later run supersedes it. Any R1, R2, R3 or RF capture already missed cannot be
-recovered. Until a final-run schedule exists, the retained series is accurately
-described as the first and latest captured positions, not the first and final
-positions.
+The three rungs keep the first (II), the settled (SF) and the final (RF)
+position of every settlement date; analysis compares the first with the
+latest held. RF is the last run and stays in force once published, so its
+450-day offset needs no margin: it is after RF under today's 14-month
+timetable and under any shorter one. `R1` to `R3` are not standing rungs;
+Elexon stops serving a run once a later run replaces it, so a run not
+captured in its window cannot be recovered.
+
+Before downloading, each capture asks which run Elexon serves for the date
+(one settlement period, `/datasets/B1610`). If a later run has already
+replaced the wanted one, the task fails at once without retrying, since the
+run can no longer be captured; this keeps catch-up after a long outage from
+spending days on dates already lost. Otherwise a failing capture retries for
+about four days. Each run's offset leaves at
+least that long before the run is replaced (II is in force to about day 21,
+SF to about day 42), and `max_active_runs=3` lets later dates proceed while
+one date retries; the single `elexon` pool slot still keeps requests one at a
+time. After an outage the scheduler creates the missed runs (`catchup=True`);
+those whose run is still in force are captured.
 
 There is one bounded exception. The seven settlement dates from 2026-08-10
 through 2026-08-16 are requested at fixed +56 days, on 2026-10-05 through
@@ -66,8 +80,8 @@ calculation would misalign the two tables used by the thesis join.
 II is live from day 7, but publication counts **working** days. Five working days
 is seven calendar days in a normal week and about twelve around Christmas.
 
-The poller rejects an empty response and fails visibly, so a retry or a
-cleared task instance can repeat the capture once the date is published. The
+The poller rejects an empty response and fails visibly, so a retry repeats
+the capture once the date is published. The
 14-day offset gives a working-day publication margin at the cost of a week of
 freshness. It is a margin, not a
 guarantee: the capture check below fails a run whose settlement date is not
@@ -79,12 +93,12 @@ runs that the endpoint has replaced are no longer retrievable. Record
 any missing or unexpected run type rather than treating SF as equivalent
 evidence for II.
 
-### Why SF does not backfill
+### SF catch-up
 
-`catchup=False`, deliberately. SF has been superseded for settlement dates older
-than about 42 days, so a backfill asking for SF would receive empty responses
-and fail; the II backfill already stored the SF rows that were current when it
-ran.
+After an outage, catch-up creates SF runs for the missed dates. Those still
+within about 42 days capture SF; older ones receive an empty response and
+fail, because SF has been superseded for them. The II backfill already stored
+the SF rows that were current when it ran.
 
 > **The II backfill holds whichever run was in force when it ran.** It did not
 > name a run type, and all 354 runs executed within a few hours of each other,
@@ -93,7 +107,7 @@ ran.
 
 ## One settlement date per run
 
-The daily II and SF runs and the bounded cohort all call
+The daily II, SF and RF runs all call
 `capture_settlement_date` with one British settlement date and one run type.
 
 The request names the run (`settlementRunType`). The British-day window
@@ -121,24 +135,20 @@ A run whose settlement date is not yet fully published therefore fails
 instead of succeeding with part of the date. A run asked for a superseded run
 type receives an empty response and fails.
 
-**Clear a task instance to repeat a capture**, while the run is still in
-force. Do not manually trigger an old date: a run without a data interval or
-logical date is refused.
+A capture still failing after its retries can be repeated by clearing the
+task instance while the run is in force (RF: at any time). Do not manually
+trigger an old date: a run without a data interval or logical date is
+refused.
 
 The stored-coverage query filters on `settlement_date`; the block-range index
 `idx_raw_elexon_b1610_settlement_date` lets it read one date's blocks.
 
-## Bounded cohort captures
+## The R1 cohort week
 
-`gridskew_elexon_b1610_cohort` captures R1 for British settlement dates
-2026-08-10 through 2026-08-16. Its only seven events are 2026-10-05 through
-2026-10-11 at 06:00 UTC, each settlement date +56 days. It starts paused,
-uses the existing `elexon` pool and enables catchup for a late unpause.
-The date mapping in the DAG is the schedule's sole source; an unlisted date
-is refused.
-
-RF for the same dates is planned at +430 days, 2027-10-14 through 2027-10-20;
-it is not in the mapping.
+R1 for British settlement dates 2026-08-10 through 2026-08-16 was captured
+once, on 2026-10-05 through 2026-10-11 (each date +56 days), so that week
+holds II, SF and R1 and measures restatement step by step. RF for those
+dates comes from the RF rung, like every other date.
 
 ## The poll offset determines which run is available
 
@@ -151,13 +161,13 @@ check still verifies what the source returned:
 |---|---|
 | 14 days | `II` |
 | 35 days | `SF` |
-| 80 days | `R1` (standing-rung margin; the bounded cohort requests +56 days) |
+| 80 days | `R1` |
 | 165 days | `R2` |
 | 300 days | `R3` |
 | 450 days | `RF` |
 
-II and SF are therefore two standing DAGs at fixed offsets; each names its run
-and checks the returned run, as the bounded cohort does.
+II, SF and RF are therefore three standing DAGs at fixed offsets; each names
+its run and checks the returned run.
 
 ## Chunking and volumes
 
@@ -185,8 +195,9 @@ II and SF):
 | Strategy | Rows/year | Size |
 |---|---|---|
 | Single backfill pass | 144M | ~26 GB |
-| **II + SF, as currently implemented** | 321M | **~57 GB** |
+| II + SF | 321M | ~57 GB |
 | First and final, II + RF | 284M | ~50 GB |
+| **II + SF + RF, as implemented** | about 445M | **about 79 GB** |
 | All six rungs | 879M | ~156 GB |
 
 ## Change-only append, not yet adopted
@@ -201,7 +212,7 @@ of a blind append, and storage collapses to the initial load plus genuine
 changes.
 
 **Deferred rather than rejected, because the change rate cannot be measured from
-history.** The II and SF captures, and the bounded R1 cohort, hold the same
+history.** The II, SF and RF captures, and the R1 cohort, hold the same
 unit-periods at more than one run type; their measured difference determines
 whether change-only append is worthwhile.
 
@@ -239,12 +250,12 @@ Note the first day shows **46** here where PN's shows 47 — the two datasets
 timestamp differently (`timeFrom` versus `halfHourEndTime`), so the same `from`
 parameter lands on a different boundary.
 
-## Period coverage is checked; unit volume is not
+## Period and unit coverage are checked
 
 The response contract rejects a zero-row result and raises for Airflow retry
 before parsing, loading or quarantine. Each capture then fails when its
-settlement date is stored without every settlement period. It does not detect
-a response that holds every period but too few units: those rows load
-normally, and absent rows have no payload to quarantine. That remainder is the
-silent-truncation risk described in
-[../ingestion-patterns.md](../ingestion-patterns.md).
+settlement date is stored without every settlement period, or with fewer than
+95% of the units that the same run held on its best day of the previous seven
+settlement dates. The best day, not the day before, so small drops cannot add
+up from day to day. A date with no earlier date of its run in that week, such
+as the first RF capture, is checked for periods only.

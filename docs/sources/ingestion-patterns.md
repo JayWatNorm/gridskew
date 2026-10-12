@@ -151,9 +151,10 @@ you would simply be blocked.
   whose returned rows satisfy the schema but whose total row count is
   unexpectedly low. PN, QPN, BOALF and REMIT would load those returned rows
   normally, and absent rows have no payload to quarantine. B1610 captures fail
-  when a settlement period is missing for their date, but no check detects a
-  response with every period and too few units. The BM-unit extract is blocked
-  when its rows or units fall by more than five percent.
+  when a settlement period is missing for their date, or when they hold fewer
+  than 95% of the units of the same run's best day in the previous week. The
+  BM-unit extract is blocked when its rows or units fall by more than five
+  percent.
 
 ## How `retrieved_at` participates in raw identity
 
@@ -185,8 +186,8 @@ a run rather than of a row.
 | Carbon intensity forecast | `catchup=False`, poll now | Source not addressable. History does not exist |
 | Carbon intensity outturn | `catchup=False`, rolling 7-day window, weekly re-fetch of any gap in history | Addressable, but actuals arrive late for every period. Volume so small the overlap is free |
 | Elexon PN, QPN and B1610 II | `catchup=True`, daily chunks | Addressable, high volume, and responsible for the historical load |
-| Elexon B1610 SF | `catchup=False`, fixed 35-day lag | Runs forwards only to capture SF while it is available |
-| Elexon B1610 R1 cohort | event timetable, one capture per listed date | A bounded cohort: each date is fetched once, on the day its run is published |
+| Elexon B1610 II, SF, RF | `catchup=True`, fixed lags of 14, 35 and 450 days, about four days of retries | Each run is captured while it is in force; RF is final, so its long lag loses nothing |
+| Elexon B1610 R1 cohort | captured once, 5 to 11 October 2026 | One week (10 to 16 August 2026) held at II, SF and R1 to measure restatement; RF reaches it through the RF rung |
 | Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |
 | Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap | Event stream with no cadence; the overlap catches late rows, and the key skips repeats |
 | Elexon BM units | `catchup=False`, daily complete extract | A reference set published whole; a partial response is never published |

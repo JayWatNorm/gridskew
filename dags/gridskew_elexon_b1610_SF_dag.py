@@ -1,12 +1,13 @@
 """Load the B1610 Settlement Final position at a 35-day offset.
 
-This DAG runs forwards only because superseded settlement positions cannot be
-recovered retrospectively.
+SF is in force from about four to about six weeks after the settlement date,
+until R1 replaces it; the 35-day offset leaves about a week for retries.
 
 Each run captures one British settlement date and asks for SF by name. The
 task fails when the stored date lacks a settlement period or the source
-returns another run. Clear the failed task instance to repeat the capture
-while SF is still in force; do not trigger a manual run for an old date.
+returns another run, and retries for about four days. After an outage the
+scheduler creates the runs it missed, while SF is still in force for them.
+Do not trigger a manual run for an old date.
 """
 
 import sys
@@ -33,15 +34,17 @@ def settlement_date_to_capture(data_interval_start):
     # Not "@daily": this timetable keeps a full-day data interval on Airflow 3.
     schedule=CronDataIntervalTimetable("0 0 * * *", timezone="UTC"),
     start_date=datetime(2025, 9, 26, tzinfo=timezone.utc),
-    catchup=False,
-    max_active_runs=1,
-    # Elexon outages last hours: back off up to 4 hours between tries. Each
-    # try is short, so a hung poll frees the one elexon pool slot quickly.
+    catchup=True,
+    # A date that keeps retrying does not hold up the dates after it; the one
+    # elexon pool slot still keeps the requests one at a time.
+    max_active_runs=3,
+    # Retry for about four days, backing off to 8 hours between tries. Each try
+    # is short, so a hung poll frees the elexon pool slot quickly.
     default_args={
-        "retries": 6,
+        "retries": 16,
         "retry_delay": timedelta(minutes=15),
         "retry_exponential_backoff": True,
-        "max_retry_delay": timedelta(hours=4),
+        "max_retry_delay": timedelta(hours=8),
         "execution_timeout": timedelta(minutes=10),
     },
     tags=["gridskew", "elexon"],
@@ -50,6 +53,7 @@ def gridskew_elexon_b1610_SF():
 
     @task(pool="elexon")
     def poll_b1610_SF(data_interval_start=None):
+        from airflow.exceptions import AirflowFailException
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
         if data_interval_start is None:
@@ -60,11 +64,25 @@ def gridskew_elexon_b1610_SF():
         settlement_date = settlement_date_to_capture(data_interval_start)
 
         sys.path.insert(0, PROJECT_PATH)
-        from ingestion.elexon.b1610_poller import capture_settlement_date
+        from ingestion.elexon.b1610_poller import (
+            capture_settlement_date,
+            replaced_by_a_later_run,
+        )
+        from ingestion.routing import ContractRejected
+
+        replacing_run = replaced_by_a_later_run(settlement_date, RUN_TYPE)
+        if replacing_run is not None:
+            # Gone for good: fail now instead of retrying for days.
+            raise AirflowFailException(
+                f"{RUN_TYPE} for {settlement_date} has been replaced by "
+                f"{replacing_run} and can no longer be captured"
+            )
 
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
             capture_settlement_date(conn, settlement_date, RUN_TYPE)
+        except ContractRejected as rejected:
+            raise AirflowFailException(str(rejected)) from rejected
         finally:
             conn.close()
 

@@ -9,10 +9,15 @@
 -- also have a PN, the pairs Q3 can compare, split by fuel label. Section 3
 -- splits the cohort table by determinability, with determinable periods
 -- that have no PN (the acceptances cover the whole half-hour) shown apart,
--- because Q3 and Q12 leave them out. Every section covers all stored
--- history; energy is the sum of absolute MWh of the latest settlement run.
--- Reads counts and summed absolute energy only. It reads the full fact
--- views, so it takes minutes; run it by hand.
+-- because Q3 and Q12 leave them out. Section 4 splits the Q3 and Q12
+-- population by the settlement run its metered value comes from: a later
+-- run replaces an earlier one, so a re-read can give different numbers.
+-- Every section covers stored history up to analysis_read_until (all of it
+-- when unset); energy is the sum of absolute MWh of the latest settlement
+-- run captured. Reads counts and summed absolute energy only. It reads the
+-- full fact views, so it takes minutes; run it by hand.
+
+{% set read_until = var('analysis_read_until') %}
 
 with metered as (
     select
@@ -20,6 +25,10 @@ with metered as (
         current_fuel_type is not null as has_fuel_type,
         latest_quantity_mwh
     from {{ ref('fct_generation') }}
+{% if read_until is not none %}
+    where coalesce(period_start_utc, settlement_date::timestamp at time zone 'Europe/London')
+            <= timestamptz '{{ read_until }}'
+{% endif %}
 ),
 
 whole_source as (
@@ -50,6 +59,10 @@ matched as (
         on commitments.national_grid_bm_unit = generation.mapped_national_grid_bm_unit
         and commitments.period_start_utc = generation.period_start_utc
     where generation.mapping_status = 'mapped'
+{% if read_until is not none %}
+        and coalesce(generation.period_start_utc, generation.settlement_date::timestamp at time zone 'Europe/London')
+            <= timestamptz '{{ read_until }}'
+{% endif %}
 ),
 
 matched_with_pn as (
@@ -65,21 +78,48 @@ matched_with_pn as (
     group by has_fuel_type
 ),
 
+cohort_periods as (
+    select
+        shortfall.determinability,
+        shortfall.pn_mwh,
+        shortfall.metered_mwh,
+        shortfall.metered_run_code
+    from {{ ref('int_shortfall_by_unit_period') }} as shortfall
+    inner join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
+        on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
+{% if read_until is not none %}
+    where coalesce(shortfall.period_start_utc, shortfall.settlement_date::timestamp at time zone 'Europe/London')
+            <= timestamptz '{{ read_until }}'
+{% endif %}
+),
+
 cohort_table as (
     select
         3 as section,
         'cohort table by determinability' as breakdown,
-        shortfall.determinability
-            || case when shortfall.determinability = 'determinable'
-                and shortfall.pn_mwh is null then ' without a PN' else '' end
+        determinability
+            || case when determinability = 'determinable'
+                and pn_mwh is null then ' without a PN' else '' end
             as item,
         count(*) as unit_periods,
-        round(sum(abs(shortfall.metered_mwh)), 1) as abs_metered_mwh,
-        round(sum(abs(shortfall.pn_mwh)), 1) as abs_pn_mwh
-    from {{ ref('int_shortfall_by_unit_period') }} as shortfall
-    inner join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
-        on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
+        round(sum(abs(metered_mwh)), 1) as abs_metered_mwh,
+        round(sum(abs(pn_mwh)), 1) as abs_pn_mwh
+    from cohort_periods
     group by 3
+),
+
+population_by_run as (
+    select
+        4 as section,
+        'Q3 and Q12 population by metered run' as breakdown,
+        metered_run_code as item,
+        count(*) as unit_periods,
+        round(sum(abs(metered_mwh)), 1) as abs_metered_mwh,
+        round(sum(abs(pn_mwh)), 1) as abs_pn_mwh
+    from cohort_periods
+    where determinability = 'determinable'
+        and pn_mwh is not null
+    group by metered_run_code
 )
 
 select * from whole_source
@@ -87,4 +127,6 @@ union all
 select * from matched_with_pn
 union all
 select * from cohort_table
+union all
+select * from population_by_run
 order by section, abs_metered_mwh desc nulls last

@@ -5,7 +5,6 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from tempfile import TemporaryDirectory
-from uuid import uuid4
 
 from airflow.decorators import dag, task
 
@@ -15,7 +14,7 @@ DBT_PROFILES = "/opt/airflow/dbt_profiles"
 DBT_LOGS = "/opt/airflow/data/gridskew/dbt_logs"
 
 
-def dbt_environment(work_dir):
+def dbt_environment(work_dir, airflow_run_id):
     """Use the dbt role in the production database's development schemas."""
 
     from airflow.hooks.base import BaseHook
@@ -36,7 +35,10 @@ def dbt_environment(work_dir):
     task_env = os.environ.copy()
     task_env["DBT_TARGET_PATH"] = f"{work_dir}/target"
     task_env["DBT_PACKAGES_INSTALL_PATH"] = f"{work_dir}/packages"
-    task_env["DBT_LOG_PATH"] = f"{DBT_LOGS}/bmunits/{uuid4()}"
+    # A folder per run inside a folder per UTC day; the nightly DAG removes
+    # day folders older than 30 days.
+    today = datetime.now(timezone.utc).date().isoformat()
+    task_env["DBT_LOG_PATH"] = f"{DBT_LOGS}/bmunits/{today}/{airflow_run_id}"
     task_env["GRIDSKEW_DBT_HOST"] = conn.host
     task_env["GRIDSKEW_DBT_PORT"] = str(conn.port or 5432)
     task_env["GRIDSKEW_DBT_USER"] = conn.login
@@ -76,6 +78,28 @@ def run_dbt(env, *args):
     result.check_returncode()
 
 
+def dbt_commands():
+    """Seed, test and snapshot the registry chain; never build it.
+
+    Test, not build: rebuilding these views would drop the views that depend
+    on them (DROP ... CASCADE). Releases recreate views. Cautious selection:
+    only tests whose parents are all in the registry chain or the seed, so no
+    test that also reads B1610 runs here; the nightly job runs those.
+    """
+
+    load_fuel_codes = ["seed", "--select", "elexon_fuel_codes"]
+    test_registry_chain = [
+        "test",
+        "--select",
+        "+int_elexon__bm_units_current",
+        "elexon_fuel_codes",
+        "--indirect-selection",
+        "cautious",
+    ]
+    snapshot_registry = ["snapshot", "--select", "snap_elexon__bm_units"]
+    return [load_fuel_codes, test_registry_chain, snapshot_registry]
+
+
 @dag(
     dag_id="gridskew_elexon_bmunits",
     schedule="@daily",
@@ -83,25 +107,29 @@ def run_dbt(env, *args):
     catchup=False,
     max_active_runs=1,
     is_paused_upon_creation=True,
+    # Set accept_shrink on one manual trigger only, after checking that Elexon
+    # really removed more than five percent of the units.
+    params={"accept_shrink": False},
     default_args={"retries": 2, "retry_delay": timedelta(minutes=5)},
     tags=["gridskew", "elexon", "dbt"],
 )
 def gridskew_elexon_bmunits():
     @task(pool="elexon", execution_timeout=timedelta(minutes=15))
-    def capture_registry():
+    def capture_registry(params=None):
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.elexon.bmunits_poller import run
 
+        accept_shrink = bool((params or {}).get("accept_shrink"))
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
-            return str(run(conn))
+            return str(run(conn, accept_shrink=accept_shrink))
         finally:
             conn.close()
 
     @task(pool="gridskew_dbt", execution_timeout=timedelta(minutes=60))
-    def build_current_and_snapshot(extract_id):
+    def build_current_and_snapshot(extract_id, run_id=None):
         from airflow.providers.postgres.hooks.postgres import PostgresHook
 
         sys.path.insert(0, PROJECT_PATH)
@@ -115,24 +143,10 @@ def gridskew_elexon_bmunits():
                 ) as work_dir,
                 locked_extract(conn, extract_id),
             ):
-                env = dbt_environment(work_dir)
+                env = dbt_environment(work_dir, run_id)
                 print(f"BM-unit dbt logs: {env['DBT_LOG_PATH']}")
-                run_dbt(env, "seed", "--select", "elexon_fuel_codes")
-                # Test, not build: rebuilding these views would drop the views that
-                # depend on them (DROP ... CASCADE). Releases recreate views.
-                # Cautious selection: only tests whose parents are all in the
-                # registry chain or the seed above, so no test that also reads
-                # B1610 runs here; the nightly job runs those.
-                run_dbt(
-                    env,
-                    "test",
-                    "--select",
-                    "+dim_bm_unit",
-                    "elexon_fuel_codes",
-                    "--indirect-selection",
-                    "cautious",
-                )
-                run_dbt(env, "snapshot", "--select", "snap_elexon__bm_units")
+                for args in dbt_commands():
+                    run_dbt(env, *args)
         finally:
             conn.close()
 

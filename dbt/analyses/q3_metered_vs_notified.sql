@@ -5,9 +5,12 @@
 -- interquartile range of deviation_from_pn_mwh per fuel group, with n, the
 -- date range and coverage beside it. Every figure is conditional on the
 -- cohort (registry units with a fuel type); q3_coverage.sql reports what the
--- cohort leaves out. Reads determinable periods with a PN: a period whose
--- acceptances cover the whole half-hour is determinable without one, and
--- has no deviation from PN to describe.
+-- cohort leaves out and the settlement runs behind the metered values. Reads
+-- determinable periods with a PN: a period whose acceptances cover the whole
+-- half-hour is determinable without one, and has no deviation from PN to
+-- describe.
+
+{% set read_until = var('analysis_read_until') %}
 
 -- The cohort view gives membership and the fuel group as the registry has
 -- them today.
@@ -24,6 +27,10 @@ with determinable as (
         on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
     where shortfall.determinability = 'determinable'
         and shortfall.pn_mwh is not null
+{% if read_until is not none %}
+        and coalesce(shortfall.period_start_utc, shortfall.settlement_date::timestamp at time zone 'Europe/London')
+            <= timestamptz '{{ read_until }}'
+{% endif %}
 )
 
 select
@@ -44,11 +51,6 @@ select
         percentile_cont(0.75) within group (order by deviation_from_pn_mwh)::numeric,
         3
     ) as q3_deviation_mwh,
-    round(
-        count(*) filter (where deviation_from_pn_mwh > 0)::numeric
-        / nullif(count(*) filter (where deviation_from_pn_mwh <> 0), 0),
-        6
-    ) as under_delivery_share_excluding_zero,
     round(sum(abs(metered_mwh)), 1) as abs_metered_mwh,
     round(sum(abs(pn_mwh)), 1) as abs_pn_mwh
 from determinable

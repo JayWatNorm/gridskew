@@ -5,7 +5,9 @@
 -- and a complete forecast trajectory, when they fall, and how many each
 -- exclusion removes. It reads no forecast value and no drift, so it can run
 -- on any day. The verdict query runs once, on the first day this reports
--- 2,880 complete half-hours.
+-- forecast_drift_half_hours_needed complete half-hours.
+
+{% set read_until = var('analysis_read_until') %}
 
 with half_hours as (
     select
@@ -14,7 +16,10 @@ with half_hours as (
         has_complete_trajectory_before_no_change_exclusion,
         as_published_has_complete_trajectory
     from {{ ref('int_carbon_error_by_period') }}
-    where period_start >= timestamptz '2026-08-17 00:00:00+00'
+    where period_start >= timestamptz '{{ var("forecast_drift_population_from") }}'
+{% if read_until is not none %}
+        and period_start <= timestamptz '{{ read_until }}'
+{% endif %}
 ),
 
 complete_half_hours as (
@@ -40,7 +45,7 @@ removed_by_no_change_polls as (
 select
     1 as section,
     'population' as breakdown,
-    'complete half-hours (2,880 needed)' as item,
+    'complete half-hours ({{ var("forecast_drift_half_hours_needed") }} needed)' as item,
     count(*) as half_hours,
     min(period_start) as first_half_hour,
     max(period_start) as last_half_hour

@@ -1,5 +1,10 @@
 """Capture a composite B1610 fixture from real data.
 
+The committed fixture is frozen evidence. Elexon serves only the settlement
+run in force, so its II rows cannot be fetched again: running this script
+overwrites them with a newer window, and the tests' expected values no longer
+match. Run it only to make a new fixture on purpose.
+
 A market-wide window is ~9,000 rows per settlement period, far too large to
 commit, and the endpoint's bmUnit filter is untested. So this fetches a real
 window, picks a handful of units that between them cover every trait the tests

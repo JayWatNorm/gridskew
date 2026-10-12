@@ -1,9 +1,11 @@
 unit_tests:
   - name: test_instruction_intervals_latest_acceptance_wins_its_minutes
     description: >
-      UNIT-1 has acceptance 1 (issued 09:00) at a flat 20 MW for the whole
-      half-hour and acceptance 2 (issued 09:05) at a flat 60 MW for its last
-      15 minutes. Acceptance 2 wins only the minutes it covers: 10:00 to
+      UNIT-1 has acceptance 1 (time 09:00) at a flat 20 MW for the whole
+      half-hour and acceptance 2 (time 08:55, as published data sometimes
+      shows) at a flat 60 MW for its last 15 minutes. The higher number is
+      the later acceptance whatever its time, so acceptance 2 wins only the
+      minutes it covers: 10:00 to
       10:15 stay with acceptance 1 (5 MWh) and 10:15 to 10:30 go to
       acceptance 2 (15 MWh). UNIT-2's single acceptance covers 10:10 to
       10:20 at 30 MW (5 MWh) and the rest of its half-hour has no row.
@@ -17,7 +19,7 @@ unit_tests:
         rows: |
           national_grid_bm_unit,bm_unit,acceptance_number,acceptance_time,time_from,time_to,level_from,level_to,so_flag,retrieved_at
           UNIT-1,T_UNIT-1,1,2026-01-15 09:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,20,20,false,2026-01-16 00:00:00+00
-          UNIT-1,T_UNIT-1,2,2026-01-15 09:05:00+00,2026-01-15 10:15:00+00,2026-01-15 10:30:00+00,60,60,true,2026-01-16 00:00:00+00
+          UNIT-1,T_UNIT-1,2,2026-01-15 08:55:00+00,2026-01-15 10:15:00+00,2026-01-15 10:30:00+00,60,60,true,2026-01-16 00:00:00+00
           UNIT-2,T_UNIT-2,3,2026-01-15 09:00:00+00,2026-01-15 10:10:00+00,2026-01-15 10:20:00+00,30,30,false,2026-01-16 00:00:00+00
     expect:
       format: csv

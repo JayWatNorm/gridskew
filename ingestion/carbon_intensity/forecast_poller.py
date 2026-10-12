@@ -1,12 +1,9 @@
 """Fetch, validate, quarantine and load one Carbon Intensity 48-hour forecast."""
 
 import logging
-import os
 from datetime import datetime, timezone
 
-import psycopg2
 import requests
-from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
 from ingestion.carbon_intensity.completeness import (
@@ -125,20 +122,3 @@ def run(conn):
         )
         return
     logger.info("Retrieved %s rows at %s", len(rows), retrieved_at.isoformat())
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    logging.basicConfig(level=logging.INFO)
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-    )
-
-    try:
-        run(conn)
-    finally:
-        conn.close()

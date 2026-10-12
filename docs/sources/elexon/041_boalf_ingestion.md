@@ -37,8 +37,8 @@ in PN. A repeated request lands as new rows.
 
 The request includes both ends of its window. Each daily run therefore also
 stores the ramp points that start at the midnight ending its day, and the
-next run stores them again. `int_elexon__boa_by_period` reads the latest
-capture of each ramp point, so the repeat is counted once.
+next run stores them again. `int_elexon__instruction_intervals` reads the
+latest capture of each ramp point, so the repeat is counted once.
 
 ## The schedule is a timetable, not `@daily`
 

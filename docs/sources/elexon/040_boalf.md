@@ -98,7 +98,7 @@ follow. It is not a change from the notified level.
 **Acceptances span settlement periods.** `settlementPeriodFrom` and
 `settlementPeriodTo` differ on a fifth of rows, so one row is not one half
 hour. Attributing an acceptance to periods means splitting it.
-`int_elexon__boa_by_period` does this.
+`int_elexon__instruction_intervals` does this.
 
 **`acceptanceNumber` identifies an acceptance only together with the unit.**
 Two units can hold the same number.
@@ -115,10 +115,9 @@ them as energy balancing would misattribute the cause.
 **`amendmentFlag` looks like a revision marker**, with `ORI` for original.
 Every observed value is `ORI`, and what an amended acceptance looks like is
 not known. A warning-level dbt test on `stg_elexon__boalf` reports any value
-other than `ORI`; nulls pass. `int_elexon__boa_by_period` keeps the latest
-capture of each ramp point: an amendment that removed a ramp point or moved
-its start would leave the old point in the view. Check how amendments arrive
-before the view feeds an analysis.
+other than `ORI`; nulls pass. `int_elexon__instruction_intervals` keeps the
+latest capture of each ramp point: an amendment that removed a ramp point or
+moved its start would leave the old point in place.
 
 **`from` and `to` filter on `timeFrom`, and both ends are included.** Two
 consecutive daily requests therefore both return the ramp points that start

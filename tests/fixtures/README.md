@@ -106,7 +106,8 @@ the only way to prove local-versus-UTC handling rather than assume it — one al
 could pass by accident.
 
 The selection is done by `tests/adhoc/b1610_capture_fixture.py`, which reports
-trait coverage. **Do not hand-edit this file**; recapture it.
+trait coverage. **Do not hand-edit or recapture this file**: its II rows can
+no longer be fetched.
 
 Only run type `II` appears in this fixture, so it cannot show that a parse
 reads `settlementRunType`.

@@ -38,7 +38,8 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `check_bmu_snapshot_lifecycle.py` | Real dbt snapshot transitions for the BM-unit registry | Disposable PostgreSQL |
 | `check_outturn_gap_refetch.py` | The outturn history gap query, inside one transaction that is rolled back | Disposable PostgreSQL |
 | `check_period_tables.py` | The period tables: an incremental run equals a full refresh; runs in its own job on an empty database | Disposable PostgreSQL |
-| `check_scheduled_set.py` | The nightly DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
+| `check_analyses_compile.py` | Every analysis compiles and runs with `limit 0` on the CI fixtures | Disposable PostgreSQL |
+| `check_scheduled_set.py` | The nightly DAG's and the BM-unit DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
 | `check_nightly_run.py` | The nightly DAG's default dbt commands, run for real after the full build: each succeeds, each node gets one audit row, no view is recreated, and audit rows past retention are deleted | Disposable PostgreSQL |
 
 The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
@@ -66,8 +67,9 @@ shows each trait the tests need.
 `remit_capture_fixture.py` writes `tests/fixtures/elexon/remit_publications.json`:
 one real day, keeping the first message that shows each trait the tests need.
 
-Re-run the capture script rather than hand-editing a fixture. A hand-edited
-fixture stops recording what the API returned.
+Never hand-edit a fixture: it stops recording what the API returned. The
+B1610 fixture is frozen evidence: Elexon serves only the settlement run in
+force, so its II rows cannot be fetched again, and the tests pin its values.
 
 A script that produced a number is better evidence than a number in a sentence,
 and it can be re-run when the answer might have changed. Anything quoted as a

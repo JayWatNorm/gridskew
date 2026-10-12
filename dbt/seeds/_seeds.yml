@@ -8,7 +8,6 @@ seeds:
       column_types:
         settlement_run_code: varchar(2)
         run_order: smallint
-        is_final: boolean
 
     columns:
       - name: settlement_run_code
@@ -23,12 +22,6 @@ seeds:
           Chronological revision order from the initial run to the final run.
         data_tests:
           - unique
-          - not_null
-
-      - name: is_final
-        description: >
-          True only for the RF settlement run.
-        data_tests:
           - not_null
 
   - name: elexon_fuel_codes
@@ -70,33 +63,3 @@ seeds:
                   - other
                   - pumped_storage
                   - wind
-
-  - name: carbon_intensity_bands
-    description: >
-      One row per published Carbon Intensity API index label, ordered from
-      very low to very high. This lookup orders source labels only. Numeric
-      gCO2/kWh thresholds can change and are not encoded here.
-
-    config:
-      column_types:
-        intensity_index: varchar(16)
-        band_order: smallint
-
-    columns:
-      - name: intensity_index
-        description: >
-          Exact lower-case index label returned by the Carbon Intensity API.
-        data_tests:
-          - unique
-          - not_null
-          - accepted_values:
-              arguments:
-                values: ['very low', 'low', 'moderate', 'high', 'very high']
-
-      - name: band_order
-        description: >
-          Publisher-defined order from lowest (1) to highest (5), not a
-          fixed numeric carbon-intensity boundary.
-        data_tests:
-          - unique
-          - not_null

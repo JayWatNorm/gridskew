@@ -214,6 +214,7 @@ def test_run_backfills_all_windows_and_reports_the_total_failures(summary_output
     ]
 
     with (
+        patch("ingestion.carbon_intensity.outturn_poller.datetime") as mock_datetime,
         patch(
             "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
             return_value=summary_output,
@@ -227,6 +228,7 @@ def test_run_backfills_all_windows_and_reports_the_total_failures(summary_output
             side_effect=[(1, False), (0, True), (2, False)],
         ) as mock_process_window,
     ):
+        mock_datetime.now.return_value = RETRIEVED_AT
         with pytest.raises(
             RuntimeError,
             match="Quarantined 3 rows.*found 1 incomplete",
@@ -339,11 +341,47 @@ def test_run_attempts_every_history_gap_when_one_request_fails():
             side_effect=[recent_refresh, failed_request, later_window],
         ) as mock_process_window,
     ):
-        with pytest.raises(RuntimeError, match="Found 1 incomplete"):
-            run_poller(conn)
+        run_poller(conn)
 
     assert mock_process_window.call_count == 3
     conn.rollback.assert_called_once_with()
+
+
+def run_with_one_history_gap(recent_outcome, history_outcome):
+    with (
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
+            return_value=HISTORY_OLDER_THAN_THE_HORIZON,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.is_history_refetch_day",
+            return_value=True,
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
+            return_value=[a_period_start_100_days_ago()],
+        ),
+        patch(
+            "ingestion.carbon_intensity.outturn_poller.process_window",
+            side_effect=[recent_outcome, history_outcome],
+        ),
+    ):
+        run_poller(Mock())
+
+
+def test_a_history_gap_the_source_never_fills_does_not_fail_the_run():
+    still_incomplete = (0, True)
+    run_with_one_history_gap((0, False), still_incomplete)
+
+
+def test_an_incomplete_recent_window_still_fails_the_run():
+    with pytest.raises(RuntimeError, match="Found 1 incomplete"):
+        run_with_one_history_gap((0, True), (0, False))
+
+
+def test_rows_rejected_in_a_history_window_still_fail_the_run():
+    with pytest.raises(RuntimeError, match="Quarantined 2 rows"):
+        run_with_one_history_gap((0, False), (2, False))
 
 
 def test_run_leaves_history_gaps_alone_between_refetch_days():

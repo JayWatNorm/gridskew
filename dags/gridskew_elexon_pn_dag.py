@@ -16,10 +16,16 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
     schedule=CronDataIntervalTimetable("0 0 * * *", timezone="UTC"),
     start_date=datetime(2025, 8, 22, tzinfo=timezone.utc),
     catchup=True,
-    max_active_runs=1,
+    # A date that keeps retrying does not hold up the dates after it; the one
+    # elexon pool slot still keeps the requests one at a time.
+    max_active_runs=3,
+    # Retry for about four days, backing off to 8 hours between tries, so an
+    # Elexon outage recovers without anyone clearing a task.
     default_args={
-        "retries": 3,
-        "retry_delay": timedelta(minutes=5),
+        "retries": 16,
+        "retry_delay": timedelta(minutes=15),
+        "retry_exponential_backoff": True,
+        "max_retry_delay": timedelta(hours=8),
         "execution_timeout": timedelta(minutes=20),
     },
     tags=["gridskew", "elexon"],
@@ -37,11 +43,16 @@ def gridskew_elexon_pn():
             )
 
         sys.path.insert(0, PROJECT_PATH)
+        from airflow.exceptions import AirflowFailException
+
         from ingestion.elexon.pn_poller import run
+        from ingestion.routing import ContractRejected
 
         conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
         try:
             run(conn, data_interval_start, data_interval_end)
+        except ContractRejected as rejected:
+            raise AirflowFailException(str(rejected)) from rejected
         finally:
             conn.close()
 

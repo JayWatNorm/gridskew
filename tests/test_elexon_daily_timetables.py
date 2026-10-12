@@ -18,6 +18,9 @@ DAILY_INTERVAL_DAGS = [
     pytest.param(
         "gridskew_elexon_b1610_SF_dag.py", "gridskew_elexon_b1610_SF", id="SF"
     ),
+    pytest.param(
+        "gridskew_elexon_b1610_RF_dag.py", "gridskew_elexon_b1610_RF", id="RF"
+    ),
 ]
 
 

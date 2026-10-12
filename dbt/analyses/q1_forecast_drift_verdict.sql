@@ -3,24 +3,31 @@
 -- The one look at the forecast drift question
 -- (docs/carbon-forecast-trajectory.md): does the carbon-intensity forecast
 -- drift one way between its first and its final version? Run it once, on the
--- first day q1_forecast_drift_population reports 2,880 complete half-hours.
--- Before that day it returns the count and no result.
+-- first day q1_forecast_drift_population reports
+-- forecast_drift_half_hours_needed complete half-hours. Before that day it
+-- returns the count and date range and no result.
 
-{% set half_hours_needed = 2880 %}
+{% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
+{% set read_until = var('analysis_read_until') %}
 
 with half_hours as (
     select
+        period_start,
         drift,
         has_complete_trajectory,
         as_published_drift,
         as_published_has_complete_trajectory
     from {{ ref('int_carbon_error_by_period') }}
-    where period_start >= timestamptz '2026-08-17 00:00:00+00'
+    where period_start >= timestamptz '{{ var("forecast_drift_population_from") }}'
+{% if read_until is not none %}
+        and period_start <= timestamptz '{{ read_until }}'
+{% endif %}
 ),
 
 drifts as (
     select
         'reading_rule' as poll_set,
+        period_start,
         drift
     from half_hours
     where has_complete_trajectory
@@ -29,6 +36,7 @@ drifts as (
 
     select
         'as_published' as poll_set,
+        period_start,
         as_published_drift as drift
     from half_hours
     where as_published_has_complete_trajectory
@@ -44,6 +52,8 @@ statistics as (
     select
         poll_sets.poll_set,
         count(drifts.drift) as half_hours,
+        min(drifts.period_start) as first_half_hour,
+        max(drifts.period_start) as last_half_hour,
         percentile_cont(0.5) within group (order by drifts.drift) as median_drift,
         count(*) filter (where drifts.drift > 0) as positive_drifts,
         count(*) filter (where drifts.drift <> 0) as non_zero_drifts
@@ -57,6 +67,8 @@ shares as (
     select
         poll_set,
         half_hours,
+        first_half_hour,
+        last_half_hour,
         median_drift,
         positive_drifts::numeric / nullif(non_zero_drifts, 0) as positive_share
     from statistics
@@ -66,6 +78,8 @@ verdicts as (
     select
         poll_set,
         half_hours,
+        first_half_hour,
+        last_half_hour,
         median_drift,
         positive_share,
         case
@@ -81,6 +95,8 @@ verdicts as (
 reading_rule as (
     select
         half_hours,
+        first_half_hour,
+        last_half_hour,
         median_drift,
         positive_share,
         verdict,
@@ -101,6 +117,8 @@ as_published as (
 
 select
     reading_rule.half_hours as complete_half_hours,
+    reading_rule.first_half_hour,
+    reading_rule.last_half_hour,
     {{ half_hours_needed }} as half_hours_needed,
     reading_rule.population_is_reached,
     case

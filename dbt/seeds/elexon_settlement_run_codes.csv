@@ -1,7 +1,7 @@
-settlement_run_code,run_order,is_final
-II,1,false
-SF,2,false
-R1,3,false
-R2,4,false
-R3,5,false
-RF,6,true
+settlement_run_code,run_order
+II,1
+SF,2
+R1,3
+R2,4
+R3,5
+RF,6

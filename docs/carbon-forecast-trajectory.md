@@ -71,7 +71,9 @@ forecast.
 - **One look.** `dbt/analyses/q1_forecast_drift_population.sql` counts the
   population without reading a forecast value and can run on any day.
   `dbt/analyses/q1_forecast_drift_verdict.sql` runs once, when the population
-  reaches 2,880; before then it returns the count and no result.
+  reaches 2,880; before then it returns the count and no result. Both take
+  the `analysis_read_until` variable, the last half-hour start they read, so
+  the look can be repeated on the same half-hours.
 
 ## Where the models run
 

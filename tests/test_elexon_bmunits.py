@@ -220,3 +220,23 @@ def test_locked_extract_rejects_a_manifest_whose_counts_differ_from_stored_rows(
             pytest.fail("dbt must not start")
 
     conn.rollback.assert_called_once()
+
+
+def test_accept_shrink_lets_one_run_publish_a_smaller_extract(caplog):
+    previous = (UUID(int=1), 100, 100)
+    previous_keys = {f"unit-{number}" for number in range(100)}
+    remaining_units = units_named("unit", 80)
+
+    with caplog.at_level("WARNING", logger="ingestion.elexon.bmunits_poller"):
+        check_completeness(
+            remaining_units, 80, previous, previous_keys, accept_shrink=True
+        )
+
+    assert "Shrink checks skipped by accept_shrink: 80 rows and 80 units" in caplog.text
+
+
+def test_accept_shrink_keeps_the_first_extract_minimum():
+    first_units = units_named("unit", 2499)
+
+    with pytest.raises(RuntimeError, match="reviewed minimum"):
+        check_completeness(first_units, 2499, None, set(), accept_shrink=True)

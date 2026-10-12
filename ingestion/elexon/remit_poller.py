@@ -1,16 +1,12 @@
 """Fetch, validate, quarantine and load Elexon REMIT messages."""
 
 import json
-import logging
-import os
 import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-import psycopg2
 import requests
 import simplejson
-from dotenv import load_dotenv
 from psycopg2.extras import Json, execute_values
 
 from ingestion.elexon.contracts import REMIT_SPEC
@@ -132,9 +128,34 @@ def newest_stored_publish_time(conn):
 
 
 def quarantined_row_count(conn):
+    """Count quarantined REMIT rows whose message is still not stored.
+
+    A row whose message a later load stored is resolved and no longer
+    counts, so no one has to delete it. The match compares text and converts
+    nothing from the payload, so a malformed row matches nothing and still
+    counts.
+    """
+
     with conn.cursor() as cursor:
         cursor.execute(
-            "SELECT count(*) FROM raw.endpoint_quarantine WHERE dataset = 'REMIT'"
+            """
+            SELECT count(*)
+            FROM raw.endpoint_quarantine AS quarantined
+            WHERE quarantined.dataset = 'REMIT'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM raw.elexon_remit AS stored
+                  WHERE stored.mrid = quarantined.payload ->> 'mrid'
+                    AND stored.revision_number::text
+                        = quarantined.payload ->> 'revisionNumber'
+                    AND to_char(stored.publish_time AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                        = quarantined.payload ->> 'publishTime'
+                    AND to_char(stored.created_time AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                        = quarantined.payload ->> 'createdTime'
+              )
+            """
         )
         row_count = cursor.fetchone()[0]
     return row_count
@@ -223,20 +244,3 @@ def load(parsed_rows, conn):
     with conn.cursor() as cursor:
         execute_values(cursor, insert_sql, parsed_rows, page_size=1000)
     conn.commit()
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    logging.basicConfig(level=logging.INFO)
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-    )
-
-    try:
-        run(conn)
-    finally:
-        conn.close()

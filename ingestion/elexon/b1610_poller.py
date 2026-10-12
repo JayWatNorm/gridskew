@@ -12,12 +12,15 @@ import simplejson
 from psycopg2.extras import execute_values
 
 from ingestion.elexon.contracts import B1610_SPEC
-from ingestion.routing import process_rows
+from ingestion.routing import ContractRejected, process_rows
 
 logger = logging.getLogger(__name__)
 
 LONDON = ZoneInfo("Europe/London")
 HALF_HOUR = timedelta(minutes=30)
+# Settlement runs in the order Elexon publishes them; a later run replaces an
+# earlier one, which the API then no longer serves.
+RUN_ORDER = ("II", "SF", "R1", "R2", "R3", "RF")
 
 
 def decimal_json_dumps(values):
@@ -45,6 +48,52 @@ def fetch(from_date, to_date, settlement_run_type=None):
     )
     response.raise_for_status()
     return json.loads(response.text, parse_float=Decimal)
+
+
+def run_in_force(settlement_date):
+    """Return the latest settlement run Elexon serves now for a date, or None.
+
+    One settlement period is enough. A few units can stay at an earlier run
+    while the rest move on, so the latest run any row carries is the one the
+    date has reached; codes outside RUN_ORDER are ignored.
+    """
+
+    response = requests.get(
+        "https://data.elexon.co.uk/bmrs/api/v1/datasets/B1610",
+        params={
+            "settlementDate": settlement_date.isoformat(),
+            "settlementPeriod": 1,
+            "format": "json",
+        },
+        headers={
+            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    latest = None
+    for row in response.json().get("data", []):
+        run_type = row.get("settlementRunType")
+        if run_type not in RUN_ORDER:
+            continue
+        if latest is None or RUN_ORDER.index(run_type) > RUN_ORDER.index(latest):
+            latest = run_type
+    return latest
+
+
+def replaced_by_a_later_run(settlement_date, run_type):
+    """Return the later run Elexon serves in place of run_type, or None.
+
+    None also when nothing is published yet or the run is unknown, so the
+    capture goes ahead and fails, and retries, in the usual way.
+    """
+
+    in_force = run_in_force(settlement_date)
+    if in_force not in RUN_ORDER or run_type not in RUN_ORDER:
+        return None
+    if RUN_ORDER.index(in_force) > RUN_ORDER.index(run_type):
+        return in_force
+    return None
 
 
 def run(
@@ -91,7 +140,7 @@ def run(
         payload_dumps=decimal_json_dumps,
     )
     if rejected_count:
-        raise RuntimeError(
+        raise ContractRejected(
             f"Quarantined {rejected_count} rows due to validation errors"
         )
 
@@ -207,10 +256,30 @@ def stored_coverage(conn, settlement_date, run_type):
         return cursor.fetchone()
 
 
+def recent_unit_count(conn, settlement_date, run_type):
+    """Return the largest unit count of this run over the seven settlement
+    dates before this one, or None when none is stored.
+
+    The largest, not the latest: comparing with the day before would let
+    small drops add up from day to day.
+    """
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT max(units) FROM ("
+            "SELECT count(DISTINCT bm_unit) AS units FROM raw.elexon_b1610 "
+            "WHERE settlement_run_type = %s "
+            "AND settlement_date >= %s AND settlement_date < %s "
+            "GROUP BY settlement_date) AS per_date",
+            (run_type, settlement_date - timedelta(days=7), settlement_date),
+        )
+        return cursor.fetchone()[0]
+
+
 def capture_settlement_date(conn, settlement_date, run_type):
     """Load one settlement date for one run, then fail if it is incomplete.
 
-    The daily II and SF captures and the bounded cohort captures all use
+    The daily II, SF and RF captures all use
     this. Rows received are committed before the check, so a failed capture
     keeps what the source did return and a repeat fills in the rest.
     """
@@ -229,6 +298,7 @@ def capture_settlement_date(conn, settlement_date, run_type):
     row_count, stored_periods, unit_count = stored_coverage(
         conn, settlement_date, run_type
     )
+    recent_units = recent_unit_count(conn, settlement_date, run_type)
     conn.rollback()
     expected = expected_period_count(settlement_date)
     stored_periods = set(stored_periods or [])
@@ -242,6 +312,7 @@ def capture_settlement_date(conn, settlement_date, run_type):
         "stored_period_numbers": sorted(stored_periods),
         "expected_periods": expected,
         "stored_units": unit_count,
+        "most_units_in_previous_seven_dates": recent_units,
     }
     logger.info("%s", json.dumps(summary))
 
@@ -253,6 +324,14 @@ def capture_settlement_date(conn, settlement_date, run_type):
             f"stored periods 1..{expected} expected: "
             f"missing {sorted(expected_periods - stored_periods)}, "
             f"unexpected {sorted(stored_periods - expected_periods)}"
+        )
+    # Every period present does not mean every unit is: a cut-short response
+    # can carry all periods for fewer units, and it is lost for good once a
+    # later run replaces it.
+    if recent_units is not None and unit_count < recent_units * 0.95:
+        problems.append(
+            f"stored {unit_count} units; the most in the previous seven "
+            f"dates of {run_type} was {recent_units}"
         )
     if problems:
         raise RuntimeError(

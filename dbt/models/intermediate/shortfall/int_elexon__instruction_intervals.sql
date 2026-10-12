@@ -152,8 +152,10 @@ pieces as (
     from breakpoints
 ),
 
--- Each ramp point that covers a whole piece, ranked by how recently its
--- acceptance was issued. A piece lies inside one ramp point of each
+-- Each ramp point that covers a whole piece, ranked by acceptance number:
+-- Settlement applies acceptances in number order, which is their issue
+-- order even where the published acceptance times disagree (BSC Section T
+-- 3.4.1, Section Q 5.3.1). A piece lies inside one ramp point of each
 -- acceptance that covers it, because the pieces were cut at every ramp
 -- point's edges.
 candidates as (
@@ -174,7 +176,6 @@ candidates as (
             partition by
                 pieces.national_grid_bm_unit, pieces.period_start_utc, pieces.interval_from
             order by
-                ramp_point_periods.acceptance_time desc,
                 ramp_point_periods.acceptance_number desc,
                 ramp_point_periods.time_from desc
         ) as precedence,

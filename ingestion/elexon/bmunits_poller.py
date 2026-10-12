@@ -1,7 +1,6 @@
 """Archive complete Elexon BM-unit registry responses."""
 
 import logging
-import os
 import re
 from collections import defaultdict
 from contextlib import contextmanager
@@ -9,9 +8,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from uuid import uuid4
 
-import psycopg2
 import requests
-from dotenv import load_dotenv
 from psycopg2.extras import execute_values
 
 from ingestion.elexon.contracts import BM_UNITS_SPEC
@@ -231,12 +228,29 @@ def previous_extract(conn):
         return previous, {row[0] for row in cursor.fetchall()}
 
 
-def check_completeness(rows, unit_count, previous, previous_keys, *, first_min=2500):
-    """Block obvious truncation or mass disappearance before publication."""
+def check_completeness(
+    rows, unit_count, previous, previous_keys, *, first_min=2500, accept_shrink=False
+):
+    """Block obvious truncation or mass disappearance before publication.
+
+    accept_shrink skips the shrink checks for one run, after a person has
+    confirmed that Elexon really removed the units; the next run compares
+    with this extract."""
 
     if previous is None:
         if len(rows) < first_min:
             raise RuntimeError("BM-unit first extract is below the reviewed minimum")
+        return
+
+    if accept_shrink:
+        logger.warning(
+            "Shrink checks skipped by accept_shrink: %s rows and %s units; "
+            "the previous extract had %s rows and %s units",
+            len(rows),
+            unit_count,
+            previous[1],
+            previous[2],
+        )
         return
 
     _, previous_rows, previous_units = previous
@@ -323,7 +337,7 @@ def locked_extract(conn, expected_id):
         conn.rollback()
 
 
-def run(conn):
+def run(conn, accept_shrink=False):
     """Validate, archive and publish one complete current response."""
 
     retrieved_at = datetime.now(timezone.utc)
@@ -341,24 +355,10 @@ def run(conn):
 
     previous, previous_keys = previous_extract(conn)
     try:
-        check_completeness(rows, unit_count, previous, previous_keys)
+        check_completeness(
+            rows, unit_count, previous, previous_keys, accept_shrink=accept_shrink
+        )
     except Exception:
         conn.rollback()
         raise
     return load_extract(conn, rows, retrieved_at, unit_count)
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    logging.basicConfig(level=logging.INFO)
-    connection = psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-    )
-    try:
-        print(run(connection))
-    finally:
-        connection.close()

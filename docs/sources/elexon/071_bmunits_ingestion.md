@@ -40,11 +40,11 @@ append-only.
 
 `stg_elexon__bm_units` preserves every raw row and casts capacity strings to
 numeric. `int_elexon__bm_units_current` selects the latest manifest and yields
-one row per National Grid ID. `dim_bm_unit` exposes that current state. The
-`snap_elexon__bm_units` dbt check snapshot records observed changes and closes
-the version of a unit that leaves a complete extract. Its validity timestamps
-are observation times, not business effective dates. Null fuel stays unknown.
-A historical PN or B1610 unit is not required to occur in today's registry.
+one row per National Grid ID. The `snap_elexon__bm_units` dbt check snapshot
+records observed changes and closes the version of a unit that leaves a
+complete extract. Its validity timestamps are observation times, not business
+effective dates. Null fuel stays unknown. A historical PN or B1610 unit is not
+required to occur in today's registry.
 
 ## Recovery
 

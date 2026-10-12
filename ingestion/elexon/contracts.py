@@ -12,17 +12,8 @@ PN_SPEC = {
     "bmUnit": {"type": str, "required": True, "nullable": True},
 }
 
-QPN_SPEC = {
-    "dataset": {"type": str, "required": False, "nullable": True},
-    "settlementDate": {"type": str, "required": True, "nullable": False},
-    "settlementPeriod": {"type": int, "required": True, "nullable": False},
-    "timeFrom": {"type": str, "required": True, "nullable": False},
-    "timeTo": {"type": str, "required": True, "nullable": False},
-    "levelFrom": {"type": int, "required": True, "nullable": False},
-    "levelTo": {"type": int, "required": True, "nullable": False},
-    "nationalGridBmUnit": {"type": str, "required": True, "nullable": False},
-    "bmUnit": {"type": str, "required": True, "nullable": True},
-}
+# QPN rows have the same shape as PN rows.
+QPN_SPEC = PN_SPEC
 
 BOALF_SPEC = {
     "dataset": {"type": str, "required": False, "nullable": True},
