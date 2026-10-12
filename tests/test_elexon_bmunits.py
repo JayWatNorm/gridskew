@@ -121,7 +121,7 @@ def test_run_quarantines_bad_row_without_publishing_extract(rows):
     load.assert_not_called()
 
 
-@pytest.mark.parametrize("value", ["1e999999", "1e-16384", "NaN", "1_000", "\u00a0"])
+@pytest.mark.parametrize("value", ["1e131072", "1e-16384", "NaN", "1_000", "\u00a0"])
 def test_capacity_values_outside_supported_numeric_contract_are_rejected(rows, value):
     rows[0]["generationCapacity"] = value
 

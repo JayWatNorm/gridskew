@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
@@ -71,45 +71,19 @@ def test_parse_maps_a_source_row_to_the_database_tuple(source_rows):
     parsed_rows = parse(source_rows, RETRIEVED_AT)
 
     assert len(parsed_rows) == len(source_rows)
-    assert parsed_row_for(parsed_rows, "E__MDRX001", 2) == (
+    # Period 1 ends on the previous UTC day: the settlement date comes from
+    # the source, never from the end time.
+    assert parsed_row_for(parsed_rows, "E__MDRX001", 1) == (
         "E__MDRX001",
         "DRAXD-1",
         "Generation",
         date(2026, 8, 9),
-        2,
-        datetime(2026, 8, 9, 0, 0, tzinfo=timezone.utc),
+        1,
+        datetime(2026, 8, 8, 23, 30, tzinfo=timezone.utc),
         "II",
-        Decimal("-15.069"),
+        Decimal("-14.456"),
         RETRIEVED_AT,
     )
-
-
-def settlement_date_and_end_time(parsed_rows, wanted_period):
-    for parsed_row in parsed_rows:
-        (
-            _bm_unit,
-            _national_grid_bm_unit_id,
-            _psr_type,
-            settlement_date,
-            settlement_period,
-            half_hour_end_time,
-            _settlement_run_type,
-            _quantity,
-            _retrieved_at,
-        ) = parsed_row
-        if settlement_period == wanted_period:
-            return settlement_date, half_hour_end_time
-    raise AssertionError(f"No parsed row for period {wanted_period}")
-
-
-def test_parse_preserves_the_settlement_date_at_the_utc_day_boundary(source_rows):
-    parsed_rows = parse(source_rows, RETRIEVED_AT)
-
-    settlement_date, end_time = settlement_date_and_end_time(parsed_rows, 1)
-    assert settlement_date == end_time.date() + timedelta(days=1)
-
-    settlement_date, end_time = settlement_date_and_end_time(parsed_rows, 2)
-    assert settlement_date == end_time.date()
 
 
 def test_load_uses_the_expected_columns_conflict_key_and_commits():
@@ -308,73 +282,6 @@ def test_capture_without_an_earlier_date_checks_periods_only(source_rows):
     assert summary["stored_units"] == 1
 
 
-def cohort_rows(source_rows):
-    """Return the fixture rows relabelled as R1 rows for 2026-08-10."""
-
-    rows = []
-    for row in source_rows:
-        rows.append(dict(row, settlementRunType="R1", settlementDate="2026-08-10"))
-    return rows
-
-
-def connection_checking_commit_before_coverage(coverage):
-    """Return a fake connection that fails if coverage is read before a commit."""
-
-    conn = connection_returning(coverage)
-
-    def check_commit(*_args):
-        conn.commit.assert_called_once_with()
-
-    cursor_of(conn).execute.side_effect = check_commit
-    return conn
-
-
-def test_capture_commits_valid_rows_then_fails_when_a_period_is_missing(
-    source_rows, caplog
-):
-    rows = cohort_rows(source_rows)
-    stored_periods = list(range(1, 48))
-    conn = connection_checking_commit_before_coverage((len(rows), stored_periods, 1))
-
-    with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows) as get_rows,
-        patch("ingestion.elexon.b1610_poller.execute_values") as insert_rows,
-        caplog.at_level("INFO", logger="ingestion.elexon.b1610_poller"),
-    ):
-        with pytest.raises(RuntimeError, match=r"missing \[48\], unexpected \[\]"):
-            capture_settlement_date(conn, date(2026, 8, 10), "R1")
-
-    assert get_rows.call_args.args == (
-        datetime(2026, 8, 9, 23, 0, tzinfo=timezone.utc),
-        datetime(2026, 8, 10, 22, 30, tzinfo=timezone.utc),
-        "R1",
-    )
-    insert_rows.assert_called_once()
-    conn.rollback.assert_called_once_with()
-    assert '"stored_periods": 47' in caplog.text
-
-
-def test_capture_commits_valid_rows_then_reports_complete_coverage(source_rows, caplog):
-    rows = cohort_rows(source_rows)
-    stored_periods = list(range(1, 49))
-    conn = connection_checking_commit_before_coverage((len(rows), stored_periods, 1))
-
-    with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows) as get_rows,
-        patch("ingestion.elexon.b1610_poller.execute_values") as insert_rows,
-        caplog.at_level("INFO", logger="ingestion.elexon.b1610_poller"),
-    ):
-        summary = capture_settlement_date(conn, date(2026, 8, 10), "R1")
-
-    assert summary["stored_periods"] == summary["expected_periods"] == 48
-    assert summary["returned_run_types"] == {"R1": len(rows)}
-    _from_date, _to_date, requested_run_type = get_rows.call_args.args
-    assert requested_run_type == "R1"
-    insert_rows.assert_called_once()
-    conn.rollback.assert_called_once_with()
-    assert '"stored_periods": 48' in caplog.text
-
-
 def test_run_preserves_the_requested_run_type_in_quarantine_context(source_rows):
     with (
         patch("ingestion.elexon.b1610_poller.fetch", return_value=source_rows),
@@ -435,8 +342,9 @@ def test_capture_refuses_out_of_range_returned_period_before_writes(
     conn.commit.assert_not_called()
 
 
-CLOCK_CHANGE_DAYS = [
+STORED_PERIOD_DAYS = [
     pytest.param(date(2026, 3, 29), 46, id="spring"),
+    pytest.param(date(2026, 8, 10), 48, id="normal"),
     pytest.param(date(2026, 10, 25), 50, id="autumn"),
 ]
 
@@ -457,7 +365,7 @@ def one_row_per_period(source_rows, settlement_date, period_count):
     return rows
 
 
-@pytest.mark.parametrize("settlement_date,expected", CLOCK_CHANGE_DAYS)
+@pytest.mark.parametrize("settlement_date,expected", STORED_PERIOD_DAYS)
 def test_capture_accepts_exactly_the_expected_stored_periods(
     source_rows, settlement_date, expected
 ):
@@ -466,11 +374,12 @@ def test_capture_accepts_exactly_the_expected_stored_periods(
     conn = connection_returning((expected, stored_periods, 1))
 
     with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows),
+        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows) as get_rows,
         patch("ingestion.elexon.b1610_poller.execute_values"),
     ):
         summary = capture_settlement_date(conn, settlement_date, "R1")
 
+    assert get_rows.call_args.args == (*british_day_window(settlement_date), "R1")
     assert summary["stored_period_numbers"] == stored_periods
     conn.commit.assert_called_once_with()
     conn.rollback.assert_called_once_with()

@@ -80,9 +80,6 @@ def test_the_nightly_guard_must_name_every_incremental_model():
 
     assert PERIOD_TABLE in problem
     assert "PERIOD_TABLES does not name" in problem
-
-
-def test_a_guard_that_names_every_incremental_model_has_no_problems():
     assert unguarded_incremental_models(released_manifest(), ("int_period",)) == []
 
 
