@@ -81,15 +81,15 @@ unit_tests:
       - input: ref('fct_generation')
         format: csv
         rows: |
-          bm_unit,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code
-          T_A,2026-01-15 10:00:00+00,mapped,A,45,SF,2026-01-20 00:00:00+00,44,II
-          T_B,2026-01-15 10:00:00+00,mapped,B,30,SF,2026-01-20 00:00:00+00,30,SF
-          T_D,2026-01-15 10:00:00+00,mapped,D,40,SF,2026-01-20 00:00:00+00,40,SF
-          T_E,2026-01-15 10:00:00+00,mapped,E,40,SF,2026-01-20 00:00:00+00,40,SF
-          T_F,2026-01-15 10:00:00+00,mapped,F,40,SF,2026-01-20 00:00:00+00,40,SF
-          T_F,2026-01-15 10:00:00+00,mapped,F,41,SF,2026-01-21 00:00:00+00,41,SF
-          T_G,2026-01-15 10:00:00+00,mapped,G,20,SF,2026-01-20 00:00:00+00,20,SF
-          T_H,2026-01-15 10:00:00+00,mapped,H,20,SF,2026-01-20 00:00:00+00,20,SF
+          bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code
+          T_A,2026-01-15,21,2026-01-15 10:00:00+00,mapped,A,45,SF,2026-01-20 00:00:00+00,44,II
+          T_B,2026-01-15,21,2026-01-15 10:00:00+00,mapped,B,30,SF,2026-01-20 00:00:00+00,30,SF
+          T_D,2026-01-15,21,2026-01-15 10:00:00+00,mapped,D,40,SF,2026-01-20 00:00:00+00,40,SF
+          T_E,2026-01-15,21,2026-01-15 10:00:00+00,mapped,E,40,SF,2026-01-20 00:00:00+00,40,SF
+          T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,40,SF,2026-01-20 00:00:00+00,40,SF
+          T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,41,SF,2026-01-21 00:00:00+00,41,SF
+          T_G,2026-01-15,21,2026-01-15 10:00:00+00,mapped,G,20,SF,2026-01-20 00:00:00+00,20,SF
+          T_H,2026-01-15,21,2026-01-15 10:00:00+00,mapped,H,20,SF,2026-01-20 00:00:00+00,20,SF
       - input: ref('int_elexon__instruction_intervals')
         format: csv
         rows: |
