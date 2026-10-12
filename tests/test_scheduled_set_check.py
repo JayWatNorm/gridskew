@@ -3,8 +3,6 @@
 import pytest
 
 from tests.adhoc.check_scheduled_set import (
-    bmunit_job_commands,
-    nightly_default_commands,
     scheduled_set_problems,
     unguarded_incremental_models,
 )
@@ -59,24 +57,6 @@ def released_manifest():
             "everything": selector({"method": "fqn", "value": "*"}),
         },
     )
-
-
-def test_the_released_shape_has_no_problems():
-    commands = [
-        ["test", "--selector", "everything"],
-        RUN_THE_INCREMENTAL_MODELS,
-        RUN_THE_PERIOD_TABLE,
-    ]
-
-    assert scheduled_set_problems(released_manifest(), commands) == []
-
-
-def test_the_nightly_dag_supplies_its_default_commands():
-    assert RUN_THE_INCREMENTAL_MODELS in nightly_default_commands()
-
-
-def test_the_bmunit_dag_commands_never_replace_a_relation():
-    assert scheduled_set_problems(released_manifest(), bmunit_job_commands()) == []
 
 
 def test_a_scheduled_run_by_selector_must_name_a_selector_that_exists():

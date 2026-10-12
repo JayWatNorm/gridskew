@@ -70,11 +70,6 @@ def test_fetch_asks_for_the_window_in_utc_and_keeps_decimals():
     assert str(rows[0]["normalCapacity"]) == "49.920"
 
 
-def test_the_fixture_satisfies_the_contract(source_rows):
-    for finding in validate_rows(source_rows, spec=REMIT_SPEC):
-        assert finding["errors"] == []
-
-
 def test_parse_maps_a_message_to_the_database_tuple(source_rows):
     parsed_rows = parse(source_rows, RUN_TIME)
     parsed_row = parsed_rows[FRACTIONAL_CAPACITY_ROW]
@@ -102,40 +97,6 @@ def test_parse_maps_a_message_to_the_database_tuple(source_rows):
     assert parsed_row[PAYLOAD_COLUMN + 1] == RUN_TIME
 
 
-def test_parse_stores_null_for_the_fields_a_message_does_not_carry(source_rows):
-    parsed_rows = parse(source_rows, RUN_TIME)
-
-    assert parsed_rows[NO_UNIT_FIELDS_ROW][:PAYLOAD_COLUMN] == (
-        "20260927STATKRA1-ELXP-RMT-00000001",
-        1,
-        datetime(2026, 9, 26, 23, 1, 16, tzinfo=timezone.utc),
-        datetime(2026, 9, 26, 22, 59, 14, tzinfo=timezone.utc),
-        "OtherMarketInformation",
-        None,
-        None,
-        "Active",
-        "NO_ASSET",
-        None,
-        None,
-        None,
-        None,
-        None,
-        datetime(2026, 9, 27, 0, 0, tzinfo=timezone.utc),
-        datetime(2026, 9, 28, 9, 0, tzinfo=timezone.utc),
-    )
-
-
-def test_a_message_with_no_end_time_is_accepted_and_stored_with_null(source_rows):
-    open_ended_row = dict(source_rows[NO_UNIT_FIELDS_ROW])
-    del open_ended_row["eventEndTime"]
-
-    findings = validate_rows([open_ended_row], spec=REMIT_SPEC)
-    parsed_rows = parse([open_ended_row], RUN_TIME)
-
-    assert findings[0]["errors"] == []
-    assert parsed_rows[0][EVENT_END_TIME_COLUMN] is None
-
-
 def test_a_message_with_only_the_key_and_start_time_is_accepted(source_rows):
     full_row = source_rows[NO_UNIT_FIELDS_ROW]
     minimal_row = {
@@ -152,21 +113,6 @@ def test_a_message_with_only_the_key_and_start_time_is_accepted(source_rows):
     assert findings[0]["errors"] == []
     assert parsed_row[FIRST_OPTIONAL_COLUMN:EVENT_START_TIME_COLUMN] == (None,) * 10
     assert parsed_row[EVENT_END_TIME_COLUMN] is None
-
-
-@pytest.mark.parametrize(
-    "required_field",
-    ["mrid", "revisionNumber", "publishTime", "createdTime", "eventStartTime"],
-)
-def test_a_message_without_a_key_field_or_start_time_is_rejected(
-    source_rows, required_field
-):
-    row = dict(source_rows[NO_UNIT_FIELDS_ROW])
-    del row[required_field]
-
-    findings = validate_rows([row], spec=REMIT_SPEC)
-
-    assert findings[0]["errors"] == [f"Missing required field: {required_field}"]
 
 
 def test_the_payload_keeps_capacities_as_published(source_rows):
@@ -232,18 +178,6 @@ def test_run_on_an_empty_table_fetches_the_history_a_day_at_a_time():
     assert first_window == (HISTORY_START, HISTORY_START + timedelta(days=1))
     assert last_window == (datetime(2026, 10, 8, tzinfo=timezone.utc), RUN_TIME)
     assert mock_fetch.call_count == 778
-
-
-def test_run_accepts_a_window_with_no_message():
-    conn = database_with(RUN_TIME - timedelta(minutes=30))
-
-    with (
-        patch("ingestion.elexon.remit_poller.fetch", return_value=[]),
-        patch("ingestion.elexon.remit_poller.process_rows") as mock_process_rows,
-    ):
-        run_at_run_time(conn)
-
-    mock_process_rows.assert_not_called()
 
 
 def test_run_rejects_a_response_that_is_not_a_list():

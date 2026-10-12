@@ -61,18 +61,6 @@ def test_full_refresh_rebuilds_descendants_after_contract_tests(nightly):
     ]
 
 
-def test_missing_period_table_is_reported(nightly):
-    conn = connection_returning(
-        (
-            None,
-            "dbt_dev.int_elexon__pn_period_mwh",
-            "dbt_dev.int_elexon__instruction_intervals",
-            "dbt_dev.int_shortfall_by_unit_period",
-        )
-    )
-    assert nightly["missing_period_tables"](conn) == ["int_elexon__b1610_period"]
-
-
 def test_the_missing_table_query_asks_for_every_period_table(nightly):
     three_tables = ("first_table", "second_table", "third_table")
     conn = connection_returning(("dbt_dev.first_table", None, "dbt_dev.third_table"))

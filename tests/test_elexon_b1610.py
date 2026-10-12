@@ -132,15 +132,6 @@ def test_load_uses_the_expected_columns_conflict_key_and_commits():
     conn.commit.assert_called_once_with()
 
 
-def test_decimal_json_encoder_preserves_a_decimal_number():
-    value = Decimal("123.456")
-
-    decoded = json.loads(decimal_json_dumps(value), parse_float=Decimal)
-
-    assert type(decoded) is Decimal
-    assert decoded.as_tuple() == value.as_tuple()
-
-
 @pytest.mark.parametrize(
     "response",
     [

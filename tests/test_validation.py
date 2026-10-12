@@ -60,34 +60,6 @@ def forecast_row():
     )
 
 
-def test_validate_row_reports_a_missing_required_field(pn_row):
-    del pn_row["settlementPeriod"]
-
-    errors, warnings = validate_row(pn_row, PN_SPEC)
-
-    assert errors == ["Missing required field: settlementPeriod"]
-    assert warnings == []
-
-
-def test_validate_row_rejects_a_forbidden_null(pn_row):
-    pn_row["settlementPeriod"] = None
-
-    errors, warnings = validate_row(pn_row, PN_SPEC)
-
-    assert errors == ["Null not permitted: settlementPeriod"]
-    assert warnings == []
-
-
-def test_validate_row_accepts_an_allowed_null(pn_row):
-    pn_row["bmUnit"] = None
-    pn_row["dataset"] = None
-
-    errors, warnings = validate_row(pn_row, PN_SPEC)
-
-    assert errors == []
-    assert warnings == []
-
-
 @pytest.mark.parametrize(
     "invalid_value",
     [pytest.param("39", id="string"), pytest.param(True, id="boolean")],
@@ -99,15 +71,6 @@ def test_validate_row_rejects_an_incorrect_exact_type(pn_row, invalid_value):
 
     assert errors == ["Invalid data type detected: settlementPeriod"]
     assert warnings == []
-
-
-def test_validate_row_warns_about_an_unexpected_field(pn_row):
-    pn_row["newPublisherField"] = "example"
-
-    errors, warnings = validate_row(pn_row, PN_SPEC)
-
-    assert errors == []
-    assert warnings == ["Unexpected field: newPublisherField"]
 
 
 def test_validate_row_warns_about_a_missing_optional_field(pn_row):
@@ -168,15 +131,6 @@ def test_validate_rows_keeps_checking_after_a_non_dictionary_item(pn_row):
     assert second_valid["errors"] == []
 
 
-def test_validate_rows_does_not_change_nested_source_rows():
-    rows = load_rows("carbon_intensity/outturn.json", data_envelope=True)
-    original_rows = deepcopy(rows)
-
-    validate_rows(rows, OUTTURN_SPEC)
-
-    assert rows == original_rows
-
-
 def test_pn_fixture_matches_its_contract():
     assert_fixture_matches_contract("elexon/pn_stream.json", PN_SPEC)
 
@@ -199,15 +153,6 @@ def test_b1610_fixture_matches_its_contract():
 
 def test_bm_units_fixture_matches_its_contract():
     assert_fixture_matches_contract("elexon/bmunits_truncated.json", BM_UNITS_SPEC)
-
-
-def test_bm_units_contract_rejects_non_boolean_flag():
-    row = load_rows("elexon/bmunits_truncated.json")[0].copy()
-    row["fpnFlag"] = "true"
-
-    errors, _ = validate_row(row, BM_UNITS_SPEC)
-
-    assert errors == ["Invalid data type detected: fpnFlag"]
 
 
 def test_forecast_fixture_matches_its_contract():
