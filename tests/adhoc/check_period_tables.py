@@ -619,7 +619,8 @@ def shortfall(conn):
         conn,
         "SELECT national_grid_bm_unit, settlement_date, settlement_period, "
         "fuel_group, instruction_status, instructed_seconds, expected_mwh, "
-        "metered_mwh, metered_run_code, unexplained_shortfall_mwh, determinability "
+        "metered_mwh, metered_run_code, unexplained_shortfall_mwh, determinability, "
+        "last_captured_at "
         f"FROM {SHORTFALL}",
     )
     return {row[:3]: row[3:] for row in rows}
@@ -711,9 +712,17 @@ def check_shortfall(conn):
     # An acceptance at a flat 100 MW over period 1 and half of period 2:
     # period 1 is fully instructed (50 MWh expected), period 2 partly (the
     # PN's 4 MW is replaced for 15 minutes: 2 - 1 + 25 = 26 MWh expected).
+    # Captured a day earlier, a later acceptance at the same level, the
+    # longest ramp point, starts 50 minutes before period 1 and takes its
+    # first 10 minutes.
     issued = period_start(AUG10, 1) - HOUR
+    issued_later = issued + 5 * MINUTE
     insert_boalf(
-        conn, [("S6NG_A", "S6_A", 1, issued, T0 + 3 * DAY, [(0, 45, 100, 100)])]
+        conn,
+        [
+            ("S6NG_A", "S6_A", 1, issued, T0 + 3 * DAY, [(0, 45, 100, 100)]),
+            ("S6NG_A", "S6_A", 2, issued_later, T0 + 2 * DAY, [(-50, 10, 100, 100)]),
+        ],
     )
     build_shortfall_tables()
     rows = shortfall(conn)
@@ -732,7 +741,9 @@ def check_shortfall(conn):
     # A later capture shortens the acceptance to 20 minutes: period 2 loses
     # its stretch (a placeholder row replaces it, stamped with this capture
     # so the shortfall table sees it) and period 1 is partly instructed. Only
-    # the two half-hours the acceptance ever touched are recomputed.
+    # the two half-hours the acceptance ever touched are recomputed, still
+    # with the later acceptance's first 10 minutes, though it starts before
+    # them and was captured outside the margin.
     before = row_versions(conn, INTERVALS)
     shortened = (
         "S6NG_A",
@@ -760,21 +771,37 @@ def check_shortfall(conn):
     assert rows[p2][1:3] == ("uninstructed", 0)
     assert_shortfall_equals_full_refresh(conn)
 
-    # A registry change moves the unit to another fuel group; the next run
-    # rewrites the unit's rows.
-    insert_registry(conn, [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:]], step=3)
+    # A ramp point that starts after the start of its unit's only touched
+    # half-hour is still found.
+    seen = T0 + 5 * DAY + 20 * MINUTE
+    insert_boalf(conn, [("S6NG_D", "S6_D", 1, issued, seen, [(5, 20, 50, 50)])])
     build_shortfall_tables()
-    assert shortfall(conn)[p1][0] == "nuclear"
+    assert shortfall(conn)[("S6NG_D", AUG10, 1)][1:3] == ("partially_instructed", 900)
+    assert_shortfall_equals_full_refresh(conn)
+
+    # A registry change moves the unit to another fuel group, and S6NG_Z,
+    # whose PN is older than the margin, joins the cohort; the next run
+    # rewrites the unit's rows and adds Z's.
+    joined = ("S6NG_Z", None, "WIND")
+    insert_registry(
+        conn, [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:], joined], step=3
+    )
+    build_shortfall_tables()
+    rows = shortfall(conn)
+    assert rows[p1][0] == "nuclear"
+    assert rows[("S6NG_Z", AUG10, 10)][0] == "wind"
     assert_shortfall_equals_full_refresh(conn)
 
     # A registry change renames the unit's Elexon ID: its metered rows no
     # longer map, and the next run rewrites the unit's rows to say so; the
     # rename back restores them.
-    insert_registry(conn, [("S6NG_A", "S6_A2", "NUCLEAR"), *REGISTRY[1:]], step=4)
+    insert_registry(
+        conn, [("S6NG_A", "S6_A2", "NUCLEAR"), *REGISTRY[1:], joined], step=4
+    )
     build_shortfall_tables()
     assert shortfall(conn)[p1][7] == "no_metered_value"
     assert_shortfall_equals_full_refresh(conn)
-    registry_now = [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:]]
+    registry_now = [("S6NG_A", "S6_A", "NUCLEAR"), *REGISTRY[1:], joined]
     insert_registry(conn, registry_now, step=5)
     build_shortfall_tables()
     assert shortfall(conn)[p1][7] == "determinable"
@@ -813,6 +840,19 @@ def check_shortfall(conn):
     dbt("run", "--select", "int_elexon__b1610_period")
     build_shortfall_tables()
     assert shortfall(conn)[p1][4:6] == (Decimal(60), "R3")
+    assert_shortfall_equals_full_refresh(conn)
+
+    # A lower-order run captured late (an R1 after the R2 already in use)
+    # leaves R2 in use, but the row's watermark still moves past the
+    # capture, so the next night does not recompute period 3 again. A full
+    # refresh cannot show this: it computes the watermark the same way.
+    p3 = ("S6NG_A", AUG10, 3)
+    late_r1_capture = T0 + 7 * DAY + 20 * MINUTE
+    insert_b1610(conn, [("S6_A", None, AUG10, 3, "R1", "7", late_r1_capture)])
+    dbt("run", "--select", "int_elexon__b1610_period")
+    build_shortfall_tables()
+    assert shortfall(conn)[p3][4:6] == (Decimal(8), "R2")
+    assert shortfall(conn)[p3][8] == late_r1_capture
     assert_shortfall_equals_full_refresh(conn)
 
     # A later run that arrives with another National Grid ID makes the

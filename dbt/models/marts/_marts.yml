@@ -48,6 +48,10 @@ models:
         description: When the latest run was first seen.
       - name: latest_source_national_grid_bm_unit_id
         description: National Grid ID delivered with the latest run.
+      - name: last_captured_at
+        description: >
+          Latest retrieved_at of any run for the period, whatever its order;
+          the period table's indexed watermark column.
       - name: mapping_status
         description: >
           mapped, unmapped (no registry row), ambiguous (more than one
@@ -116,6 +120,10 @@ models:
         description: When the chosen capture was polled.
       - name: source_bm_unit
         description: Elexon ID delivered with the PN; null for 1.4% of rows.
+      - name: last_captured_at
+        description: >
+          Latest poll of any capture for the period, echoes included; the
+          period table's indexed watermark column.
       - name: mapping_status
         description: >
           mapped, unmapped (no registry row) or conflict (the delivered Elexon

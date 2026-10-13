@@ -22,13 +22,13 @@
 -- acceptance covers have no row; the PN applies there.
 --
 -- Incremental: recompute every half-hour touched by any capture of a ramp
--- point captured since the stored watermark minus capture_margin, from all
--- of its unit's ramp points. The merge key is the half-hour, so a recomputed
--- half-hour replaces all of its stretches; a half-hour recomputed to no
--- stretch at all (an acceptance shortened by a later capture) keeps one row
--- with a null interval_from, so its old stretches are still replaced. Raw
--- BOALF is insert-only, so this equals a full rebuild while every new row
--- becomes visible within the margin.
+-- point captured since the stored watermark minus capture_margin, from every
+-- ramp point of its unit that can reach it. The merge key is the half-hour,
+-- so a recomputed half-hour replaces all of its stretches; a half-hour
+-- recomputed to no stretch at all (an acceptance shortened by a later
+-- capture) keeps one row with a null interval_from, so its old stretches are
+-- still replaced. Raw BOALF is insert-only, so this equals a full rebuild
+-- while every new row becomes visible within the margin.
 
 {% if is_incremental() %}
 -- A new capture can change any half-hour that any capture of its ramp point
@@ -44,8 +44,8 @@ with recent_ramp_points as (
         -- latest capture no longer reaches still shows as changed now.
         max(retrieved_at) as last_captured_at
     from {{ ref('stg_elexon__boalf') }}
+    where retrieved_at > {{ capture_watermark(this) }} - {{ capture_margin() }}
     group by national_grid_bm_unit, acceptance_number, time_from
-    having max(retrieved_at) > {{ capture_watermark(this) }} - {{ capture_margin() }}
 ),
 
 touched_periods as (
@@ -71,8 +71,30 @@ touched_periods as (
     group by captures.national_grid_bm_unit, half_hours.period_start_utc
 ),
 
--- Every capture of every ramp point of a touched unit, so the latest capture
--- is chosen over all of them, not over the ones that still overlap.
+-- A ramp point can reach a touched half-hour only if it starts before the
+-- unit's last touched half-hour ends, and less than the longest ramp point
+-- before its first touched half-hour starts.
+longest_ramp_point as (
+    select max(time_to - time_from) as duration
+    from {{ ref('stg_elexon__boalf') }}
+),
+
+touched_units as (
+    select
+        touched_periods.national_grid_bm_unit,
+        min(touched_periods.period_start_utc) - longest_ramp_point.duration
+            as earliest_time_from,
+        max(touched_periods.period_start_utc) + interval '30 minutes'
+            as latest_time_from
+    from touched_periods
+    cross join longest_ramp_point
+    group by touched_periods.national_grid_bm_unit, longest_ramp_point.duration
+),
+
+-- Every capture of every ramp point of a touched unit that can reach a
+-- touched half-hour, so the latest capture is chosen over all of them, not
+-- over the ones that still overlap. The bound is on time_from, part of the
+-- ramp point's key, so a ramp point keeps all of its captures or none.
 ramp_points as (
     select
         source_rows.*,
@@ -84,8 +106,10 @@ ramp_points as (
             order by source_rows.retrieved_at desc
         ) as capture_rank
     from {{ ref('stg_elexon__boalf') }} as source_rows
-    inner join (select distinct national_grid_bm_unit from touched_periods) as units
-        on source_rows.national_grid_bm_unit = units.national_grid_bm_unit
+    inner join touched_units
+        on source_rows.national_grid_bm_unit = touched_units.national_grid_bm_unit
+        and source_rows.time_from > touched_units.earliest_time_from
+        and source_rows.time_from < touched_units.latest_time_from
 ),
 {% else %}
 with ramp_points as (

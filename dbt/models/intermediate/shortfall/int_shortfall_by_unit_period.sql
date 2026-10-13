@@ -31,8 +31,8 @@
 -- Incremental: recompute only unit-periods with a PN, metered or acceptance
 -- capture since the stored watermark minus capture_margin, and every period
 -- of a unit whose fuel type or Elexon ID in the cohort differs from the ones
--- stored, or that has no rows yet (it joined the cohort). Each source is
--- insert-only, so this equals a full rebuild while every new row becomes
+-- stored, or that has PN but no rows yet (it joined the cohort). Each source
+-- is insert-only, so this equals a full rebuild while every new row becomes
 -- visible within the margin. Two registry events need a full refresh: a unit
 -- that loses its fuel type keeps its rows (the analyses join the cohort, so
 -- it leaves the results at once), and another unit starting or stopping to
@@ -45,10 +45,14 @@ with cohort as (
 ),
 
 {% if is_incremental() %}
--- The unique indexes of the period tables lead on the unit, so each source
--- is read for the cohort's units only, then filtered on capture time.
--- Keyed like the table, on the settlement date and period, so a period with
--- no UTC start (a period number beyond a 46-period day) is recomputed too.
+{% set changed_units = changed_cohort_units(
+    this, ref('int_elexon__bm_unit_cohort'), ref('fct_commitments')
+) %}
+-- Each source is filtered on its period table's indexed last_captured_at:
+-- the latest capture of any row of the period, never earlier than the
+-- capture the fact view reports, so no recent capture is missed. Keyed like
+-- the table, on the settlement date and period, so a period with no UTC
+-- start (a period number beyond a 46-period day) is recomputed too.
 touched as (
     select
         commitments.national_grid_bm_unit,
@@ -57,7 +61,7 @@ touched as (
     from {{ ref('fct_commitments') }} as commitments
     inner join cohort
         on commitments.national_grid_bm_unit = cohort.national_grid_bm_unit
-    where commitments.pn_retrieved_at
+    where commitments.last_captured_at
         > {{ capture_watermark(this) }} - {{ capture_margin() }}
 
     union
@@ -72,7 +76,7 @@ touched as (
     from {{ ref('fct_generation') }} as generation
     inner join cohort
         on generation.bm_unit = cohort.elexon_bm_unit
-    where generation.latest_retrieved_at
+    where generation.last_captured_at
         > {{ capture_watermark(this) }} - {{ capture_margin() }}
 
     union
@@ -86,33 +90,31 @@ touched as (
         on intervals.national_grid_bm_unit = cohort.national_grid_bm_unit
     inner join {{ ref('fct_commitments') }} as commitments
         on commitments.national_grid_bm_unit = intervals.national_grid_bm_unit
+        -- Follows from the equal start times; it lets the join use the
+        -- period table's index on unit and settlement date.
+        and commitments.settlement_date
+            = (intervals.period_start_utc at time zone 'Europe/London')::date
         and commitments.period_start_utc = intervals.period_start_utc
     where intervals.last_captured_at
         > {{ capture_watermark(this) }} - {{ capture_margin() }}
+    {% if changed_units %}
 
     union
 
     -- A unit whose fuel type or Elexon ID changed in the registry, or that
-    -- has no rows yet, gets every period recomputed, so its fuel group and
-    -- metered mapping follow the registry.
+    -- has PN but no rows yet, gets every period recomputed, so its fuel
+    -- group and metered mapping follow the registry.
     select
         commitments.national_grid_bm_unit,
         commitments.settlement_date,
         commitments.settlement_period
     from {{ ref('fct_commitments') }} as commitments
-    inner join (
-        select cohort.national_grid_bm_unit
-        from cohort
-        left join (
-            select distinct national_grid_bm_unit, elexon_bm_unit, fuel_type
-            from {{ this }}
-        ) as stored
-            on cohort.national_grid_bm_unit = stored.national_grid_bm_unit
-        where stored.national_grid_bm_unit is null
-            or stored.fuel_type is distinct from cohort.fuel_type
-            or stored.elexon_bm_unit is distinct from cohort.elexon_bm_unit
-    ) as changed_units
-        on commitments.national_grid_bm_unit = changed_units.national_grid_bm_unit
+    where commitments.national_grid_bm_unit in (
+        {%- for unit in changed_units %}
+        '{{ unit | replace("'", "''") }}'{{ ',' if not loop.last }}
+        {%- endfor %}
+    )
+    {% endif %}
 ),
 
 commitments as (
@@ -124,6 +126,7 @@ commitments as (
         commitments.pn_mwh,
         commitments.coverage_status,
         commitments.pn_retrieved_at,
+        commitments.last_captured_at,
         cohort.elexon_bm_unit,
         cohort.fuel_type,
         cohort.fuel_group
@@ -145,6 +148,7 @@ commitments as (
         commitments.pn_mwh,
         commitments.coverage_status,
         commitments.pn_retrieved_at,
+        commitments.last_captured_at,
         cohort.elexon_bm_unit,
         cohort.fuel_type,
         cohort.fuel_group
@@ -165,6 +169,11 @@ metered as (
         generation.latest_quantity_mwh,
         generation.latest_run_code,
         generation.latest_retrieved_at,
+        -- Across all of the period's metered rows, so the watermark also
+        -- passes a capture of a row that is not the one kept.
+        max(generation.last_captured_at) over (
+            partition by commitments.national_grid_bm_unit, commitments.period_start_utc
+        ) as last_captured_at,
         generation.first_quantity_mwh,
         generation.first_run_code,
         count(*) over (
@@ -177,6 +186,10 @@ metered as (
     from commitments
     inner join {{ ref('fct_generation') }} as generation
         on generation.bm_unit = commitments.elexon_bm_unit
+        -- The settlement date and period follow from the equal start times;
+        -- they let the join use the period table's unique index.
+        and generation.settlement_date = commitments.settlement_date
+        and generation.settlement_period = commitments.settlement_period
         and generation.period_start_utc = commitments.period_start_utc
         and generation.mapping_status = 'mapped'
         and generation.mapped_national_grid_bm_unit = commitments.national_grid_bm_unit
@@ -285,9 +298,12 @@ joined as (
             end,
             6
         ) as expected_mwh,
+        -- The same capture times the touched set filters on, so a
+        -- recomputed period's watermark moves past every capture that
+        -- touched it (a later capture of a lower-order run included).
         greatest(
-            commitments.pn_retrieved_at,
-            metered.latest_retrieved_at,
+            commitments.last_captured_at,
+            metered.last_captured_at,
             instruction.last_captured_at
         ) as last_captured_at
     from commitments

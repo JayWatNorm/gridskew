@@ -77,7 +77,7 @@ models:
       only unit-periods with a PN, metered or acceptance capture since the
       stored watermark minus capture_margin, and every period of a unit whose
       fuel type or Elexon ID in the cohort differs from the ones stored or that
-      has no rows yet. Two registry events need a full refresh: a unit that
+      has PN but no rows yet. Two registry events need a full refresh: a unit that
       loses its fuel type keeps its rows (the analyses join the cohort, so it
       leaves the results at once), and another unit starting or stopping to
       share this unit's Elexon ID changes the metered mapping without
