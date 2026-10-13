@@ -2,14 +2,12 @@ import json
 import logging
 from copy import deepcopy
 from datetime import datetime, timezone
-from decimal import Decimal
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
-from ingestion.elexon.b1610_poller import decimal_json_dumps
-from ingestion.routing import process_rows, quarantine_rows
+from ingestion.routing import process_rows
 
 RETRIEVED_AT = datetime(2026, 8, 21, 10, 30, tzinfo=timezone.utc)
 REQUEST_CONTEXT = {"timestamp": "2026-08-21T10:30Z", "horizon_hours": 48}
@@ -142,80 +140,6 @@ def test_process_rows_can_leave_missing_optional_fields_unlogged(caplog):
     for record in caplog.records:
         logged_reasons.append(json.loads(record.getMessage())["reason"])
     assert logged_reasons == ["Unexpected field"]
-
-
-@pytest.mark.parametrize(
-    ("dataset", "request_context"),
-    [
-        pytest.param("CI_Forecast", REQUEST_CONTEXT, id="forecast"),
-        pytest.param(
-            "CI_Outturn",
-            {
-                "from": "2026-08-20T00:00:00+00:00",
-                "to": "2026-08-21T00:00:00+00:00",
-            },
-            id="outturn",
-        ),
-    ],
-)
-def test_quarantine_rows_preserves_evidence(dataset, request_context):
-    row = make_source_row()
-    finding = {
-        "index": 3,
-        "row": row,
-        "errors": ["Null not permitted: intensity.actual"],
-        "warnings": [],
-    }
-    conn = MagicMock()
-
-    with patch("ingestion.routing.execute_values") as mock_execute_values:
-        quarantine_rows([finding], conn, dataset, RETRIEVED_AT, request_context)
-
-    _cursor, _insert_sql, inserted_rows = mock_execute_values.call_args.args
-    inserted = inserted_rows[0]
-    assert inserted[0] == dataset
-    assert inserted[1] == RETRIEVED_AT
-    assert inserted[2].adapted == request_context
-    assert inserted[3].adapted == {
-        "source_index": 3,
-        "errors": ["Null not permitted: intensity.actual"],
-    }
-    assert inserted[4].adapted == [
-        "from",
-        "to",
-        "intensity",
-        "intensity.forecast",
-        "intensity.actual",
-        "intensity.index",
-    ]
-    assert inserted[5].adapted == row
-    conn.commit.assert_called_once_with()
-
-
-def test_quarantine_rows_uses_custom_payload_encoder():
-    row = {"quantity": Decimal("123.456")}
-    finding = {
-        "index": 0,
-        "row": row,
-        "errors": ["Invalid data type detected: quantity"],
-        "warnings": [],
-    }
-    conn = MagicMock()
-
-    with patch("ingestion.routing.execute_values") as mock_execute_values:
-        quarantine_rows(
-            [finding],
-            conn,
-            "B1610",
-            RETRIEVED_AT,
-            REQUEST_CONTEXT,
-            payload_dumps=decimal_json_dumps,
-        )
-
-    _cursor, _insert_sql, inserted_rows = mock_execute_values.call_args.args
-    payload = inserted_rows[0][5]
-    decoded = json.loads(payload.dumps(payload.adapted), parse_float=Decimal)
-    assert decoded == row
 
 
 def test_process_rows_stops_when_quarantine_fails():

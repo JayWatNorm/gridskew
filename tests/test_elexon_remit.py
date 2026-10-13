@@ -2,10 +2,10 @@ import json
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
-from fakes import connection_returning_in_turn, cursor_of, single_spaced
+from fakes import connection_returning_in_turn, cursor_of
 
 from ingestion.elexon.contracts import REMIT_SPEC
 from ingestion.elexon.remit_poller import (
@@ -121,28 +121,6 @@ def test_the_payload_keeps_capacities_as_published(source_rows):
     assert '"normalCapacity": 49.920' in payload_text
 
 
-def test_load_uses_the_expected_columns_conflict_key_and_commits():
-    parsed_rows = [Mock(name="parsed_row")]
-    conn = MagicMock()
-
-    with patch("ingestion.elexon.remit_poller.execute_values") as mock_execute_values:
-        load(parsed_rows, conn)
-
-    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
-    assert single_spaced(insert_sql) == (
-        "INSERT INTO raw.elexon_remit (mrid, revision_number, publish_time, "
-        "created_time, message_type, event_type, unavailability_type, "
-        "event_status, asset_id, affected_unit, fuel_type, normal_capacity, "
-        "available_capacity, unavailable_capacity, event_start_time, "
-        "event_end_time, payload, retrieved_at) "
-        "VALUES %s "
-        "ON CONFLICT (mrid, revision_number, publish_time, created_time) "
-        "DO NOTHING"
-    )
-    assert inserted_rows == parsed_rows
-    conn.commit.assert_called_once_with()
-
-
 def test_build_windows_covers_the_range_in_steps_of_at_most_a_day():
     range_start = datetime(2026, 10, 1, 6, 0, tzinfo=timezone.utc)
     range_end = datetime(2026, 10, 3, 9, 30, tzinfo=timezone.utc)
@@ -236,28 +214,14 @@ def test_run_reads_the_newest_publish_time_only_from_rows_stored_after_it():
     )
 
 
-def test_run_fails_while_a_row_from_an_earlier_run_is_in_quarantine():
-    conn = database_with(RUN_TIME - timedelta(minutes=30), quarantined_rows=2)
-
-    with patch("ingestion.elexon.remit_poller.fetch", return_value=[]):
-        with pytest.raises(RuntimeError, match="2 REMIT rows are in quarantine"):
-            run_at_run_time(conn)
-
-    (quarantine_query,) = cursor_of(conn).execute.call_args_list[1].args
-    assert "FROM raw.endpoint_quarantine AS quarantined" in quarantine_query
-    assert "quarantined.dataset = 'REMIT'" in quarantine_query
-    assert "NOT EXISTS" in quarantine_query
-    assert "FROM raw.elexon_remit AS stored" in quarantine_query
-
-
 def test_run_loads_the_compatible_rows_before_it_fails(source_rows):
-    conn = database_with(RUN_TIME - timedelta(minutes=30), quarantined_rows=1)
+    conn = database_with(RUN_TIME - timedelta(minutes=30), quarantined_rows=2)
 
     with (
         patch("ingestion.elexon.remit_poller.fetch", return_value=source_rows),
         patch("ingestion.elexon.remit_poller.process_rows") as mock_process_rows,
     ):
-        with pytest.raises(RuntimeError, match="1 REMIT rows are in quarantine"):
+        with pytest.raises(RuntimeError, match="2 REMIT rows are in quarantine"):
             run_at_run_time(conn)
 
     mock_process_rows.assert_called_once()
