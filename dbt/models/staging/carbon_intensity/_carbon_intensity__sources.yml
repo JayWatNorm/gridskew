@@ -4,7 +4,8 @@ sources:
       Raw carbon intensity data from the National Energy System Operator
       (NESO).
     schema: raw
-    loaded_at_field: retrieved_at
+    config:
+      loaded_at_field: retrieved_at
 
     tables:
 
@@ -13,9 +14,10 @@ sources:
         description: >
           One row per settlement period, per poll. Actuals are null until
           settled and may be revised.
-        freshness:
-          warn_after: {count: 26, period: hour}
-          error_after: {count: 48, period: hour}
+        config:
+          freshness:
+            warn_after: {count: 26, period: hour}
+            error_after: {count: 48, period: hour}
         columns:
 
           - name: period_start
@@ -60,9 +62,10 @@ sources:
       - name: carbon_intensity_forecast
         description: >
           Next 48 hours worth of carbon intensity forecast data on each poll.
-        freshness:
-          warn_after: {count: 90, period: minute}
-          error_after: {count: 180, period: minute}
+        config:
+          freshness:
+            warn_after: {count: 90, period: minute}
+            error_after: {count: 180, period: minute}
         columns:
 
           - name: period_start
