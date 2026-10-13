@@ -29,12 +29,13 @@ def gridskew_carbon_intensity_outturn():
 
     @task
     def poll_outturn():
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.hooks.base import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.carbon_intensity.outturn_poller import run
+        from ingestion.database import connect
 
-        conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             run(conn)
         finally:

@@ -54,16 +54,17 @@ def gridskew_elexon_b1610_SF():
     @task(pool="elexon")
     def poll_b1610_SF(data_interval_start=None):
         from airflow.exceptions import AirflowFailException
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.hooks.base import BaseHook
 
         if data_interval_start is None:
             # Airflow 3 manual runs have no data interval.
-            raise RuntimeError(
+            raise AirflowFailException(
                 "No data interval: clear a scheduled task instance to repeat a capture"
             )
         settlement_date = settlement_date_to_capture(data_interval_start)
 
         sys.path.insert(0, PROJECT_PATH)
+        from ingestion.database import connect
         from ingestion.elexon.b1610_poller import (
             capture_settlement_date,
             replaced_by_a_later_run,
@@ -78,7 +79,7 @@ def gridskew_elexon_b1610_SF():
                 f"{replacing_run} and can no longer be captured"
             )
 
-        conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             capture_settlement_date(conn, settlement_date, RUN_TYPE)
         except ContractRejected as rejected:

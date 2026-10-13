@@ -39,21 +39,22 @@ def gridskew_elexon_qpn():
 
     @task(pool="elexon")
     def poll_qpn(data_interval_start=None, data_interval_end=None):
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.exceptions import AirflowFailException
+        from airflow.hooks.base import BaseHook
 
         if data_interval_start is None or data_interval_end is None:
             # Airflow 3 manual runs have no data interval.
-            raise RuntimeError(
+            raise AirflowFailException(
                 "No data interval: clear a scheduled task instance to repeat a capture"
             )
 
         sys.path.insert(0, PROJECT_PATH)
-        from airflow.exceptions import AirflowFailException
 
+        from ingestion.database import connect
         from ingestion.elexon.qpn_poller import run
         from ingestion.routing import ContractRejected
 
-        conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             run(conn, data_interval_start, data_interval_end)
         except ContractRejected as rejected:

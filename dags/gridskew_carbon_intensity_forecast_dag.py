@@ -31,12 +31,13 @@ def gridskew_carbon_intensity_dag():
     # minutes still allows five minutes for completion after the run is due.
     @task(sla=timedelta(minutes=35))
     def poll_forecast():
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.hooks.base import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.carbon_intensity.forecast_poller import run
+        from ingestion.database import connect
 
-        conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             run(conn)
         finally:

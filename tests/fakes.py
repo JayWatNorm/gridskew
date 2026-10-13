@@ -32,6 +32,8 @@ def load_dag_file(monkeypatch, file_name, connections=None):
     hooks.__path__ = []
     base = ModuleType("airflow.hooks.base")
     base.BaseHook = SimpleNamespace(get_connection=get_connection)
+    exceptions = ModuleType("airflow.exceptions")
+    exceptions.AirflowFailException = FakeAirflowFailException
     timetables = ModuleType("airflow.timetables")
     timetables.__path__ = []
     events = ModuleType("airflow.timetables.events")
@@ -45,6 +47,7 @@ def load_dag_file(monkeypatch, file_name, connections=None):
     monkeypatch.setitem(sys.modules, "airflow.decorators", decorators)
     monkeypatch.setitem(sys.modules, "airflow.hooks", hooks)
     monkeypatch.setitem(sys.modules, "airflow.hooks.base", base)
+    monkeypatch.setitem(sys.modules, "airflow.exceptions", exceptions)
     monkeypatch.setitem(sys.modules, "airflow.timetables", timetables)
     monkeypatch.setitem(sys.modules, "airflow.timetables.events", events)
     monkeypatch.setitem(sys.modules, "airflow.timetables.interval", interval)
@@ -53,19 +56,27 @@ def load_dag_file(monkeypatch, file_name, connections=None):
 
 
 DAG_SETTINGS = {}
+DECORATED_FUNCTIONS = {}
+
+
+class FakeAirflowFailException(Exception):
+    """Stands in for Airflow's exception that fails a task without a retry."""
 
 
 def replace_with_do_nothing(**settings):
     """Stand in for @dag(...) and @task(...), so loading a DAG file runs no task.
 
     The settings of each @dag(...) are kept in DAG_SETTINGS by dag_id, so a
-    test can read a schedule without Airflow.
+    test can read a schedule without Airflow. Each decorated function is kept
+    in DECORATED_FUNCTIONS by name, so a test can run a DAG's body (which
+    defines its tasks) and then call a task's body.
     """
 
     if "dag_id" in settings:
         DAG_SETTINGS[settings["dag_id"]] = settings
 
-    def replace(_function):
+    def replace(function):
+        DECORATED_FUNCTIONS[function.__name__] = function
         return do_nothing
 
     return replace
