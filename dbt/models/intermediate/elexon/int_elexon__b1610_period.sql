@@ -65,36 +65,46 @@ runs as (
     from selected_rows
     left join {{ ref('elexon_settlement_run_codes') }} as run_codes
         on selected_rows.settlement_run_type = run_codes.settlement_run_code
-)
+),
 
--- One grouped pass: the rows are sorted once by the key, and each ordered
--- aggregate only sorts the few runs inside one period.
+-- Each source row is ranked twice within its period, then one grouped pass
+-- selects the rank-1 values (one row each, so max() returns that row's
+-- value). On the recorded synthetic benchmark this form was faster than the
+-- prior per-period ordered aggregates.
 -- First captured: earliest retrieved_at, ties broken by run order.
 -- Latest: highest run order. An unknown run code (NULL run_order) would sort
 -- first here; it never reaches this model because the staging relationship
 -- test blocks the run.
+ranked as (
+    select
+        runs.*,
+        row_number() over (
+            partition by bm_unit, settlement_date, settlement_period
+            order by retrieved_at, run_order
+        ) as first_rank,
+        row_number() over (
+            partition by bm_unit, settlement_date, settlement_period
+            order by run_order desc
+        ) as latest_rank
+    from runs
+)
+
 select
     bm_unit,
     settlement_date,
     settlement_period,
     -- One value per key; kept out of the GROUP BY to keep the sort key narrow.
     min(period_start_utc) as period_start_utc,
-    (array_agg(quantity order by retrieved_at, run_order))[1]
-        as first_quantity_mwh,
-    (array_agg(settlement_run_type order by retrieved_at, run_order))[1]
-        as first_run_code,
-    (array_agg(retrieved_at order by retrieved_at, run_order))[1]
-        as first_retrieved_at,
-    (array_agg(national_grid_bm_unit_id order by retrieved_at, run_order))[1]
+    max(quantity) filter (where first_rank = 1) as first_quantity_mwh,
+    max(settlement_run_type) filter (where first_rank = 1) as first_run_code,
+    max(retrieved_at) filter (where first_rank = 1) as first_retrieved_at,
+    max(national_grid_bm_unit_id) filter (where first_rank = 1)
         as first_source_national_grid_bm_unit_id,
-    (array_agg(quantity order by run_order desc))[1]
-        as latest_quantity_mwh,
-    (array_agg(settlement_run_type order by run_order desc))[1]
-        as latest_run_code,
-    (array_agg(retrieved_at order by run_order desc))[1]
-        as latest_retrieved_at,
-    (array_agg(national_grid_bm_unit_id order by run_order desc))[1]
+    max(quantity) filter (where latest_rank = 1) as latest_quantity_mwh,
+    max(settlement_run_type) filter (where latest_rank = 1) as latest_run_code,
+    max(retrieved_at) filter (where latest_rank = 1) as latest_retrieved_at,
+    max(national_grid_bm_unit_id) filter (where latest_rank = 1)
         as latest_source_national_grid_bm_unit_id,
     max(retrieved_at) as last_captured_at
-from runs
+from ranked
 group by bm_unit, settlement_date, settlement_period
