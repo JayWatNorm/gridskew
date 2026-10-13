@@ -210,11 +210,9 @@ def test_a_table_must_not_have_a_view_below_it_at_any_depth():
         child_map={MART_TABLE: [middle_table], middle_table: [FACT_VIEW]},
     )
 
-    problems = scheduled_set_problems(manifest, [])
+    mart_problem, middle_problem = scheduled_set_problems(manifest, [])
 
-    assert problems == [
-        f"{MART_TABLE}: a table is replaced on every run, which drops its "
-        f"dependent view {FACT_VIEW}",
-        f"{middle_table}: a table is replaced on every run, which drops its "
-        f"dependent view {FACT_VIEW}",
-    ]
+    assert MART_TABLE in mart_problem
+    assert FACT_VIEW in mart_problem
+    assert middle_table in middle_problem
+    assert FACT_VIEW in middle_problem

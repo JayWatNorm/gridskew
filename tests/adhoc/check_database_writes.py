@@ -41,8 +41,11 @@ from ingestion.elexon.pn_poller import parse as parse_pn
 from ingestion.elexon.qpn_poller import load as load_qpn
 from ingestion.elexon.qpn_poller import parse as parse_qpn
 from ingestion.elexon.remit_poller import load as load_remit
+from ingestion.elexon.remit_poller import (
+    newest_stored_publish_time,
+    quarantined_row_count,
+)
 from ingestion.elexon.remit_poller import parse as parse_remit
-from ingestion.elexon.remit_poller import quarantined_row_count
 from ingestion.routing import quarantine_rows
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
@@ -338,6 +341,27 @@ def remit_rows_under_new_ids():
     return rows
 
 
+def check_remit_window_ignores_a_future_dated_message(writer):
+    """A message published before it was captured moves the window; one
+    dated after its capture never does (it would stop all fetching)."""
+
+    captured = datetime(2100, 1, 1, tzinfo=timezone.utc)
+    template = remit_rows_under_new_ids()[0]
+    published_before_capture = dict(
+        template, mrid="CI-RB-NEWEST-PAST", publishTime="2099-06-01T00:00:00Z"
+    )
+    dated_after_capture = dict(
+        template, mrid="CI-RB-NEWEST-FUTURE", publishTime="2101-01-01T00:00:00Z"
+    )
+    load_remit(
+        parse_remit([published_before_capture, dated_after_capture], captured), writer
+    )
+
+    assert newest_stored_publish_time(writer) == datetime(
+        2099, 6, 1, tzinfo=timezone.utc
+    )
+
+
 def b1610_rows(settlement_date, run_type, unit_count, periods):
     """Source rows for units CI_RB_1..unit_count, one per period."""
 
@@ -427,6 +451,7 @@ def delete_check_rows(writer):
             cursor.execute(
                 f"DELETE FROM {table} WHERE retrieved_at = %s", (CHECK_CAPTURE,)
             )
+        cursor.execute("DELETE FROM raw.elexon_remit WHERE mrid LIKE 'CI-RB-NEWEST-%'")
     writer.commit()
 
 
@@ -449,6 +474,7 @@ def main():
         check_remit_quarantine_count(writer)
         check_b1610_coverage_and_unit_baseline(writer)
         check_b1610_keeps_the_first_capture(writer, reader)
+        check_remit_window_ignores_a_future_dated_message(writer)
         pn_key = ("national_grid_bm_unit", "time_from", "retrieved_at")
         check_elexon_load(
             writer,

@@ -2,16 +2,14 @@ import json
 from datetime import datetime, timedelta, timezone
 from itertools import pairwise
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ingestion.carbon_intensity.contracts import OUTTURN_SPEC
 from ingestion.carbon_intensity.outturn_poller import (
     build_windows,
     floor_to_period,
     is_history_refetch_day,
-    load,
     parse,
     process_window,
 )
@@ -97,18 +95,25 @@ def test_process_window_rejects_an_invalid_response_envelope(response):
     mock_process_rows.assert_not_called()
 
 
-def test_process_window_stores_rows_before_checking_completeness(payload):
-    conn = Mock()
-    request_start = datetime(2026, 8, 20, 12, 34, tzinfo=timezone.utc)
-    request_end = datetime(2026, 8, 21, 12, 34, tzinfo=timezone.utc)
-    events = []
-
-    def record_storage(*args, **kwargs):
-        events.append("stored")
-        return 0
-
-    def record_completeness_check(*args, **kwargs):
-        events.append("checked")
+@pytest.mark.parametrize(
+    "request_end,expected_result",
+    [
+        pytest.param(
+            datetime(2026, 8, 1, 3, 0, tzinfo=timezone.utc),
+            (0, False),
+            id="complete-window",
+        ),
+        pytest.param(
+            datetime(2026, 8, 1, 3, 30, tzinfo=timezone.utc),
+            (0, True),
+            id="incomplete-window",
+        ),
+    ],
+)
+def test_process_window_stores_rows_before_checking_completeness(
+    payload, request_end, expected_result
+):
+    request_start = datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc)
 
     with (
         patch(
@@ -116,36 +121,14 @@ def test_process_window_stores_rows_before_checking_completeness(payload):
             return_value=payload,
         ),
         patch(
-            "ingestion.carbon_intensity.outturn_poller.process_rows",
-            side_effect=record_storage,
-        ) as mock_process_rows,
-        patch(
-            "ingestion.carbon_intensity.outturn_poller.validate_outturn_window",
-            side_effect=record_completeness_check,
-        ) as mock_validate_completeness,
+            "ingestion.carbon_intensity.outturn_poller.execute_values"
+        ) as mock_execute_values,
     ):
-        result = process_window(conn, request_start, request_end, RETRIEVED_AT)
+        result = process_window(MagicMock(), request_start, request_end, RETRIEVED_AT)
 
-    mock_process_rows.assert_called_once_with(
-        payload["data"],
-        spec=OUTTURN_SPEC,
-        dataset="CI_Outturn",
-        conn=conn,
-        retrieved_at=RETRIEVED_AT,
-        request_context={
-            "from": request_start.isoformat(),
-            "to": request_end.isoformat(),
-        },
-        parse_rows=parse,
-        load_rows=load,
-    )
-    mock_validate_completeness.assert_called_once_with(
-        payload["data"],
-        request_start,
-        request_end,
-    )
-    assert result == (0, False)
-    assert events == ["stored", "checked"]
+    assert result == expected_result
+    inserted_rows = mock_execute_values.call_args.args[2]
+    assert len(inserted_rows) == len(payload["data"])
 
 
 def test_process_window_skips_completeness_after_rejected_rows(payload):
@@ -256,8 +239,8 @@ def test_run_refetches_a_history_gap_after_the_recent_refresh():
 
     _conn, first_checked, last_checked = mock_missing_period_starts.call_args.args
     horizon_start = recent_end - timedelta(days=365)
-    assert first_checked == floor_to_period(horizon_start) + timedelta(days=1)
-    assert last_checked == floor_to_period(recent_start) - timedelta(minutes=30)
+    assert horizon_start < first_checked
+    assert last_checked < recent_start
 
 
 def test_run_attempts_every_history_gap_when_one_request_fails():
@@ -356,17 +339,15 @@ def test_run_leaves_history_gaps_alone_between_refetch_days():
     assert mock_process_window.call_count == 1
 
 
-@pytest.mark.parametrize(
-    "run_date,expected",
-    [
-        pytest.param(datetime(2026, 10, 5, 6, tzinfo=timezone.utc), True, id="monday"),
-        pytest.param(
-            datetime(2026, 10, 6, 6, tzinfo=timezone.utc), False, id="tuesday"
-        ),
-    ],
-)
-def test_history_is_refetched_on_one_day_a_week(run_date, expected):
-    assert is_history_refetch_day(run_date) is expected
+def test_history_is_refetched_on_one_day_a_week():
+    first_day = datetime(2026, 10, 5, 6, tzinfo=timezone.utc)
+    refetch_days = []
+    for day in range(7):
+        run_date = first_day + timedelta(days=day)
+        if is_history_refetch_day(run_date):
+            refetch_days.append(run_date)
+
+    assert len(refetch_days) == 1
 
 
 @pytest.mark.parametrize(

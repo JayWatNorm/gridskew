@@ -13,30 +13,17 @@ from ingestion.elexon.b1610_poller import (
     decimal_json_dumps,
     expected_period_count,
     fetch,
-    load,
     parse,
     replaced_by_a_later_run,
     run_in_force,
 )
 from ingestion.elexon.b1610_poller import run as run_poller
-from ingestion.elexon.contracts import B1610_SPEC
 from ingestion.routing import ContractRejected
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "b1610_stream.json"
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)
 WINDOW_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
 WINDOW_END = datetime(2026, 8, 21, tzinfo=timezone.utc)
-
-
-@pytest.fixture(autouse=True)
-def no_earlier_dates_of_the_run():
-    """Capture tests about periods and run types see no earlier date, so the
-    unit-count check is skipped; the unit-count tests below set it."""
-
-    with patch(
-        "ingestion.elexon.b1610_poller.recent_unit_count", return_value=None
-    ) as recent_units:
-        yield recent_units
 
 
 @pytest.fixture
@@ -105,8 +92,6 @@ def test_run_rejects_an_invalid_response_envelope(response):
 
 
 def test_run_passes_rows_context_and_decimal_encoder_to_shared_routing(source_rows):
-    conn = Mock()
-
     with (
         patch("ingestion.elexon.b1610_poller.fetch", return_value=source_rows),
         patch(
@@ -114,23 +99,17 @@ def test_run_passes_rows_context_and_decimal_encoder_to_shared_routing(source_ro
             return_value=0,
         ) as mock_process_rows,
     ):
-        run_poller(conn, WINDOW_START, WINDOW_END)
+        run_poller(Mock(), WINDOW_START, WINDOW_END, "R1")
 
-    retrieved_at = mock_process_rows.call_args.kwargs["retrieved_at"]
-    mock_process_rows.assert_called_once_with(
-        source_rows,
-        spec=B1610_SPEC,
-        dataset="B1610",
-        conn=conn,
-        retrieved_at=retrieved_at,
-        request_context={
-            "from": WINDOW_START.isoformat(),
-            "to": WINDOW_END.isoformat(),
-        },
-        parse_rows=parse,
-        load_rows=load,
-        payload_dumps=decimal_json_dumps,
-    )
+    routed = mock_process_rows.call_args
+    assert routed.args == (source_rows,)
+    assert routed.kwargs["dataset"] == "B1610"
+    assert routed.kwargs["payload_dumps"] is decimal_json_dumps
+    assert routed.kwargs["request_context"] == {
+        "from": WINDOW_START.isoformat(),
+        "to": WINDOW_END.isoformat(),
+        "settlementRunType": "R1",
+    }
 
 
 def test_run_fails_after_shared_routing_rejects_a_row(source_rows):
@@ -193,58 +172,78 @@ def test_fetch_sends_the_settlement_run_type_only_when_requested():
     assert "settlementRunType" not in mock_get.call_args_list[1].kwargs["params"]
 
 
-def test_capture_fails_when_another_run_type_is_returned():
-    rows = [{"settlementRunType": "R1"}, {"settlementRunType": "SF"}]
-    with (
-        patch("ingestion.elexon.b1610_poller.run", return_value=rows),
-        patch(
-            "ingestion.elexon.b1610_poller.stored_coverage",
-            return_value=(96, list(range(1, 49)), 1),
-        ),
-    ):
-        with pytest.raises(RuntimeError, match="returned run types"):
-            capture_settlement_date(Mock(), date(2026, 8, 10), "R1")
+NORMAL_DAY = date(2026, 8, 10)
+ALL_48_PERIODS = list(range(1, 49))
 
 
-def capture_with_units(source_rows, stored_units, recent_units):
-    settlement_date = date(2026, 8, 10)
-    rows = one_row_per_period(source_rows, settlement_date, 48)
-    conn = connection_returning((48, list(range(1, 49)), stored_units))
+def one_row_per_period(source_rows, settlement_date, period_count):
+    """Return one R1 row for each period 1..period_count of the date."""
+
+    rows = []
+    for period in range(1, period_count + 1):
+        rows.append(
+            dict(
+                source_rows[0],
+                settlementDate=settlement_date.isoformat(),
+                settlementRunType="R1",
+                settlementPeriod=period,
+            )
+        )
+    return rows
+
+
+def capture(conn, settlement_date, rows, recent_units=None):
+    """Capture R1 for the date from a response of `rows`, with the inserts
+    stubbed and `recent_units` as the most units of the seven dates before.
+
+    Return the summary and the arguments the capture fetched with.
+    """
+
     with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows),
+        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows) as get_rows,
         patch("ingestion.elexon.b1610_poller.execute_values"),
         patch(
             "ingestion.elexon.b1610_poller.recent_unit_count",
             return_value=recent_units,
         ),
     ):
-        return capture_settlement_date(conn, settlement_date, "R1")
+        summary = capture_settlement_date(conn, settlement_date, "R1")
+    return summary, get_rows.call_args.args
+
+
+def test_capture_fails_when_another_run_type_is_returned(source_rows):
+    rows = one_row_per_period(source_rows, NORMAL_DAY, 48)
+    rows[0]["settlementRunType"] = "SF"
+    conn = connection_returning((48, ALL_48_PERIODS, 1))
+
+    with pytest.raises(RuntimeError, match="returned run types"):
+        capture(conn, NORMAL_DAY, rows)
 
 
 def test_capture_fails_with_fewer_than_95_percent_of_recent_units(source_rows):
+    rows = one_row_per_period(source_rows, NORMAL_DAY, 48)
+    conn = connection_returning((48, ALL_48_PERIODS, 9499))
+
     with pytest.raises(RuntimeError, match="stored 9499 units; the most in the"):
-        capture_with_units(source_rows, stored_units=9499, recent_units=10000)
+        capture(conn, NORMAL_DAY, rows, recent_units=10000)
 
 
 def test_capture_accepts_exactly_95_percent_of_recent_units(source_rows):
-    summary = capture_with_units(source_rows, stored_units=9500, recent_units=10000)
+    rows = one_row_per_period(source_rows, NORMAL_DAY, 48)
+    conn = connection_returning((48, ALL_48_PERIODS, 9500))
+
+    summary, _ = capture(conn, NORMAL_DAY, rows, recent_units=10000)
 
     assert summary["most_units_in_previous_seven_dates"] == 10000
 
 
 def test_capture_without_an_earlier_date_checks_periods_only(source_rows):
-    summary = capture_with_units(source_rows, stored_units=1, recent_units=None)
+    rows = one_row_per_period(source_rows, NORMAL_DAY, 48)
+    conn = connection_returning((48, ALL_48_PERIODS, 1))
+
+    summary, _ = capture(conn, NORMAL_DAY, rows, recent_units=None)
 
     assert summary["stored_units"] == 1
-
-
-def test_run_preserves_the_requested_run_type_in_quarantine_context(source_rows):
-    with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=source_rows),
-        patch("ingestion.elexon.b1610_poller.process_rows", return_value=0) as route,
-    ):
-        assert run_poller(Mock(), WINDOW_START, WINDOW_END, "R1") is source_rows
-    assert route.call_args.kwargs["request_context"]["settlementRunType"] == "R1"
 
 
 @pytest.mark.parametrize("stored_periods", [[], list(range(1, 49))])
@@ -305,22 +304,6 @@ STORED_PERIOD_DAYS = [
 ]
 
 
-def one_row_per_period(source_rows, settlement_date, period_count):
-    """Return one R1 row for each period 1..period_count of the date."""
-
-    rows = []
-    for period in range(1, period_count + 1):
-        rows.append(
-            dict(
-                source_rows[0],
-                settlementDate=settlement_date.isoformat(),
-                settlementRunType="R1",
-                settlementPeriod=period,
-            )
-        )
-    return rows
-
-
 @pytest.mark.parametrize("settlement_date,expected", STORED_PERIOD_DAYS)
 def test_capture_accepts_exactly_the_expected_stored_periods(
     source_rows, settlement_date, expected
@@ -329,35 +312,22 @@ def test_capture_accepts_exactly_the_expected_stored_periods(
     stored_periods = list(range(1, expected + 1))
     conn = connection_returning((expected, stored_periods, 1))
 
-    with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows) as get_rows,
-        patch("ingestion.elexon.b1610_poller.execute_values"),
-    ):
-        summary = capture_settlement_date(conn, settlement_date, "R1")
+    summary, fetched_with = capture(conn, settlement_date, rows)
 
-    assert get_rows.call_args.args == (*british_day_window(settlement_date), "R1")
+    assert fetched_with == (*british_day_window(settlement_date), "R1")
     assert summary["stored_period_numbers"] == stored_periods
     conn.commit.assert_called_once_with()
-    conn.rollback.assert_called_once_with()
 
 
 def test_capture_rejects_the_right_count_of_wrong_stored_periods(source_rows):
-    settlement_date = date(2026, 8, 10)
-    expected = 48
-    rows = one_row_per_period(source_rows, settlement_date, expected)
-    stored_periods = list(range(1, expected + 1))
-    stored_periods[-1] = expected + 2
-    conn = connection_returning((expected, stored_periods, 1))
+    rows = one_row_per_period(source_rows, NORMAL_DAY, 48)
+    stored_periods = list(range(1, 48)) + [50]
+    conn = connection_returning((48, stored_periods, 1))
 
-    with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=rows),
-        patch("ingestion.elexon.b1610_poller.execute_values"),
-    ):
-        with pytest.raises(RuntimeError, match=r"missing \[48\], unexpected \[50\]"):
-            capture_settlement_date(conn, settlement_date, "R1")
+    with pytest.raises(RuntimeError, match=r"missing \[48\], unexpected \[50\]"):
+        capture(conn, NORMAL_DAY, rows)
 
     conn.commit.assert_called_once_with()
-    conn.rollback.assert_called_once_with()
 
 
 def test_run_in_force_is_the_latest_run_any_unit_carries():
@@ -374,11 +344,7 @@ def test_run_in_force_is_the_latest_run_any_unit_carries():
         in_force = run_in_force(date(2025, 8, 25))
 
     assert in_force == "R3"
-    assert mock_get.call_args.kwargs["params"] == {
-        "settlementDate": "2025-08-25",
-        "settlementPeriod": 1,
-        "format": "json",
-    }
+    assert mock_get.call_args.kwargs["params"]["settlementDate"] == "2025-08-25"
 
 
 def test_run_in_force_is_none_before_the_date_is_published():

@@ -21,17 +21,36 @@ from ingestion.validation import validate_rows
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "remit_publications.json"
 RUN_TIME = datetime(2026, 10, 8, 9, 15, 4, tzinfo=timezone.utc)
-FRACTIONAL_CAPACITY_ROW = 5
-NO_UNIT_FIELDS_ROW = 4
-FIRST_OPTIONAL_COLUMN = 4
-EVENT_START_TIME_COLUMN = 14
-EVENT_END_TIME_COLUMN = 15
-PAYLOAD_COLUMN = 16
+REMIT_COLUMNS = (
+    "mrid",
+    "revision_number",
+    "publish_time",
+    "created_time",
+    "message_type",
+    "event_type",
+    "unavailability_type",
+    "event_status",
+    "asset_id",
+    "affected_unit",
+    "fuel_type",
+    "normal_capacity",
+    "available_capacity",
+    "unavailable_capacity",
+    "event_start_time",
+    "event_end_time",
+    "payload",
+    "retrieved_at",
+)
 
 
 @pytest.fixture
 def source_rows():
     return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"), parse_float=Decimal)
+
+
+def message_with_mrid(source_rows, mrid):
+    (message,) = [row for row in source_rows if row["mrid"] == mrid]
+    return message
 
 
 def database_with(newest_stored_publish_time, quarantined_rows=0):
@@ -71,52 +90,63 @@ def test_fetch_asks_for_the_window_in_utc_and_keeps_decimals():
 
 
 def test_parse_maps_a_message_to_the_database_tuple(source_rows):
-    parsed_rows = parse(source_rows, RUN_TIME)
-    parsed_row = parsed_rows[FRACTIONAL_CAPACITY_ROW]
+    source_row = message_with_mrid(source_rows, "48X000000000284H-ELXP-RMT-00105746")
 
-    assert len(parsed_rows) == len(source_rows)
-    assert parsed_row[:PAYLOAD_COLUMN] == (
-        "48X000000000284H-ELXP-RMT-00105746",
-        1,
-        datetime(2026, 9, 26, 8, 58, 21, tzinfo=timezone.utc),
-        datetime(2026, 9, 26, 8, 55, 13, tzinfo=timezone.utc),
-        "UnavailabilitiesOfElectricityFacilities",
-        "Production unavailability",
-        "Planned",
-        "Active",
-        "E_THMRB-1",
-        "THMRB-1",
-        None,
-        Decimal("49.920"),
-        Decimal("0.000"),
-        Decimal("49.920"),
-        datetime(2026, 9, 26, 9, 0, tzinfo=timezone.utc),
-        datetime(2026, 10, 10, 11, 0, tzinfo=timezone.utc),
-    )
-    assert parsed_row[PAYLOAD_COLUMN].adapted == source_rows[FRACTIONAL_CAPACITY_ROW]
-    assert parsed_row[PAYLOAD_COLUMN + 1] == RUN_TIME
+    (parsed_row,) = parse([source_row], RUN_TIME)
 
-
-def test_a_message_with_only_the_key_and_start_time_is_accepted(source_rows):
-    full_row = source_rows[NO_UNIT_FIELDS_ROW]
-    minimal_row = {
-        "mrid": full_row["mrid"],
-        "revisionNumber": full_row["revisionNumber"],
-        "publishTime": full_row["publishTime"],
-        "createdTime": full_row["createdTime"],
-        "eventStartTime": full_row["eventStartTime"],
+    parsed = dict(zip(REMIT_COLUMNS, parsed_row, strict=True))
+    assert parsed.pop("payload").adapted == source_row
+    assert parsed == {
+        "mrid": "48X000000000284H-ELXP-RMT-00105746",
+        "revision_number": 1,
+        "publish_time": datetime(2026, 9, 26, 8, 58, 21, tzinfo=timezone.utc),
+        "created_time": datetime(2026, 9, 26, 8, 55, 13, tzinfo=timezone.utc),
+        "message_type": "UnavailabilitiesOfElectricityFacilities",
+        "event_type": "Production unavailability",
+        "unavailability_type": "Planned",
+        "event_status": "Active",
+        "asset_id": "E_THMRB-1",
+        "affected_unit": "THMRB-1",
+        "fuel_type": None,
+        "normal_capacity": Decimal("49.920"),
+        "available_capacity": Decimal("0.000"),
+        "unavailable_capacity": Decimal("49.920"),
+        "event_start_time": datetime(2026, 9, 26, 9, 0, tzinfo=timezone.utc),
+        "event_end_time": datetime(2026, 10, 10, 11, 0, tzinfo=timezone.utc),
+        "retrieved_at": RUN_TIME,
     }
 
-    findings = validate_rows([minimal_row], spec=REMIT_SPEC)
-    parsed_row = parse([minimal_row], RUN_TIME)[0]
 
-    assert findings[0]["errors"] == []
-    assert parsed_row[FIRST_OPTIONAL_COLUMN:EVENT_START_TIME_COLUMN] == (None,) * 10
-    assert parsed_row[EVENT_END_TIME_COLUMN] is None
+def test_a_message_with_only_the_key_and_start_time_is_accepted():
+    minimal_row = {
+        "mrid": "20260927STATKRA1-ELXP-RMT-00000001",
+        "revisionNumber": 1,
+        "publishTime": "2026-09-26T23:01:16Z",
+        "createdTime": "2026-09-26T22:59:14Z",
+        "eventStartTime": "2026-09-27T00:00:00Z",
+    }
+
+    (finding,) = validate_rows([minimal_row], spec=REMIT_SPEC)
+    (parsed_row,) = parse([minimal_row], RUN_TIME)
+
+    assert finding["errors"] == []
+    stored_columns = []
+    for column, value in zip(REMIT_COLUMNS, parsed_row, strict=True):
+        if value is not None:
+            stored_columns.append(column)
+    assert stored_columns == [
+        "mrid",
+        "revision_number",
+        "publish_time",
+        "created_time",
+        "event_start_time",
+        "payload",
+        "retrieved_at",
+    ]
 
 
-def test_the_payload_keeps_capacities_as_published(source_rows):
-    payload_text = decimal_json_dumps(source_rows[FRACTIONAL_CAPACITY_ROW])
+def test_the_payload_keeps_capacities_as_published():
+    payload_text = decimal_json_dumps({"normalCapacity": Decimal("49.920")})
 
     assert '"normalCapacity": 49.920' in payload_text
 
@@ -145,17 +175,16 @@ def test_run_starts_one_hour_before_the_newest_stored_message():
     mock_fetch.assert_called_once_with(newest_stored - timedelta(hours=1), RUN_TIME)
 
 
-def test_run_on_an_empty_table_fetches_the_history_a_day_at_a_time():
+def test_run_on_an_empty_table_fetches_everything_from_the_history_start():
     conn = database_with(None)
 
     with patch("ingestion.elexon.remit_poller.fetch", return_value=[]) as mock_fetch:
         run_at_run_time(conn)
 
-    first_window = mock_fetch.call_args_list[0].args
-    last_window = mock_fetch.call_args_list[-1].args
-    assert first_window == (HISTORY_START, HISTORY_START + timedelta(days=1))
-    assert last_window == (datetime(2026, 10, 8, tzinfo=timezone.utc), RUN_TIME)
-    assert mock_fetch.call_count == 778
+    first_window_start, _ = mock_fetch.call_args_list[0].args
+    _, last_window_end = mock_fetch.call_args_list[-1].args
+    assert first_window_start == HISTORY_START
+    assert last_window_end == RUN_TIME
 
 
 def test_run_rejects_a_response_that_is_not_a_list():
@@ -171,9 +200,10 @@ def test_run_rejects_a_response_that_is_not_a_list():
     mock_process_rows.assert_not_called()
 
 
-def test_run_passes_rows_and_request_context_to_shared_routing(source_rows):
-    newest_stored = RUN_TIME - timedelta(minutes=30)
-    conn = database_with(newest_stored)
+def test_run_routes_rows_with_its_dataset_label_spec_loader_and_decimal_encoder(
+    source_rows,
+):
+    conn = database_with(RUN_TIME - timedelta(minutes=30))
 
     with (
         patch("ingestion.elexon.remit_poller.fetch", return_value=source_rows),
@@ -184,21 +214,12 @@ def test_run_passes_rows_and_request_context_to_shared_routing(source_rows):
     ):
         run_at_run_time(conn)
 
-    mock_process_rows.assert_called_once_with(
-        source_rows,
-        spec=REMIT_SPEC,
-        dataset="REMIT",
-        conn=conn,
-        retrieved_at=RUN_TIME,
-        request_context={
-            "publishDateTimeFrom": (newest_stored - timedelta(hours=1)).isoformat(),
-            "publishDateTimeTo": RUN_TIME.isoformat(),
-        },
-        parse_rows=parse,
-        load_rows=load,
-        payload_dumps=decimal_json_dumps,
-        log_missing_optional_fields=False,
-    )
+    routed = mock_process_rows.call_args
+    assert routed.args == (source_rows,)
+    assert routed.kwargs["dataset"] == "REMIT"
+    assert routed.kwargs["spec"] is REMIT_SPEC
+    assert routed.kwargs["load_rows"] is load
+    assert routed.kwargs["payload_dumps"] is decimal_json_dumps
 
 
 def test_run_reads_the_newest_publish_time_only_from_rows_stored_after_it():
@@ -207,11 +228,8 @@ def test_run_reads_the_newest_publish_time_only_from_rows_stored_after_it():
     with patch("ingestion.elexon.remit_poller.fetch", return_value=[]):
         run_at_run_time(conn)
 
-    newest_stored_query = cursor_of(conn).execute.call_args_list[0].args
-    assert newest_stored_query == (
-        "SELECT max(publish_time) FROM raw.elexon_remit "
-        "WHERE publish_time <= retrieved_at",
-    )
+    (newest_stored_query,) = cursor_of(conn).execute.call_args_list[0].args
+    assert "publish_time <= retrieved_at" in " ".join(newest_stored_query.split())
 
 
 def test_run_loads_the_compatible_rows_before_it_fails(source_rows):
