@@ -32,12 +32,13 @@ def gridskew_elexon_remit():
 
     @task(pool="elexon")
     def poll_remit():
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.hooks.base import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
+        from ingestion.database import connect
         from ingestion.elexon.remit_poller import run
 
-        conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             run(conn)
         finally:

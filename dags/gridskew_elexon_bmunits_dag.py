@@ -116,13 +116,14 @@ def dbt_commands():
 def gridskew_elexon_bmunits():
     @task(pool="elexon", execution_timeout=timedelta(minutes=15))
     def capture_registry(params=None):
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.hooks.base import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
+        from ingestion.database import connect
         from ingestion.elexon.bmunits_poller import run
 
         accept_shrink = bool((params or {}).get("accept_shrink"))
-        conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             return str(run(conn, accept_shrink=accept_shrink))
         finally:
@@ -130,12 +131,13 @@ def gridskew_elexon_bmunits():
 
     @task(pool="gridskew_dbt", execution_timeout=timedelta(minutes=60))
     def build_current_and_snapshot(extract_id, run_id=None):
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.hooks.base import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
+        from ingestion.database import connect
         from ingestion.elexon.bmunits_poller import locked_extract
 
-        conn = PostgresHook(postgres_conn_id="gridskew_prod").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             with (
                 TemporaryDirectory(
