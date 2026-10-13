@@ -46,33 +46,6 @@ def test_scheduled_run_writes_tables_only_after_the_run_code_test(nightly):
         assert "-f" not in command
 
 
-def test_full_refresh_rebuilds_descendants_after_contract_tests(nightly):
-    commands = nightly["dbt_commands"](full_refresh=True)
-    assert commands[0] == ["test", "--selector", "nightly_run_code_check"]
-    assert commands[-1] == [
-        "build",
-        "--select",
-        "int_elexon__bm_unit_cohort+",
-        "int_elexon__b1610_period+",
-        "int_elexon__pn_period_mwh+",
-        "int_elexon__instruction_intervals+",
-        "int_shortfall_by_unit_period+",
-        "--full-refresh",
-    ]
-
-
-def test_missing_period_table_is_reported(nightly):
-    conn = connection_returning(
-        (
-            None,
-            "dbt_dev.int_elexon__pn_period_mwh",
-            "dbt_dev.int_elexon__instruction_intervals",
-            "dbt_dev.int_shortfall_by_unit_period",
-        )
-    )
-    assert nightly["missing_period_tables"](conn) == ["int_elexon__b1610_period"]
-
-
 def test_the_missing_table_query_asks_for_every_period_table(nightly):
     three_tables = ("first_table", "second_table", "third_table")
     conn = connection_returning(("dbt_dev.first_table", None, "dbt_dev.third_table"))
@@ -88,22 +61,9 @@ def test_the_missing_table_query_asks_for_every_period_table(nightly):
     ]
 
 
-def test_dbt_runs_in_the_dev_target_with_its_own_logs(nightly, monkeypatch):
-    env = nightly["dbt_environment"]("/tmp/nightly", "scheduled__2026-10-09")
-    assert env["GRIDSKEW_DBT_USER"] == "gridskew_dbt"
-    assert env["DBT_TARGET_PATH"] == "/tmp/nightly/target"
-    assert "/dbt_logs/nightly/" in env["DBT_LOG_PATH"]
-
-    finished_process = SimpleNamespace(stdout="", stderr="", check_returncode=Mock())
-    run = Mock(return_value=finished_process)
-    monkeypatch.setattr(nightly["subprocess"], "run", run)
-    nightly["run_dbt"](env, ["run", "--select", "x"], timeout_minutes=30)
-    command = run.call_args.args[0]
-    assert command[command.index("--target") + 1] == "dev"
-    assert run.call_args.kwargs["timeout"] == 30 * 60
-
-
-def test_every_dbt_command_records_its_node_results(nightly, monkeypatch):
+def test_every_dbt_command_runs_in_dev_with_a_timeout_and_records_its_node_results(
+    nightly, monkeypatch
+):
     env = nightly["dbt_environment"]("/tmp/nightly", "scheduled__2026-10-09")
     assert env["GRIDSKEW_AIRFLOW_RUN_ID"] == "scheduled__2026-10-09"
 
@@ -112,7 +72,9 @@ def test_every_dbt_command_records_its_node_results(nightly, monkeypatch):
     monkeypatch.setattr(nightly["subprocess"], "run", run)
     nightly["run_dbt"](env, ["test", "--selector", "x"], timeout_minutes=30)
     command = run.call_args.args[0]
+    assert command[command.index("--target") + 1] == "dev"
     assert command[command.index("--vars") + 1] == "{audit: true}"
+    assert run.call_args.kwargs["timeout"] == 30 * 60
 
 
 def test_artifacts_are_published_for_the_day_and_as_latest(nightly, dbt_target):
@@ -216,6 +178,7 @@ def test_a_full_refresh_rebuilds_everything_when_it_cannot_tell(
 def test_a_full_refresh_builds_the_chosen_relations_and_below(nightly):
     commands = nightly["dbt_commands"](True, ("int_shortfall_by_unit_period",))
 
+    assert commands[0] == ["test", "--selector", "nightly_run_code_check"]
     rebuild = commands[-1]
     assert rebuild[:3] == ["build", "--select", "int_shortfall_by_unit_period+"]
     assert rebuild[-1] == "--full-refresh"

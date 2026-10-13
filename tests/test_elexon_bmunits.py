@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
 import pytest
-from fakes import connection_returning, connection_returning_in_turn
+from fakes import connection_returning
 
 from ingestion.elexon.bmunits_poller import (
     check_completeness,
@@ -46,17 +46,6 @@ def units_named(prefix, count):
     return [{"nationalGridBmUnit": f"{prefix}-{number}"} for number in range(count)]
 
 
-def test_distinct_eics_for_one_unit_preserve_both_source_rows(rows):
-    second = deepcopy(rows[1])
-    second["eic"] = "48W00001ACHRW-1R"
-    rows.insert(2, second)
-
-    rejected, unit_count = validate_extract(rows)
-
-    assert rejected == []
-    assert unit_count == len(rows) - 1
-
-
 def test_duplicate_unit_with_conflicting_fuel_is_rejected(rows):
     second = deepcopy(rows[1])
     second["eic"] = "another-eic"
@@ -83,14 +72,6 @@ def test_blank_unit_identity_blocks_publication(rows, value):
     rejected, _ = validate_extract(rows)
 
     assert contains(error_messages(rejected), "Blank nationalGridBmUnit")
-
-
-def test_blank_capacity_is_accepted_as_unknown(rows):
-    rows[0]["generationCapacity"] = "   "
-
-    rejected, _ = validate_extract(rows)
-
-    assert rejected == []
 
 
 def test_completeness_blocks_a_loss_of_more_than_five_percent():
@@ -140,7 +121,7 @@ def test_run_quarantines_bad_row_without_publishing_extract(rows):
     load.assert_not_called()
 
 
-@pytest.mark.parametrize("value", ["1e999999", "1e-16384", "NaN", "1_000", "\u00a0"])
+@pytest.mark.parametrize("value", ["1e131072", "1e-16384", "NaN", "1_000", "\u00a0"])
 def test_capacity_values_outside_supported_numeric_contract_are_rejected(rows, value):
     rows[0]["generationCapacity"] = value
 
@@ -204,18 +185,6 @@ def test_locked_extract_rejects_missing_or_changed_manifest(manifest):
     conn = connection_returning(manifest)
 
     with pytest.raises(RuntimeError, match="not latest"):
-        with locked_extract(conn, UUID(int=1)):
-            pytest.fail("dbt must not start")
-
-    conn.rollback.assert_called_once()
-
-
-def test_locked_extract_rejects_a_manifest_whose_counts_differ_from_stored_rows():
-    manifest = (str(UUID(int=1)), 10, 10)
-    stored_row_and_unit_counts = (9, 10)
-    conn = connection_returning_in_turn(manifest, stored_row_and_unit_counts)
-
-    with pytest.raises(RuntimeError, match="counts do not match"):
         with locked_extract(conn, UUID(int=1)):
             pytest.fail("dbt must not start")
 

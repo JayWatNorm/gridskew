@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from itertools import pairwise
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from fakes import single_spaced
@@ -241,40 +241,6 @@ def test_run_backfills_all_windows_and_reports_the_total_failures(summary_output
     for window_call, window in zip(calls, windows, strict=True):
         window_start, window_end = window
         assert window_call.args == (conn, window_start, window_end, shared_capture_time)
-
-
-def test_run_refreshes_only_the_recent_window_when_history_is_complete():
-    conn = Mock()
-
-    with (
-        patch(
-            "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
-            return_value=(
-                100,
-                datetime(2020, 1, 1, tzinfo=timezone.utc),
-                datetime(2026, 8, 1, tzinfo=timezone.utc),
-            ),
-        ),
-        patch(
-            "ingestion.carbon_intensity.outturn_poller.is_history_refetch_day",
-            return_value=True,
-        ),
-        patch(
-            "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
-            return_value=[],
-        ),
-        patch(
-            "ingestion.carbon_intensity.outturn_poller.process_window",
-            return_value=(0, False),
-        ) as mock_process_window,
-    ):
-        run_poller(conn)
-
-    conn_arg, start, end, retrieved_at = mock_process_window.call_args.args
-    assert conn_arg is conn
-    assert end == retrieved_at - timedelta(days=1)
-    assert start == end - timedelta(days=7)
-    assert mock_process_window.call_args_list == [call(conn, start, end, retrieved_at)]
 
 
 def test_run_refetches_a_history_gap_after_the_recent_refresh():

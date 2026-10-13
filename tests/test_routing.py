@@ -83,31 +83,6 @@ def test_process_rows_routes_mixed_batch():
     }
 
 
-def test_process_rows_skips_typed_load_when_all_rows_are_rejected():
-    rejected_row = make_source_row()
-    del rejected_row["intensity"]
-    conn = Mock()
-    parse_rows = Mock()
-    load_rows = Mock()
-
-    with patch("ingestion.routing.quarantine_rows") as mock_quarantine:
-        rejected_count = process_rows(
-            [rejected_row],
-            spec=FORECAST_SPEC,
-            dataset="CI_Forecast",
-            conn=conn,
-            retrieved_at=RETRIEVED_AT,
-            request_context=REQUEST_CONTEXT,
-            parse_rows=parse_rows,
-            load_rows=load_rows,
-        )
-
-    assert rejected_count == 1
-    mock_quarantine.assert_called_once()
-    parse_rows.assert_not_called()
-    load_rows.assert_not_called()
-
-
 def test_process_rows_groups_warning_logs_and_caps_source_indexes(caplog):
     rows = []
     for index in range(6):

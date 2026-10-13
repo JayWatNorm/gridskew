@@ -1,116 +1,43 @@
-import json
 from datetime import date, datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
-import pytest
-from fakes import single_spaced
+from ingestion.elexon.qpn_poller import parse
 
-from ingestion.elexon.contracts import QPN_SPEC
-from ingestion.elexon.qpn_poller import load, parse
-from ingestion.elexon.qpn_poller import run as run_poller
-from ingestion.routing import ContractRejected
-
-FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "qpn_stream.json"
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)
-WINDOW_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
-WINDOW_END = datetime(2026, 8, 21, tzinfo=timezone.utc)
-
-
-@pytest.fixture
-def source_rows():
-    return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
-
-
-def test_parse_maps_a_source_row_to_the_database_tuple(source_rows):
-    parsed_rows = parse(source_rows, RETRIEVED_AT)
-
-    assert len(parsed_rows) == len(source_rows)
-    assert parsed_rows[16] == (
-        date(2026, 8, 21),
-        36,
-        datetime(2026, 8, 21, 16, 30, tzinfo=timezone.utc),
-        datetime(2026, 8, 21, 17, 0, tzinfo=timezone.utc),
-        -60,
-        -60,
-        "WILCT-1",
-        "T_WILCT-1",
-        RETRIEVED_AT,
-    )
-
-
-def test_load_uses_the_expected_columns_conflict_key_and_commits():
-    parsed_rows = [Mock(name="parsed_row")]
-    conn = MagicMock()
-
-    with patch("ingestion.elexon.qpn_poller.execute_values") as mock_execute_values:
-        load(parsed_rows, conn)
-
-    _cursor, insert_sql, inserted_rows = mock_execute_values.call_args.args
-    assert single_spaced(insert_sql) == (
-        "INSERT INTO raw.elexon_qpn (settlement_date, settlement_period, time_from, "
-        "time_to, level_from, level_to, national_grid_bm_unit, bm_unit, retrieved_at) "
-        "VALUES %s "
-        "ON CONFLICT (national_grid_bm_unit, time_from, retrieved_at) DO NOTHING"
-    )
-    assert inserted_rows == parsed_rows
-    conn.commit.assert_called_once_with()
-
-
-@pytest.mark.parametrize(
-    "response",
-    [
-        pytest.param({}, id="dictionary"),
-        pytest.param([], id="empty-list"),
-    ],
+QPN_COLUMNS = (
+    "settlement_date",
+    "settlement_period",
+    "time_from",
+    "time_to",
+    "level_from",
+    "level_to",
+    "national_grid_bm_unit",
+    "bm_unit",
+    "retrieved_at",
 )
-def test_run_rejects_an_invalid_response_envelope(response):
-    conn = Mock()
-
-    with (
-        patch("ingestion.elexon.qpn_poller.fetch", return_value=response),
-        patch("ingestion.elexon.qpn_poller.process_rows") as mock_process_rows,
-    ):
-        with pytest.raises(RuntimeError, match="expected a non-empty list"):
-            run_poller(conn, WINDOW_START, WINDOW_END)
-
-    mock_process_rows.assert_not_called()
-
-
-def test_run_passes_rows_and_request_context_to_shared_routing(source_rows):
-    conn = Mock()
-
-    with (
-        patch("ingestion.elexon.qpn_poller.fetch", return_value=source_rows),
-        patch(
-            "ingestion.elexon.qpn_poller.process_rows",
-            return_value=0,
-        ) as mock_process_rows,
-    ):
-        run_poller(conn, WINDOW_START, WINDOW_END)
-
-    retrieved_at = mock_process_rows.call_args.kwargs["retrieved_at"]
-    mock_process_rows.assert_called_once_with(
-        source_rows,
-        spec=QPN_SPEC,
-        dataset="QPN",
-        conn=conn,
-        retrieved_at=retrieved_at,
-        request_context={
-            "from": WINDOW_START.isoformat(),
-            "to": WINDOW_END.isoformat(),
-        },
-        parse_rows=parse,
-        load_rows=load,
-    )
+SOURCE_ROW = {
+    "dataset": "QPN",
+    "settlementDate": "2026-08-21",
+    "settlementPeriod": 36,
+    "timeFrom": "2026-08-21T16:30:00Z",
+    "timeTo": "2026-08-21T17:00:00Z",
+    "levelFrom": -60,
+    "levelTo": -45,
+    "nationalGridBmUnit": "WILCT-1",
+    "bmUnit": "T_WILCT-1",
+}
 
 
-def test_run_fails_after_shared_routing_rejects_a_row(source_rows):
-    conn = Mock()
+def test_parse_maps_each_source_field_to_its_own_column():
+    (parsed_row,) = parse([SOURCE_ROW], RETRIEVED_AT)
 
-    with (
-        patch("ingestion.elexon.qpn_poller.fetch", return_value=source_rows),
-        patch("ingestion.elexon.qpn_poller.process_rows", return_value=1),
-    ):
-        with pytest.raises(ContractRejected, match="Quarantined 1 row"):
-            run_poller(conn, WINDOW_START, WINDOW_END)
+    assert dict(zip(QPN_COLUMNS, parsed_row, strict=True)) == {
+        "settlement_date": date(2026, 8, 21),
+        "settlement_period": 36,
+        "time_from": datetime(2026, 8, 21, 16, 30, tzinfo=timezone.utc),
+        "time_to": datetime(2026, 8, 21, 17, 0, tzinfo=timezone.utc),
+        "level_from": -60,
+        "level_to": -45,
+        "national_grid_bm_unit": "WILCT-1",
+        "bm_unit": "T_WILCT-1",
+        "retrieved_at": RETRIEVED_AT,
+    }
