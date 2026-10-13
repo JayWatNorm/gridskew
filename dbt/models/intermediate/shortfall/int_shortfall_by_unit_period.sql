@@ -186,11 +186,16 @@ metered as (
     from commitments
     inner join {{ ref('fct_generation') }} as generation
         on generation.bm_unit = commitments.elexon_bm_unit
+        and generation.period_start_utc = commitments.period_start_utc
+{% if is_incremental() %}
         -- The settlement date and period follow from the equal start times;
-        -- they let the join use the period table's unique index.
+        -- they let the few touched keys use the period table's unique index.
+        -- Not on a full refresh: the planner counts the three equal keys as
+        -- independent, expects almost no matching rows and picks a nested
+        -- loop over the whole table.
         and generation.settlement_date = commitments.settlement_date
         and generation.settlement_period = commitments.settlement_period
-        and generation.period_start_utc = commitments.period_start_utc
+{% endif %}
         and generation.mapping_status = 'mapped'
         and generation.mapped_national_grid_bm_unit = commitments.national_grid_bm_unit
 ),
