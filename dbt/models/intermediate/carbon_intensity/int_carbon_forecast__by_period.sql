@@ -13,6 +13,7 @@ with slot_polls as (
         period_start,
         retrieved_at,
         forecast,
+        intensity_index,
         horizon_seconds,
         is_partial_poll,
         is_counted_poll
@@ -26,6 +27,7 @@ poll_sets as (
         period_start,
         retrieved_at,
         forecast,
+        intensity_index,
         horizon_seconds
     from slot_polls
     where is_counted_poll
@@ -37,6 +39,7 @@ poll_sets as (
         period_start,
         retrieved_at,
         forecast,
+        intensity_index,
         horizon_seconds
     from slot_polls
     where not is_partial_poll
@@ -48,6 +51,7 @@ poll_sets as (
         period_start,
         retrieved_at,
         forecast,
+        intensity_index,
         horizon_seconds
     from slot_polls
 ),
@@ -63,6 +67,10 @@ trajectories as (
         min(horizon_seconds) filter (where horizon_seconds >= 0)
             as final_horizon_seconds,
         (array_agg(forecast order by horizon_seconds desc))[1] as first_forecast,
+        -- The same poll as first_forecast. A poll with no band keeps none:
+        -- a later poll's band is never used instead.
+        (array_agg(intensity_index order by horizon_seconds desc))[1]
+            as first_intensity_index,
         (
             array_agg(forecast order by abs(horizon_seconds - 24 * 3600), retrieved_at)
                 filter (where abs(horizon_seconds - 24 * 3600) <= 1800)
@@ -87,6 +95,7 @@ judged_trajectories as (
         first_horizon_seconds,
         final_horizon_seconds,
         first_forecast,
+        first_intensity_index,
         forecast_24h,
         forecast_4h,
         final_forecast,
@@ -108,6 +117,7 @@ select
     round(reading_rule.first_horizon_seconds / 3600, 4) as first_horizon_hours,
     round(reading_rule.final_horizon_seconds / 3600, 4) as final_horizon_hours,
     reading_rule.first_forecast,
+    reading_rule.first_intensity_index,
     reading_rule.forecast_24h,
     reading_rule.forecast_4h,
     reading_rule.final_forecast,

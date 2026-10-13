@@ -8,6 +8,7 @@ select
     forecasts.period_start,
     outturn.actual,
     forecasts.first_forecast,
+    forecasts.first_intensity_index,
     forecasts.forecast_24h,
     forecasts.forecast_4h,
     forecasts.final_forecast,

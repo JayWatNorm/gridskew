@@ -9,6 +9,7 @@ with forecasts as (
         period_start,
         retrieved_at,
         forecast,
+        intensity_index,
         extract(epoch from (period_start - retrieved_at))::numeric
             as horizon_seconds
     from {{ ref('stg_carbon_intensity__forecast') }}
@@ -121,6 +122,7 @@ select
     forecasts.period_start,
     forecasts.retrieved_at,
     forecasts.forecast,
+    forecasts.intensity_index,
     -- The rule reads the exact seconds. The rounded hours are for people.
     forecasts.horizon_seconds,
     round(forecasts.horizon_seconds / 3600, 4) as horizon_hours,

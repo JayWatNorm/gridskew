@@ -68,12 +68,17 @@ forecast.
   directional drift.
 - **Sensitivity check:** the same verdict as published. If the two differ, the
   result is "not robust to frozen polls" and no direction is reported.
+- **Secondary splits:** the same median drift and positive share, with n,
+  in four time-of-day blocks (UTC start) and by the source's band on the
+  poll that gave the first forecast (no band counts as unclassified).
+  They are described, not tested.
 - **One look.** `dbt/analyses/q1_forecast_drift_population.sql` counts the
   population without reading a forecast value and can run on any day.
   `dbt/analyses/q1_forecast_drift_verdict.sql` runs once, when the population
-  reaches 2,880; before then it returns the count and no result. Both take
-  the `analysis_read_until` variable, the last half-hour start they read, so
-  the look can be repeated on the same half-hours.
+  reaches 2,880; before then it returns the count and no result.
+  `dbt/analyses/q1_forecast_drift_splits.sql` runs in the same look. All
+  three take the `analysis_read_until` variable, the last half-hour start
+  they read, so the look can be repeated on the same half-hours.
 
 ## Where the models run
 
