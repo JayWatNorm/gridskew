@@ -11,6 +11,14 @@ holds schedules according to the selected activation mode. GridSkew's `dags/`,
 `ingestion/` and `dbt/` directories are mounted into Airflow from the
 GridSkew checkout, so a DAG change needs only a GridSkew commit.
 
+A new database needs two steps before the nightly dbt job can run. The
+database owner runs `sql/provision/001_bmu_snapshot_schema.sql`, which
+creates the `dbt_dev` and `dbt_dev_snapshots` schemas and grants the
+`gridskew_dbt` role what it needs, and the project is built once with
+`dbt build`, as CI does. The nightly job's first step tests the staged
+B1610 data and its run hook writes to `dbt_dev.dbt_node_results`, so on an
+empty database it fails before it creates anything.
+
 This page is the CD overview. Host SQL, Airflow pool prerequisites, workflow
 inputs, observed rollout checks and recovery are documented in
 `homelab-platform/docs/gridskew-release.md` in the platform checkout.

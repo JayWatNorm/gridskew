@@ -11,16 +11,53 @@ FINISHED_AT = datetime(2026, 10, 9, 2, 41, tzinfo=timezone.utc)
 
 
 @pytest.fixture
-def nightly(monkeypatch):
-    connection = SimpleNamespace(
-        host="postgres",
-        port=5432,
-        schema="gridskew_prod",
-        login="gridskew_dbt",
-        password="test-only",
-    )
-    connections = {"gridskew_prod": connection, "gridskew_dbt": connection}
+def connections():
+    return {
+        "gridskew_prod": SimpleNamespace(
+            host="postgres",
+            port=5432,
+            schema="gridskew_prod",
+            login="raw_writer",
+            password="test-only-raw",
+        ),
+        "gridskew_dbt": SimpleNamespace(
+            host="postgres",
+            port=5432,
+            schema="gridskew_prod",
+            login="gridskew_dbt",
+            password="test-only",
+        ),
+    }
+
+
+@pytest.fixture
+def nightly(monkeypatch, connections):
     return load_dag_file(monkeypatch, "gridskew__dbt_nightly_dag.py", connections)
+
+
+@pytest.mark.parametrize(
+    "field,value,refusal",
+    [
+        ("schema", "gridskew_dev", "production database"),
+        ("host", "other", "production database"),
+        ("port", 5433, "production database"),
+        ("login", None, "user and password"),
+        ("password", None, "user and password"),
+    ],
+)
+def test_rejects_a_dbt_connection_it_cannot_trust(
+    nightly, connections, field, value, refusal
+):
+    setattr(connections["gridskew_dbt"], field, value)
+    with pytest.raises(RuntimeError, match=refusal):
+        nightly["dbt_environment"]("/tmp/nightly", "manual__1")
+
+
+def test_rejects_connections_that_name_no_database(nightly, connections):
+    connections["gridskew_prod"].schema = None
+    connections["gridskew_dbt"].schema = None
+    with pytest.raises(RuntimeError, match="production database"):
+        nightly["dbt_environment"]("/tmp/nightly", "manual__1")
 
 
 @pytest.fixture

@@ -53,10 +53,26 @@ def test_two_runs_log_to_two_folders(dag_helpers):
     assert scheduled["DBT_LOG_PATH"] != manual["DBT_LOG_PATH"]
 
 
-@pytest.mark.parametrize("field,value", [("host", "other"), ("schema", "gridskew_dev")])
-def test_rejects_dbt_connection_outside_production(
-    dag_helpers, connections, field, value
+@pytest.mark.parametrize(
+    "field,value,refusal",
+    [
+        ("schema", "gridskew_dev", "production database"),
+        ("host", "other", "production database"),
+        ("port", 5433, "production database"),
+        ("login", None, "user and password"),
+        ("password", None, "user and password"),
+    ],
+)
+def test_rejects_a_dbt_connection_it_cannot_trust(
+    dag_helpers, connections, field, value, refusal
 ):
     setattr(connections["gridskew_dbt"], field, value)
+    with pytest.raises(RuntimeError, match=refusal):
+        dag_helpers["dbt_environment"]("/tmp/bmunits", "manual__1")
+
+
+def test_rejects_connections_that_name_no_database(dag_helpers, connections):
+    connections["gridskew_prod"].schema = None
+    connections["gridskew_dbt"].schema = None
     with pytest.raises(RuntimeError, match="production database"):
         dag_helpers["dbt_environment"]("/tmp/bmunits", "manual__1")
