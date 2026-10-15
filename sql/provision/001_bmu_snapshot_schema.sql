@@ -6,6 +6,8 @@
 
 BEGIN;
 
+-- A new database has neither dbt schema yet.
+CREATE SCHEMA IF NOT EXISTS dbt_dev;
 SELECT format('CREATE SCHEMA IF NOT EXISTS %I', :'snapshot_schema') \gexec
 SELECT format(
     'GRANT USAGE, CREATE ON SCHEMA %I TO %I',

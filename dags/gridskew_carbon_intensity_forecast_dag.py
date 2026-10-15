@@ -8,6 +8,25 @@ from airflow.decorators import dag, task
 # The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 
+# int_carbon_forecast__revisions counts the first poll of each UTC half-hour.
+POLL_SLOT_MINUTES = 30
+
+
+def slot_start(moment):
+    return moment.replace(
+        minute=moment.minute - moment.minute % POLL_SLOT_MINUTES,
+        second=0,
+        microsecond=0,
+    )
+
+
+def is_past_its_slot(scheduled_at, now):
+    """A late or cleared run would store today's forecast in a later slot."""
+
+    return slot_start(now.astimezone(timezone.utc)) > slot_start(
+        scheduled_at.astimezone(timezone.utc)
+    )
+
 
 @dag(
     dag_id="gridskew_carbon_intensity",
@@ -30,8 +49,23 @@ def gridskew_carbon_intensity_dag():
     # Airflow 2.10 evaluates the SLA from the scheduled logical date, so 35
     # minutes still allows five minutes for completion after the run is due.
     @task(sla=timedelta(minutes=35))
-    def poll_forecast():
+    def poll_forecast(dag_run=None, data_interval_end=None):
+        from airflow.exceptions import AirflowSkipException
         from airflow.hooks.base import BaseHook
+
+        # The archive counts the first poll of each half-hour, so only a
+        # scheduled run in its own slot may poll: a manual poll could take
+        # the slot's place, and a re-run cannot fetch the forecast it missed.
+        if dag_run is None or dag_run.run_type != "scheduled":
+            raise AirflowSkipException(
+                "Only a scheduled forecast run may poll: a manual run would "
+                "displace the slot's scheduled poll"
+            )
+        if is_past_its_slot(data_interval_end, datetime.now(timezone.utc)):
+            raise AirflowSkipException(
+                "Past its half-hour slot: a late or cleared forecast run "
+                "cannot recover the poll it missed"
+            )
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.carbon_intensity.forecast_poller import run

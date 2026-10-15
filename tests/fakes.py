@@ -34,6 +34,7 @@ def load_dag_file(monkeypatch, file_name, connections=None):
     base.BaseHook = SimpleNamespace(get_connection=get_connection)
     exceptions = ModuleType("airflow.exceptions")
     exceptions.AirflowFailException = FakeAirflowFailException
+    exceptions.AirflowSkipException = FakeAirflowSkipException
     timetables = ModuleType("airflow.timetables")
     timetables.__path__ = []
     events = ModuleType("airflow.timetables.events")
@@ -61,6 +62,10 @@ DECORATED_FUNCTIONS = {}
 
 class FakeAirflowFailException(Exception):
     """Stands in for Airflow's exception that fails a task without a retry."""
+
+
+class FakeAirflowSkipException(Exception):
+    """Stands in for Airflow's exception that marks a task skipped."""
 
 
 def replace_with_do_nothing(**settings):
