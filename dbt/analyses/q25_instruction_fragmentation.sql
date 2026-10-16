@@ -134,33 +134,74 @@ chains as (
     group by national_grid_bm_unit, chain_number, fuel_group
 ),
 
--- 12.1: settlement periods start on UTC half-hours, so k's period starts at
--- its acceptance time binned to 30 minutes.
-related_windows as (
+-- 12.1: settlement periods start on UTC half-hours, so the period an
+-- acceptance was issued in is its acceptance time binned to 30 minutes, and
+-- k's related acceptances are those issued from the start of the period
+-- three before k's to and including the end of the period three after it.
+-- Joining on the period (one row of k per period offset) finds exactly
+-- those, without comparing every pair in a long chain.
+issued_periods as (
     select
         national_grid_bm_unit,
         acceptance_number,
         chain_number,
+        acceptance_time,
+        span_from,
+        span_to,
         date_bin(interval '30 minutes', acceptance_time, timestamptz '2000-01-01 00:00:00+00')
-            - interval '90 minutes' as related_from,
-        date_bin(interval '30 minutes', acceptance_time, timestamptz '2000-01-01 00:00:00+00')
-            + interval '120 minutes' as related_to
+            as issued_period
     from chain_members
 ),
 
-related as (
+-- An acceptance issued exactly on a half-hour boundary is also at the end
+-- spot time of the period before, which 12.1 includes.
+member_periods as (
     select
+        national_grid_bm_unit,
+        acceptance_number,
+        chain_number,
+        span_from,
+        span_to,
+        issued_period as member_period
+    from issued_periods
+
+    union all
+
+    select
+        national_grid_bm_unit,
+        acceptance_number,
+        chain_number,
+        span_from,
+        span_to,
+        issued_period - interval '30 minutes'
+    from issued_periods
+    where acceptance_time = issued_period
+),
+
+-- Materialised so the planner joins on the period rather than on the chain
+-- alone (which compares every pair in a long chain).
+related_periods as materialized (
+    select
+        issued_periods.national_grid_bm_unit,
+        issued_periods.acceptance_number,
+        issued_periods.chain_number,
+        issued_periods.issued_period + period_offset * interval '30 minutes' as related_period
+    from issued_periods
+    cross join generate_series(-3, 3) as period_offset
+),
+
+related as (
+    select distinct
         windows.national_grid_bm_unit,
         windows.acceptance_number as k_number,
         members.acceptance_number as related_number,
         members.span_from,
         members.span_to
-    from related_windows as windows
-    inner join chain_members as members
+    from related_periods as windows
+    inner join member_periods as members
         on windows.national_grid_bm_unit = members.national_grid_bm_unit
         and windows.chain_number = members.chain_number
-        and members.acceptance_time >= windows.related_from
-        and members.acceptance_time < windows.related_to
+        and windows.related_period = members.member_period
 ),
 
 related_ordered as (
