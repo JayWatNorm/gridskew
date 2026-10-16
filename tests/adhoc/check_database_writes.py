@@ -20,6 +20,7 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import patch
 
 import psycopg2
 
@@ -27,6 +28,7 @@ from ingestion.carbon_intensity.forecast_poller import load as load_forecast
 from ingestion.carbon_intensity.forecast_poller import parse as parse_forecast
 from ingestion.carbon_intensity.outturn_poller import load as load_outturn
 from ingestion.carbon_intensity.outturn_poller import parse as parse_outturn
+from ingestion.elexon import qas_poller
 from ingestion.elexon.b1610_poller import (
     decimal_json_dumps,
     recent_unit_count,
@@ -46,7 +48,7 @@ from ingestion.elexon.remit_poller import (
     quarantined_row_count,
 )
 from ingestion.elexon.remit_poller import parse as parse_remit
-from ingestion.routing import quarantine_rows
+from ingestion.routing import ContractRejected, quarantine_rows
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 # A capture time no fixture uses, so every row this check writes is its own.
@@ -54,6 +56,7 @@ CHECK_CAPTURE = datetime(2000, 1, 1, tzinfo=timezone.utc)
 CHECK_CONTEXT = {"source": "ci_read_back"}
 B1610_DATE = date(2025, 1, 10)
 B1610_UNIT_PREFIX = "CI_RB_"
+QAS_REJECT_DATE = date(2025, 1, 10)
 
 # The columns in the order each parser builds its tuples.
 PN_COLUMNS = (
@@ -104,6 +107,14 @@ REMIT_COLUMNS = (
     "event_start_time",
     "event_end_time",
     "payload",
+    "retrieved_at",
+)
+QAS_COLUMNS = (
+    "settlement_date",
+    "settlement_period",
+    "national_grid_bm_unit",
+    "bm_unit",
+    "bm_unit_applicable_balancing_services_volume",
     "retrieved_at",
 )
 B1610_COLUMNS = (
@@ -424,6 +435,80 @@ def check_b1610_keeps_the_first_capture(writer, reader):
     assert stored == expected, (stored, expected)
 
 
+def check_qas_captures(writer, reader):
+    """Every QAS value reads back from its own column, and a second capture of
+    the same date is kept beside the first."""
+
+    source_rows = json.loads(
+        (FIXTURES_DIR / "elexon/qas_volumes.json").read_text(encoding="utf-8"),
+        parse_float=Decimal,
+    )["data"]
+    first = qas_poller.parse(source_rows, CHECK_CAPTURE)
+    second = qas_poller.parse(source_rows, CHECK_CAPTURE + timedelta(days=1))
+    qas_poller.load(first, writer)
+    qas_poller.load(second, writer)
+
+    expected = {}
+    for parsed_row in [*first, *second]:
+        named = dict(zip(QAS_COLUMNS, parsed_row, strict=True))
+        expected[tuple(parsed_row[:3]) + (named["retrieved_at"],)] = named
+    stored = {}
+    with reader.cursor() as cursor:
+        cursor.execute(
+            f"SELECT {', '.join(QAS_COLUMNS)} FROM raw.elexon_qas "
+            "WHERE retrieved_at IN (%s, %s)",
+            (CHECK_CAPTURE, CHECK_CAPTURE + timedelta(days=1)),
+        )
+        for row in cursor.fetchall():
+            named = dict(zip(QAS_COLUMNS, row, strict=True))
+            stored[tuple(row[:3]) + (named["retrieved_at"],)] = named
+    reader.commit()
+    assert stored == expected, "raw.elexon_qas: stored rows differ from the parsed rows"
+
+
+def check_qas_rejected_row_loads_nothing(writer, reader):
+    """One rejected row beside Decimal volumes is quarantined with its exact
+    digits, and no row of its date is loaded."""
+
+    rows = []
+    for period in range(1, 49):
+        rows.append(
+            {
+                "settlementDate": QAS_REJECT_DATE.isoformat(),
+                "settlementPeriod": period,
+                "bmUnitApplicableBalancingServicesVolume": Decimal("0.250"),
+                "nationalGridBmUnit": "CI_RB_QAS-1",
+                "bmUnit": "T_CI_RB_QAS-1",
+                "time": "2025-01-10T00:00:00Z",
+            }
+        )
+    rows[6]["nationalGridBmUnit"] = None
+    rows[6]["bmUnitApplicableBalancingServicesVolume"] = Decimal("-1.500")
+
+    with patch.object(qas_poller, "fetch", return_value={"data": rows}):
+        try:
+            qas_poller.run(writer, QAS_REJECT_DATE)
+        except ContractRejected:
+            pass
+        else:
+            raise AssertionError("a rejected QAS row did not fail the capture")
+
+    loaded = read_one_row(
+        reader,
+        "SELECT count(*) AS loaded FROM raw.elexon_qas WHERE settlement_date = %s",
+        (QAS_REJECT_DATE,),
+    )
+    assert loaded["loaded"] == 0, loaded
+    quarantined = read_one_row(
+        reader,
+        "SELECT payload ->> 'bmUnitApplicableBalancingServicesVolume' AS volume "
+        "FROM raw.endpoint_quarantine "
+        "WHERE dataset = 'QAS' AND request_context ->> 'settlementDate' = %s",
+        (QAS_REJECT_DATE.isoformat(),),
+    )
+    assert quarantined["volume"] == "-1.500", quarantined
+
+
 def delete_check_rows(writer):
     with writer.cursor() as cursor:
         cursor.execute(
@@ -452,6 +537,15 @@ def delete_check_rows(writer):
                 f"DELETE FROM {table} WHERE retrieved_at = %s", (CHECK_CAPTURE,)
             )
         cursor.execute("DELETE FROM raw.elexon_remit WHERE mrid LIKE 'CI-RB-NEWEST-%'")
+        cursor.execute(
+            "DELETE FROM raw.elexon_qas WHERE retrieved_at IN (%s, %s)",
+            (CHECK_CAPTURE, CHECK_CAPTURE + timedelta(days=1)),
+        )
+        cursor.execute(
+            "DELETE FROM raw.endpoint_quarantine WHERE dataset = 'QAS' "
+            "AND request_context ->> 'settlementDate' = %s",
+            (QAS_REJECT_DATE.isoformat(),),
+        )
     writer.commit()
 
 
@@ -475,6 +569,8 @@ def main():
         check_b1610_coverage_and_unit_baseline(writer)
         check_b1610_keeps_the_first_capture(writer, reader)
         check_remit_window_ignores_a_future_dated_message(writer)
+        check_qas_captures(writer, reader)
+        check_qas_rejected_row_loads_nothing(writer, reader)
         pn_key = ("national_grid_bm_unit", "time_from", "retrieved_at")
         check_elexon_load(
             writer,

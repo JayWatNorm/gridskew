@@ -132,6 +132,26 @@ models:
                 severity: warn
       - name: retrieved_at
         description: When this poll ran. Part of the key.
+  - name: stg_elexon__qas
+    description: >
+      One row per unit, settlement period and capture of balancing services
+      volume (QAS, ABSVD). Every capture is kept; int_shortfall_by_unit_period
+      reads each unit-period from the latest capture that holds it.
+    columns:
+      - name: national_grid_bm_unit
+        description: National Grid identifier. Never null. Part of the key
+      - name: bm_unit
+        description: Elexon identifier
+      - name: settlement_date
+        description: British local time. Part of the key
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50. Part of the key
+      - name: qas_mwh
+        description: >
+          The source's bmUnitApplicableBalancingServicesVolume, MWh. Settlement
+          adds it to the expected volume
+      - name: retrieved_at
+        description: When this capture ran. Part of the key
   - name: stg_elexon__qpn
     description: >
       One row per declared QPN segment, per unit, per poll. QPN segment

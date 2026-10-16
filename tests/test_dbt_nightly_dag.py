@@ -181,6 +181,9 @@ def test_changed_models_below_a_period_table_need_a_full_refresh(
     assert command[command.index("--state") + 1] == str(tmp_path)
     assert "state:modified+,int_shortfall_by_unit_period+" in command
     assert "state:modified+,int_elexon__bm_unit_cohort+" in command
+    # A new staging view above a period table is built by the full refresh only
+    # when it is listed here.
+    assert "state:modified+,stg_elexon__qas+" in command
 
 
 def test_a_full_refresh_rebuilds_only_what_changed(nightly):

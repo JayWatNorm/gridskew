@@ -160,3 +160,30 @@ def test_process_rows_does_not_change_source_rows():
         )
 
     assert rows == original_rows
+
+
+def test_process_rows_loads_nothing_from_a_batch_with_a_rejected_row_when_asked():
+    valid_row = make_source_row()
+    rejected_row = deepcopy(valid_row)
+    del rejected_row["intensity"]["forecast"]
+    parse_rows = Mock()
+    load_rows = Mock()
+
+    with patch("ingestion.routing.quarantine_rows") as mock_quarantine:
+        rejected_count = process_rows(
+            [valid_row, rejected_row],
+            spec=FORECAST_SPEC,
+            dataset="CI_Forecast",
+            conn=Mock(),
+            retrieved_at=RETRIEVED_AT,
+            request_context=REQUEST_CONTEXT,
+            parse_rows=parse_rows,
+            load_rows=load_rows,
+            load_all_or_none=True,
+        )
+
+    assert rejected_count == 1
+    (rejected_finding,) = mock_quarantine.call_args.args[0]
+    assert rejected_finding["row"] == rejected_row
+    parse_rows.assert_not_called()
+    load_rows.assert_not_called()

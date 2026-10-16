@@ -1,0 +1,225 @@
+{
+  "metadata": {
+    "datasets": [
+      "QAS"
+    ]
+  },
+  "data": [
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 40,
+      "bmUnitApplicableBalancingServicesVolume": -0.002,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T18:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 41,
+      "bmUnitApplicableBalancingServicesVolume": 0.000,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T19:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 42,
+      "bmUnitApplicableBalancingServicesVolume": 0.013,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T19:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 43,
+      "bmUnitApplicableBalancingServicesVolume": 0.005,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T20:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 44,
+      "bmUnitApplicableBalancingServicesVolume": -0.001,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T20:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 45,
+      "bmUnitApplicableBalancingServicesVolume": -0.008,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T21:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 46,
+      "bmUnitApplicableBalancingServicesVolume": 0.017,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T21:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 47,
+      "bmUnitApplicableBalancingServicesVolume": 0.002,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T22:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 48,
+      "bmUnitApplicableBalancingServicesVolume": 0.017,
+      "nationalGridBmUnit": "AG-FLX00L",
+      "bmUnit": "V__LFLEX001",
+      "time": "2026-10-01T22:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 40,
+      "bmUnitApplicableBalancingServicesVolume": 0.006,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T18:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 41,
+      "bmUnitApplicableBalancingServicesVolume": 0.052,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T19:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 42,
+      "bmUnitApplicableBalancingServicesVolume": 0.849,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T19:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 43,
+      "bmUnitApplicableBalancingServicesVolume": 0.307,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T20:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 44,
+      "bmUnitApplicableBalancingServicesVolume": 0.009,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T20:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 45,
+      "bmUnitApplicableBalancingServicesVolume": -0.764,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T21:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 46,
+      "bmUnitApplicableBalancingServicesVolume": 0.721,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T21:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 47,
+      "bmUnitApplicableBalancingServicesVolume": -0.135,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T22:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 48,
+      "bmUnitApplicableBalancingServicesVolume": -0.019,
+      "nationalGridBmUnit": "FCAM01",
+      "bmUnit": "2__FCMRO004",
+      "time": "2026-10-01T22:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 40,
+      "bmUnitApplicableBalancingServicesVolume": -0.003,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T18:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 41,
+      "bmUnitApplicableBalancingServicesVolume": 0.034,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T19:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 42,
+      "bmUnitApplicableBalancingServicesVolume": 0.246,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T19:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 43,
+      "bmUnitApplicableBalancingServicesVolume": 0.114,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T20:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 44,
+      "bmUnitApplicableBalancingServicesVolume": 0.000,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T20:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 45,
+      "bmUnitApplicableBalancingServicesVolume": -0.074,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T21:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 46,
+      "bmUnitApplicableBalancingServicesVolume": 0.307,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T21:30:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 47,
+      "bmUnitApplicableBalancingServicesVolume": 0.091,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T22:00:00Z"
+    },
+    {
+      "settlementDate": "2026-10-01",
+      "settlementPeriod": 48,
+      "bmUnitApplicableBalancingServicesVolume": 0.334,
+      "nationalGridBmUnit": "NURSB-1",
+      "bmUnit": "T_NURSB-1",
+      "time": "2026-10-01T22:30:00Z"
+    }
+  ]
+}

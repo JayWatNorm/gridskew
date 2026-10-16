@@ -11,6 +11,7 @@ from ingestion.elexon.contracts import (
     BM_UNITS_SPEC,
     BOALF_SPEC,
     PN_SPEC,
+    QAS_SPEC,
     QPN_SPEC,
 )
 from ingestion.validation import validate_row, validate_rows
@@ -147,6 +148,15 @@ def test_b1610_fixture_matches_its_contract():
     assert_fixture_matches_contract(
         "elexon/b1610_stream.json",
         B1610_SPEC,
+        preserve_decimals=True,
+    )
+
+
+def test_qas_fixture_matches_its_contract():
+    assert_fixture_matches_contract(
+        "elexon/qas_volumes.json",
+        QAS_SPEC,
+        data_envelope=True,
         preserve_decimals=True,
     )
 
