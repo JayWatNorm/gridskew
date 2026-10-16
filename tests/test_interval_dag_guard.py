@@ -8,6 +8,9 @@ INTERVAL_DAGS = [
     ("gridskew_elexon_pn", "poll_pn"),
     ("gridskew_elexon_qpn", "poll_qpn"),
     ("gridskew_elexon_boalf", "poll_boalf"),
+    ("gridskew_elexon_qas", "capture_14_days"),
+    ("gridskew_elexon_qas", "capture_35_days"),
+    ("gridskew_elexon_qas", "capture_450_days"),
 ]
 
 

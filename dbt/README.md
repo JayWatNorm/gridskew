@@ -198,6 +198,11 @@ acceptance that crosses midnight arrives in two daily polls. No model yet
 chooses the current row of a REMIT notice. The nightly job runs the data
 tests of these views; no scheduled job builds them.
 
+`stg_elexon__qas` is a source-grain view of ABSVD (QAS).
+`int_shortfall_by_unit_period` carries `absvd_mwh`, from the latest capture
+that holds each unit-period, and `unexplained_after_absvd_mwh`, which adds
+it to the unexplained energy as Settlement adds QAS to the expected volume.
+
 ## Shortfall
 
 Two private incremental tables in the `analysis` group answer how far a

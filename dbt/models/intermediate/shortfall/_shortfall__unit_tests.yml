@@ -90,6 +90,10 @@ unit_tests:
           T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,41,SF,2026-01-21 00:00:00+00,41,SF,2026-01-21 00:00:00+00
           T_G,2026-01-15,21,2026-01-15 10:00:00+00,mapped,G,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
           T_H,2026-01-15,21,2026-01-15 10:00:00+00,mapped,H,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
+      - input: ref('stg_elexon__qas')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,qas_mwh,retrieved_at
       - input: ref('int_elexon__instruction_intervals')
         format: csv
         rows: |
@@ -109,3 +113,148 @@ unit_tests:
         F,nuclear,uninstructed,0,,50.000000,41,9.000000,9.000000,0.000000,2,ambiguous_metered,2026-01-23 00:00:00+00
         G,wind,fully_instructed,1800,13.333333,20.000000,20,0.000000,,,1,determinable,2026-01-20 00:00:00+00
         H,wind,partially_instructed,600,,,20,,,,1,pn_invalid,2026-01-20 00:00:00+00
+
+  - name: test_shortfall_absvd_latest_capture_per_unit_period
+    description: >
+      QAS for 14 January was captured twice (16 and 30 January); 15 January
+      never. Q1 period 21 takes the later value (4.125), and period 22 the
+      later of two values (6.5). Q4 period 22 is only in the earlier capture
+      and keeps it (-1.25); Q4 period 21 is in both, unchanged. Q2 has no row
+      in either capture of a captured date: 0. Q3's date was never captured:
+      null, and so is unexplained_after_absvd_mwh. Q2 period 22 has no
+      metered value, so ABSVD is 0 but nothing is left to explain.
+      unexplained_after_absvd_mwh adds ABSVD to the unexplained energy, as
+      Settlement adds QAS to the expected volume. Rows of the 14th carry the
+      date's latest capture time.
+    model: int_shortfall_by_unit_period
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('int_elexon__bm_unit_cohort')
+        format: csv
+        rows: |
+          national_grid_bm_unit,elexon_bm_unit,fuel_type,fuel_group
+          Q1,T_Q1,PS,other
+          Q2,T_Q2,PS,other
+          Q3,T_Q3,PS,other
+          Q4,T_Q4,CCGT,gas_turbine
+      - input: ref('fct_commitments')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at,last_captured_at
+          Q1,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q1,2026-01-14,22,2026-01-14 10:30:00+00,40,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q2,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q2,2026-01-14,22,2026-01-14 10:30:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q3,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q4,2026-01-14,21,2026-01-14 10:00:00+00,30,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q4,2026-01-14,22,2026-01-14 10:30:00+00,30,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+      - input: ref('stg_elexon__pn')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
+      - input: ref('fct_generation')
+        format: csv
+        rows: |
+          bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code,last_captured_at
+          T_Q1,2026-01-14,21,2026-01-14 10:00:00+00,mapped,Q1,45,SF,2026-01-20 00:00:00+00,45,SF,2026-01-20 00:00:00+00
+          T_Q1,2026-01-14,22,2026-01-14 10:30:00+00,mapped,Q1,44,SF,2026-01-20 00:00:00+00,44,SF,2026-01-20 00:00:00+00
+          T_Q2,2026-01-14,21,2026-01-14 10:00:00+00,mapped,Q2,45,SF,2026-01-20 00:00:00+00,45,SF,2026-01-20 00:00:00+00
+          T_Q3,2026-01-15,21,2026-01-15 10:00:00+00,mapped,Q3,45,SF,2026-01-20 00:00:00+00,45,SF,2026-01-20 00:00:00+00
+          T_Q4,2026-01-14,21,2026-01-14 10:00:00+00,mapped,Q4,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
+          T_Q4,2026-01-14,22,2026-01-14 10:30:00+00,mapped,Q4,33,SF,2026-01-20 00:00:00+00,33,SF,2026-01-20 00:00:00+00
+      - input: ref('int_elexon__instruction_intervals')
+        format: csv
+        rows: |
+          national_grid_bm_unit,period_start_utc,interval_from,interval_to,acceptance_number,acceptance_time,so_flag,instructed_mwh,last_captured_at
+      - input: ref('stg_elexon__qas')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,qas_mwh,retrieved_at
+          Q1,2026-01-14,21,2.5,2026-01-16 00:00:00+00
+          Q1,2026-01-14,22,3.5,2026-01-16 00:00:00+00
+          Q4,2026-01-14,21,7.75,2026-01-16 00:00:00+00
+          Q4,2026-01-14,22,-1.25,2026-01-16 00:00:00+00
+          Q1,2026-01-14,21,4.125,2026-01-30 00:00:00+00
+          Q1,2026-01-14,22,6.5,2026-01-30 00:00:00+00
+          Q4,2026-01-14,21,7.75,2026-01-30 00:00:00+00
+          Q3,2026-01-16,21,11,2026-01-30 00:00:00+00
+    # dbt compares numbers as text: the rounded energies carry six decimals.
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,settlement_date,settlement_period,unexplained_shortfall_mwh,absvd_mwh,unexplained_after_absvd_mwh,last_captured_at
+        Q1,2026-01-14,21,5.000000,4.125000,9.125000,2026-01-30 00:00:00+00
+        Q1,2026-01-14,22,-4.000000,6.500000,2.500000,2026-01-30 00:00:00+00
+        Q2,2026-01-14,21,5.000000,0.000000,5.000000,2026-01-30 00:00:00+00
+        Q2,2026-01-14,22,,0.000000,,2026-01-30 00:00:00+00
+        Q3,2026-01-15,21,5.000000,,,2026-01-20 00:00:00+00
+        Q4,2026-01-14,21,10.000000,7.750000,17.750000,2026-01-30 00:00:00+00
+        Q4,2026-01-14,22,-3.000000,-1.250000,-4.250000,2026-01-30 00:00:00+00
+
+  - name: test_shortfall_new_qas_capture_touches_its_whole_date
+    description: >
+      Incremental run with the watermark at 20 January (the margin is three
+      days). Nothing but QAS changed since: a capture of 14 January at
+      30 January touches every cohort unit-period of that date, Q2's with 0;
+      13 January's capture of 12 January is older than the margin, so its
+      rows are not rebuilt. The expected rows are the batch the run inserts.
+    model: int_shortfall_by_unit_period
+    overrides:
+      macros:
+        is_incremental: true
+        capture_watermark: "'2026-01-20 00:00:00+00'::timestamptz"
+        changed_cohort_units: []
+    given:
+      # The run reads the stored table only through the two overridden macros.
+      # SQL, not CSV: a CSV input reads its column types from the table, which
+      # a fresh CI database does not have when unit tests run.
+      - input: this
+        format: sql
+        rows: |
+          select
+              'Q1'::text as national_grid_bm_unit,
+              '2026-01-14'::date as settlement_date,
+              21 as settlement_period,
+              '2026-01-10 00:00:00+00'::timestamptz as last_captured_at
+      - input: ref('int_elexon__bm_unit_cohort')
+        format: csv
+        rows: |
+          national_grid_bm_unit,elexon_bm_unit,fuel_type,fuel_group
+          Q1,T_Q1,PS,other
+          Q2,T_Q2,PS,other
+      - input: ref('fct_commitments')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at,last_captured_at
+          Q1,2026-01-13,21,2026-01-13 10:00:00+00,50,complete,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
+          Q1,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
+          Q2,2026-01-14,21,2026-01-14 10:00:00+00,40,complete,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
+      - input: ref('stg_elexon__pn')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
+      - input: ref('fct_generation')
+        format: csv
+        rows: |
+          bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code,last_captured_at
+          T_Q1,2026-01-13,21,2026-01-13 10:00:00+00,mapped,Q1,45,SF,2026-01-10 00:00:00+00,45,SF,2026-01-10 00:00:00+00
+          T_Q1,2026-01-14,21,2026-01-14 10:00:00+00,mapped,Q1,45,SF,2026-01-10 00:00:00+00,45,SF,2026-01-10 00:00:00+00
+          T_Q2,2026-01-14,21,2026-01-14 10:00:00+00,mapped,Q2,37,SF,2026-01-10 00:00:00+00,37,SF,2026-01-10 00:00:00+00
+      - input: ref('int_elexon__instruction_intervals')
+        format: csv
+        rows: |
+          national_grid_bm_unit,period_start_utc,interval_from,interval_to,acceptance_number,acceptance_time,so_flag,instructed_mwh,last_captured_at
+      - input: ref('stg_elexon__qas')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,qas_mwh,retrieved_at
+          Q1,2026-01-13,21,2.5,2026-01-12 00:00:00+00
+          Q1,2026-01-14,21,1.75,2026-01-30 00:00:00+00
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,settlement_date,settlement_period,absvd_mwh,unexplained_after_absvd_mwh,last_captured_at
+        Q1,2026-01-14,21,1.750000,6.750000,2026-01-30 00:00:00+00
+        Q2,2026-01-14,21,0.000000,3.000000,2026-01-30 00:00:00+00

@@ -4,7 +4,7 @@ Loads small, controlled raw rows, runs the real dbt models and asserts the
 acceptance matrix: the incremental period tables recompute
 only touched unit-periods and equal a full refresh; the fact views show
 current registry evidence; the shortfall tables follow acceptances, registry
-changes and late settlement runs and equal a full refresh. It mutates the target database, so it refuses to
+changes, late settlement runs and ABSVD captures and equal a full refresh. It mutates the target database, so it refuses to
 run unless explicitly pointed at a local disposable gridskew_dev. The raw
 tables must exist first: apply sql/migrations to the empty database.
 
@@ -614,13 +614,27 @@ def insert_boalf(conn, captures):
             )
 
 
+def insert_qas(conn, captures):
+    """Each capture: (retrieved_at, [(unit, date, period, MWh)])."""
+    for retrieved_at, rows in captures:
+        for unit, settlement_date, period, volume in rows:
+            execute(
+                conn,
+                "INSERT INTO raw.elexon_qas (settlement_date, settlement_period, "
+                "national_grid_bm_unit, bm_unit, "
+                "bm_unit_applicable_balancing_services_volume, retrieved_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (settlement_date, period, unit, None, Decimal(volume), retrieved_at),
+            )
+
+
 def shortfall(conn):
     rows = fetch(
         conn,
         "SELECT national_grid_bm_unit, settlement_date, settlement_period, "
         "fuel_group, instruction_status, instructed_seconds, expected_mwh, "
         "metered_mwh, metered_run_code, unexplained_shortfall_mwh, determinability, "
-        "last_captured_at "
+        "last_captured_at, absvd_mwh, unexplained_after_absvd_mwh "
         f"FROM {SHORTFALL}",
     )
     return {row[:3]: row[3:] for row in rows}
@@ -697,7 +711,14 @@ def check_shortfall(conn):
     dbt("seed", "--select", "elexon_fuel_codes")
     # The earlier `build +fct_commitments --full-refresh` rebuilt the registry
     # view and so dropped fct_generation; a release recreates the views.
-    dbt("run", "--select", "stg_elexon__boalf", "fct_generation", "fct_commitments")
+    dbt(
+        "run",
+        "--select",
+        "stg_elexon__boalf",
+        "stg_elexon__qas",
+        "fct_generation",
+        "fct_commitments",
+    )
     rebuild_shortfall_tables()
     p1, p2 = ("S6NG_A", AUG10, 1), ("S6NG_A", AUG10, 2)
     rows = shortfall(conn)
@@ -876,9 +897,66 @@ def check_shortfall(conn):
     assert shortfall(conn)[p1][7] == "no_metered_value"
     assert_shortfall_equals_full_refresh(conn)
 
+    check_absvd(conn, p1, p2)
+
     dbt("test", "--select", "assert_shortfall_recent_keys_present")
     dbt("test", "--select", "assert_instruction_intervals_recent_periods_present")
     print("Shortfall tables: all acceptance checks passed")
+
+
+def check_absvd(conn, p1, p2):
+    """ABSVD reaches the rows of a captured date, 0 where no capture holds a
+    unit-period, null on a date never captured; a later capture changes only
+    what it holds; each step touches only the captured date's rows and equals
+    a full refresh."""
+    # (absvd, unexplained after ABSVD) follow (..., last_captured_at).
+    unexplained, absvd, after = 6, 9, 10
+    p3 = ("S6NG_A", AUG10, 3)
+    d1 = ("S6NG_D", AUG10, 1)
+    rows = shortfall(conn)
+    captured_dates = {key[1] for key in rows if rows[key][absvd] is not None}
+    assert captured_dates == set(), "ABSVD before any capture"
+    other_dates = {key[1] for key in rows} - {AUG10}
+    assert other_dates, "the fixtures need a second date to show none is touched"
+
+    # The first capture of 10 August, newer than the watermark. Period 3 of
+    # S6NG_A is determinable; period 1 and S6NG_D's are not.
+    first_capture = T0 + 9 * DAY
+    first_rows = [
+        ("S6NG_A", AUG10, 1, "2.500"),
+        ("S6NG_A", AUG10, 3, "-1.250"),
+        ("S6NG_D", AUG10, 1, "0.750"),
+    ]
+    before = row_versions(conn, SHORTFALL)
+    insert_qas(conn, [(first_capture, first_rows)])
+    build_shortfall_tables()
+    touched = rewritten(before, row_versions(conn, SHORTFALL))
+    assert touched == {key for key in rows if key[1] == AUG10}
+    rows = shortfall(conn)
+    assert rows[p1][absvd] == Decimal("2.5")
+    assert rows[p3][absvd] == Decimal("-1.25")
+    assert rows[d1][absvd] == Decimal("0.75")
+    assert rows[p2][absvd] == Decimal(0)
+    # Settlement adds QAS to the expected volume.
+    assert rows[p3][unexplained] is not None
+    assert rows[p3][after] == rows[p3][unexplained] + Decimal("-1.25")
+    assert rows[d1][unexplained] is None and rows[d1][after] is None
+    assert rows[p1][8] == first_capture
+    for key, row in rows.items():
+        if key[1] != AUG10:
+            assert row[absvd] is None and row[after] is None, key
+    assert_shortfall_equals_full_refresh(conn)
+
+    # A later capture changes S6NG_A period 1 and does not hold period 3 or
+    # S6NG_D's period 1, which keep the values of the capture before.
+    insert_qas(conn, [(first_capture + DAY, [("S6NG_A", AUG10, 1, "3.750")])])
+    build_shortfall_tables()
+    rows = shortfall(conn)
+    assert rows[p1][absvd] == Decimal("3.75")
+    assert rows[p3][absvd] == Decimal("-1.25")
+    assert rows[d1][absvd] == Decimal("0.75")
+    assert rows[p2][absvd] == Decimal(0)
+    assert_shortfall_equals_full_refresh(conn)
 
 
 def check_job_commands_keep_views(conn):
@@ -897,6 +975,7 @@ def check_job_commands_keep_views(conn):
         # The shortfall tables' upstream views; the nightly run builds the
         # tables themselves here, as a full refresh does in production.
         "stg_elexon__boalf",
+        "stg_elexon__qas",
         "int_elexon__bm_unit_cohort",
     )
     views = (

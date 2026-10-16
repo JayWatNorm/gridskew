@@ -28,8 +28,16 @@
 -- means the unit delivered less than expected. Nothing is dropped: a period
 -- that cannot be judged keeps its row and says why in determinability.
 --
+-- ABSVD (QAS: balancing services settled outside the balancing mechanism)
+-- sits beside these columns and changes none of them: Settlement adds it to
+-- the expected volume, so unexplained_after_absvd_mwh adds it to the
+-- unexplained energy. Each unit-period's ABSVD comes from the latest capture
+-- that holds it; a captured date's unit-period that no capture holds has 0,
+-- and a date never captured has null.
+--
 -- Incremental: recompute only unit-periods with a PN, metered or acceptance
--- capture since the stored watermark minus capture_margin, and every period
+-- capture since the stored watermark minus capture_margin, every period of a
+-- settlement date with a QAS capture since then, and every period
 -- of a unit whose fuel type or Elexon ID in the cohort differs from the ones
 -- stored, or that has PN but no rows yet (it joined the cohort). Each source
 -- is insert-only, so this equals a full rebuild while every new row becomes
@@ -97,6 +105,26 @@ touched as (
         and commitments.period_start_utc = intervals.period_start_utc
     where intervals.last_captured_at
         > {{ capture_watermark(this) }} - {{ capture_margin() }}
+
+    union
+
+    -- Every cohort unit-period of a settlement date with a new QAS capture: a
+    -- capture can change any unit of its date, and a date's first capture
+    -- turns every unit's ABSVD from unknown to a value or 0. Unit by unit, so
+    -- the period table's index on unit and settlement date serves the join.
+    select
+        commitments.national_grid_bm_unit,
+        commitments.settlement_date,
+        commitments.settlement_period
+    from cohort
+    cross join (
+        select distinct settlement_date
+        from {{ ref('stg_elexon__qas') }}
+        where retrieved_at > {{ capture_watermark(this) }} - {{ capture_margin() }}
+    ) as captured
+    inner join {{ ref('fct_commitments') }} as commitments
+        on commitments.national_grid_bm_unit = cohort.national_grid_bm_unit
+        and commitments.settlement_date = captured.settlement_date
     {% if changed_units %}
 
     union
@@ -157,6 +185,43 @@ commitments as (
         on commitments.national_grid_bm_unit = cohort.national_grid_bm_unit
 ),
 {% endif %}
+
+-- The settlement dates of the rows being built that QAS has captured, with
+-- the time of each date's latest capture.
+qas_dates as (
+    select
+        qas.settlement_date,
+        max(qas.retrieved_at) as latest_retrieved_at
+    from {{ ref('stg_elexon__qas') }} as qas
+{% if is_incremental() %}
+    where qas.settlement_date in (select settlement_date from commitments)
+{% endif %}
+    group by qas.settlement_date
+),
+
+-- Each unit-period's ABSVD from the latest capture that holds it: a unit
+-- missing from a later capture keeps the value of the one before (nothing
+-- shows yet that a later capture is complete; the resubmission analysis
+-- counts such units).
+qas_latest as (
+    select distinct on (
+        qas.national_grid_bm_unit, qas.settlement_date, qas.settlement_period
+    )
+        qas.national_grid_bm_unit,
+        qas.settlement_date,
+        qas.settlement_period,
+        qas.qas_mwh
+    from {{ ref('stg_elexon__qas') }} as qas
+    inner join commitments
+        on qas.national_grid_bm_unit = commitments.national_grid_bm_unit
+        and qas.settlement_date = commitments.settlement_date
+        and qas.settlement_period = commitments.settlement_period
+    order by
+        qas.national_grid_bm_unit,
+        qas.settlement_date,
+        qas.settlement_period,
+        qas.retrieved_at desc
+),
 
 -- Metered rows are read by the Elexon ID the registry gives the cohort unit
 -- and kept only when the fact view maps them back to the same unit. More
@@ -303,13 +368,21 @@ joined as (
             end,
             6
         ) as expected_mwh,
+        round(
+            case
+                when qas_dates.settlement_date is not null
+                    then coalesce(qas_latest.qas_mwh, 0)
+            end,
+            6
+        ) as absvd_mwh,
         -- The same capture times the touched set filters on, so a
         -- recomputed period's watermark moves past every capture that
         -- touched it (a later capture of a lower-order run included).
         greatest(
             commitments.last_captured_at,
             metered.last_captured_at,
-            instruction.last_captured_at
+            instruction.last_captured_at,
+            qas_dates.latest_retrieved_at
         ) as last_captured_at
     from commitments
     left join metered
@@ -322,6 +395,12 @@ joined as (
     left join pn_inside_intervals
         on commitments.national_grid_bm_unit = pn_inside_intervals.national_grid_bm_unit
         and commitments.period_start_utc = pn_inside_intervals.period_start_utc
+    left join qas_dates
+        on commitments.settlement_date = qas_dates.settlement_date
+    left join qas_latest
+        on commitments.national_grid_bm_unit = qas_latest.national_grid_bm_unit
+        and commitments.settlement_date = qas_latest.settlement_date
+        and commitments.settlement_period = qas_latest.settlement_period
 )
 
 -- Energies are rounded to six decimal places, like the BOALF model's.
@@ -330,6 +409,8 @@ select
     round(expected_mwh - metered_mwh, 6) as unexplained_shortfall_mwh,
     round(pn_mwh - metered_mwh, 6) as deviation_from_pn_mwh,
     round(pn_mwh - expected_mwh, 6) as instructed_deviation_mwh,
+    -- QAS is added to the expected volume (BSC Section T 4.3.2).
+    round(expected_mwh - metered_mwh + absvd_mwh, 6) as unexplained_after_absvd_mwh,
     case
         when metered_row_count > 1 then 'ambiguous_metered'
         when metered_mwh is null then 'no_metered_value'

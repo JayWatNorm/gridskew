@@ -23,11 +23,14 @@ from ingestion.elexon.contracts import (
     B1610_SPEC,
     BOALF_SPEC,
     PN_SPEC,
+    QAS_SPEC,
     QPN_SPEC,
     REMIT_SPEC,
 )
 from ingestion.elexon.pn_poller import load as load_pn
 from ingestion.elexon.pn_poller import parse as parse_pn
+from ingestion.elexon.qas_poller import load as load_qas
+from ingestion.elexon.qas_poller import parse as parse_qas
 from ingestion.elexon.qpn_poller import load as load_qpn
 from ingestion.elexon.qpn_poller import parse as parse_qpn
 from ingestion.elexon.remit_poller import load as load_remit
@@ -114,6 +117,16 @@ def main():
             "B1610",
             parse_b1610,
             load_b1610,
+            preserve_decimals=True,
+        )
+        load_fixture(
+            conn,
+            "elexon/qas_volumes.json",
+            QAS_SPEC,
+            "QAS",
+            parse_qas,
+            load_qas,
+            data_envelope=True,
             preserve_decimals=True,
         )
         load_fixture(

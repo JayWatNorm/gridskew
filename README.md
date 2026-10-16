@@ -105,7 +105,8 @@ The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hoste
 Linux server, with separate development and production databases. Ten
 Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`, two
 standing `B1610` settlement runs, a bounded `B1610` R1 capture, the BM unit
-registry, balancing instructions (`BOALF`) and outage notices (`REMIT`). Two
+registry, balancing instructions (`BOALF`), outage notices (`REMIT`) and
+balancing services volume (`QAS`, ABSVD). Two
 more run dbt: hourly source-freshness checks, and a nightly job that updates
 the period tables and runs the project's data tests.
 

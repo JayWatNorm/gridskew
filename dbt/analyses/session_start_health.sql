@@ -71,6 +71,12 @@ captures as (
     select 'REMIT', (retrieved_at at time zone 'UTC')::date
     from {{ source('elexon', 'elexon_remit') }}
     where retrieved_at >= (select starts_at from window_start)
+
+    union all
+
+    select 'QAS', (retrieved_at at time zone 'UTC')::date
+    from {{ source('elexon', 'elexon_qas') }}
+    where retrieved_at >= (select starts_at from window_start)
 ),
 
 sources as (
@@ -78,7 +84,7 @@ sources as (
     from (
         values
             ('carbon forecast'), ('carbon outturn'), ('PN'), ('QPN'),
-            ('B1610'), ('BOALF'), ('REMIT')
+            ('B1610'), ('BOALF'), ('REMIT'), ('QAS')
     ) as listed (source)
 )
 

@@ -91,6 +91,22 @@ B1610_SPEC = {
 }
 
 
+# The API marks both unit identifiers nullable. The National Grid identifier
+# is the key the shortfall table joins on, so a row without one is rejected.
+QAS_SPEC = {
+    "settlementDate": {"type": str, "required": True, "nullable": False},
+    "settlementPeriod": {"type": int, "required": True, "nullable": False},
+    "bmUnitApplicableBalancingServicesVolume": {
+        "type": (int, Decimal),
+        "required": True,
+        "nullable": False,
+    },
+    "nationalGridBmUnit": {"type": str, "required": True, "nullable": False},
+    "bmUnit": {"type": str, "required": True, "nullable": True},
+    "time": {"type": str, "required": False, "nullable": True},
+}
+
+
 # The full registry has many rows with no Elexon identifier and nullable
 # descriptive fields. National Grid identity is present on every observed row.
 BM_UNITS_SPEC = {

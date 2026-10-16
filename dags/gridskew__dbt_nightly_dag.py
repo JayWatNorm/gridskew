@@ -37,7 +37,7 @@ PERIOD_TABLES = (
 )
 # Views the tables read that no scheduled command builds; a full refresh
 # creates them first, so a new view reaches production with its table.
-REFRESH_VIEWS = ("int_elexon__bm_unit_cohort",)
+REFRESH_VIEWS = ("int_elexon__bm_unit_cohort", "stg_elexon__qas")
 RECORD_NODE_RESULTS = ("--vars", "{audit: true}")
 ARTIFACTS = "/opt/airflow/data/gridskew/artifacts"
 ARTIFACT_FILES = ("manifest.json", "run_results.json")

@@ -28,11 +28,14 @@ def process_rows(
     load_rows,
     payload_dumps=None,
     log_missing_optional_fields=True,
+    load_all_or_none=False,
 ):
     """Quarantine rejected rows, load compatible rows and return the rejected count.
 
     Pass log_missing_optional_fields=False for a source that leaves out a
-    field when it has no value.
+    field when it has no value. Pass load_all_or_none=True for a source whose
+    batch is read as a whole, where a missing row means something: then one
+    rejected row keeps every row of the batch out of the table.
     """
 
     rejected_findings = []
@@ -60,6 +63,9 @@ def process_rows(
             request_context,
             payload_dumps=payload_dumps,
         )
+
+    if load_all_or_none and rejected_findings:
+        return len(rejected_findings)
 
     if compatible_findings:
         compatible_rows = []

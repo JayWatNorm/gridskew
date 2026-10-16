@@ -73,16 +73,19 @@ models:
       physical baseline and is outside the table. Expected output is the PN
       with the instructed level in its place for the minutes an acceptance
       was in force. metered_mwh is the latest settlement run captured; the first
-      captured value is carried for the restatement check. Each run recomputes
+      captured value is carried for the restatement check. ABSVD (QAS) sits
+      beside the other columns and changes none of them. Each run recomputes
       only unit-periods with a PN, metered or acceptance capture since the
-      stored watermark minus capture_margin, and every period of a unit whose
+      stored watermark minus capture_margin, every period of a settlement
+      date with a QAS capture since then, and every period of a unit whose
       fuel type or Elexon ID in the cohort differs from the ones stored or that
       has PN but no rows yet. Two registry events need a full refresh: a unit that
       loses its fuel type keeps its rows (the analyses join the cohort, so it
       leaves the results at once), and another unit starting or stopping to
       share this unit's Elexon ID changes the metered mapping without
       touching this unit's registry row; the nightly warning
-      warn_cohort_elexon_id_shared names the units concerned. After a manual load, a raw edit,
+      warn_cohort_elexon_id_shared names the units concerned. After a manual
+      load (the QAS backfill included), a raw edit,
       a seed change or a logic change, run
       `--select int_shortfall_by_unit_period+ --full-refresh`. Every result
       read from this table is conditional on the cohort; the coverage analysis
@@ -168,6 +171,16 @@ models:
           pn_mwh minus expected_mwh: the part of the deviation from PN that
           the acceptances asked for. deviation_from_pn_mwh equals
           instructed_deviation_mwh plus unexplained_shortfall_mwh.
+      - name: absvd_mwh
+        description: >
+          The unit's balancing services volume (QAS, ABSVD) for the period,
+          from the latest capture that holds it; 0 when its settlement date
+          was captured and no capture holds the unit-period; null when the
+          date was never captured.
+      - name: unexplained_after_absvd_mwh
+        description: >
+          unexplained_shortfall_mwh plus absvd_mwh: Settlement adds QAS to the
+          expected volume (BSC Section T 4.3.2). Null when either is null.
       - name: determinability
         description: >
           determinable, or why not: no_metered_value, ambiguous_metered,
@@ -185,5 +198,6 @@ models:
                 tags: [full_population]
       - name: last_captured_at
         description: >
-          Latest capture among the PN, the metered row and the acceptances;
-          the source of the incremental watermark.
+          Latest capture among the PN, the metered row, the acceptances and
+          the latest QAS capture of the settlement date; the source of the
+          incremental watermark.
