@@ -189,7 +189,7 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 **Complete and running**
 
 - Carbon intensity forecast and outturn collection
-- `PN`, `QPN`, `B1610`, `BOALF` and `REMIT` ingestion, backfills and
+- `PN`, `QPN`, `B1610`, `BOALF`, `REMIT` and `QAS` ingestion, backfills and
   scheduled Airflow runs
 - Append-only raw storage
 - Runtime validation and quarantine for the seven time-series datasets, plus

@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import Mock, patch
@@ -41,6 +42,12 @@ def whole_day(settlement_date, period_count, units=("BATT-1", "BATT-2")):
     return rows
 
 
+def body_text(rows):
+    """The JSON text Elexon sends for these rows (volumes as JSON numbers)."""
+
+    return json.dumps({"metadata": {"datasets": ["QAS"]}, "data": rows}, default=float)
+
+
 def response_of(rows):
     return {"metadata": {"datasets": ["QAS"]}, "data": rows}
 
@@ -75,8 +82,40 @@ def test_fetch_asks_by_settlement_date_with_both_period_parameters():
         "settlementPeriodTo": 50,
         "format": "json",
     }
+    assert get.call_count == 1
     assert get.call_args.args[0].endswith("/balancing/nonbm/volumes")
     assert body["data"][0]["bmUnitApplicableBalancingServicesVolume"] == Decimal("1.25")
+
+
+def test_a_50_period_day_is_fetched_in_two_halves_and_loaded_as_one_capture():
+    # Elexon refuses one request whose period start times span more than a day.
+    rows = whole_day(LONG_DAY, 50)
+    first_half = []
+    second_half = []
+    for row in rows:
+        if row["settlementPeriod"] <= 25:
+            first_half.append(row)
+        else:
+            second_half.append(row)
+    responses = [Mock(text=body_text(first_half)), Mock(text=body_text(second_half))]
+
+    with (
+        patch("ingestion.elexon.qas_poller.requests.get", side_effect=responses) as get,
+        patch.object(qas_poller, "load") as mock_load,
+    ):
+        qas_poller.run(Mock(), LONG_DAY)
+
+    asked = []
+    for call in get.call_args_list:
+        params = call.kwargs["params"]
+        asked.append((params["settlementPeriodFrom"], params["settlementPeriodTo"]))
+    assert asked == [(1, 25), (26, 50)]
+    loaded, _conn = mock_load.call_args.args
+    assert len(loaded) == 100
+    capture_times = set()
+    for parsed_row in loaded:
+        capture_times.add(parsed_row[-1])
+    assert len(capture_times) == 1
 
 
 def test_parse_maps_each_source_field_to_its_own_column():

@@ -53,7 +53,7 @@ docs/sources/
     070_bmunits.md            The address book                         [running]
     071_bmunits_ingestion.md    daily registry capture and observed history
     080_mels-mils.md          The headroom                             [optional]
-    090_qas.md                Services outside the mechanism (ABSVD)   [built]
+    090_qas.md                Services outside the mechanism (ABSVD)   [running]
     091_qas_ingestion.md        14, 35 and 450 days; one-off backfill
 ```
 
