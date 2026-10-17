@@ -5,7 +5,8 @@ ABSVD known at the same age. NESO may resubmit a value before Final
 Reconciliation, and the source carries no version: a later capture is the
 only way to see a change, so every capture is kept.
 
-Each task captures one British settlement date in one request. It fails when
+Each task captures one British settlement date (two requests on a 50-period
+date). It fails when
 the response is empty (every target is past NESO's publication window) or is
 not one whole date, and retries for about four days. A target before the first
 QAS date GridSkew holds is skipped. After an outage the scheduler creates the

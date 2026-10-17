@@ -1,7 +1,7 @@
 """Capture QAS once for every settlement date before the DAG's first run.
 
 A bounded one-off run, outside the DAG, with the DAG's own poller: one
-settlement date per request, one request at a time. A date already in
+settlement date at a time (two requests on a 50-period date). A date already in
 raw.elexon_qas is skipped, so running it again repeats only the dates still
 missing. A failed date is reported and the run goes on; the exit code is 1
 when any date failed.

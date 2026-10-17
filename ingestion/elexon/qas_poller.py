@@ -1,7 +1,8 @@
 """Fetch, validate, quarantine and load Elexon balancing services volumes (QAS).
 
 QAS is the ABSVD that NESO sends for each BM unit and settlement period.
-One capture is one British settlement date in one request.
+One capture is one British settlement date: one request, or two on a
+50-period date.
 """
 
 import json
@@ -22,6 +23,8 @@ logger = logging.getLogger(__name__)
 QAS_URL = "https://data.elexon.co.uk/bmrs/api/v1/balancing/nonbm/volumes"
 # The most periods a British date can have; a shorter date returns fewer.
 LAST_PERIOD_ASKED = 50
+# The last period of the first of the two requests on a 50-period date.
+FIRST_HALF_LAST_PERIOD = 25
 
 
 def fetch(settlement_date):
@@ -29,15 +32,43 @@ def fetch(settlement_date):
 
     With the period parameters, Elexon reads from and to as settlement dates;
     without them it reads start times, and a summer date loses periods 1 and 2.
+    Elexon refuses a request whose period start times span more than a day, so
+    a 50-period date is asked for in two requests and their rows combined.
     """
 
+    bodies = []
+    for first_period, last_period in requested_period_ranges(settlement_date):
+        bodies.append(fetch_periods(settlement_date, first_period, last_period))
+    if len(bodies) == 1:
+        return bodies[0]
+
+    rows = []
+    for body in bodies:
+        if not isinstance(body, dict) or not isinstance(body.get("data"), list):
+            return body
+        rows.extend(body["data"])
+    return {"data": rows}
+
+
+def requested_period_ranges(settlement_date):
+    """The period ranges to ask for: one request, or two on a 50-period date."""
+
+    if expected_period_count(settlement_date) < LAST_PERIOD_ASKED:
+        return ((1, LAST_PERIOD_ASKED),)
+    return (
+        (1, FIRST_HALF_LAST_PERIOD),
+        (FIRST_HALF_LAST_PERIOD + 1, LAST_PERIOD_ASKED),
+    )
+
+
+def fetch_periods(settlement_date, first_period, last_period):
     response = requests.get(
         QAS_URL,
         params={
             "from": settlement_date.isoformat(),
             "to": settlement_date.isoformat(),
-            "settlementPeriodFrom": 1,
-            "settlementPeriodTo": LAST_PERIOD_ASKED,
+            "settlementPeriodFrom": first_period,
+            "settlementPeriodTo": last_period,
             "format": "json",
         },
         headers={

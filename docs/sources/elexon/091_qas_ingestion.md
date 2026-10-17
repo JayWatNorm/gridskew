@@ -4,7 +4,8 @@ How `raw.elexon_qas` is loaded. For what the data means, see
 [090_qas.md](090_qas.md). For the reasoning behind these patterns, see
 [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: not yet deployed.**
+**Status: deployed 16 October 2026; backfill 22 August 2025 to 5 October
+2026; daily captures from 21 October 2026.**
 
 | | |
 |---|---|
@@ -22,7 +23,10 @@ How `raw.elexon_qas` is loaded. For what the data means, see
 
 `run(conn, settlement_date)` asks for one date with
 `settlementPeriodFrom=1&settlementPeriodTo=50`, so `from` and `to` select by
-settlement date. Before anything is written, the response must be one whole
+settlement date. A 50-period date is asked for in two requests (periods 1
+to 25 and 26 to 50), because Elexon refuses a request whose start times
+span more than a day; the two are one capture with one `retrieved_at`.
+Before anything is written, the response must be one whole
 date: every row carries the requested date, a period of that date (46, 48 or
 50), and a unit and period no other row has, and every period has at least
 one row. A response that fails is refused and the try is repeated.

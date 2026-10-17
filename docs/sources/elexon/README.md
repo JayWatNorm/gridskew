@@ -90,7 +90,7 @@ Numbered in build order, not alphabetically.
 | [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Later |
 | [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Running |
 | [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
-| [090_qas.md](090_qas.md) | [091](091_qas_ingestion.md) | `QAS` (`/balancing/nonbm/volumes`) | Services outside the mechanism (ABSVD) | Built |
+| [090_qas.md](090_qas.md) | [091](091_qas_ingestion.md) | `QAS` (`/balancing/nonbm/volumes`) | Services outside the mechanism (ABSVD) | Running |
 
 The BM-unit ingestion page describes the deployed capture and snapshot
 path. The patterns behind the collectors are in
