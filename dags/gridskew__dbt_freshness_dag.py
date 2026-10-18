@@ -4,7 +4,7 @@ import os
 import subprocess
 from datetime import datetime, timedelta, timezone
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 
 @dag(
@@ -23,7 +23,7 @@ from airflow.decorators import dag, task
 def gridskew__dbt_freshness_dag():
     @task
     def freshness_check():
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
 
         project_dir = "/opt/airflow/project/gridskew/dbt"
         profiles_dir = "/opt/airflow/dbt_profiles"

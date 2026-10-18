@@ -18,7 +18,7 @@ date.
 import sys
 from datetime import date, datetime, timedelta, timezone
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 # The platform mounts the GridSkew checkout here.
@@ -37,13 +37,14 @@ def settlement_date_to_capture(data_interval_start, lag_days):
 def capture_at_lag(data_interval_start, lag_days):
     """Capture the settlement date lag_days before the run's data interval."""
 
-    from airflow.exceptions import AirflowFailException, AirflowSkipException
-    from airflow.hooks.base import BaseHook
+    from airflow.sdk import BaseHook
+    from airflow.sdk.exceptions import AirflowFailException, AirflowSkipException
 
     if data_interval_start is None:
         # Airflow 3 manual runs have no data interval.
         raise AirflowFailException(
-            "No data interval: clear a scheduled task instance to repeat a capture"
+            "No data interval: clear a scheduled task instance to repeat a capture, "
+            "or use `airflow backfill create` for past days"
         )
     settlement_date = settlement_date_to_capture(data_interval_start, lag_days)
     if settlement_date < FIRST_SETTLEMENT_DATE:

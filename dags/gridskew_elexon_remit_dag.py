@@ -8,7 +8,7 @@ loads the whole history, a day at a time.
 import sys
 from datetime import datetime, timedelta, timezone
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 # The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
@@ -32,7 +32,7 @@ def gridskew_elexon_remit():
 
     @task(pool="elexon")
     def poll_remit():
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.database import connect

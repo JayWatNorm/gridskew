@@ -25,14 +25,12 @@ def load_dag_file(monkeypatch, file_name, connections=None):
 
     airflow = ModuleType("airflow")
     airflow.__path__ = []
-    decorators = ModuleType("airflow.decorators")
-    decorators.dag = replace_with_do_nothing
-    decorators.task = replace_with_do_nothing
-    hooks = ModuleType("airflow.hooks")
-    hooks.__path__ = []
-    base = ModuleType("airflow.hooks.base")
-    base.BaseHook = SimpleNamespace(get_connection=get_connection)
-    exceptions = ModuleType("airflow.exceptions")
+    sdk = ModuleType("airflow.sdk")
+    sdk.dag = replace_with_do_nothing
+    sdk.task = replace_with_do_nothing
+    sdk.BaseHook = SimpleNamespace(get_connection=get_connection)
+    sdk.__path__ = []
+    exceptions = ModuleType("airflow.sdk.exceptions")
     exceptions.AirflowFailException = FakeAirflowFailException
     exceptions.AirflowSkipException = FakeAirflowSkipException
     timetables = ModuleType("airflow.timetables")
@@ -45,10 +43,8 @@ def load_dag_file(monkeypatch, file_name, connections=None):
     pendulum.datetime = utc_datetime
 
     monkeypatch.setitem(sys.modules, "airflow", airflow)
-    monkeypatch.setitem(sys.modules, "airflow.decorators", decorators)
-    monkeypatch.setitem(sys.modules, "airflow.hooks", hooks)
-    monkeypatch.setitem(sys.modules, "airflow.hooks.base", base)
-    monkeypatch.setitem(sys.modules, "airflow.exceptions", exceptions)
+    monkeypatch.setitem(sys.modules, "airflow.sdk", sdk)
+    monkeypatch.setitem(sys.modules, "airflow.sdk.exceptions", exceptions)
     monkeypatch.setitem(sys.modules, "airflow.timetables", timetables)
     monkeypatch.setitem(sys.modules, "airflow.timetables.events", events)
     monkeypatch.setitem(sys.modules, "airflow.timetables.interval", interval)

@@ -33,7 +33,7 @@ docs/sources/
   carbon-intensity/
     README.md                 API level: base URL, auth, licence, shared gotchas
     010_forecast.md           Every version of the forecast            [running]
-    011_forecast_ingestion.md   every 30 min, catchup=False, 35-min SLA
+    011_forecast_ingestion.md   every 30 min, catchup=False
     020_outturn.md            What actually happened                   [running]
     021_outturn_ingestion.md    daily, 7-day look-back, Monday gap re-fetch
   elexon/

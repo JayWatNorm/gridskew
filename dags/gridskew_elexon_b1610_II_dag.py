@@ -14,7 +14,7 @@ run for an old date.
 import sys
 from datetime import datetime, timedelta, timezone
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 # The platform mounts the GridSkew checkout here.
@@ -54,13 +54,14 @@ def gridskew_elexon_b1610_II():
 
     @task(pool="elexon")
     def poll_b1610_II(data_interval_start=None):
-        from airflow.exceptions import AirflowFailException
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
+        from airflow.sdk.exceptions import AirflowFailException
 
         if data_interval_start is None:
             # Airflow 3 manual runs have no data interval.
             raise AirflowFailException(
-                "No data interval: clear a scheduled task instance to repeat a capture"
+                "No data interval: clear a scheduled task instance to repeat a capture, "
+                "or use `airflow backfill create` for past days"
             )
         settlement_date = settlement_date_to_capture(data_interval_start)
 
