@@ -22,3 +22,9 @@ empty database it fails before it creates anything.
 This page is the CD overview. Host SQL, Airflow pool prerequisites, workflow
 inputs, observed rollout checks and recovery are documented in
 `homelab-platform/docs/gridskew-release.md` in the platform checkout.
+
+The daily Elexon DAGs (B1610 II, SF and RF, PN, QPN, BOALF) fetch the day set
+by the run's data interval. To repeat a capture, clear the scheduled task
+instance; to fetch past days, use `airflow backfill create --dag-id <id>
+--from-date <first day> --to-date <last day>`. A manual trigger has no data
+interval on Airflow 3, and the DAGs refuse it.

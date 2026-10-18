@@ -3,7 +3,7 @@
 import sys
 from datetime import datetime, timedelta, timezone
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 # The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
@@ -46,12 +46,10 @@ def is_past_its_slot(scheduled_at, now):
 def gridskew_carbon_intensity_dag():
 
     # The five-minute schedule offset allows NESO's boundary update to finish.
-    # Airflow 2.10 evaluates the SLA from the scheduled logical date, so 35
-    # minutes still allows five minutes for completion after the run is due.
-    @task(sla=timedelta(minutes=35))
+    @task()
     def poll_forecast(dag_run=None, data_interval_end=None):
-        from airflow.exceptions import AirflowSkipException
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
+        from airflow.sdk.exceptions import AirflowSkipException
 
         # The archive counts the first poll of each half-hour, so only a
         # scheduled run in its own slot may poll: a manual poll could take

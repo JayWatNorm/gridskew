@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 DBT_PROJECT = f"{PROJECT_PATH}/dbt"
@@ -52,7 +52,7 @@ SCHEDULED_COMMAND_MINUTES = 45
 def dbt_environment(work_dir, airflow_run_id):
     """Use the dbt role in the production database's development schemas."""
 
-    from airflow.hooks.base import BaseHook
+    from airflow.sdk import BaseHook
 
     raw_conn = BaseHook.get_connection("gridskew_prod")
     conn = BaseHook.get_connection("gridskew_dbt")

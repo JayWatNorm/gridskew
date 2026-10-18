@@ -32,10 +32,11 @@ since loaded averages **126,203 rows per run** — see Volume below.
 run(conn, from_date=None, to_date=None)
 ```
 
-The DAG passes `data_interval_start` and `data_interval_end`; a manual run gets
-yesterday, midnight to midnight UTC. **`None` defaults computed in the body**,
-not in the signature — a default of `datetime.now()` would freeze at import, and
-a DAG file is re-parsed constantly.
+The DAG passes `data_interval_start` and `data_interval_end`. Run from the
+command line, the module loads yesterday, midnight to midnight UTC. **`None`
+defaults computed in the body**, not in the signature — a default of
+`datetime.now()` would freeze at import, and a DAG file is re-parsed
+constantly.
 
 That single signature is why there is no separate backfill mode: the same
 function serves every historical run and every future daily one.

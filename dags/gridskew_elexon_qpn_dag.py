@@ -8,7 +8,7 @@ compares integrated PN MWh with B1610 MWh without subtracting QPN.
 import sys
 from datetime import datetime, timedelta, timezone
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 # The platform mounts the GridSkew checkout here.
@@ -39,13 +39,14 @@ def gridskew_elexon_qpn():
 
     @task(pool="elexon")
     def poll_qpn(data_interval_start=None, data_interval_end=None):
-        from airflow.exceptions import AirflowFailException
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
+        from airflow.sdk.exceptions import AirflowFailException
 
         if data_interval_start is None or data_interval_end is None:
             # Airflow 3 manual runs have no data interval.
             raise AirflowFailException(
-                "No data interval: clear a scheduled task instance to repeat a capture"
+                "No data interval: clear a scheduled task instance to repeat a capture, "
+                "or use `airflow backfill create` for past days"
             )
 
         sys.path.insert(0, PROJECT_PATH)

@@ -14,10 +14,6 @@ How `raw.carbon_intensity_forecast` is loaded. For what the data means, see
 | DAG | `dags/gridskew_carbon_intensity_forecast_dag.py`, `dag_id` `gridskew_carbon_intensity` |
 | Schedule | `5,35 * * * *` (five minutes after each half-hour boundary) |
 | `catchup` | **`False`** |
-| Task SLA | **35 minutes**: the 30-minute interval plus five minutes to complete |
-
-A run due at `10:05` has a deadline of `10:10`. A task that misses it is
-recorded as an SLA miss in Airflow; it is not cancelled, failed or retried.
 
 The five-minute schedule offset reduces the risk of polling while NESO is still
 publishing its boundary update. The API response has no publication timestamp

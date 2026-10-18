@@ -6,7 +6,7 @@ Rows are appended to raw.carbon_intensity_outturn in gridskew_prod.
 import sys
 from datetime import datetime, timedelta, timezone
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 # The platform mounts the GridSkew checkout here.
 PROJECT_PATH = "/opt/airflow/project/gridskew"
@@ -29,7 +29,7 @@ def gridskew_carbon_intensity_outturn():
 
     @task
     def poll_outturn():
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.carbon_intensity.outturn_poller import run

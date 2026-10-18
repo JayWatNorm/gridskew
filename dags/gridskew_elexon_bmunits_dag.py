@@ -6,7 +6,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from tempfile import TemporaryDirectory
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 PROJECT_PATH = "/opt/airflow/project/gridskew"
 DBT_PROJECT = f"{PROJECT_PATH}/dbt"
@@ -17,7 +17,7 @@ DBT_LOGS = "/opt/airflow/data/gridskew/dbt_logs"
 def dbt_environment(work_dir, airflow_run_id):
     """Use the dbt role in the production database's development schemas."""
 
-    from airflow.hooks.base import BaseHook
+    from airflow.sdk import BaseHook
 
     raw_conn = BaseHook.get_connection("gridskew_prod")
     conn = BaseHook.get_connection("gridskew_dbt")
@@ -116,7 +116,7 @@ def dbt_commands():
 def gridskew_elexon_bmunits():
     @task(pool="elexon", execution_timeout=timedelta(minutes=15))
     def capture_registry(params=None):
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.database import connect
@@ -131,7 +131,7 @@ def gridskew_elexon_bmunits():
 
     @task(pool="gridskew_dbt", execution_timeout=timedelta(minutes=60))
     def build_current_and_snapshot(extract_id, run_id=None):
-        from airflow.hooks.base import BaseHook
+        from airflow.sdk import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.database import connect
