@@ -121,13 +121,13 @@ def test_process_window_stores_rows_before_checking_completeness(
             return_value=payload,
         ),
         patch(
-            "ingestion.carbon_intensity.outturn_poller.execute_values"
-        ) as mock_execute_values,
+            "ingestion.carbon_intensity.outturn_poller.insert_rows"
+        ) as mock_insert_rows,
     ):
         result = process_window(MagicMock(), request_start, request_end, RETRIEVED_AT)
 
     assert result == expected_result
-    inserted_rows = mock_execute_values.call_args.args[2]
+    inserted_rows = mock_insert_rows.call_args.args[2]
     assert len(inserted_rows) == len(payload["data"])
 
 

@@ -96,7 +96,7 @@ def test_load_rolls_back_if_raw_rows_fail(rows):
     conn = MagicMock()
 
     with patch(
-        "ingestion.elexon.bmunits_poller.execute_values",
+        "ingestion.elexon.bmunits_poller.insert_rows",
         side_effect=OSError("database failure"),
     ):
         with pytest.raises(OSError, match="database failure"):

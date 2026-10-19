@@ -147,7 +147,7 @@ def test_process_rows_does_not_change_source_rows():
     rows = [valid_row, rejected_row]
     original_rows = deepcopy(rows)
 
-    with patch("ingestion.routing.execute_values"):
+    with patch("ingestion.routing.insert_rows"):
         process_rows(
             rows,
             spec=FORECAST_SPEC,

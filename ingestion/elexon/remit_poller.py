@@ -7,8 +7,9 @@ from decimal import Decimal
 
 import requests
 import simplejson
-from psycopg2.extras import Json, execute_values
+from psycopg.types.json import Jsonb
 
+from ingestion.database import insert_rows
 from ingestion.elexon.contracts import REMIT_SPEC
 from ingestion.routing import process_rows
 
@@ -199,7 +200,7 @@ def _parse_row(source_row, retrieved_at):
     unavailable_capacity = source_row.get("unavailableCapacity")
     event_start_time = _utc_from_text_with_seconds(source_row["eventStartTime"])
     event_end_time = _utc_from_text_with_seconds(source_row.get("eventEndTime"))
-    payload = Json(source_row, dumps=decimal_json_dumps)
+    payload = Jsonb(source_row, dumps=decimal_json_dumps)
 
     return (
         mrid,
@@ -242,5 +243,5 @@ def load(parsed_rows, conn):
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, parsed_rows, page_size=1000)
+        insert_rows(cursor, insert_sql, parsed_rows)
     conn.commit()

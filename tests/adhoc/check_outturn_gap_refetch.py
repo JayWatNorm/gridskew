@@ -12,7 +12,7 @@ Run from the repository root with the dbt environment set, for example:
 import os
 from datetime import datetime, timedelta, timezone
 
-import psycopg2
+import psycopg
 
 from ingestion.carbon_intensity.outturn_poller import (
     floor_to_period,
@@ -49,7 +49,7 @@ INSERT_EVERY_HALF_HOUR = (
 
 
 def disposable_connection():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         user=os.environ["DBT_USER"],

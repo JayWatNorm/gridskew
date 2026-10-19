@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
-import psycopg2
+import psycopg
 
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC, OUTTURN_SPEC
 from ingestion.carbon_intensity.forecast_poller import load as load_forecast
@@ -89,7 +89,7 @@ def main():
     ):
         raise RuntimeError("Fixtures require explicit opt-in to local gridskew_dev")
 
-    conn = psycopg2.connect(
+    conn = psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         dbname=os.environ["DBT_DBNAME"],

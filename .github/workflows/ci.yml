@@ -135,6 +135,14 @@ jobs:
           GRIDSKEW_DISPOSABLE_TEST: "1"
         run: python -m tests.adhoc.check_database_writes
 
+      # Pages, value types, ignored repeats and rollback of the shared insert
+      # helper; it creates and drops its own schema.
+      - name: Check the shared insert helper on the database
+        env:
+          PYTHONPATH: .
+          GRIDSKEW_DISPOSABLE_TEST: "1"
+        run: python -m tests.adhoc.check_insert_rows
+
   # These checks assert that their tables start empty, so they run in their
   # own job against a database that holds no CI fixtures.
   period-tables:
