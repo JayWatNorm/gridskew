@@ -1,6 +1,6 @@
 # Runtime dependencies of the pollers, pinned for local runs and CI. Direct
 # dependencies only. Production installs its own copies in the Airflow image.
 
-psycopg2-binary==2.9.13
+psycopg[binary]==3.3.5  # the version Airflow 3.3.2's constraints install
 requests==2.34.2
 simplejson==4.1.1

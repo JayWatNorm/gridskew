@@ -4,13 +4,13 @@ import logging
 from datetime import datetime, timezone
 
 import requests
-from psycopg2.extras import execute_values
 
 from ingestion.carbon_intensity.completeness import (
     forecast_covers_48_hours,
     validate_forecast_periods,
 )
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
+from ingestion.database import insert_rows
 from ingestion.routing import process_rows
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ def load(parsed_rows, conn):
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, parsed_rows)
+        insert_rows(cursor, insert_sql, parsed_rows)
     conn.commit()
 
 

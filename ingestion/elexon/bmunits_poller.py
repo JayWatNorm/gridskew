@@ -9,8 +9,8 @@ from decimal import Decimal, InvalidOperation
 from uuid import uuid4
 
 import requests
-from psycopg2.extras import execute_values
 
+from ingestion.database import insert_rows
 from ingestion.elexon.contracts import BM_UNITS_SPEC
 from ingestion.routing import quarantine_rows
 from ingestion.validation import validate_rows
@@ -287,11 +287,10 @@ def load_extract(conn, rows, retrieved_at, unit_count, *, extract_id=None):
                 "VALUES (%s, %s, %s, %s)",
                 (str(extract_id), retrieved_at, len(rows), unit_count),
             )
-            execute_values(
+            insert_rows(
                 cursor,
                 f"INSERT INTO raw.elexon_bm_units ({columns}) VALUES %s",
                 values,
-                page_size=1000,
             )
         conn.commit()
     except Exception:

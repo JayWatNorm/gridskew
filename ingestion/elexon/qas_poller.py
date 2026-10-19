@@ -12,8 +12,8 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import requests
-from psycopg2.extras import execute_values
 
+from ingestion.database import insert_rows
 from ingestion.elexon.b1610_poller import decimal_json_dumps, expected_period_count
 from ingestion.elexon.contracts import QAS_SPEC
 from ingestion.routing import ContractRejected, process_rows
@@ -220,5 +220,5 @@ def load(parsed_rows, conn):
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, parsed_rows, page_size=1000)
+        insert_rows(cursor, insert_sql, parsed_rows)
     conn.commit()

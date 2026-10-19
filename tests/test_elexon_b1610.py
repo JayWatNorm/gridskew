@@ -201,7 +201,7 @@ def capture(conn, settlement_date, rows, recent_units=None):
 
     with (
         patch("ingestion.elexon.b1610_poller.fetch", return_value=rows) as get_rows,
-        patch("ingestion.elexon.b1610_poller.execute_values"),
+        patch("ingestion.elexon.b1610_poller.insert_rows"),
         patch(
             "ingestion.elexon.b1610_poller.recent_unit_count",
             return_value=recent_units,

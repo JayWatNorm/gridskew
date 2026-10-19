@@ -3,8 +3,8 @@
 from datetime import date, datetime, timezone
 
 import requests
-from psycopg2.extras import execute_values
 
+from ingestion.database import insert_rows
 from ingestion.elexon.contracts import QPN_SPEC
 from ingestion.routing import ContractRejected, process_rows
 
@@ -104,5 +104,5 @@ def load(parsed_rows, conn):
     )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, parsed_rows, page_size=1000)
+        insert_rows(cursor, insert_sql, parsed_rows)
     conn.commit()

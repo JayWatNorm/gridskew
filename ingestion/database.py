@@ -1,23 +1,40 @@
-"""Open the psycopg2 connection the loaders write through."""
+"""Open the connection the loaders write through, and insert their rows."""
 
-import psycopg2
+import psycopg
 
 DEFAULT_PORT = 5432
+VALUES_SLOT = "%s"
 
 
 def connect(airflow_connection):
-    """A psycopg2 connection to the database an Airflow connection names.
+    """A psycopg connection to the database an Airflow connection names.
 
-    The loaders use psycopg2's `execute_values`. Airflow's `PostgresHook`
-    returns psycopg 3 connections once SQLAlchemy 2 is installed (Airflow 3.2
-    onwards), so the DAGs open their own connection from the same fields.
     Connection extras (such as `sslmode`) are not passed on; no GridSkew
     connection sets one.
     """
-    return psycopg2.connect(
+    return psycopg.connect(
         host=airflow_connection.host,
         port=airflow_connection.port or DEFAULT_PORT,
         dbname=airflow_connection.schema,
         user=airflow_connection.login,
         password=airflow_connection.password,
     )
+
+
+def one_row_statement(insert_sql, column_count):
+    """The statement with its one `VALUES %s` slot filled by one row's
+    placeholders."""
+
+    if insert_sql.count(VALUES_SLOT) != 1:
+        raise ValueError(f"Insert SQL needs exactly one {VALUES_SLOT}: {insert_sql}")
+    group = "(" + ", ".join([VALUES_SLOT] * column_count) + ")"
+    return insert_sql.replace(VALUES_SLOT, group)
+
+
+def insert_rows(cursor, insert_sql, rows):
+    """Insert a list of rows through psycopg's `executemany`, which pipelines
+    them. The caller owns the transaction: nothing here commits."""
+
+    if not rows:
+        return
+    cursor.executemany(one_row_statement(insert_sql, len(rows[0])), rows)

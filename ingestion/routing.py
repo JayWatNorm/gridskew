@@ -4,8 +4,9 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from psycopg2.extras import Json, execute_values
+from psycopg.types.json import Jsonb
 
+from ingestion.database import insert_rows
 from ingestion.validation import validate_rows
 
 logger = logging.getLogger(__name__)
@@ -135,23 +136,23 @@ def quarantine_rows(
             (
                 dataset,
                 retrieved_at,
-                Json(request_context),
-                Json(validation_errors),
-                Json(observed_fields),
+                Jsonb(request_context),
+                Jsonb(validation_errors),
+                Jsonb(observed_fields),
                 payload,
                 quarantined_at,
             )
         )
 
     with conn.cursor() as cursor:
-        execute_values(cursor, insert_sql, insert_values, page_size=1000)
+        insert_rows(cursor, insert_sql, insert_values)
     conn.commit()
 
 
 def _json_value(value, dumps):
     if dumps is None:
-        return Json(value)
-    return Json(value, dumps=dumps)
+        return Jsonb(value)
+    return Jsonb(value, dumps=dumps)
 
 
 def _observed_fields(row, prefix=""):

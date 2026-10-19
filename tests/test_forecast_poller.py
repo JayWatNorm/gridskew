@@ -69,13 +69,13 @@ def test_run_stores_rows_before_checking_completeness(payload):
             return_value=payload,
         ) as mock_fetch,
         patch(
-            "ingestion.carbon_intensity.forecast_poller.execute_values"
-        ) as mock_execute_values,
+            "ingestion.carbon_intensity.forecast_poller.insert_rows"
+        ) as mock_insert_rows,
     ):
         with pytest.raises(ValueError, match="first period"):
             run_poller(MagicMock())
 
-    inserted_rows = mock_execute_values.call_args.args[2]
+    inserted_rows = mock_insert_rows.call_args.args[2]
     assert len(inserted_rows) == len(payload["data"])
     retrieved_at = inserted_rows[0][2]
     mock_fetch.assert_called_once_with(retrieved_at.strftime("%Y-%m-%dT%H:%MZ"))

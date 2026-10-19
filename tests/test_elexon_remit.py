@@ -95,7 +95,7 @@ def test_parse_maps_a_message_to_the_database_tuple(source_rows):
     (parsed_row,) = parse([source_row], RUN_TIME)
 
     parsed = dict(zip(REMIT_COLUMNS, parsed_row, strict=True))
-    assert parsed.pop("payload").adapted == source_row
+    assert parsed.pop("payload").obj == source_row
     assert parsed == {
         "mrid": "48X000000000284H-ELXP-RMT-00105746",
         "revision_number": 1,

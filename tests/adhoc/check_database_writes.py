@@ -22,7 +22,7 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
-import psycopg2
+import psycopg
 
 from ingestion.carbon_intensity.forecast_poller import load as load_forecast
 from ingestion.carbon_intensity.forecast_poller import parse as parse_forecast
@@ -131,7 +131,7 @@ B1610_COLUMNS = (
 
 
 def disposable_connection():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         user=os.environ["DBT_USER"],
