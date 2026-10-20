@@ -2,7 +2,7 @@
 
 -r requirements.txt
 
-psycopg2-binary==2.9.13  # the CI database scripts not yet on psycopg 3
+psycopg2-binary==2.9.13  # dbt-postgres's driver, pinned so CI does not drift
 pytest==9.1.1
 tzdata==2026.5
 ruff==0.16.3

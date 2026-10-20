@@ -18,7 +18,7 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import psycopg2
+import psycopg
 
 PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 # The repository profile reads the guarded DBT_* variables; pinning it and the
@@ -27,7 +27,7 @@ PROFILES_DIR = Path(__file__).resolve().parents[2] / "dbt_profiles"
 
 
 def disposable_connection():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         user=os.environ["DBT_USER"],
@@ -92,7 +92,7 @@ def database_error(conn, query):
     try:
         with conn.cursor() as cursor:
             cursor.execute(query)
-    except psycopg2.Error as error:
+    except psycopg.Error as error:
         return str(error).strip()
     finally:
         conn.rollback()

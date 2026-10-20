@@ -7,8 +7,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
-import psycopg2
-from psycopg2 import errors, sql
+import psycopg
+from psycopg import errors, sql
 
 from ingestion.elexon.bmunits_poller import locked_extract
 
@@ -18,7 +18,7 @@ SNAPSHOT_TABLE = "dbt_dev_snapshots.snap_elexon__bm_units"
 
 def disposable_connection():
     """Open each test connection with the CI credentials, including its password."""
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         user=os.environ["DBT_USER"],

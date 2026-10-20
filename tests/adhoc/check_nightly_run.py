@@ -16,7 +16,7 @@ import os
 import subprocess
 from pathlib import Path
 
-import psycopg2
+import psycopg
 
 from tests.adhoc.check_scheduled_set import nightly_default_commands
 
@@ -34,7 +34,7 @@ VIEW_IDENTITIES = """
 
 
 def disposable_connection():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         user=os.environ["DBT_USER"],
