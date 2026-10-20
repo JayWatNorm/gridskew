@@ -3,7 +3,11 @@ target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "B", "I"]
+select = ["E4", "E7", "E9", "F", "B", "I", "TID251"]
+
+# dbt-postgres keeps psycopg2 installed, so an import of it would still work.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"psycopg2".msg = "Use psycopg (version 3); psycopg2 is installed only for dbt-postgres."
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

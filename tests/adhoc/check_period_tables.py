@@ -21,8 +21,8 @@ from pathlib import Path
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-import psycopg2
-from psycopg2 import errors
+import psycopg
+from psycopg import errors
 
 from tests.adhoc.check_scheduled_set import bmunit_job_commands
 
@@ -52,7 +52,7 @@ SPRING = date(2026, 3, 29)
 
 
 def disposable_connection():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         user=os.environ["DBT_USER"],
