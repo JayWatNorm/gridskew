@@ -127,6 +127,12 @@ jobs:
           GRIDSKEW_DISPOSABLE_TEST: "1"
         run: python -m tests.adhoc.check_analyses_compile
 
+      - name: Check the one-look analyses on worked values
+        env:
+          PYTHONPATH: .
+          GRIDSKEW_DISPOSABLE_TEST: "1"
+        run: python -m tests.adhoc.check_one_look_analyses
+
       # Last in this job: the loaders it calls commit, and no later step
       # should read the rows it writes (it deletes them at the end).
       - name: Read back what the loaders and the quarantine write

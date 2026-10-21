@@ -36,29 +36,30 @@ def disposable_connection():
     )
 
 
-def compiled_analyses():
-    """Each analysis's compiled SQL by name, from a manifest of its own.
+def compile_analyses(dbt_vars=None):
+    """The manifest of a compile of every analysis, with dbt_vars if given.
 
     A separate target folder leaves dbt/target, which later checks read, as
     the last full build wrote it.
     """
 
+    command = [
+        "dbt",
+        "compile",
+        "--select",
+        "resource_type:analysis",
+        "--project-dir",
+        str(PROJECT_DIR),
+        "--profiles-dir",
+        str(PROFILES_DIR),
+        "--target",
+        "dev",
+    ]
+    if dbt_vars is not None:
+        command += ["--vars", json.dumps(dbt_vars)]
     with TemporaryDirectory(prefix="analyses-") as target_dir:
         result = subprocess.run(
-            [
-                "dbt",
-                "compile",
-                "--select",
-                "resource_type:analysis",
-                "--project-dir",
-                str(PROJECT_DIR),
-                "--profiles-dir",
-                str(PROFILES_DIR),
-                "--target",
-                "dev",
-                "--target-path",
-                target_dir,
-            ],
+            command + ["--target-path", target_dir],
             capture_output=True,
             text=True,
         )
@@ -66,8 +67,13 @@ def compiled_analyses():
             print(result.stdout[-4000:], result.stderr[-2000:])
             raise SystemExit("dbt could not compile the analyses")
         manifest_path = Path(target_dir) / "manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
 
+
+def compiled_analyses():
+    """Each analysis's compiled SQL by name."""
+
+    manifest = compile_analyses()
     analyses = {}
     for node in manifest["nodes"].values():
         if node["resource_type"] == "analysis":
