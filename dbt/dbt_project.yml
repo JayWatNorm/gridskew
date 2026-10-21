@@ -37,6 +37,42 @@ vars:
   # date; earlier "first" publications are often later revisions of notices
   # published before the REMIT history began (22 August 2024).
   remit_q6_first_publication_from: '2024-11-01 00:00:00+00'
+  # Q10's settlement-date split: bank holidays in England and Wales, from
+  # GOV.UK's bank-holidays.json (Open Government Licence), read 21 October 2026.
+  bank_holidays_england_and_wales:
+    - '2025-08-25'
+    - '2025-12-25'
+    - '2025-12-26'
+    - '2026-01-01'
+    - '2026-04-03'
+    - '2026-04-06'
+    - '2026-05-04'
+    - '2026-05-25'
+    - '2026-08-31'
+    - '2026-12-25'
+    - '2026-12-28'
+    - '2027-01-01'
+    - '2027-03-26'
+    - '2027-03-29'
+    - '2027-05-03'
+    - '2027-05-31'
+    - '2027-08-30'
+    - '2027-12-27'
+    - '2027-12-28'
+    - '2028-01-03'
+    - '2028-04-14'
+    - '2028-04-17'
+    - '2028-05-01'
+    - '2028-05-29'
+    - '2028-08-28'
+    - '2028-12-25'
+    - '2028-12-26'
+  # Q4 is read once, on the first day it holds this many matched days.
+  shortfall_error_matched_days_needed: 90
+  # Q4's bootstrap interval needs this many of its 1,000 draws to form a ratio.
+  shortfall_error_bootstrap_min_usable_draws: 900
+  # Q2-RF is read once, when this many settlement dates hold RF and R3.
+  rf_restatement_dates_needed: 30
   # How long record_run_results keeps a node result.
   node_results_retention_days: 180
 
