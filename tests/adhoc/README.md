@@ -39,6 +39,7 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `check_outturn_gap_refetch.py` | The outturn history gap query, inside one transaction that is rolled back | Disposable PostgreSQL |
 | `check_period_tables.py` | The period tables: an incremental run equals a full refresh; runs in its own job on an empty database | Disposable PostgreSQL |
 | `check_analyses_compile.py` | Every analysis compiles and runs with `limit 0` on the CI fixtures | Disposable PostgreSQL |
+| `check_one_look_analyses.py` | The Q10, Q4 and Q2-RF one-look analyses on hand-worked rows: every listed cell, each gate, Q4's not-applicable branch and bootstrap interval, Q2-RF's undefined share | Disposable PostgreSQL |
 | `check_scheduled_set.py` | The nightly DAG's and the BM-unit DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
 | `check_nightly_run.py` | The nightly DAG's default dbt commands, run for real after the full build: each succeeds, each node gets one audit row, no view is recreated, and audit rows past retention are deleted | Disposable PostgreSQL |
 

@@ -252,7 +252,11 @@ value; no scheduled job builds them.
 `analyses/q1_forecast_drift_population.sql` counts the population without
 reading a forecast value and can run on any day.
 `analyses/q1_forecast_drift_verdict.sql` is read once, when the population
-reaches 2,880 half-hours. See
+reaches 2,880 half-hours. `analyses/q10_forecast_accuracy_by_lead_time.sql`
+is read once, after the verdict and at the same cutoff;
+`analyses/q4_forecast_error_vs_shortfall.sql` is read once, when 90
+settlement dates each hold both the forecast error and the cohort's
+shortfall for at least 46 half-hours. See
 [Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
 
 ## Local setup
