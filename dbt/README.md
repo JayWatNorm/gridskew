@@ -259,6 +259,15 @@ settlement dates each hold both the forecast error and the cohort's
 shortfall for at least 46 half-hours. See
 [Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
 
+## One-look analyses
+
+`analyses/` also holds the one-look analyses for Q2-RF
+(`q2rf_restatement_r3_to_rf.sql`, read at 30 dates with RF and R3), Q5
+(`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`) and
+Q23 to Q26 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
+`q25_instruction_fragmentation.sql`, `q26_instructed_and_absvd_share.sql`).
+Each states its reading rule in its header and is read once.
+
 ## Local setup
 
 Install the pinned development dependencies from the repository root:
