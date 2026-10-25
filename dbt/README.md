@@ -194,9 +194,13 @@ has changed since the published manifest; trigger a full refresh once.
 `int_elexon__instruction_intervals` splits each instructed ramp into
 settlement half-hours and keeps, minute by minute, only the acceptance in
 force (BSC T3.4); it reads the latest capture of each ramp point, because an
-acceptance that crosses midnight arrives in two daily polls. No model yet
-chooses the current row of a REMIT notice. The nightly job runs the data
-tests of these views; no scheduled job builds them.
+acceptance that crosses midnight arrives in two daily polls.
+`int_remit__revisions` puts each notice's publications in order, each in
+force until the next; `int_remit__notices` gives each notice its first and
+current publication and the BM unit it names; and
+`int_remit__known_outage_periods` marks the unit half-hours in which an
+outage was already published when the half-hour began. The nightly job runs
+the data tests of these views; no scheduled job builds them.
 
 `stg_elexon__qas` is a source-grain view of ABSVD (QAS).
 `int_shortfall_by_unit_period` carries `absvd_mwh`, from the latest capture
