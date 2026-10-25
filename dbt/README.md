@@ -112,7 +112,8 @@ its input handling later diverges through casting, renaming or filtering.
 
 The four incremental tables recompute only settlement periods with new
 captures: the two period tables that feed the fact views, and the two
-shortfall tables below them.
+shortfall tables below them. Why this equals a full rebuild is in
+[design decisions](../docs/design-decisions.md).
 
 The following is the normal nightly command sequence for reference. Live runs
 use the guarded Airflow task in the shared `gridskew_dbt` pool; these commands
