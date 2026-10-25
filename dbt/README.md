@@ -236,11 +236,20 @@ the results at once), and another unit starting or ceasing to share a cohort
 unit's Elexon ID, which `warn_cohort_elexon_id_shared` reports each night
 until a full refresh rebuilds the unit's rows.
 
-Three analyses read the table and no job runs them:
-`q3_metered_vs_notified.sql` (median and interquartile range of the
-deviation per fuel group), `q12_instructed_vs_residual.sql` (the instructed
-share of the deviation) and `q3_coverage.sql` (what the cohort holds against
-every mapped unit-period). Every result is conditional on the cohort.
+Two tables in `marts/` hold the figures the README quotes, each with the
+cutoff it was built with. `agg_delivery_by_fuel_group` gives, per fuel
+group, how far metered output is from the PN and how much of that gap was
+instructed; `q3_metered_vs_notified.sql` and `q12_instructed_vs_residual.sql`
+read it. `agg_generation_coverage` gives the share of metered generation the
+cohort holds, by kind of BM unit. No job builds them; they are rebuilt
+together when the results are refreshed:
+
+```bash
+dbt build --project-dir dbt --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "2026-11-30 23:30:00+00"}'
+```
+
+`q3_coverage.sql` reports what the cohort holds against every mapped
+unit-period. Every result is conditional on the cohort.
 
 ## Carbon forecast trajectory
 

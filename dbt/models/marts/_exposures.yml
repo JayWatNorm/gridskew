@@ -1,0 +1,10 @@
+exposures:
+  - name: gridskew_readme_results
+    type: analysis
+    owner:
+      name: James
+    description: >
+      The results the project README quotes. A mart is listed once its
+      definition is confirmed for the README.
+    depends_on:
+      - ref('agg_delivery_by_fuel_group')

@@ -1,0 +1,53 @@
+unit_tests:
+  - name: test_generation_coverage_unit_kind_energy_and_cohort
+    description: >
+      Seven metered unit-periods. T_A and T_B are transmission units; TXC,
+      2ABC and VABC have letters where the T_, 2__ and V__ prefixes have
+      underscores, so all three are "other". E_D is a cohort unit that
+      consumed (-3 MWh), which counts as a unit-period with no generation,
+      so its share is undefined. I_E is an interconnector
+      trader, left out of "all except I_". The cohort is mapped units with a
+      fuel type: T_A, E_D and I_E. In section 2, NG_A has one determinable
+      period with a PN; its second period has no PN, NG_D's no metered value,
+      and NG_X is outside the cohort, so only NG_A's first period counts.
+    model: agg_generation_coverage
+    given:
+      - input: ref('fct_generation')
+        format: csv
+        rows: |
+          bm_unit,settlement_date,period_start_utc,mapping_status,current_fuel_type,latest_quantity_mwh
+          T_A,2026-10-01,2026-10-01 00:00:00+00,mapped,CCGT,10
+          T_B,2026-10-01,2026-10-01 00:00:00+00,mapped,,5
+          TXC,2026-10-01,2026-10-01 00:00:00+00,unmapped,,7
+          2ABC,2026-10-01,2026-10-01 00:00:00+00,unmapped,,1
+          VABC,2026-10-01,2026-10-01 00:00:00+00,unmapped,,2
+          E_D,2026-10-01,2026-10-01 00:00:00+00,mapped,WIND,-3
+          I_E,2026-10-01,2026-10-01 00:00:00+00,mapped,INTFR,20
+      - input: ref('int_shortfall_by_unit_period')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,period_start_utc,determinability,pn_mwh,metered_mwh
+          NG_A,2026-10-01,2026-10-01 00:00:00+00,determinable,9,10
+          NG_A,2026-10-01,2026-10-01 00:30:00+00,determinable,,4
+          NG_D,2026-10-01,2026-10-01 00:00:00+00,no_metered_value,1,
+          NG_X,2026-10-01,2026-10-01 00:00:00+00,determinable,6,6
+      - input: ref('int_elexon__bm_unit_cohort')
+        format: csv
+        rows: |
+          national_grid_bm_unit
+          NG_A
+          NG_D
+    expect:
+      format: csv
+      rows: |
+        section,item,unit_periods,generation_mwh,cohort_unit_periods,cohort_generation_mwh,cohort_generation_share
+        1,T_,2,15.0,1,10.0,0.666667
+        1,other,3,10.0,0,0.0,0.000000
+        1,E_,1,0.0,1,0.0,
+        1,I_,1,20.0,1,20.0,1.000000
+        1,all,7,45.0,3,30.0,0.666667
+        1,all except I_,6,25.0,2,10.0,0.400000
+        2,all metered,7,45.0,,,
+        2,mapped,4,35.0,,,
+        2,cohort,3,30.0,,,
+        2,"cohort, determinable with a PN",1,10.0,,,
