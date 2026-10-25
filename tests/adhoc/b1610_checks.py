@@ -2,14 +2,14 @@
 
 Six questions the design depends on:
   1. how many days late does data actually arrive?
-  2. where are the settlement run boundaries?
-  3. does RF ever land inside a usable window?
-  4. can a past run be requested explicitly, or only the current one?
-  5. how much does the number actually move between runs?
-  6. what does a market-wide day contain?
+  2. where are the settlement run boundaries, and does RF land in a usable window?
+  3. can a past run be requested explicitly, or only the current one?
+  4. how much does the number actually move between runs?
+  5. what does a market-wide day contain?
+  6. is settlementDate British local time, and halfHourEndTime UTC?
 
-Question 5 is the one that decides whether II is usable or whether analysis has
-to wait a year. Questions 1-4 only tell you which label is current.
+Question 4 is the one that decides whether II is usable or whether analysis has
+to wait a year. Questions 1 to 3 only tell you which label is current.
 
 This remains self-contained so its original API evidence can be reproduced
 without using production poller behaviour.
@@ -103,7 +103,7 @@ print()
 # ------------------------------------------ 3. can a past run be requested?
 # the endpoint takes settlementRunType as a parameter, but the sweep above
 # returned one run per date - so it may only serve the current one. If past
-# runs ARE retrievable, question 5 can be answered today rather than in a year.
+# runs ARE retrievable, question 4 can be answered today rather than in a year.
 
 probe_age = min(300, max(ages))
 print(f"3. explicit run retrieval, {today - timedelta(days=probe_age):%Y-%m-%d}")

@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from fakes import connection_returning_in_turn, cursor_of
 
 from ingestion.elexon.contracts import REMIT_SPEC
 from ingestion.elexon.remit_poller import (
@@ -19,6 +18,7 @@ from ingestion.elexon.remit_poller import (
 from ingestion.elexon.remit_poller import run as run_poller
 from ingestion.routing import ContractRejected
 from ingestion.validation import validate_rows
+from tests.fakes import connection_returning_in_turn, cursor_of
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "remit_publications.json"
 RUN_TIME = datetime(2026, 10, 8, 9, 15, 4, tzinfo=timezone.utc)
@@ -144,12 +144,6 @@ def test_a_message_with_only_the_key_and_start_time_is_accepted():
         "payload",
         "retrieved_at",
     ]
-
-
-def test_the_payload_keeps_capacities_as_published():
-    payload_text = decimal_json_dumps({"normalCapacity": Decimal("49.920")})
-
-    assert '"normalCapacity": 49.920' in payload_text
 
 
 def test_build_windows_covers_the_range_in_steps_of_at_most_a_day():

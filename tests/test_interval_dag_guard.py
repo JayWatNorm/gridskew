@@ -1,5 +1,6 @@
 import pytest
-from fakes import DECORATED_FUNCTIONS, FakeAirflowFailException, load_dag_file
+
+from tests.fakes import DECORATED_FUNCTIONS, FakeAirflowFailException, load_dag_file
 
 INTERVAL_DAGS = [
     ("gridskew_elexon_b1610_II", "poll_b1610_II"),

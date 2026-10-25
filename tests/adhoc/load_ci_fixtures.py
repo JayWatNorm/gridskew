@@ -1,3 +1,11 @@
+"""Load the captured fixtures into the CI database through the real loaders.
+
+The raw tables must exist first: apply sql/migrations to the empty database.
+Run from the repository root on the disposable CI database, for example:
+    GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
+    python -m tests.adhoc.load_ci_fixtures
+"""
+
 import json
 import logging
 import os

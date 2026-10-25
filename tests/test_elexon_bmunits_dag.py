@@ -4,7 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from fakes import load_dag_file
+
+from tests.fakes import load_dag_file
 
 
 @pytest.fixture

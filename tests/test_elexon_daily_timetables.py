@@ -6,7 +6,8 @@ explicit timetable means the same on Airflow 2 and 3.
 """
 
 import pytest
-from fakes import DAG_SETTINGS, FakeCronDataIntervalTimetable, load_dag_file
+
+from tests.fakes import DAG_SETTINGS, FakeCronDataIntervalTimetable, load_dag_file
 
 DAILY_INTERVAL_DAGS = [
     pytest.param("gridskew_elexon_pn_dag.py", "gridskew_elexon_pn", id="PN"),

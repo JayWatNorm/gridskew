@@ -1,3 +1,5 @@
+"""Carbon Intensity source contracts: each field's type, presence and nullability."""
+
 FORECAST_SPEC = {
     "from": {"type": str, "required": True, "nullable": False},
     "to": {"type": str, "required": True, "nullable": False},

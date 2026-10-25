@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
 import pytest
-from fakes import connection_returning
 
 from ingestion.elexon.bmunits_poller import (
     check_completeness,
@@ -16,6 +15,7 @@ from ingestion.elexon.bmunits_poller import (
     run,
     validate_extract,
 )
+from tests.fakes import connection_returning
 
 FIXTURE = Path(__file__).parent / "fixtures" / "elexon" / "bmunits_truncated.json"
 RETRIEVED_AT = datetime(2026, 9, 23, 19, 0, tzinfo=timezone.utc)

@@ -14,9 +14,10 @@ from decimal import Decimal
 import requests
 
 from ingestion.database import insert_rows
-from ingestion.elexon.b1610_poller import decimal_json_dumps, expected_period_count
 from ingestion.elexon.contracts import QAS_SPEC
+from ingestion.elexon.settlement_calendar import expected_period_count
 from ingestion.routing import ContractRejected, process_rows
+from ingestion.source_api import USER_AGENT, decimal_json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +72,7 @@ def fetch_periods(settlement_date, first_period, last_period):
             "settlementPeriodTo": last_period,
             "format": "json",
         },
-        headers={
-            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
-        },
+        headers={"User-Agent": USER_AGENT},
         timeout=60,
     )
     response.raise_for_status()

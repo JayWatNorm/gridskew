@@ -5,7 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from fakes import DECORATED_FUNCTIONS, FakeAirflowSkipException, load_dag_file
+
+from tests.fakes import DECORATED_FUNCTIONS, FakeAirflowSkipException, load_dag_file
 
 SCHEDULED_AT = datetime(2026, 9, 30, 12, 5, tzinfo=timezone.utc)
 EARLIER_SLOT_SCHEDULED_AT = datetime(2026, 9, 30, 11, 35, tzinfo=timezone.utc)

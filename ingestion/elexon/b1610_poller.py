@@ -5,29 +5,25 @@ import logging
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 import requests
-import simplejson
 
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import B1610_SPEC
+from ingestion.elexon.settlement_calendar import (
+    HALF_HOUR,
+    expected_period_count,
+    london_midnight_utc,
+)
 from ingestion.routing import ContractRejected, process_rows
+from ingestion.source_api import USER_AGENT, decimal_json_dumps
 
 logger = logging.getLogger(__name__)
 
-LONDON = ZoneInfo("Europe/London")
-HALF_HOUR = timedelta(minutes=30)
 # Settlement runs in the order Elexon publishes them; a later run replaces an
 # earlier one, which the API then no longer serves. DF (Dispute Final) is
 # rare and comes after RF, at about 28 months.
 RUN_ORDER = ("II", "SF", "R1", "R2", "R3", "RF", "DF")
-
-
-def decimal_json_dumps(values):
-    """Encode B1610 quarantine payloads without converting Decimal values."""
-
-    return simplejson.dumps(values, use_decimal=True)
 
 
 def fetch(from_date, to_date, settlement_run_type=None):
@@ -42,9 +38,7 @@ def fetch(from_date, to_date, settlement_run_type=None):
     response = requests.get(
         "https://data.elexon.co.uk/bmrs/api/v1/datasets/B1610/stream",
         params=params,
-        headers={
-            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
-        },
+        headers={"User-Agent": USER_AGENT},
         timeout=60,
     )
     response.raise_for_status()
@@ -66,9 +60,7 @@ def run_in_force(settlement_date):
             "settlementPeriod": 1,
             "format": "json",
         },
-        headers={
-            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
-        },
+        headers={"User-Agent": USER_AGENT},
         timeout=60,
     )
     response.raise_for_status()
@@ -184,26 +176,6 @@ def load(parsed_rows, conn):
     with conn.cursor() as cursor:
         insert_rows(cursor, insert_sql, parsed_rows)
     conn.commit()
-
-
-def london_midnight_utc(settlement_date):
-    """Return the UTC instant at which a British settlement date starts."""
-
-    local_midnight = datetime(
-        settlement_date.year,
-        settlement_date.month,
-        settlement_date.day,
-        tzinfo=LONDON,
-    )
-    return local_midnight.astimezone(timezone.utc)
-
-
-def expected_period_count(settlement_date):
-    """Return 46, 48 or 50 settlement periods for a British date."""
-
-    start = london_midnight_utc(settlement_date)
-    end = london_midnight_utc(settlement_date + timedelta(days=1))
-    return int((end - start) / HALF_HOUR)
 
 
 def british_day_window(settlement_date):

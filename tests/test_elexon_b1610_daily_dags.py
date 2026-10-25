@@ -3,7 +3,8 @@
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
-from fakes import DAG_SETTINGS, load_dag_file
+
+from tests.fakes import DAG_SETTINGS, load_dag_file
 
 DAILY_CAPTURES = [
     pytest.param("gridskew_elexon_b1610_II_dag.py", "II", id="II"),

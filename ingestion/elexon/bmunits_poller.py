@@ -13,10 +13,10 @@ import requests
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import BM_UNITS_SPEC
 from ingestion.routing import quarantine_rows
+from ingestion.source_api import USER_AGENT
 from ingestion.validation import validate_rows
 
 URL = "https://data.elexon.co.uk/bmrs/api/v1/reference/bmunits/all"
-USER_AGENT = "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
 CAPACITY_FIELDS = ("demandCapacity", "generationCapacity")
 CAPACITY_WHITESPACE = " \t\n\r\f\v"
 CAPACITY_NUMBER = re.compile(
