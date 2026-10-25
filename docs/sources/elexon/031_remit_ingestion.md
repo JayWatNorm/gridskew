@@ -65,7 +65,8 @@ response that is not a list fails the run.
 
 Validation and quarantine routing are as in
 [011_pn_ingestion.md](011_pn_ingestion.md): a rejected row is quarantined
-and the compatible rows are loaded. The run then fails, and so does every
+and the compatible rows are loaded. The run then fails at once, without a
+retry, and so does every
 later run while `raw.endpoint_quarantine` holds a `REMIT` row whose message
 is not stored. Each of those runs still loads the new messages first.
 

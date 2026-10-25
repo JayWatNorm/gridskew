@@ -11,7 +11,7 @@ from ingestion.carbon_intensity.completeness import (
 )
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
 from ingestion.database import insert_rows
-from ingestion.routing import process_rows
+from ingestion.routing import ContractRejected, process_rows
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ def run(conn):
         load_rows=load,
     )
     if rejected_count:
-        raise RuntimeError(
+        raise ContractRejected(
             f"Quarantined {rejected_count} rows due to validation errors"
         )
     validate_forecast_periods(rows, retrieved_at)

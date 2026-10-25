@@ -30,14 +30,18 @@ def gridskew_carbon_intensity_outturn():
     @task
     def poll_outturn():
         from airflow.sdk import BaseHook
+        from airflow.sdk.exceptions import AirflowFailException
 
         sys.path.insert(0, PROJECT_PATH)
         from ingestion.carbon_intensity.outturn_poller import run
         from ingestion.database import connect
+        from ingestion.routing import ContractRejected
 
         conn = connect(BaseHook.get_connection("gridskew_prod"))
         try:
             run(conn)
+        except ContractRejected as rejected:
+            raise AirflowFailException(str(rejected)) from rejected
         finally:
             conn.close()
 

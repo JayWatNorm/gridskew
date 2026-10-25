@@ -1,4 +1,4 @@
-"""Check the Q10, Q4, Q2-RF and Q27 one-look analyses on hand-worked rows (GS-20 C7).
+"""Check the Q10, Q4, Q2-RF, Q25 and Q27 one-look analyses on hand-worked rows.
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -23,6 +23,7 @@ from tests.adhoc.check_analyses_compile import compile_analyses, disposable_conn
 Q10 = "q10_forecast_accuracy_by_lead_time"
 Q4 = "q4_forecast_error_vs_shortfall"
 Q2RF = "q2rf_restatement_r3_to_rf"
+Q25 = "q25_instruction_fragmentation"
 Q27 = "q27_forecast_stalls"
 READ_UNTIL = "2026-09-05 00:00:00+00"
 STALLS_FROM = "2026-09-01 00:00:00+00"
@@ -540,6 +541,56 @@ Q2RF_NOT_REACHED_EXPECTED = {
 }
 
 
+# Q25: one acceptance that crosses the London midnight at 23:00 UTC on 31
+# August. The first day's capture holds its three ramp points, 22:50 to
+# 23:05; the second day's capture holds only the point from midnight. Taking
+# the latest capture of each ramp point keeps all three: a 15-minute span
+# whose first settlement date, 31 August, puts it in August. Taking the
+# latest capture of the whole acceptance would keep the last point alone: 5
+# minutes, under 10, in September.
+Q25_FIXTURES = """
+create temporary table synthetic_boalf (
+    national_grid_bm_unit text,
+    acceptance_number integer,
+    acceptance_time timestamptz,
+    settlement_date date,
+    time_from timestamptz,
+    time_to timestamptz,
+    retrieved_at timestamptz
+) on commit drop;
+insert into synthetic_boalf values
+    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-08-31',
+        '2026-08-31 22:50+00', '2026-08-31 22:55+00', '2026-09-01 01:00+00'),
+    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-08-31',
+        '2026-08-31 22:55+00', '2026-08-31 23:00+00', '2026-09-01 01:00+00'),
+    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-08-31',
+        '2026-08-31 23:00+00', '2026-08-31 23:05+00', '2026-09-01 01:00+00'),
+    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-09-01',
+        '2026-08-31 23:00+00', '2026-08-31 23:05+00', '2026-09-02 01:00+00');
+create temporary table synthetic_cohort (
+    national_grid_bm_unit text,
+    fuel_group text
+) on commit drop;
+insert into synthetic_cohort values ('STOR-1', 'other');
+"""
+
+Q25_TABLES = {
+    "stg_elexon__boalf": "pg_temp.synthetic_boalf",
+    "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+}
+Q25_KEY = ("section", "fuel_group", "settlement_month", "measure")
+GRANULARITY = "1 dispatch granularity (acceptances)"
+
+Q25_EXPECTED = {
+    (1, "other", "2026-08-01", GRANULARITY): dict(
+        n=1, under_10_minutes=0, median_minutes="15.0"
+    ),
+    (2, "other", None, GRANULARITY): dict(
+        n=1, under_10_minutes=0, median_minutes="15.0"
+    ),
+}
+
+
 # Q27's slot polls: (poll_slot UTC, first poll in its slot, partial, no change).
 # The window runs from 1 September 00:00 to analysis_read_until (5 September
 # 00:00), both included. In it:
@@ -740,10 +791,12 @@ def readable(value):
     return value
 
 
-def run_on_fixtures(conn, fixtures, query, time_zone):
+def run_on_fixtures(conn, fixtures, query, time_zone, key_columns=None):
     """The rows keyed by (section, item, horizon or quintile), and any error.
 
-    The error is the database's message, or the first key that two rows share.
+    key_columns names other key columns for an analysis without an item
+    column. The error is the database's message, or the first key that two
+    rows share.
     """
 
     try:
@@ -761,11 +814,14 @@ def run_on_fixtures(conn, fixtures, query, time_zone):
     keyed = {}
     for row in rows:
         cells = dict(zip(columns, [readable(value) for value in row], strict=True))
-        cell = None
-        for cell_column in ("horizon", "quintile"):
-            if cell_column in cells:
-                cell = cells[cell_column]
-        key = (cells["section"], cells["item"], cell)
+        if key_columns is not None:
+            key = tuple(cells[column] for column in key_columns)
+        else:
+            cell = None
+            for cell_column in ("horizon", "quintile"):
+                if cell_column in cells:
+                    cell = cells[cell_column]
+            key = (cells["section"], cells["item"], cell)
         if key in keyed:
             return keyed, f"two rows {key}"
         keyed[key] = cells
@@ -919,6 +975,12 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     return found
 
 
+def q25_mismatches(conn, reached, time_zone):
+    query = on_fixtures(reached, Q25, Q25_TABLES)
+    run = run_on_fixtures(conn, Q25_FIXTURES, query, time_zone, Q25_KEY)
+    return mismatches(f"[{time_zone}] Q25", run, Q25_EXPECTED)
+
+
 def q27_mismatches(conn, reached, not_reached, time_zone):
     title = f"[{time_zone}] Q27"
     main_run = run_analysis(conn, q27_fixtures(), reached, Q27, Q27_TABLES, time_zone)
@@ -958,6 +1020,7 @@ def check_all(reached, not_reached, boundary):
             found += q10_mismatches(conn, reached, not_reached, time_zone)
             found += q4_mismatches(conn, reached, not_reached, boundary, time_zone)
             found += q2rf_mismatches(conn, reached, not_reached, time_zone)
+            found += q25_mismatches(conn, reached, time_zone)
             found += q27_mismatches(conn, reached, not_reached, time_zone)
     finally:
         conn.close()
@@ -994,7 +1057,7 @@ def main():
         raise SystemExit(
             f"{len(found)} one-look analysis cells differ from the worked values"
         )
-    print("One-look analyses: Q10, Q4, Q2-RF and Q27 match every worked value")
+    print("One-look analyses: Q10, Q4, Q2-RF, Q25 and Q27 match every worked value")
 
 
 if __name__ == "__main__":

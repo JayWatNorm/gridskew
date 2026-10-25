@@ -11,7 +11,7 @@ from psycopg.types.json import Jsonb
 
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import REMIT_SPEC
-from ingestion.routing import process_rows
+from ingestion.routing import ContractRejected, process_rows
 
 # One year before the first Physical Notification day, so that a notice
 # published up to a year ahead of its outage is held.
@@ -105,7 +105,7 @@ def run(conn, first_publish_time=None):
     # the rejected message and would otherwise succeed without it.
     quarantined_count = quarantined_row_count(conn)
     if quarantined_count:
-        raise RuntimeError(
+        raise ContractRejected(
             f"{quarantined_count} REMIT rows are in quarantine; see "
             "docs/sources/elexon/031_remit_ingestion.md"
         )
