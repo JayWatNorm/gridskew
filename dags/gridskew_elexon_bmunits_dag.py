@@ -129,8 +129,17 @@ def gridskew_elexon_bmunits():
         finally:
             conn.close()
 
-    @task(pool="gridskew_dbt", execution_timeout=timedelta(minutes=60))
-    def build_current_and_snapshot(extract_id, run_id=None):
+    @task(
+        task_id="build_current_and_snapshot",
+        pool="gridskew_dbt",
+        execution_timeout=timedelta(minutes=60),
+    )
+    def seed_test_and_snapshot_registry(extract_id, run_id=None):
+        """Seed, test and snapshot the registry, as dbt_commands lists.
+
+        The task id predates this name and is kept for its run history.
+        """
+
         from airflow.sdk import BaseHook
 
         sys.path.insert(0, PROJECT_PATH)
@@ -152,7 +161,7 @@ def gridskew_elexon_bmunits():
         finally:
             conn.close()
 
-    build_current_and_snapshot(capture_registry())
+    seed_test_and_snapshot_registry(capture_registry())
 
 
 gridskew_elexon_bmunits()

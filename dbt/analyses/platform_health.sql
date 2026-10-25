@@ -1,9 +1,9 @@
 {{ config(group='analysis') }}
 
--- The health read at the start of each GridSkew session (plan v3.5, B07),
--- run by hand in a read-only session. It reads sizes, rows captured per day
--- and dbt results, never a research-question value. Host free space and the
--- workstation backup's age are not in the database and are read separately.
+-- A health check of the GridSkew database, run by hand in a read-only
+-- session. It reads sizes, rows captured per day and dbt results, never a
+-- research-question value. Host free space is not in the database and is
+-- read separately.
 --
 -- Sections: 1, database size against the storage trigger (250 GB); 2, rows
 -- captured per UTC day over the last 14 days for each source, a day with
@@ -12,8 +12,10 @@
 -- since health_since.
 --
 -- For the node-results section, pass health_since as the timestamp of the
--- previous GridSkew session; the seven-day default is only a fallback when
--- that timestamp is unavailable.
+-- previous check; without it the section covers the last seven days.
+--
+-- The day window is worked out on UTC timestamps without a time zone, so a
+-- clock change in the session's time zone cannot shift or repeat a day.
 
 {% set since = var('health_since', none) %}
 {% set node_results = adapter.get_relation(
@@ -21,13 +23,17 @@
 ) %}
 
 with window_start as (
-    select date_trunc('day', now(), 'UTC') - interval '13 days' as starts_at
+    select
+        (date_trunc('day', now() at time zone 'UTC') - interval '13 days')
+            at time zone 'UTC' as starts_at
 ),
 
 days as (
-    select (day_start at time zone 'UTC')::date as captured_on
+    select day_start::date as captured_on
     from generate_series(
-        (select starts_at from window_start), now(), interval '1 day'
+        (select starts_at at time zone 'UTC' from window_start),
+        now() at time zone 'UTC',
+        interval '1 day'
     ) as day_start
 ),
 

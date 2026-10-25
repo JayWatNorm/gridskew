@@ -281,10 +281,10 @@ union all
 );
 
 -- ---------------------------------------------------------------- P3
--- Echo rule (James, 26 September 2026): a later capture whose segments all
--- exactly repeat segments of an earlier capture of the same unit-period is
--- ignored; the latest remaining capture is used. Compare coverage under the
--- original rule (latest capture) and the echo rule.
+-- Echo rule: a later capture whose segments all exactly repeat segments of an
+-- earlier capture of the same unit-period is ignored; the latest remaining
+-- capture is used. Compare coverage under the original rule (latest capture)
+-- and the echo rule.
 create temp table s6_pn_captures as
 with marked as (
     select

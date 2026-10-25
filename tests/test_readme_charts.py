@@ -4,7 +4,7 @@ from scripts.readme_charts import write_charts
 
 DELIVERY_HEADER = (
     "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
-    "q1_deviation_mwh,q3_deviation_mwh,abs_metered_mwh,abs_pn_mwh,"
+    "p25_deviation_mwh,p75_deviation_mwh,abs_metered_mwh,abs_pn_mwh,"
     "instructed_periods,instructed_period_share,abs_deviation_mwh,"
     "abs_instructed_deviation_mwh,abs_unexplained_shortfall_mwh,"
     "instructed_share_of_abs_deviation,unit_periods_by_run,analysis_read_until"
@@ -29,8 +29,8 @@ DELIVERY_ROWS = [
 
 EXPECTED_Q3_CSV = (
     "# Contains BMRS data © Elexon Limited copyright and database right 2026.\n"
-    "fuel_group,unit_periods,first_date,last_date,q1_deviation_mwh,"
-    "median_deviation_mwh,q3_deviation_mwh,analysis_read_until\n"
+    "fuel_group,unit_periods,first_date,last_date,p25_deviation_mwh,"
+    "median_deviation_mwh,p75_deviation_mwh,analysis_read_until\n"
     "nuclear,150,2026-08-22,2026-10-11,-0.900,-0.200,0.100,2026-10-25 00:00:00+00\n"
     "gas_turbine,300,2026-08-23,2026-10-11,-0.750,0.125,1.000,2026-10-25 00:00:00+00\n"
     "wind,400,2026-08-22,2026-10-10,-4.000,-1.250,0.500,2026-10-25 00:00:00+00\n"

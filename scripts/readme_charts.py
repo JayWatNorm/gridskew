@@ -26,9 +26,9 @@ Q3_COLUMNS = [
     "unit_periods",
     "first_date",
     "last_date",
-    "q1_deviation_mwh",
+    "p25_deviation_mwh",
     "median_deviation_mwh",
-    "q3_deviation_mwh",
+    "p75_deviation_mwh",
     "analysis_read_until",
 ]
 Q12_COLUMNS = [
@@ -109,8 +109,8 @@ def draw_deviation(rows, path):
     figure, axes = new_figure(len(rows))
     positions = list(range(len(rows)))
     for position, row in zip(positions, rows, strict=True):
-        lower = float(row["q1_deviation_mwh"])
-        upper = float(row["q3_deviation_mwh"])
+        lower = float(row["p25_deviation_mwh"])
+        upper = float(row["p75_deviation_mwh"])
         axes.plot([lower, upper], [position, position], color="#4c72b0", linewidth=4)
         axes.plot(float(row["median_deviation_mwh"]), position, "o", color="#1b2a4a")
     axes.axvline(0, color="#999999", linewidth=0.8)

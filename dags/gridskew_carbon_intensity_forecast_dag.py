@@ -43,7 +43,8 @@ def is_past_its_slot(scheduled_at, now):
     },
     tags=["gridskew", "carbon-intensity"],
 )
-def gridskew_carbon_intensity_dag():
+def gridskew_carbon_intensity_forecast():
+    """The dag_id predates the forecast name and is kept for its run history."""
 
     # The five-minute schedule offset allows NESO's boundary update to finish.
     @task()
@@ -81,4 +82,4 @@ def gridskew_carbon_intensity_dag():
     poll_forecast()
 
 
-gridskew_carbon_intensity_dag()
+gridskew_carbon_intensity_forecast()

@@ -202,8 +202,8 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
-  a deterministic fixture-backed `dbt build`, the nightly dbt commands run
-  against that build, and a rebuild of the nodes changed since `main`
+  a deterministic fixture-backed `dbt build` and the nightly dbt commands run
+  against that build
 - A nightly dbt job on named selectors: it runs the project's data tests
   without recreating a view, records each node's result in a table and
   publishes dbt's manifest and run results

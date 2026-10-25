@@ -2,8 +2,9 @@
 
 RF stays in force once published until a Dispute Final run (DF, about 28
 months) replaces it, so a late capture loses nothing: 450 days is after RF
-today (about 14 months for settlement dates before 1 October 2026, seven
-after) and well before DF. A date DF has already replaced fails at once.
+is published (about 14 months after settlement dates before 1 October 2026,
+seven months after later ones) and well before DF. A date DF has already
+replaced fails at once.
 
 Each run captures one British settlement date and asks for RF by name. The
 task fails when the stored date lacks a settlement period or the source

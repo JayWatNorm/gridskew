@@ -1,6 +1,5 @@
 name: CI
 
-
 on:
   pull_request:
     branches: [main]
@@ -30,7 +29,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -87,7 +86,7 @@ jobs:
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-        run: python tests/adhoc/load_ci_fixtures.py
+        run: python -m tests.adhoc.load_ci_fixtures
 
       - name: Run dbt commands
         env:
@@ -166,7 +165,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password

@@ -36,12 +36,12 @@ models:
       - name: median_deviation_mwh
         data_type: numeric
         description: Median of deviation_from_pn_mwh, 3 decimals.
-      - name: q1_deviation_mwh
+      - name: p25_deviation_mwh
         data_type: numeric
-        description: Lower quartile of deviation_from_pn_mwh, 3 decimals.
-      - name: q3_deviation_mwh
+        description: 25th percentile (lower quartile) of deviation_from_pn_mwh, 3 decimals.
+      - name: p75_deviation_mwh
         data_type: numeric
-        description: Upper quartile of deviation_from_pn_mwh, 3 decimals.
+        description: 75th percentile (upper quartile) of deviation_from_pn_mwh, 3 decimals.
       - name: abs_metered_mwh
         data_type: numeric
         description: Summed absolute metered energy, beside the statistics as coverage.
