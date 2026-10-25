@@ -78,7 +78,8 @@ BM-unit registry records it once per extract, in `raw.elexon_bm_units_extracts`.
 `PN`, `QPN`, `BOALF`, `QAS` and both carbon intensity tables — because there it is the
 only way to tell a revision from the original. Where the source labels its own
 revisions it is not: `raw.elexon_b1610` keys on `settlement_run_type` and
-`raw.elexon_remit` on its message ID and `revision_number` instead,
+`raw.elexon_remit` on its message ID, `revision_number`, `publish_time`
+and `created_time` instead,
 so a re-poll finding nothing new inserts nothing and `retrieved_at` records
 when a run was first seen. Each dataset's page states which applies.
 
