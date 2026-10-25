@@ -279,7 +279,9 @@ shortfall for at least 46 half-hours. See
 (`q2rf_restatement_r3_to_rf.sql`, read at 30 dates with RF and R3), Q5
 (`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`) and
 Q23 to Q26 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
-`q25_instruction_fragmentation.sql`, `q26_instructed_and_absvd_share.sql`).
+`q25_instruction_fragmentation.sql`, `q26_instructed_and_absvd_share.sql`)
+and Q27 (`q27_forecast_stalls.sql`, how often and how long the published
+forecast stops changing, read after 90 days of polls from 1 November 2026).
 Each states its reading rule in its header and is read once.
 
 ## Local setup
