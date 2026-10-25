@@ -24,6 +24,7 @@ unnumbered so GitHub renders them on arrival.
 
 ```
 docs/
+  operations.md               Noticing failures, first actions per DAG, rebuilding
   deployment.md               Homelab CD overview; host steps live in the platform runbook
   schema-migrations.md        How the raw schema is versioned
   carbon-forecast-trajectory.md  How the forecast drift question is read
