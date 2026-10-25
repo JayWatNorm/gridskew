@@ -248,7 +248,8 @@ instructed; `q3_metered_vs_notified.sql` and `q12_instructed_vs_residual.sql`
 read it. `agg_generation_coverage` gives the share of metered generation the
 cohort holds, by kind of BM unit. No job builds them; they are rebuilt
 together when the results are refreshed, at least 14 days after the cutoff,
-with the build time recorded beside the outputs:
+with the build time and each source's latest capture time recorded beside
+the outputs:
 
 ```bash
 dbt build --project-dir dbt --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "2026-11-30 23:30:00+00"}'
