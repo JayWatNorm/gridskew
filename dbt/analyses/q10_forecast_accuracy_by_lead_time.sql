@@ -13,7 +13,8 @@
 -- dirtier than forecast. A half-hour's settlement date is its local
 -- (Europe/London) date. Until Q1's population is reached, with at least
 -- three slot polls stored after the cutoff (Q1's gate), it returns counts and
--- no accuracy figure. Every listed cell appears, with zero half-hours if
+-- no accuracy figure. Read at least 8 days after the cutoff, so outturn has
+-- settled. Every listed cell appears, with zero half-hours if
 -- it has none.
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}

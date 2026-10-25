@@ -6,7 +6,8 @@
 -- the source band on the poll that gave first_forecast. Each cell is
 -- described with the verdict's own measures, not tested. Every listed cell
 -- appears, with zero half-hours if it has none. Before the population is
--- reached it returns each cell's count and no drift.
+-- reached, with at least three slot polls stored after the cutoff (the
+-- verdict's gate), it returns each cell's count and no drift.
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
 {% set read_until = analysis_read_until() %}

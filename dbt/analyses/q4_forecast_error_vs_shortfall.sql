@@ -17,7 +17,9 @@
 -- is reported beside the verdict and does not change it; a draw whose bottom
 -- mean is not positive forms no ratio, and with fewer than 900 such ratios
 -- the interval is unavailable. Read once, on the first day the population
--- reaches 90 matched days. Amended 25 October 2026, before any read: the
+-- reaches 90 matched days, at least three slot polls are stored after the
+-- cutoff (so a forecast stall running past it is settled) and at least 8
+-- days have passed since it (so outturn has settled). Amended 25 October 2026, before any read: the
 -- quintiles and the bootstrap use only half-hours whose final forecast was
 -- made at most 30 minutes ahead, the same "final" as Q1's, because during a
 -- forecast stall the last counted forecast can be hours old. Matched days
@@ -31,7 +33,7 @@
 -- determinable cohort unit-period holds a value (Q5's population: with or
 -- without a PN; before ABSVD). Quintiles are ntile(5), so the lower quintiles
 -- take one extra half-hour when the count is not a multiple of 5. Each
--- bootstrap draw takes as many matched days as there are, with replacement;
+-- bootstrap draw takes as many eligible days as there are, with replacement;
 -- its picks come from md5 of a fixed seed, the draw and the pick, so every
 -- run gives the same interval. The interval resamples whole days for the
 -- correlation within a day; correlation between days is not modelled. Until

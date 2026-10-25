@@ -273,7 +273,8 @@ settlement dates each hold both the forecast error and the cohort's
 shortfall for at least 46 half-hours; its quintiles use only half-hours
 whose final forecast was made at most 30 minutes ahead. All three wait
 until three slot polls are stored after the cutoff, so a forecast stall
-that runs past it is settled. See
+that runs past it is settled, and are read at least 8 days after it, so
+outturn has settled. See
 [Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
 
 ## One-look analyses

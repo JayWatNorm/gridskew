@@ -6,8 +6,9 @@
 -- first day q1_forecast_drift_population reports
 -- forecast_drift_half_hours_needed complete half-hours and at least three
 -- slot polls are stored after analysis_read_until, so a forecast stall
--- running past the cutoff is settled. Before then it returns the count and
--- date range and no result.
+-- running past the cutoff is settled; read it at least 8 days after the
+-- cutoff, so outturn has settled. Before then it returns the count and date
+-- range and no result.
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
 {% set read_until = analysis_read_until() %}

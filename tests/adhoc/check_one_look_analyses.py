@@ -153,7 +153,7 @@ select
         else 50
     end as cohort_measure
 from (
-    values (date '2026-09-01'), (date '2026-09-02'), (date '2026-09-03'), (date '2026-09-06')
+    values (date '2026-09-01'), (date '2026-09-02'), (date '2026-09-03'), (date '2026-09-06'){extra_days}
 ) as days (settlement_date)
 cross join generate_series(1, 48) as periods (period);
 
@@ -163,6 +163,7 @@ select
     case when period % 2 = 1 then period else -period end,
     case
         when settlement_date = date '2026-09-03' and period = 1 then 1801
+        when settlement_date = date '2026-08-31' then 1801
         when settlement_date = date '2026-09-02' and period <= {stale_b_half_hours} then 1801
         else 1800
     end
@@ -303,6 +304,11 @@ LEFT_OUT = (
     "half-hours with error_final left out: final forecast over 30 minutes ahead",
     None,
 )
+NO_FRESH_DAYS = (
+    3,
+    "matched days with no half-hour whose final forecast is within 30 minutes",
+    None,
+)
 BOTTOM = (1, "bottom quintile mean, MWh", None)
 TOP = (1, "top quintile mean, MWh", None)
 DIFFERENCE = (1, "difference, top minus bottom, MWh", None)
@@ -360,11 +366,7 @@ Q4_EXPECTED = {
         days=3, first_date="2026-09-01", last_date="2026-09-03"
     ),
     LEFT_OUT: dict(half_hours=1),
-    (
-        3,
-        "matched days with no half-hour whose final forecast is within 30 minutes",
-        None,
-    ): dict(days=0),
+    NO_FRESH_DAYS: dict(days=0),
     (3, "settlement dates with the cohort measure", None): dict(
         days=3, first_date="2026-09-01", last_date="2026-09-03"
     ),
@@ -602,6 +604,9 @@ Q2RF_NOT_REACHED_EXPECTED = {
 # three: a 15-minute span. Taking the latest capture of the whole acceptance
 # would keep the last point alone: 5 minutes, under 10. Both captures fall on
 # settlement date 1 September (London time), so the month is September.
+# Acceptance 8 is the same in winter, at the end of January, when UTC and
+# London time agree: its points fall on settlement dates 31 January and 1
+# February, and its month is that of its first ramp point, January.
 Q25_FIXTURES = """
 create temporary table synthetic_boalf (
     national_grid_bm_unit text,
@@ -620,7 +625,15 @@ insert into synthetic_boalf values
     ('STOR-1', 7, '2026-08-31 23:45+00', '2026-09-01',
         '2026-09-01 00:00+00', '2026-09-01 00:05+00', '2026-09-01 01:00+00'),
     ('STOR-1', 7, '2026-08-31 23:45+00', '2026-09-01',
-        '2026-09-01 00:00+00', '2026-09-01 00:05+00', '2026-09-02 01:00+00');
+        '2026-09-01 00:00+00', '2026-09-01 00:05+00', '2026-09-02 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-01-31',
+        '2026-01-31 23:50+00', '2026-01-31 23:55+00', '2026-02-01 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-01-31',
+        '2026-01-31 23:55+00', '2026-02-01 00:00+00', '2026-02-01 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-02-01',
+        '2026-02-01 00:00+00', '2026-02-01 00:05+00', '2026-02-01 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-02-01',
+        '2026-02-01 00:00+00', '2026-02-01 00:05+00', '2026-02-02 01:00+00');
 create temporary table synthetic_cohort (
     national_grid_bm_unit text,
     fuel_group text
@@ -636,11 +649,14 @@ Q25_KEY = ("section", "fuel_group", "settlement_month", "measure")
 GRANULARITY = "1 dispatch granularity (acceptances)"
 
 Q25_EXPECTED = {
+    (1, "other", "2026-01-01", GRANULARITY): dict(
+        n=1, under_10_minutes=0, median_minutes="15.0"
+    ),
     (1, "other", "2026-09-01", GRANULARITY): dict(
         n=1, under_10_minutes=0, median_minutes="15.0"
     ),
     (2, "other", None, GRANULARITY): dict(
-        n=1, under_10_minutes=0, median_minutes="15.0"
+        n=2, under_10_minutes=0, median_minutes="15.0"
     ),
 }
 
@@ -787,13 +803,20 @@ Q27_NO_LOOK_AHEAD_EXPECTED = {
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
-def q4_fixtures(a_bottom, b_bottom, b_tenth, stale_b_half_hours=0):
+def q4_fixtures(a_bottom, b_bottom, b_tenth, stale_b_half_hours=0, extra_days=""):
     return Q4_FIXTURES.format(
         a_bottom=a_bottom,
         b_bottom=b_bottom,
         b_tenth=b_tenth,
         stale_b_half_hours=stale_b_half_hours,
+        extra_days=extra_days,
     )
+
+
+# A matched day before A (31 August) whose every final forecast is stale:
+# it counts towards the gate but holds no half-hour for the quintiles, so
+# the bootstrap must resample only A and B and give the same interval.
+ALL_STALE_DAY = ", (date '2026-08-31')"
 
 
 def q2rf_fixtures(extra_cohort_rows=""):
@@ -1026,6 +1049,25 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
         f"{title} stale forecasts on a matched day",
         stale_run,
         {POPULATION: dict(days=2, half_hours=91), LEFT_OUT: dict(half_hours=4)},
+    )
+
+    all_stale_day_run = run_analysis(
+        conn,
+        q4_fixtures(1, 1, 3, extra_days=ALL_STALE_DAY),
+        reached,
+        Q4,
+        Q4_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} a matched day with no fresh forecast",
+        all_stale_day_run,
+        {
+            POPULATION: dict(days=3, half_hours=94),
+            NO_FRESH_DAYS: dict(days=1),
+            LOW: Q4_EXPECTED[LOW],
+            HIGH: Q4_EXPECTED[HIGH],
+        },
     )
     return found
 
