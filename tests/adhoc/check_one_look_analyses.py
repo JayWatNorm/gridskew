@@ -67,6 +67,18 @@ Q10_ROWS = """
     ('2026-09-05 00:00+00', true, 0, 8, -3)         -- at analysis_read_until; Saturday: weekend
 """
 
+# Slot polls after analysis_read_until (5 September 00:00): three settle a
+# stall that runs past the cutoff, so the population can be reached; with
+# two, it cannot. The poll in the cutoff's own slot and a later poll in the
+# same slot do not count.
+Q10_LOOK_AHEAD_POLLS = """
+    ('2026-09-05 00:00+00', true),
+    ('2026-09-05 00:30+00', true),
+    ('2026-09-05 00:30+00', false),
+    ('2026-09-05 01:30+00', true){third_poll}
+"""
+THIRD_POLL_AFTER_CUTOFF = ",\n    ('2026-09-05 02:00+00', true)"
+
 Q10_FIXTURES = f"""
 create temporary table synthetic_carbon_error (
     period_start timestamptz,
@@ -76,11 +88,25 @@ create temporary table synthetic_carbon_error (
     error_final numeric
 ) on commit drop;
 insert into synthetic_carbon_error values {Q10_ROWS};
+create temporary table synthetic_slot_polls (
+    poll_slot timestamptz,
+    is_first_poll_in_slot boolean
+) on commit drop;
+insert into synthetic_slot_polls values {{look_ahead_polls}};
 """
+
+
+def q10_fixtures(third_poll=THIRD_POLL_AFTER_CUTOFF):
+    polls = Q10_LOOK_AHEAD_POLLS.format(third_poll=third_poll)
+    return Q10_FIXTURES.format(look_ahead_polls=polls)
+
 
 # Q4's days, settlement dates in summer time: A 1 September and B 2 September
 # are matched (48 and 46 half-hours with both values); C 3 September has 45
-# (not matched); E 6 September is after analysis_read_until. Every half-hour
+# (not matched); E 6 September is after analysis_read_until. Every final
+# forecast is exactly 30 minutes ahead (kept: the limit is inclusive) except
+# C's first half-hour, 30 minutes and a second ahead (left out; C stays
+# unmatched, so no other value moves). Every half-hour
 # p (1 to 48) has error_final p when p is odd and -p when even, so the sorted
 # abs(error_final) puts A's p at position 2p - 1 and B's at 2p for p up to 46,
 # then A47 (93) and A48 (94). ntile(5) of 94: 19, 19, 19, 19, 18, so
@@ -96,7 +122,8 @@ insert into synthetic_carbon_error values {Q10_ROWS};
 Q4_FIXTURES = """
 create temporary table synthetic_carbon_error (
     period_start timestamptz,
-    error_final numeric
+    error_final numeric,
+    final_horizon_seconds numeric
 ) on commit drop;
 create temporary table synthetic_shortfall (
     national_grid_bm_unit text,
@@ -126,14 +153,20 @@ select
         else 50
     end as cohort_measure
 from (
-    values (date '2026-09-01'), (date '2026-09-02'), (date '2026-09-03'), (date '2026-09-06')
+    values (date '2026-09-01'), (date '2026-09-02'), (date '2026-09-03'), (date '2026-09-06'){extra_days}
 ) as days (settlement_date)
 cross join generate_series(1, 48) as periods (period);
 
 insert into synthetic_carbon_error
 select
     period_start,
-    case when period % 2 = 1 then period else -period end
+    case when period % 2 = 1 then period else -period end,
+    case
+        when settlement_date = date '2026-09-03' and period = 1 then 1801
+        when settlement_date = date '2026-08-31' then 1801
+        when settlement_date = date '2026-09-02' and period <= {stale_b_half_hours} then 1801
+        else 1800
+    end
 from synthetic_periods;
 
 insert into synthetic_shortfall
@@ -162,13 +195,24 @@ from synthetic_periods
 where settlement_date = date '2026-09-01' and period = 2
 union all
 select 'U1', date '2026-09-01', timestamptz '2026-09-01 12:15:00+00', 5, 'determinable';
+
+create temporary table synthetic_slot_polls (
+    poll_slot timestamptz,
+    is_first_poll_in_slot boolean
+) on commit drop;
+insert into synthetic_slot_polls values
+    ('2026-09-05 00:30+00', true), ('2026-09-05 01:00+00', true), ('2026-09-05 01:30+00', true);
 """
 
-Q10_TABLES = {"int_carbon_error_by_period": "pg_temp.synthetic_carbon_error"}
+Q10_TABLES = {
+    "int_carbon_error_by_period": "pg_temp.synthetic_carbon_error",
+    "int_carbon_forecast__revisions": "pg_temp.synthetic_slot_polls",
+}
 Q4_TABLES = {
     "int_carbon_error_by_period": "pg_temp.synthetic_carbon_error",
     "int_shortfall_by_unit_period": "pg_temp.synthetic_shortfall",
     "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+    "int_carbon_forecast__revisions": "pg_temp.synthetic_slot_polls",
 }
 
 FIRST = "2026-08-28 10:00:00+00:00"
@@ -255,6 +299,16 @@ Q10_NOT_REACHED_EXPECTED = {
 }
 
 POPULATION = (1, "population: matched days (2 needed)", None)
+LEFT_OUT = (
+    3,
+    "half-hours with error_final left out: final forecast over 30 minutes ahead",
+    None,
+)
+NO_FRESH_DAYS = (
+    3,
+    "matched days with no half-hour whose final forecast is within 30 minutes",
+    None,
+)
 BOTTOM = (1, "bottom quintile mean, MWh", None)
 TOP = (1, "top quintile mean, MWh", None)
 DIFFERENCE = (1, "difference, top minus bottom, MWh", None)
@@ -311,6 +365,8 @@ Q4_EXPECTED = {
     (3, "settlement dates with an error_final", None): dict(
         days=3, first_date="2026-09-01", last_date="2026-09-03"
     ),
+    LEFT_OUT: dict(half_hours=1),
+    NO_FRESH_DAYS: dict(days=0),
     (3, "settlement dates with the cohort measure", None): dict(
         days=3, first_date="2026-09-01", last_date="2026-09-03"
     ),
@@ -541,13 +597,16 @@ Q2RF_NOT_REACHED_EXPECTED = {
 }
 
 
-# Q25: one acceptance that crosses the London midnight at 23:00 UTC on 31
-# August. The first day's capture holds its three ramp points, 22:50 to
-# 23:05; the second day's capture holds only the point from midnight. Taking
-# the latest capture of each ramp point keeps all three: a 15-minute span
-# whose first settlement date, 31 August, puts it in August. Taking the
-# latest capture of the whole acceptance would keep the last point alone: 5
-# minutes, under 10, in September.
+# Q25: one acceptance that crosses 00:00 UTC, the boundary between two daily
+# BOALF captures, on the night of 31 August. The first day's capture holds its
+# three ramp points, 23:50 to 00:05; the second day's capture repeats only the
+# point from 00:00. Taking the latest capture of each ramp point keeps all
+# three: a 15-minute span. Taking the latest capture of the whole acceptance
+# would keep the last point alone: 5 minutes, under 10. Both captures fall on
+# settlement date 1 September (London time), so the month is September.
+# Acceptance 8 is the same in winter, at the end of January, when UTC and
+# London time agree: its points fall on settlement dates 31 January and 1
+# February, and its month is that of its first ramp point, January.
 Q25_FIXTURES = """
 create temporary table synthetic_boalf (
     national_grid_bm_unit text,
@@ -559,14 +618,22 @@ create temporary table synthetic_boalf (
     retrieved_at timestamptz
 ) on commit drop;
 insert into synthetic_boalf values
-    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-08-31',
-        '2026-08-31 22:50+00', '2026-08-31 22:55+00', '2026-09-01 01:00+00'),
-    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-08-31',
-        '2026-08-31 22:55+00', '2026-08-31 23:00+00', '2026-09-01 01:00+00'),
-    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-08-31',
-        '2026-08-31 23:00+00', '2026-08-31 23:05+00', '2026-09-01 01:00+00'),
-    ('STOR-1', 7, '2026-08-31 22:45+00', '2026-09-01',
-        '2026-08-31 23:00+00', '2026-08-31 23:05+00', '2026-09-02 01:00+00');
+    ('STOR-1', 7, '2026-08-31 23:45+00', '2026-09-01',
+        '2026-08-31 23:50+00', '2026-08-31 23:55+00', '2026-09-01 01:00+00'),
+    ('STOR-1', 7, '2026-08-31 23:45+00', '2026-09-01',
+        '2026-08-31 23:55+00', '2026-09-01 00:00+00', '2026-09-01 01:00+00'),
+    ('STOR-1', 7, '2026-08-31 23:45+00', '2026-09-01',
+        '2026-09-01 00:00+00', '2026-09-01 00:05+00', '2026-09-01 01:00+00'),
+    ('STOR-1', 7, '2026-08-31 23:45+00', '2026-09-01',
+        '2026-09-01 00:00+00', '2026-09-01 00:05+00', '2026-09-02 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-01-31',
+        '2026-01-31 23:50+00', '2026-01-31 23:55+00', '2026-02-01 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-01-31',
+        '2026-01-31 23:55+00', '2026-02-01 00:00+00', '2026-02-01 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-02-01',
+        '2026-02-01 00:00+00', '2026-02-01 00:05+00', '2026-02-01 01:00+00'),
+    ('STOR-1', 8, '2026-01-31 23:45+00', '2026-02-01',
+        '2026-02-01 00:00+00', '2026-02-01 00:05+00', '2026-02-02 01:00+00');
 create temporary table synthetic_cohort (
     national_grid_bm_unit text,
     fuel_group text
@@ -582,11 +649,14 @@ Q25_KEY = ("section", "fuel_group", "settlement_month", "measure")
 GRANULARITY = "1 dispatch granularity (acceptances)"
 
 Q25_EXPECTED = {
-    (1, "other", "2026-08-01", GRANULARITY): dict(
+    (1, "other", "2026-01-01", GRANULARITY): dict(
+        n=1, under_10_minutes=0, median_minutes="15.0"
+    ),
+    (1, "other", "2026-09-01", GRANULARITY): dict(
         n=1, under_10_minutes=0, median_minutes="15.0"
     ),
     (2, "other", None, GRANULARITY): dict(
-        n=1, under_10_minutes=0, median_minutes="15.0"
+        n=2, under_10_minutes=0, median_minutes="15.0"
     ),
 }
 
@@ -733,8 +803,20 @@ Q27_NO_LOOK_AHEAD_EXPECTED = {
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
-def q4_fixtures(a_bottom, b_bottom, b_tenth):
-    return Q4_FIXTURES.format(a_bottom=a_bottom, b_bottom=b_bottom, b_tenth=b_tenth)
+def q4_fixtures(a_bottom, b_bottom, b_tenth, stale_b_half_hours=0, extra_days=""):
+    return Q4_FIXTURES.format(
+        a_bottom=a_bottom,
+        b_bottom=b_bottom,
+        b_tenth=b_tenth,
+        stale_b_half_hours=stale_b_half_hours,
+        extra_days=extra_days,
+    )
+
+
+# A matched day before A (31 August) whose every final forecast is stale:
+# it counts towards the gate but holds no half-hour for the quintiles, so
+# the bootstrap must resample only A and B and give the same interval.
+ALL_STALE_DAY = ", (date '2026-08-31')"
 
 
 def q2rf_fixtures(extra_cohort_rows=""):
@@ -885,14 +967,21 @@ def run_analysis(conn, fixtures, manifest, analysis, tables, time_zone):
 
 def q10_mismatches(conn, reached, not_reached, time_zone):
     title = f"[{time_zone}] Q10"
-    main_run = run_analysis(conn, Q10_FIXTURES, reached, Q10, Q10_TABLES, time_zone)
+    main_run = run_analysis(conn, q10_fixtures(), reached, Q10, Q10_TABLES, time_zone)
     early_run = run_analysis(
-        conn, Q10_FIXTURES, not_reached, Q10, Q10_TABLES, time_zone
+        conn, q10_fixtures(), not_reached, Q10, Q10_TABLES, time_zone
     )
     found = mismatches(title, main_run, Q10_EXPECTED)
     found += unexpected_rows(title, main_run, Q10_EXPECTED)
     found += mismatches(f"{title} early", early_run, Q10_NOT_REACHED_EXPECTED)
     found += gated_values_left_null(f"{title} early", early_run, Q10_GATED)
+
+    short_look_ahead_run = run_analysis(
+        conn, q10_fixtures(third_poll=""), reached, Q10, Q10_TABLES, time_zone
+    )
+    found += gated_values_left_null(
+        f"{title} two polls after the cutoff", short_look_ahead_run, Q10_GATED
+    )
     return found
 
 
@@ -944,6 +1033,42 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     found += mismatches(f"{title} early", early_run, Q4_NOT_REACHED_EXPECTED)
     found += gated_values_left_null(f"{title} early", early_run, Q4_GATED)
     found += gated_values_left_null(f"{title} early", early_run, Q4_QUINTILES_GATED)
+
+    # Three stale final forecasts on B, which has 46 half-hours with both
+    # values: they leave the quintiles (48 + 46 - 3 = 91 half-hours), but B
+    # stays a matched day.
+    stale_run = run_analysis(
+        conn,
+        q4_fixtures(1, 1, 3, stale_b_half_hours=3),
+        reached,
+        Q4,
+        Q4_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} stale forecasts on a matched day",
+        stale_run,
+        {POPULATION: dict(days=2, half_hours=91), LEFT_OUT: dict(half_hours=4)},
+    )
+
+    all_stale_day_run = run_analysis(
+        conn,
+        q4_fixtures(1, 1, 3, extra_days=ALL_STALE_DAY),
+        reached,
+        Q4,
+        Q4_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} a matched day with no fresh forecast",
+        all_stale_day_run,
+        {
+            POPULATION: dict(days=3, half_hours=94),
+            NO_FRESH_DAYS: dict(days=1),
+            LOW: Q4_EXPECTED[LOW],
+            HIGH: Q4_EXPECTED[HIGH],
+        },
+    )
     return found
 
 

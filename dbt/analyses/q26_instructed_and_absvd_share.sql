@@ -16,7 +16,7 @@
 -- latest value captured, not called final. Run once, by hand, up to
 -- analysis_read_until.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with determinable as (
     select

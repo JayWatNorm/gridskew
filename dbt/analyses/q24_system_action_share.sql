@@ -23,7 +23,7 @@
 -- energy (the measure read on 11 October) over the same stretches. Section 2
 -- is all months together. Run once, by hand, after the rule is recorded.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with stretches as (
     select

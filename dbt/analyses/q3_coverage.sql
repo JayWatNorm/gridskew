@@ -17,7 +17,7 @@
 -- run captured. Reads counts and summed absolute energy only. It reads the
 -- full fact views, so it takes minutes; run it by hand.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with metered as (
     select

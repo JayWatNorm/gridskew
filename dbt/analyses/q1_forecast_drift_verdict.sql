@@ -4,11 +4,14 @@
 -- (docs/carbon-forecast-trajectory.md): does the carbon-intensity forecast
 -- drift one way between its first and its final version? Run it once, on the
 -- first day q1_forecast_drift_population reports
--- forecast_drift_half_hours_needed complete half-hours. Before that day it
--- returns the count and date range and no result.
+-- forecast_drift_half_hours_needed complete half-hours and at least three
+-- slot polls are stored after analysis_read_until, so a forecast stall
+-- running past the cutoff is settled; read it at least 8 days after the
+-- cutoff, so outturn has settled. Before then it returns the count and date
+-- range and no result.
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with half_hours as (
     select
@@ -100,7 +103,8 @@ reading_rule as (
         median_drift,
         positive_share,
         verdict,
-        half_hours >= {{ half_hours_needed }} as population_is_reached
+        half_hours >= {{ half_hours_needed }}
+            and {{ forecast_look_ahead_reached(read_until) }} as population_is_reached
     from verdicts
     where poll_set = 'reading_rule'
 ),

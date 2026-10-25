@@ -19,7 +19,7 @@
 -- returns counts and no energy.
 
 {% set dates_needed = var('rf_restatement_dates_needed') %}
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with runs as (
     select

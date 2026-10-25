@@ -11,12 +11,14 @@
 --
 -- Error is actual minus forecast, so a positive bias means half-hours were
 -- dirtier than forecast. A half-hour's settlement date is its local
--- (Europe/London) date. Until Q1's population is reached it returns counts
--- and no accuracy figure. Every listed cell appears, with zero half-hours if
+-- (Europe/London) date. Until Q1's population is reached, with at least
+-- three slot polls stored after the cutoff (Q1's gate), it returns counts and
+-- no accuracy figure. Read at least 8 days after the cutoff, so outturn has
+-- settled. Every listed cell appears, with zero half-hours if
 -- it has none.
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with q1_half_hours as (
     select
@@ -33,7 +35,9 @@ with q1_half_hours as (
 ),
 
 population as (
-    select count(*) >= {{ half_hours_needed }} as is_reached
+    select
+        count(*) >= {{ half_hours_needed }}
+            and {{ forecast_look_ahead_reached(read_until) }} as is_reached
     from q1_half_hours
 ),
 

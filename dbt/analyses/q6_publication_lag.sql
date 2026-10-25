@@ -23,7 +23,7 @@
 -- analysis_read_until), then one count inside the population that excludes
 -- nothing. Run once, by hand, after the rule is recorded.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with notices as (
     select
