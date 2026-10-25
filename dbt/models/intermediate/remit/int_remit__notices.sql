@@ -1,20 +1,35 @@
 {{ config(group='analysis', access='private') }}
 
 -- One row per REMIT notice: its first publication, its current publication
--- (decision 022) and the BM unit it names. The publication lag is measured
--- from the first publication: its publish_time minus its event_start_time,
--- in whole seconds, positive when the notice was published after the event
--- began. The unit is the current publication's, mapped in
+-- (decision 022) and the BM unit it names. The first publication is the one
+-- in force at the notice's earliest publish_time. When several publications
+-- share that time, it is the last of them in publication order; the others
+-- were never in force, so their validity is empty. The publication lag is
+-- measured from the first publication: its publish_time minus its
+-- event_start_time, in whole seconds, positive when the notice was published
+-- after the event began. The unit is the current publication's, mapped in
 -- int_remit__revisions.
 
-with first_publications as (
+with publications as (
+    select
+        mrid,
+        publish_time,
+        valid_to,
+        event_start_time,
+        unavailability_type,
+        min(publish_time) over (partition by mrid) as notice_first_published_at
+    from {{ ref('int_remit__revisions') }}
+),
+
+first_publications as (
     select
         mrid,
         publish_time as first_published_at,
         event_start_time as first_event_start_time,
         unavailability_type as first_unavailability_type
-    from {{ ref('int_remit__revisions') }}
-    where publication_order = 1
+    from publications
+    where publish_time = notice_first_published_at
+        and (valid_to is null or valid_to > publish_time)
 ),
 
 current_publications as (
