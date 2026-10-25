@@ -18,8 +18,9 @@ to live public APIs and preserves the revisions that those APIs overwrite.
    forecast error and market stress signals as possible explanations.
 
 The analysis stays at unit level because aggregating to fuel type first can
-wash out the signal. It initially covers physical generators such as CCGT,
-nuclear and wind, for which `PN` is a meaningful physical baseline.
+wash out the signal. It covers every registered unit with a published fuel
+type, interconnectors and pumped storage included; a unit without one has no
+physical baseline.
 
 A related question runs independently: **how does a forecast for a given
 half-hour change as that half-hour approaches?** This can be answered without
@@ -164,7 +165,7 @@ sql/            Raw-layer migrations and provisioning scripts
 dbt/            Sources, seeds, models, tests and macros
 dbt_profiles/   Connection profile using environment variables
 tests/          pytest suite, captured fixtures and ad-hoc checks
-scripts/        README chart script, run by hand
+scripts/        Chart script for the results, run by hand
 docs/           Source, ingestion and deployment documentation
 .github/        Continuous-integration workflow
 ```
@@ -231,7 +232,8 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   read once, when 2,880 complete half-hours exist; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 - Analyses for forecast accuracy by lead time, forecast error against the
-  shortfall, the change from the settled to the final settlement run, and how
+  shortfall, the change from the last reconciliation run (`R3`) to the final
+  run (`RF`), and how
   often the published forecast stops changing. Each rule is fixed in advance
   and read once its data exists.
 
@@ -244,8 +246,8 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - How carbon-intensity forecasts drift as a period approaches and how
   forecast accuracy changes with lead time, once 2,880 complete half-hours
   exist
-- How metered output changes from the settled run to the final run (`RF`),
-  from mid-November 2026
+- How metered output changes from the last reconciliation run (`R3`) to the
+  final run (`RF`), from mid-December 2026
 - Whether carbon forecast error tracks the shortfall, once 90 matched days
   exist
 - A write-up of the results with charts

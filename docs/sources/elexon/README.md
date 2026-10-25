@@ -270,10 +270,14 @@ So:
 - **Backfills**: daily Airflow intervals are serialised through the one-slot
   `elexon` pool. The completed PN backfill averaged about 1.4 requests per
   minute, so the current implementation needs no additional client-side delay.
-- **Expected volume is not checked.** `raise_for_status()` catches 4xx and
-  5xx, and the pollers reject empty or malformed outer responses. With no
-  rate-limit headers, a throttle could still return 200 with valid rows but too
-  few of them, and those rows would load normally.
+- **Expected volume is checked for B1610 and the registry only.**
+  `raise_for_status()` catches 4xx and 5xx, and the pollers reject empty or
+  malformed outer responses. With no rate-limit headers, a throttle could
+  still return 200 with valid rows but too few of them: B1610 fails below 95%
+  of the units of its run's best recent day, and the registry extract is
+  blocked on a fall of more than five percent. QAS checks that a captured
+  date has every settlement period, not how many units it holds. PN, QPN,
+  BOALF and REMIT load such rows normally.
 - **Identify yourself.** The terms prohibit concealing an application's
   identity, and a descriptive `User-Agent` means an operator can contact you
   rather than simply blocking the address.

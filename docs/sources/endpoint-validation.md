@@ -4,8 +4,8 @@ Every ingested endpoint has an explicit contract checked before typed parsing.
 The validator is offline and source-independent: callers provide decoded rows
 and the matching contract.
 
-Validation and quarantine cover PN, QPN, B1610, BOALF, REMIT, both Carbon
-datasets and the BM-unit registry. Carbon forecast and outturn also have
+Validation and quarantine cover PN, QPN, B1610, BOALF, REMIT, QAS, both
+Carbon datasets and the BM-unit registry. Carbon forecast and outturn also have
 period-completeness checks.
 
 ## Behavior
@@ -87,7 +87,7 @@ also block suspiciously small responses. See
 | File | Responsibility |
 |---|---|
 | [`validation.py`](../../ingestion/validation.py) | Generic flat and nested contract checks |
-| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN, B1610, BOALF, REMIT and BM-unit contracts |
+| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN, B1610, BOALF, REMIT, QAS and BM-unit contracts |
 | [`contracts.py`](../../ingestion/carbon_intensity/contracts.py) | Forecast and outturn contracts |
 | [`routing.py`](../../ingestion/routing.py) | Shared warning, quarantine and compatible-row routing |
 | [`pn_poller.py`](../../ingestion/elexon/pn_poller.py) | PN response window, parser and loader |
@@ -95,6 +95,8 @@ also block suspiciously small responses. See
 | [`b1610_poller.py`](../../ingestion/elexon/b1610_poller.py) | B1610 response window, settlement-date coverage check, parser, loader and Decimal encoder |
 | [`boalf_poller.py`](../../ingestion/elexon/boalf_poller.py) | BOALF response window, parser and loader |
 | [`remit_poller.py`](../../ingestion/elexon/remit_poller.py) | REMIT watermark windows, parser, loader and quarantine gate |
+| [`qas_poller.py`](../../ingestion/elexon/qas_poller.py) | QAS settlement-date capture, whole-date check, parser and loader |
+| [`qas_backfill.py`](../../ingestion/elexon/qas_backfill.py) | One-off QAS capture of every date before the DAG's first run |
 | [`bmunits_poller.py`](../../ingestion/elexon/bmunits_poller.py) | Complete registry gate, manifest and raw-row loader |
 | [`completeness.py`](../../ingestion/carbon_intensity/completeness.py) | Carbon period-coverage checks |
 | [`forecast_poller.py`](../../ingestion/carbon_intensity/forecast_poller.py) | Forecast envelope, parser, loader and 48-hour warning |
