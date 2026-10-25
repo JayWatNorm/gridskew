@@ -9,7 +9,7 @@
 -- population. Up to analysis_read_until; built by hand with
 -- agg_delivery_by_fuel_group.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with metered as (
     select

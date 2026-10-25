@@ -9,7 +9,7 @@
 -- reached it returns each cell's count and no drift.
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with half_hours as (
     select
@@ -25,7 +25,9 @@ with half_hours as (
 ),
 
 population as (
-    select count(*) >= {{ half_hours_needed }} as is_reached
+    select
+        count(*) >= {{ half_hours_needed }}
+            and {{ forecast_look_ahead_reached(read_until) }} as is_reached
     from half_hours
 ),
 

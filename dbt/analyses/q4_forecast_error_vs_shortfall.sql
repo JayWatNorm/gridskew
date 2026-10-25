@@ -17,7 +17,15 @@
 -- is reported beside the verdict and does not change it; a draw whose bottom
 -- mean is not positive forms no ratio, and with fewer than 900 such ratios
 -- the interval is unavailable. Read once, on the first day the population
--- reaches 90 matched days.
+-- reaches 90 matched days. Amended 25 October 2026, before any read: the
+-- quintiles and the bootstrap use only half-hours whose final forecast was
+-- made at most 30 minutes ahead, the same "final" as Q1's, because during a
+-- forecast stall the last counted forecast can be hours old. Matched days
+-- are still counted at any final horizon, so a stall does not drop a whole
+-- day. The result therefore describes half-hours with a fresh final
+-- forecast, not every half-hour; the half-hours and matched days left out
+-- are counted in section 3, and the bootstrap resamples only matched days
+-- that hold at least one such half-hour.
 --
 -- A half-hour has the cohort's unexplained shortfall when at least one
 -- determinable cohort unit-period holds a value (Q5's population: with or
@@ -30,7 +38,8 @@
 -- the population is reached it returns counts and no result.
 
 {% set days_needed = var('shortfall_error_matched_days_needed') %}
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
+{% set final_horizon_limit_seconds = (var('forecast_trajectory_final_horizon_hours') * 3600) | int %}
 {% set matched_day_min_half_hours = 46 %}
 {% set bootstrap_draws = 1000 %}
 {% set bootstrap_min_usable_draws = var('shortfall_error_bootstrap_min_usable_draws') %}
@@ -39,12 +48,19 @@
 with errors as (
     select
         period_start,
-        error_final
+        error_final,
+        final_horizon_seconds <= {{ final_horizon_limit_seconds }} as is_fresh
     from {{ ref('int_carbon_error_by_period') }}
     where error_final is not null
 {% if read_until is not none %}
         and period_start <= timestamptz '{{ read_until }}'
 {% endif %}
+),
+
+errors_left_out as (
+    select count(*) as half_hours
+    from errors
+    where not is_fresh
 ),
 
 cohort_shortfall as (
@@ -70,6 +86,7 @@ both_values as (
         cohort_shortfall.settlement_date,
         cohort_shortfall.period_start,
         errors.error_final,
+        errors.is_fresh,
         cohort_shortfall.positive_shortfall_mwh,
         cohort_shortfall.unit_periods
     from cohort_shortfall
@@ -78,12 +95,21 @@ both_values as (
 ),
 
 matched_days as (
-    select
-        settlement_date,
-        row_number() over (order by settlement_date) as day_number
+    select settlement_date
     from both_values
     group by settlement_date
     having count(*) >= {{ matched_day_min_half_hours }}
+),
+
+eligible_days as (
+    select
+        both_values.settlement_date,
+        row_number() over (order by both_values.settlement_date) as day_number
+    from both_values
+    inner join matched_days
+        on both_values.settlement_date = matched_days.settlement_date
+    where both_values.is_fresh
+    group by both_values.settlement_date
 ),
 
 population as (
@@ -93,16 +119,19 @@ population as (
         both_values.error_final,
         both_values.positive_shortfall_mwh,
         both_values.unit_periods,
-        matched_days.day_number
+        eligible_days.day_number
     from both_values
-    inner join matched_days
-        on both_values.settlement_date = matched_days.settlement_date
+    inner join eligible_days
+        on both_values.settlement_date = eligible_days.settlement_date
+    where both_values.is_fresh
 ),
 
 gate as (
     select
         count(*) as matched_days,
-        count(*) >= {{ days_needed }} as is_reached
+        (select count(*) from eligible_days) as eligible_days,
+        count(*) >= {{ days_needed }}
+            and {{ forecast_look_ahead_reached(read_until) }} as is_reached
     from matched_days
 ),
 
@@ -147,12 +176,12 @@ picks as (
         picked.pick,
         1 + mod(
             ('x' || substr(md5('{{ bootstrap_seed }}:' || draws.draw || ':' || picked.pick), 1, 8))::bit(32)::bigint,
-            gate.matched_days
+            gate.eligible_days
         ) as day_number
     from gate
     cross join observed
     cross join generate_series(1, {{ bootstrap_draws }}) as draws (draw)
-    cross join generate_series(1, gate.matched_days) as picked (pick)
+    cross join generate_series(1, gate.eligible_days) as picked (pick)
     where gate.is_reached
         and observed.bottom_sum > 0
 ),
@@ -326,6 +355,20 @@ coverage_rows as (
         null::numeric as value,
         null::text as result
     from error_dates
+
+    union all
+
+    select 3, 'half-hours with error_final left out: final forecast over '
+        || {{ final_horizon_limit_seconds // 60 }} || ' minutes ahead', null, half_hours,
+        null, null, null, null, null
+    from errors_left_out
+
+    union all
+
+    select 3, 'matched days with no half-hour whose final forecast is within '
+        || {{ final_horizon_limit_seconds // 60 }} || ' minutes', null, null,
+        gate.matched_days - gate.eligible_days, null, null, null, null
+    from gate
 
     union all
 

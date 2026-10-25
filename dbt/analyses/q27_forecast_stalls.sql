@@ -21,7 +21,7 @@
 -- for the stalls seen before registration, labelled exploratory. No forecast
 -- value is read.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 {% set windows = [
     {
         'name': 'result',

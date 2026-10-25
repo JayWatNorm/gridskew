@@ -7,7 +7,7 @@
 -- this table. unit_periods_by_run is context only: how many unit-periods
 -- each settlement run supplied, never a statistic per run.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with determinable as (
     select

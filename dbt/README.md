@@ -270,7 +270,10 @@ reaches 2,880 half-hours. `analyses/q10_forecast_accuracy_by_lead_time.sql`
 is read once, after the verdict and at the same cutoff;
 `analyses/q4_forecast_error_vs_shortfall.sql` is read once, when 90
 settlement dates each hold both the forecast error and the cohort's
-shortfall for at least 46 half-hours. See
+shortfall for at least 46 half-hours; its quintiles use only half-hours
+whose final forecast was made at most 30 minutes ahead. All three wait
+until three slot polls are stored after the cutoff, so a forecast stall
+that runs past it is settled. See
 [Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
 
 ## One-look analyses
@@ -283,6 +286,10 @@ Q23 to Q26 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
 and Q27 (`q27_forecast_stalls.sql`, how often and how long the published
 forecast stops changing, read after 90 days of polls from 1 November 2026).
 Each states its reading rule in its header and is read once.
+`analysis_read_until` is a UTC date and time with its offset (for example
+`2026-09-30 22:30:00+00`); a value without one stops the compile. A read
+records its time and keeps the compiled query and output, so a rerun can
+limit every source to the captures stored by then.
 
 ## Local setup
 

@@ -116,6 +116,7 @@ select
     coalesce(reading_rule.slot_count, 0) as counted_slots,
     round(reading_rule.first_horizon_seconds / 3600, 4) as first_horizon_hours,
     round(reading_rule.final_horizon_seconds / 3600, 4) as final_horizon_hours,
+    reading_rule.final_horizon_seconds,
     reading_rule.first_forecast,
     reading_rule.first_intensity_index,
     reading_rule.forecast_24h,

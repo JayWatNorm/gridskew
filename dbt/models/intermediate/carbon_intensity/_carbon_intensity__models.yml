@@ -76,6 +76,8 @@ models:
         description: Horizon of the first forecast, rounded to four places.
       - name: final_horizon_hours
         description: Horizon of the final forecast, rounded to four places.
+      - name: final_horizon_seconds
+        description: Exact horizon of the final forecast, in seconds; limits are tested on this.
       - name: first_forecast
         description: Forecast of the counted poll with the largest horizon.
       - name: first_intensity_index
@@ -149,6 +151,8 @@ models:
         description: Forecast about 4 hours ahead.
       - name: final_forecast
         description: Final archived forecast before the half-hour began.
+      - name: final_horizon_seconds
+        description: How far ahead the final forecast was made, in seconds.
       - name: api_final_forecast
         description: The final forecast the source reports beside the outturn.
       - name: error_24h

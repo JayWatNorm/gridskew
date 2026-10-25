@@ -7,7 +7,7 @@
 -- on any day. The verdict query runs once, on the first day this reports
 -- forecast_drift_half_hours_needed complete half-hours.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with half_hours as (
     select

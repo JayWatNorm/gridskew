@@ -28,7 +28,7 @@
 -- Month is the calendar month of the first ramp point's settlement date.
 -- Section 3 is coverage. Run once, by hand, after the rule is recorded.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with ramp_points as (
     select

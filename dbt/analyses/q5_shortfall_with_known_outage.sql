@@ -20,7 +20,7 @@
 -- (ambiguous, unmapped) are counted. Run once, by hand, after the rule is
 -- recorded.
 
-{% set read_until = var('analysis_read_until') %}
+{% set read_until = analysis_read_until() %}
 
 with cohort_periods as (
     select
