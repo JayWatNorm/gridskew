@@ -1,7 +1,9 @@
+import json
 from datetime import date, datetime, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from fakes import cursor_of
 
 from ingestion.elexon import boalf_poller, pn_poller, qpn_poller
 from ingestion.elexon.contracts import BOALF_SPEC, PN_SPEC, QPN_SPEC
@@ -114,3 +116,27 @@ def test_run_fails_after_shared_routing_rejects_a_row(poller):
     ):
         with pytest.raises(ContractRejected, match="Quarantined 1 row"):
             poller.run(conn, WINDOW_START, WINDOW_END)
+
+
+def test_load_warns_with_the_number_of_rows_the_key_skipped(caplog):
+    zero_length_row = {**SOURCE_ROW, "timeTo": SOURCE_ROW["timeFrom"]}
+    ramp_down_row = {**SOURCE_ROW, "levelFrom": 474, "levelTo": 250}
+    parsed_rows = pn_poller.parse(
+        [SOURCE_ROW, zero_length_row, ramp_down_row], RETRIEVED_AT
+    )
+    conn = MagicMock()
+    cursor_of(conn).rowcount = 1
+
+    with caplog.at_level("WARNING", logger="ingestion.elexon.pn_poller"):
+        pn_poller.load(parsed_rows, conn)
+
+    (warning,) = caplog.records
+    assert json.loads(warning.getMessage()) == {
+        "dataset": "PN",
+        "severity": "warning",
+        "reason": "Rows share a unit and start time within one capture",
+        "rows_sent": 3,
+        "rows_inserted": 1,
+        "rows_skipped": 2,
+    }
+    conn.commit.assert_called_once()

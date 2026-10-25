@@ -30,3 +30,51 @@ unit_tests:
         2,-25.0000000000000000000000,complete
         3,1.7500000000000000000000,complete
         4,,incomplete
+
+  - name: test_pn_period_mwh_plan_revert_keeps_the_middle_capture
+    description: >
+      Capture 1 notifies a flat 100 MW, capture 2 a flat 80 MW and capture 3
+      100 MW again. Capture 3 only repeats segments already captured (by
+      capture 1), so it reads as an echo, and the latest capture that is not
+      one is capture 2: the period keeps 80 MW (40 MWh), though the latest
+      plan published is 100 MW. last_captured_at still moves to capture 3.
+    model: int_elexon__pn_period_mwh
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_elexon__pn')
+        format: csv
+        rows: |
+          national_grid_bm_unit,bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
+          UNIT-1,T_UNIT-1,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,100,100,2026-01-14 12:00:00+00
+          UNIT-1,T_UNIT-1,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,80,80,2026-01-14 18:00:00+00
+          UNIT-1,T_UNIT-1,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,100,100,2026-01-15 06:00:00+00
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,pn_mwh,coverage_status,pn_retrieved_at,last_captured_at
+        UNIT-1,40.0000000000000000000000,complete,2026-01-14 18:00:00+00,2026-01-15 06:00:00+00
+
+  - name: test_pn_period_mwh_new_elexon_id_alone_is_an_echo
+    description: >
+      Capture 2 has the same segment as capture 1 under another Elexon ID.
+      The echo rule compares segments only, so capture 2 is an echo: the
+      period keeps capture 1 and its Elexon ID, with no conflict, until a
+      capture with different segments arrives.
+    model: int_elexon__pn_period_mwh
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_elexon__pn')
+        format: csv
+        rows: |
+          national_grid_bm_unit,bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
+          UNIT-2,T_UNIT-2,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,100,100,2026-01-14 12:00:00+00
+          UNIT-2,T_UNIT-2B,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,100,100,2026-01-14 18:00:00+00
+    expect:
+      format: csv
+      rows: |
+        national_grid_bm_unit,pn_retrieved_at,source_bm_unit,has_conflicting_source_bm_units,last_captured_at
+        UNIT-2,2026-01-14 12:00:00+00,T_UNIT-2,false,2026-01-14 18:00:00+00

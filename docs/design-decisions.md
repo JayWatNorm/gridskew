@@ -102,8 +102,12 @@ seen. Each one-look analysis states its rule at the top of its file.
 
 **Results tables are built by hand at a fixed cutoff.** The shortfall and
 coverage results come from two tables rebuilt together when the results are
-refreshed, each recording its cutoff, so a refresh never quietly changes a
-figure already reported.
+refreshed, each recording its cutoff. The cutoff (`analysis_read_until`)
+fixes which settlement periods count, not which data is read: a later build
+reads later settlement runs and refreshed sources for the same periods, so
+it can give different figures. Each build therefore runs at least 14 days
+after its cutoff, when every period has its interim run (II), and its build
+time and outputs are saved with the figures it reports.
 [Shortfall](../dbt/README.md#shortfall)
 
 ## Running it

@@ -115,9 +115,7 @@ grouped as (
         on unit_periods.bm_unit = cohort_fuel_groups.elexon_bm_unit
 ),
 
-measures as (
-    select
-        case when grouping(fuel_group) = 1 then 'overall' else fuel_group end as item,
+{% set measure_columns %}
         count(*) filter (where r3_mwh is not null and rf_mwh is not null) as unit_periods,
         count(distinct bm_unit) filter (where r3_mwh is not null and rf_mwh is not null) as units,
         count(*) filter (where rf_mwh <> r3_mwh) as changed_unit_periods,
@@ -126,8 +124,24 @@ measures as (
         coalesce(sum(rf_mwh - r3_mwh), 0) as net_change_mwh,
         count(*) filter (where rf_mwh is null) as only_in_r3,
         count(*) filter (where r3_mwh is null) as only_in_rf
+{% endset %}
+
+-- Overall comes straight from the unit-periods, not from the fuel groups, so
+-- an Elexon ID in two fuel groups counts once in it. With no GROUP BY it has
+-- a row even when no unit-period is stored.
+measures as (
+    select
+        fuel_group as item,
+        {{ measure_columns }}
     from grouped
-    group by grouping sets ((fuel_group), ())
+    group by fuel_group
+
+    union all
+
+    select
+        'overall' as item,
+        {{ measure_columns }}
+    from unit_periods
 ),
 
 measure_rows as (

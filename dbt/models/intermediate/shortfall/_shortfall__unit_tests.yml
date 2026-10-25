@@ -40,8 +40,10 @@ unit_tests:
       covering the whole half-hour makes the period determinable even though
       its PN is incomplete. H: a PN capture with a segment of no duration is
       invalid; its acceptance does not cover the half-hour, so the period is
-      labelled and nothing divides by zero. A unit outside the cohort has no
-      row.
+      labelled and nothing divides by zero. J: a complete PN whose mapping is
+      a conflict is not used, so B's acceptance pattern gives no expected
+      value and the period is labelled pn_conflict. A unit outside the
+      cohort has no row.
     model: int_shortfall_by_unit_period
     overrides:
       macros:
@@ -58,18 +60,20 @@ unit_tests:
           F,T_F,NUCLEAR,nuclear
           G,T_G,WIND,wind
           H,T_H,WIND,wind
+          J,T_J,CCGT,gas_turbine
       - input: ref('fct_commitments')
         format: csv
         rows: |
-          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at,last_captured_at
-          A,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          B,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          C,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-18 00:00:00+00
-          D,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          E,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          F,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          G,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          H,2026-01-15,21,2026-01-15 10:00:00+00,,invalid,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,mapping_status,pn_retrieved_at,last_captured_at
+          A,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          B,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          C,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-18 00:00:00+00
+          D,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          E,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          F,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          G,2026-01-15,21,2026-01-15 10:00:00+00,,incomplete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          H,2026-01-15,21,2026-01-15 10:00:00+00,,invalid,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          J,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,conflict,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
       - input: ref('stg_elexon__pn')
         format: csv
         rows: |
@@ -78,6 +82,7 @@ unit_tests:
           B,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,999,999,2026-01-15 00:00:00+00
           G,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:10:00+00,80,80,2026-01-16 00:00:00+00
           H,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:05:00+00,2026-01-15 10:05:00+00,50,50,2026-01-16 00:00:00+00
+          J,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,100,100,2026-01-16 00:00:00+00
       - input: ref('fct_generation')
         format: csv
         rows: |
@@ -90,6 +95,7 @@ unit_tests:
           T_F,2026-01-15,21,2026-01-15 10:00:00+00,mapped,F,41,SF,2026-01-21 00:00:00+00,41,SF,2026-01-21 00:00:00+00
           T_G,2026-01-15,21,2026-01-15 10:00:00+00,mapped,G,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
           T_H,2026-01-15,21,2026-01-15 10:00:00+00,mapped,H,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
+          T_J,2026-01-15,21,2026-01-15 10:00:00+00,mapped,J,30,SF,2026-01-20 00:00:00+00,30,SF,2026-01-20 00:00:00+00
       - input: ref('stg_elexon__qas')
         format: csv
         rows: |
@@ -101,6 +107,7 @@ unit_tests:
           B,2026-01-15 10:00:00+00,2026-01-15 10:15:00+00,2026-01-15 10:30:00+00,2,2026-01-15 09:05:00+00,true,15,2026-01-17 00:00:00+00
           G,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,7,2026-01-15 09:50:00+00,false,20,2026-01-17 00:00:00+00
           H,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:10:00+00,8,2026-01-15 09:50:00+00,false,5,2026-01-17 00:00:00+00
+          J,2026-01-15 10:00:00+00,2026-01-15 10:15:00+00,2026-01-15 10:30:00+00,9,2026-01-15 09:05:00+00,false,15,2026-01-17 00:00:00+00
     # dbt compares numbers as text: the rounded energies carry six decimals.
     expect:
       format: csv
@@ -113,6 +120,7 @@ unit_tests:
         F,nuclear,uninstructed,0,,50.000000,41,9.000000,9.000000,0.000000,2,ambiguous_metered,2026-01-23 00:00:00+00
         G,wind,fully_instructed,1800,13.333333,20.000000,20,0.000000,,,1,determinable,2026-01-20 00:00:00+00
         H,wind,partially_instructed,600,,,20,,,,1,pn_invalid,2026-01-20 00:00:00+00
+        J,gas_turbine,partially_instructed,900,,,30,,,,1,pn_conflict,2026-01-20 00:00:00+00
 
   - name: test_shortfall_absvd_latest_capture_per_unit_period
     description: >
@@ -142,14 +150,14 @@ unit_tests:
       - input: ref('fct_commitments')
         format: csv
         rows: |
-          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at,last_captured_at
-          Q1,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q1,2026-01-14,22,2026-01-14 10:30:00+00,40,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q2,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q2,2026-01-14,22,2026-01-14 10:30:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q3,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q4,2026-01-14,21,2026-01-14 10:00:00+00,30,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q4,2026-01-14,22,2026-01-14 10:30:00+00,30,complete,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,mapping_status,pn_retrieved_at,last_captured_at
+          Q1,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q1,2026-01-14,22,2026-01-14 10:30:00+00,40,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q2,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q2,2026-01-14,22,2026-01-14 10:30:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q3,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q4,2026-01-14,21,2026-01-14 10:00:00+00,30,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          Q4,2026-01-14,22,2026-01-14 10:30:00+00,30,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
       - input: ref('stg_elexon__pn')
         format: csv
         rows: |
@@ -227,10 +235,10 @@ unit_tests:
       - input: ref('fct_commitments')
         format: csv
         rows: |
-          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,pn_retrieved_at,last_captured_at
-          Q1,2026-01-13,21,2026-01-13 10:00:00+00,50,complete,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
-          Q1,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
-          Q2,2026-01-14,21,2026-01-14 10:00:00+00,40,complete,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
+          national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,mapping_status,pn_retrieved_at,last_captured_at
+          Q1,2026-01-13,21,2026-01-13 10:00:00+00,50,complete,mapped,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
+          Q1,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,mapped,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
+          Q2,2026-01-14,21,2026-01-14 10:00:00+00,40,complete,mapped,2026-01-10 00:00:00+00,2026-01-10 00:00:00+00
       - input: ref('stg_elexon__pn')
         format: csv
         rows: |
