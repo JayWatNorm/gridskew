@@ -73,7 +73,7 @@ missed revisions cannot be recovered.
 
 | Source | Role |
 |---|---|
-| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions and outage notices |
+| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions, balancing services volume and outage notices |
 | **NESO Carbon Intensity API** | Half-hourly national carbon intensity forecasts and outturn |
 
 The platform uses a medallion structure inside PostgreSQL:
@@ -93,22 +93,20 @@ The BM-unit registry is captured in production. dbt exposes its current state
 and snapshots the changes observed since collection began. Null fuels remain
 unknown; snapshot dates are observation dates.
 
-Three version-controlled dbt seeds provide small reference lookups:
-settlement-run order, Elexon's published fuel codes grouped by code meaning,
-and the five Carbon Intensity labels ordered from very low to very high. The
-fuel-code groups include technology and interconnector roles; they do not
-establish a unit's actual fuel or emissions. The Carbon labels do not encode
-fixed numerical thresholds. See the [dbt guide](dbt/README.md) for their
-contracts and load commands.
+Two version-controlled dbt seeds provide small reference lookups:
+settlement-run order and Elexon's published fuel codes grouped by code
+meaning. The fuel-code groups include technology and interconnector roles;
+they do not establish a unit's actual fuel or emissions. See the
+[dbt guide](dbt/README.md) for their contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. Ten
-Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`, two
-standing `B1610` settlement runs, a bounded `B1610` R1 capture, the BM unit
-registry, balancing instructions (`BOALF`), outage notices (`REMIT`) and
-balancing services volume (`QAS`, ABSVD). Two
-more run dbt: hourly source-freshness checks, and a nightly job that updates
-the period tables and runs the project's data tests.
+Linux server, with separate development and production databases. Eleven
+Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
+three `B1610` settlement runs (`II`, `SF` and, from mid-November 2026, `RF`),
+the BM unit registry, balancing instructions (`BOALF`), outage notices
+(`REMIT`) and balancing services volume (`QAS`, ABSVD). Two more run dbt:
+hourly source-freshness checks, and a nightly job that updates the period
+tables and runs the project's data tests.
 
 The sources use different scheduling and backfill strategies because their
 time behaviour differs. See
@@ -129,14 +127,15 @@ Neither provider endorses this project.
 Each ingested endpoint has an explicit field contract. Shared validation and
 routing report missing, null, incompatible and unexpected fields before typed
 parsing; Carbon contracts also validate the nested `intensity` object. Runtime
-validation and quarantine are deployed for PN, QPN, B1610, BOALF, REMIT and
-both Carbon datasets. Carbon also checks that each response covers its periods
-completely.
+validation and quarantine are deployed for PN, QPN, B1610, BOALF, REMIT, QAS
+and both Carbon datasets. Carbon also checks that each response covers its
+periods completely.
 The BM-unit registry uses a complete-response gate: a rejected or suspiciously
 small response publishes no successful extract.
 
-For those seven datasets, compatible rows continue to typed loading. Rejected rows are committed to
-`raw.endpoint_quarantine` with their request context and complete payload;
+For those eight datasets, compatible rows continue to typed loading.
+Rejected rows are committed to `raw.endpoint_quarantine` with their request
+context and complete payload;
 warning-only rows remain loadable and produce grouped logs. Tests cover the
 contracts, routing, response envelopes, quarantine evidence and loader wiring
 without calling live services. See
@@ -192,10 +191,10 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - `PN`, `QPN`, `B1610`, `BOALF`, `REMIT` and `QAS` ingestion, backfills and
   scheduled Airflow runs
 - Append-only raw storage
-- Runtime validation and quarantine for the seven time-series datasets, plus
+- Runtime validation and quarantine for the eight time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
-- dbt sources, production freshness checks and eight source-grain staging views
+- dbt sources, production freshness checks and nine source-grain staging views
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
@@ -216,9 +215,9 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   stretches in which a bid-offer acceptance was in force, and
   `int_shortfall_by_unit_period` compares each registry unit with a fuel
   type against its expected output, the PN with the instructed level in its
-  place for those stretches. Three analyses read it: metered against
-  notified by fuel group, instructed against unexplained deviation, and the
-  coverage the cohort gives against the whole source.
+  place for those stretches. It also carries ABSVD (`QAS`), the energy of
+  balancing services outside the mechanism. The analyses that read it are
+  listed in the [dbt guide](dbt/README.md).
 - `elexon_settlement_run_codes` supplies settlement-run ordering and
   `elexon_fuel_codes` supports registry validation.
 
@@ -228,6 +227,9 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   final version under a reading rule fixed in advance. The drift result is
   read once, when 2,880 complete half-hours exist; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
+- Analyses for forecast accuracy by lead time, forecast error against the
+  shortfall, and the change from the settled to the final settlement run.
+  Each rule is fixed in advance and read once its data exists.
 
 **Available reference data**
 
@@ -235,16 +237,14 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 
 **Next**
 
-- How metered output is revised between settlement runs, from the bounded R1
-  capture
-- The first shortfall results: metered against notified by fuel group, and
-  the instructed share of the deviation, with coverage beside them
 - How carbon-intensity forecasts drift as a period approaches and how
   forecast accuracy changes with lead time, once 2,880 complete half-hours
   exist
-- Outage notices joined to the shortfall as the market knew them at the
-  period start
-- Airflow 3 upgrade (October to early November)
+- How metered output changes from the settled run to the final run (`RF`),
+  from mid-November 2026
+- Whether carbon forecast error tracks the shortfall, once 90 matched days
+  exist
+- A write-up of the results with charts
 
 Demand, system prices and weather remain later extensions.
 

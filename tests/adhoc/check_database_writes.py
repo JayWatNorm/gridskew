@@ -6,8 +6,8 @@ column a value lands in, that a repeated load is ignored, or what a query
 counts. Each read-back uses a second connection, so it also proves the
 writer committed.
 
-The loaders commit, so this runs last in CI job 1 on the disposable
-database, and deletes its own rows at the end.
+The loaders commit, so in CI job 1 this runs after every step that reads
+the fixtures, and deletes its own rows at the end.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
