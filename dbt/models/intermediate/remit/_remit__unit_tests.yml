@@ -106,6 +106,27 @@ unit_tests:
         P2,1,2026-01-15 09:00:00+00,Unplanned,-3600,2026-01-15 09:00:00+00,1,Unplanned,Active,2026-01-15 10:00:00+00,unmapped,
         P3,1,2026-01-15 10:00:00+00,Unplanned,0,2026-01-15 10:00:00+00,1,Unplanned,Active,2026-01-15 10:00:00+00,unmapped,
 
+  - name: test_remit_notices_first_publication_is_the_one_in_force
+    description: >
+      T is published twice at 10:00 and corrected at 11:00. Of the two 10:00
+      publications, the second is in force and the first never is, so the
+      first publication is the second one: its event starts at 09:45, a lag
+      of 15 minutes. The current publication is the 11:00 correction.
+    model: int_remit__notices
+    given:
+      - input: ref('int_remit__revisions')
+        format: csv
+        rows: |
+          mrid,revision_number,publish_time,publication_order,valid_to,is_current,event_start_time
+          T,1,2026-01-15 10:00:00+00,1,2026-01-15 10:00:00+00,false,2026-01-15 09:00:00+00
+          T,2,2026-01-15 10:00:00+00,2,2026-01-15 11:00:00+00,false,2026-01-15 09:45:00+00
+          T,3,2026-01-15 11:00:00+00,3,,true,2026-01-15 08:30:00+00
+    expect:
+      format: csv
+      rows: |
+        mrid,publication_count,first_published_at,first_event_start_time,publication_lag_seconds,event_start_time
+        T,3,2026-01-15 10:00:00+00,2026-01-15 09:45:00+00,900,2026-01-15 08:30:00+00
+
   - name: test_known_outage_published_at_or_before_the_start
     description: >
       Both notices are planned outages of 10:00 to 11:00. N1 (unit A) is

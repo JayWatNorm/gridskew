@@ -173,7 +173,9 @@ never in force alone. The notice as known at a time *t* is the publication
 with `valid_from <= t` and either no `valid_to` or `t < valid_to`.
 
 `int_remit__notices` has one row per notice: its first publication, its
-current publication and the BM unit it names. The publication lag is the
+current publication and the BM unit it names. The first publication is the
+one in force at the notice's earliest `publishTime`: when several share that
+time, the last of them in publication order. The publication lag is the
 first publication's `publishTime` minus its `eventStartTime`, in seconds,
 positive when the notice appeared after the event began.
 

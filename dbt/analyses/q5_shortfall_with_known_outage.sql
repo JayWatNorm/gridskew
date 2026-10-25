@@ -113,9 +113,12 @@ population_window as (
     from classified
 ),
 
--- The conditions of int_remit__known_outage_periods without the unit: in
--- force at the start of, and with an event overlapping, some half-hour of
--- the population.
+-- The conditions of int_remit__known_outage_periods without the unit, applied
+-- to the population's window instead of each half-hour: the publication was
+-- in force for some time, and its validity, its event and the window all
+-- overlap each other. The event counts from 30 minutes before its start,
+-- because a half-hour that starts while the publication is in force reaches
+-- that far.
 window_publications as (
     select publications.mapping_rule
     from {{ ref('int_remit__revisions') }} as publications
@@ -123,6 +126,8 @@ window_publications as (
     where publications.message_type = 'UnavailabilitiesOfElectricityFacilities'
         and publications.event_type = 'Production unavailability'
         and publications.event_status = 'Active'
+        and (publications.valid_to is null
+            or publications.valid_to > publications.valid_from)
         and publications.valid_from <= population_window.last_period_start
         and (publications.valid_to is null
             or publications.valid_to > population_window.first_period_start)
@@ -130,6 +135,10 @@ window_publications as (
             < population_window.last_period_start + interval '30 minutes'
         and (publications.event_end_time is null
             or publications.event_end_time > population_window.first_period_start)
+        and (publications.event_end_time is null
+            or publications.event_end_time > publications.valid_from)
+        and (publications.valid_to is null
+            or publications.event_start_time < publications.valid_to + interval '30 minutes')
 ),
 
 coverage as (
