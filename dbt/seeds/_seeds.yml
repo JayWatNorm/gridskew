@@ -12,7 +12,9 @@ seeds:
     columns:
       - name: settlement_run_code
         description: >
-          Code received in the B1610 settlement_run_type field.
+          Code received in the B1610 settlement_run_type field: II, SF, R1,
+          R2, R3, RF or DF. DF is the dispute final run, made after RF to
+          correct a settlement dispute.
         data_tests:
           - unique
           - not_null

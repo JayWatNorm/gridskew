@@ -21,12 +21,14 @@
 
 with metered as (
     select
-        mapping_status,
-        current_fuel_type is not null as has_fuel_type,
-        latest_quantity_mwh
-    from {{ ref('fct_generation') }}
+        generation.mapping_status,
+        cohort.national_grid_bm_unit is not null as is_cohort,
+        generation.latest_quantity_mwh
+    from {{ ref('fct_generation') }} as generation
+    left join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
+        on generation.mapped_national_grid_bm_unit = cohort.national_grid_bm_unit
 {% if read_until is not none %}
-    where coalesce(period_start_utc, settlement_date::timestamp at time zone 'Europe/London')
+    where coalesce(generation.period_start_utc, generation.settlement_date::timestamp at time zone 'Europe/London')
             <= timestamptz '{{ read_until }}'
 {% endif %}
 ),
@@ -36,7 +38,7 @@ whole_source as (
         1 as section,
         'all metered unit-periods' as breakdown,
         case
-            when mapping_status = 'mapped' and has_fuel_type
+            when is_cohort
                 then 'mapped, fuel type known (the cohort)'
             when mapping_status = 'mapped'
                 then 'mapped, no fuel type'
@@ -51,13 +53,15 @@ whole_source as (
 
 matched as (
     select
-        generation.current_fuel_type is not null as has_fuel_type,
+        cohort.national_grid_bm_unit is not null as is_cohort,
         generation.latest_quantity_mwh,
         commitments.pn_mwh
     from {{ ref('fct_generation') }} as generation
     inner join {{ ref('fct_commitments') }} as commitments
         on commitments.national_grid_bm_unit = generation.mapped_national_grid_bm_unit
         and commitments.period_start_utc = generation.period_start_utc
+    left join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
+        on generation.mapped_national_grid_bm_unit = cohort.national_grid_bm_unit
     where generation.mapping_status = 'mapped'
 {% if read_until is not none %}
         and coalesce(generation.period_start_utc, generation.settlement_date::timestamp at time zone 'Europe/London')
@@ -69,13 +73,13 @@ matched_with_pn as (
     select
         2 as section,
         'mapped metered unit-periods with a PN' as breakdown,
-        case when has_fuel_type then 'fuel type known (the cohort)'
+        case when is_cohort then 'fuel type known (the cohort)'
             else 'no fuel type' end as item,
         count(*) as unit_periods,
         round(sum(abs(latest_quantity_mwh)), 1) as abs_metered_mwh,
         round(sum(abs(pn_mwh)), 1) as abs_pn_mwh
     from matched
-    group by has_fuel_type
+    group by is_cohort
 ),
 
 cohort_periods as (

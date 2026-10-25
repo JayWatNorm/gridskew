@@ -1,8 +1,8 @@
 {{ config(group='analysis') }}
 
 -- Q25: how fragmented are instructions to storage compared with thermal
--- plant? Reading rule: research questions, Q25 (amended 12 October 2026,
--- decision 024). Per fuel group and calendar month, each with its n:
+-- plant? Reading rule: research questions, Q25 (amended 12 October 2026).
+-- Per fuel group and calendar month, each with its n:
 --
 -- 1. Dispatch granularity: the share of acceptances whose own span (first
 --    ramp point's start to last ramp point's end, the latest capture of

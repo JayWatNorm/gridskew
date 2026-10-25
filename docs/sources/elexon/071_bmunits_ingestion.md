@@ -48,24 +48,11 @@ required to occur in today's registry.
 
 ## Recovery
 
-The single `gridskew_elexon_bmunits` Airflow DAG runs capture, the fuel seed,
-registry tests and snapshot in order, with one active run at a time. Capture
-writes production raw tables. The dbt task reads the same database through the
-separate `gridskew_dbt` connection, selects the `dev` target and writes only to
-`dbt_dev` and `dbt_dev_snapshots`. Existing views are tested rather than
-rebuilt. If capture fails, inspect the source and quarantine evidence, then
-retry the DAG. If dbt fails after a successful capture, repair the model or
-database issue and retry the dbt task against that manifest. The task holds
-PostgreSQL SHARE locks on both raw registry tables while it checks the
-expected manifest and runs dbt seed/test/snapshot in the shared `gridskew_dbt`
-pool. Other database writers wait; readers can continue. Lock acquisition
-times out after 30 seconds. A different latest manifest stops the task. The
-guard connection must remain alive for the task; do not terminate it during a
-run. Temporary dbt target/package directories are unique per attempt; logs
-remain under `dbt_logs/bmunits/<attempt-uuid>`.
-
-If a newer capture superseded a failed task, run from a fresh capture. Retained
-raw extracts preserve the evidence, but this snapshot does not automatically
-replay skipped observations. A newly accepted raw capture updates the current
-views before dbt validation completes; there is no separate approved-data pointer.
-Do not run a separate scheduled snapshot against an unverified extract.
+The `gridskew_elexon_bmunits` DAG captures the registry, then loads the fuel
+seed, tests the registry and records the snapshot, writing only to `dbt_dev`
+and `dbt_dev_snapshots` and locking the raw registry tables against other
+writers while dbt runs. If capture fails, check the source and the quarantine
+and retry the DAG; if dbt fails after a good capture, fix the cause and retry
+the dbt task, which stops if a newer extract has arrived. In that case run
+from a fresh capture: the raw extracts keep every observation, but the
+snapshot does not replay the ones it skipped.

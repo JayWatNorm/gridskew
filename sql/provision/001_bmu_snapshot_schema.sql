@@ -1,5 +1,6 @@
 -- Run with psql -v snapshot_schema=<verified target schema> -v dbt_role=<verified role>.
 -- The snapshot schema is dbt_dev_snapshots, locally and in production.
+-- The production models live in schema dbt_dev for historical reasons.
 -- Confirm the target database, the dbt role and the existing schema owners
 -- before running this administrator step.
 \set ON_ERROR_STOP on

@@ -5,7 +5,7 @@
 -- are not used, so no threshold is applied and no unit is called
 -- inaccurate, and the denominator is the current registry's generation
 -- capacity, not NESO's, so the percentages are not comparable with NESO's.
--- Reading rule: research questions, Q23 (12 October 2026, decision 024).
+-- Reading rule: research questions, Q23 (recorded 12 October 2026).
 --
 -- Population: determinable cohort unit-periods of
 -- int_shortfall_by_unit_period with no acceptance in force for any minute

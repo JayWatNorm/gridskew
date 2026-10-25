@@ -3,7 +3,7 @@
 -- Q2-RF: how much does metered output change from R3 to RF? Reading rule
 -- (research questions, registered 12 October 2026, before any RF value was
 -- compared): population: the first 30 settlement dates whose RF is stored
--- that also hold R3. Measures as GS-02: gross unit-level change
+-- that also hold R3. Measures: gross unit-level change
 -- sum(abs(RF - R3)) / sum(abs(R3)) over unit-periods holding both, by fuel
 -- group and overall, with the net change beside it; n, dates and coverage;
 -- if sum(abs(R3)) is zero for a group or overall, the numerator, denominator

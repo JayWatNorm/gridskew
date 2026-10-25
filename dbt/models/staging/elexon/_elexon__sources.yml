@@ -56,12 +56,8 @@ sources:
       - name: elexon_pn
         description: >
           Physical Notifications — what each unit said it would export or
-          import.
-          Check against QPN, which declares an underlying-process MW quantity
-          netted off this figure to establish the operating level to which
-          Dynamic Data apply. QPN is not used in Settlement, so downstream
-          shortfall models compare integrated PN MWh with B1610 MWh without
-          subtracting QPN.
+          import. The shortfall models do not subtract QPN from it; see
+          docs/sources/elexon/015_qpn.md.
         config:
           freshness:
             warn_after: {count: 25, period: hour}
@@ -395,7 +391,7 @@ sources:
           - name: settlement_run_type
             description: >
               Which settlement run produced this quantity, in order
-              II, SF, R1, R2, R3, RF. Each supersedes the last. Part of the
+              II, SF, R1, R2, R3, RF, DF. Each supersedes the last. Part of the
               key, so a revision lands as a new row. The API serves only the
               run currently in force, so the poll offset decides which run
               exists; a request for a superseded run returns nothing.

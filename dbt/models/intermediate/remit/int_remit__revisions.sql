@@ -1,9 +1,9 @@
 {{ config(group='analysis', access='private') }}
 
--- Every stored publication of a REMIT notice, in publication order under
--- decision 022: publish_time, then created_time, then revision_number.
--- Revision numbers are the participant's own counter and repeat and fall
--- (decision 019), so they only break the last tie. A publication is in force
+-- Every stored publication of a REMIT notice, in publication order:
+-- publish_time, then created_time, then revision_number. Revision numbers
+-- are the participant's own counter and repeat and fall, so they only
+-- break the last tie. A publication is in force
 -- from its publish_time until the next publication's; two publications with
 -- the same publish_time give the earlier one an empty validity, because it
 -- was never in force alone. The notice as known at t is the row with
