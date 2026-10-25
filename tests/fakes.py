@@ -2,7 +2,6 @@
 
 import runpy
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock
@@ -35,20 +34,14 @@ def load_dag_file(monkeypatch, file_name, connections=None):
     exceptions.AirflowSkipException = FakeAirflowSkipException
     timetables = ModuleType("airflow.timetables")
     timetables.__path__ = []
-    events = ModuleType("airflow.timetables.events")
-    events.EventsTimetable = fake_events_timetable
     interval = ModuleType("airflow.timetables.interval")
     interval.CronDataIntervalTimetable = FakeCronDataIntervalTimetable
-    pendulum = ModuleType("pendulum")
-    pendulum.datetime = utc_datetime
 
     monkeypatch.setitem(sys.modules, "airflow", airflow)
     monkeypatch.setitem(sys.modules, "airflow.sdk", sdk)
     monkeypatch.setitem(sys.modules, "airflow.sdk.exceptions", exceptions)
     monkeypatch.setitem(sys.modules, "airflow.timetables", timetables)
-    monkeypatch.setitem(sys.modules, "airflow.timetables.events", events)
     monkeypatch.setitem(sys.modules, "airflow.timetables.interval", interval)
-    monkeypatch.setitem(sys.modules, "pendulum", pendulum)
     return runpy.run_path(str(DAGS_DIRECTORY / file_name))
 
 
@@ -87,23 +80,12 @@ def do_nothing():
     return None
 
 
-def fake_events_timetable(**_settings):
-    return None
-
-
 class FakeCronDataIntervalTimetable:
     """Stand in for Airflow's CronDataIntervalTimetable; keeps its arguments."""
 
     def __init__(self, cron, timezone):
         self.cron = cron
         self.timezone = timezone
-
-
-def utc_datetime(year, month, day, hour, tz):
-    """Stand in for pendulum.datetime; a DAG must ask for UTC."""
-
-    assert tz == "UTC"
-    return datetime(year, month, day, hour, tzinfo=timezone.utc)
 
 
 def connection_returning(row):
