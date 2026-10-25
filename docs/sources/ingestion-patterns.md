@@ -160,7 +160,7 @@ you would simply be blocked.
 
 Every raw table records `retrieved_at`; BM-unit rows hold it in their extract
 manifest. It is part of the primary key when the source has no revision marker:
-PN, QPN, BOALF and both Carbon Intensity tables. Each poll can then store a
+PN, QPN, BOALF, QAS and both Carbon Intensity tables. Each poll can then store a
 new observation of the same source row.
 
 B1610 and REMIT carry revision markers (`settlementRunType`, `revisionNumber`),
@@ -189,6 +189,7 @@ a run rather than of a row.
 | Elexon B1610 II, SF, RF | `catchup=True`, fixed lags of 14, 35 and 450 days, about four days of retries | Each run is captured while it is in force; RF is final, so its long lag loses nothing |
 | Elexon B1610 R1 cohort | captured once, 5 to 11 October 2026 | One week (10 to 16 August 2026) held at II, SF and R1 to measure restatement; RF reaches it through the RF rung |
 | Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |
+| Elexon QAS | `catchup=True`, settlement dates 14, 35 and 450 days back, about four days of retries; earlier dates from a one-off backfill | ABSVD has no version marker, so each capture beside the matching B1610 run is the only way to see a resubmission |
 | Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap | Event stream with no cadence; the overlap catches late rows, and the key skips repeats |
 | Elexon BM units | `catchup=False`, daily complete extract | A reference set published whole; a partial response is never published |
 

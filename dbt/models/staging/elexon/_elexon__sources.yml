@@ -1,10 +1,11 @@
 sources:
   - name: elexon
     description: >
-      Elexon Insights commitments (PN and QPN), metered volumes (B1610), and
-      complete BM-unit registry observations.
-      PN and QPN contain declared segments; B1610 contains settlement-period
-      quantities. All tables are append-only.
+      Elexon Insights commitments (PN and QPN), metered volumes (B1610),
+      bid-offer acceptances (BOALF), outage messages (REMIT), balancing
+      services volumes (QAS) and complete BM-unit registry observations.
+      PN and QPN contain declared segments; B1610 and QAS contain
+      settlement-period quantities. All tables are append-only.
     schema: raw
     config:
       loaded_at_field: retrieved_at
@@ -422,8 +423,7 @@ sources:
           sent; exact zeros occur. A unit-period with no row in any capture of
           a captured date has no ABSVD.
         config:
-          # Warn only: the table is empty from the release until the backfill,
-          # and each capture retries for about four days.
+          # Warn only: each capture retries for about four days.
           freshness:
             warn_after: {count: 25, period: hour}
         columns:

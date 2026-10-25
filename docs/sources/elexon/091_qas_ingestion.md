@@ -72,5 +72,4 @@ refresh after it.
 
 ## Freshness
 
-`warn_after` 25 hours, no error: the table is empty between release and
-backfill, and each capture retries for about four days.
+`warn_after` 25 hours, no error: each capture retries for about four days.

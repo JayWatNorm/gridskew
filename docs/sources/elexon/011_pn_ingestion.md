@@ -51,7 +51,7 @@ before routing. See [../endpoint-validation.md](../endpoint-validation.md).
 
 ## `load` does not catch exceptions, deliberately
 
-A failed insert must raise, so Airflow marks the task failed and the three
+A failed insert must raise, so Airflow marks the task failed and the
 configured retries fire. Catching and logging would leave the task **green with
 an empty table**.
 

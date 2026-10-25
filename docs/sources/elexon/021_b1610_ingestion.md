@@ -129,7 +129,8 @@ run type to be exactly 1–46, 1–48 or 1–50 as appropriate. It logs the
 requested date and run, returned run counts, stored rows, periods and units.
 Mixed runs or missing or unexpected stored periods fail visibly while keeping
 already committed data. The primary key makes a repeated insert idempotent.
-This check is period coverage; it does not prove every unit is complete.
+Unit coverage is checked separately (below); neither check proves every
+unit's every period is present.
 
 A run whose settlement date is not yet fully published therefore fails
 instead of succeeding with part of the date. A run asked for a superseded run

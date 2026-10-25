@@ -241,8 +241,8 @@ the results at once), and another unit starting or ceasing to share a cohort
 unit's Elexon ID, which `warn_cohort_elexon_id_shared` reports each night
 until a full refresh rebuilds the unit's rows.
 
-Two tables in `marts/` hold the figures the README quotes, each with the
-cutoff it was built with. `agg_delivery_by_fuel_group` gives, per fuel
+Two tables in `marts/` hold the figures the README's results will quote,
+each with the cutoff it was built with. `agg_delivery_by_fuel_group` gives, per fuel
 group, how far metered output is from the PN and how much of that gap was
 instructed; `q3_metered_vs_notified.sql` and `q12_instructed_vs_residual.sql`
 read it. `agg_generation_coverage` gives the share of metered generation the
