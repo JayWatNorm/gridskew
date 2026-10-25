@@ -42,6 +42,8 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `check_one_look_analyses.py` | The Q10, Q4 and Q2-RF one-look analyses on hand-worked rows: every listed cell, each gate, Q4's not-applicable branch and bootstrap interval, Q2-RF's undefined share | Disposable PostgreSQL |
 | `check_scheduled_set.py` | The nightly DAG's and the BM-unit DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
 | `check_nightly_run.py` | The nightly DAG's default dbt commands, run for real after the full build: each succeeds, each node gets one audit row, no view is recreated, and audit rows past retention are deleted | Disposable PostgreSQL |
+| `check_database_writes.py` | What the loaders and the quarantine write, read back by column name; that a repeated load is ignored; the B1610 coverage and REMIT quarantine queries. Runs after every step that reads the fixtures and deletes its own rows | Disposable PostgreSQL |
+| `check_insert_rows.py` | The shared insert helper: every row lands, each value type binds to its column, a repeated load is ignored and a failed row leaves nothing once rolled back | Disposable PostgreSQL |
 
 The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
 database is a local `gridskew_dev`.
