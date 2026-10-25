@@ -584,6 +584,21 @@ REPEATED_ID = (
     None,
 )
 TWO_GROUPS_FOR_ONE_ID = ",\n    ('GAS-1B', 'T_GAS-1', 'wind')"
+# With T_GAS-1 in gas and wind, its three unit-periods (10 to 12, 20 to 15,
+# 8 to 8) still count once overall: the main run's 7 unit-periods, 17 of 57,
+# net 7. Counted once per group they would give 10 unit-periods, 24 of 95,
+# net 4.
+Q2RF_OVERALL = (1, "overall", None)
+Q2RF_TWO_GROUPS_OVERALL = dict(
+    unit_periods=7,
+    units=4,
+    changed_unit_periods=5,
+    gross_change_mwh="17.000",
+    r3_absolute_mwh="57.000",
+    net_change_mwh="7.000",
+    only_in_r3=2,
+    only_in_rf=1,
+)
 
 # Four dates needed: 22 to 24 August are before the cutoff, so three.
 Q2RF_NOT_REACHED_EXPECTED = {
@@ -1099,7 +1114,9 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
         time_zone,
     )
     found += mismatches(
-        f"{title} two groups", two_groups_run, {REPEATED_ID: dict(units=1)}
+        f"{title} two groups",
+        two_groups_run,
+        {REPEATED_ID: dict(units=1), Q2RF_OVERALL: Q2RF_TWO_GROUPS_OVERALL},
     )
     return found
 

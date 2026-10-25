@@ -28,6 +28,11 @@
 -- means the unit delivered less than expected. Nothing is dropped: a period
 -- that cannot be judged keeps its row and says why in determinability.
 --
+-- The PN is used only when fct_commitments maps it to the unit. A PN whose
+-- Elexon ID conflicts with the registry's is treated like an incomplete one:
+-- no PN energy, so only an acceptance covering the whole half-hour gives an
+-- expected value, and otherwise the period is labelled pn_conflict.
+--
 -- ABSVD (QAS: balancing services settled outside the balancing mechanism)
 -- sits beside these columns and changes none of them: Settlement adds it to
 -- the expected volume, so unexplained_after_absvd_mwh adds it to the
@@ -38,10 +43,11 @@
 -- Incremental: recompute only unit-periods with a PN, metered or acceptance
 -- capture since the stored watermark minus capture_margin, every period of a
 -- settlement date with a QAS capture since then, and every period
--- of a unit whose fuel type or Elexon ID in the cohort differs from the ones
--- stored, or that has PN but no rows yet (it joined the cohort). Each source
--- is insert-only, so this equals a full rebuild while every new row becomes
--- visible within the margin. Two registry events need a full refresh: a unit
+-- of a unit whose fuel type, fuel group or Elexon ID in the cohort differs
+-- from the ones stored, or that has PN but no rows yet (it joined the
+-- cohort). Each source is insert-only, so this equals a full rebuild while
+-- every new row becomes visible within the margin. Two registry events need
+-- a full refresh: a unit
 -- that loses its fuel type keeps its rows (the analyses join the cohort, so
 -- it leaves the results at once), and another unit starting or stopping to
 -- share this unit's Elexon ID changes the metered mapping without touching
@@ -129,9 +135,10 @@ touched as (
 
     union
 
-    -- A unit whose fuel type or Elexon ID changed in the registry, or that
-    -- has PN but no rows yet, gets every period recomputed, so its fuel
-    -- group and metered mapping follow the registry.
+    -- A unit whose fuel type or Elexon ID changed in the registry, whose
+    -- fuel group changed in the fuel-code seed, or that has PN but no rows
+    -- yet, gets every period recomputed, so its fuel group and metered
+    -- mapping follow the registry and the seed.
     select
         commitments.national_grid_bm_unit,
         commitments.settlement_date,
@@ -153,6 +160,7 @@ commitments as (
         commitments.period_start_utc,
         commitments.pn_mwh,
         commitments.coverage_status,
+        commitments.mapping_status,
         commitments.pn_retrieved_at,
         commitments.last_captured_at,
         cohort.elexon_bm_unit,
@@ -175,6 +183,7 @@ commitments as (
         commitments.period_start_utc,
         commitments.pn_mwh,
         commitments.coverage_status,
+        commitments.mapping_status,
         commitments.pn_retrieved_at,
         commitments.last_captured_at,
         cohort.elexon_bm_unit,
@@ -303,6 +312,7 @@ pn_inside_intervals as (
     inner join commitments
         on commitments.national_grid_bm_unit = intervals.national_grid_bm_unit
         and commitments.period_start_utc = intervals.period_start_utc
+        and commitments.mapping_status = 'mapped'
     inner join {{ ref('stg_elexon__pn') }} as segments
         on segments.national_grid_bm_unit = commitments.national_grid_bm_unit
         and segments.settlement_date = commitments.settlement_date
@@ -339,8 +349,11 @@ joined as (
         commitments.elexon_bm_unit,
         commitments.fuel_type,
         commitments.fuel_group,
-        commitments.pn_mwh,
+        case when commitments.mapping_status = 'mapped'
+            then commitments.pn_mwh
+        end as pn_mwh,
         commitments.coverage_status as pn_coverage_status,
+        commitments.mapping_status as pn_mapping_status,
         metered.latest_quantity_mwh as metered_mwh,
         metered.latest_run_code as metered_run_code,
         metered.first_quantity_mwh as first_metered_mwh,
@@ -362,6 +375,7 @@ joined as (
                 when instruction.instructed_seconds = 1800
                     then instruction.instructed_mwh
                 when commitments.coverage_status = 'complete'
+                    and commitments.mapping_status = 'mapped'
                     then commitments.pn_mwh
                         - coalesce(pn_inside_intervals.pn_in_instructed_mwh, 0)
                         + coalesce(instruction.instructed_mwh, 0)
@@ -405,7 +419,30 @@ joined as (
 
 -- Energies are rounded to six decimal places, like the BOALF model's.
 select
-    *,
+    national_grid_bm_unit,
+    settlement_date,
+    settlement_period,
+    period_start_utc,
+    elexon_bm_unit,
+    fuel_type,
+    fuel_group,
+    pn_mwh,
+    pn_coverage_status,
+    metered_mwh,
+    metered_run_code,
+    first_metered_mwh,
+    first_run_code,
+    metered_row_count,
+    acceptance_count,
+    latest_acceptance_time,
+    any_so_flag,
+    instructed_seconds,
+    instructed_mwh,
+    pn_in_instructed_mwh,
+    instruction_status,
+    expected_mwh,
+    absvd_mwh,
+    last_captured_at,
     round(expected_mwh - metered_mwh, 6) as unexplained_shortfall_mwh,
     round(pn_mwh - metered_mwh, 6) as deviation_from_pn_mwh,
     round(pn_mwh - expected_mwh, 6) as instructed_deviation_mwh,
@@ -414,6 +451,8 @@ select
     case
         when metered_row_count > 1 then 'ambiguous_metered'
         when metered_mwh is null then 'no_metered_value'
+        when expected_mwh is null and pn_mapping_status <> 'mapped'
+            then 'pn_' || pn_mapping_status
         when expected_mwh is null then 'pn_' || pn_coverage_status
         else 'determinable'
     end as determinability

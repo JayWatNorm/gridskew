@@ -1,10 +1,12 @@
 {% macro changed_cohort_units(relation, cohort, commitments) %}
 
     {#-
-        The cohort units whose fuel type or Elexon ID differs from the ones
-        stored in the shortfall table, or that have no stored rows yet (they
-        joined the cohort), as a list. A unit with no PN period has nothing
-        to recompute and is left out. Read before the model runs, like
+        The cohort units whose fuel type, fuel group or Elexon ID differs
+        from the ones stored in the shortfall table, or that have no stored
+        rows yet (they joined the cohort), as a list. The fuel group follows
+        the fuel-code seed, so a change to the seed's grouping is found too.
+        A unit with no PN period has nothing to recompute and is left out.
+        Read before the model runs, like
         capture_watermark: written inside the model, this branch was planned
         as billions of rows every night, though it found none.
     -#}
@@ -16,13 +18,14 @@
         select distinct cohort.national_grid_bm_unit
         from {{ cohort }} as cohort
         left join (
-            select distinct national_grid_bm_unit, elexon_bm_unit, fuel_type
+            select distinct national_grid_bm_unit, elexon_bm_unit, fuel_type, fuel_group
             from {{ relation }}
         ) as stored
             on cohort.national_grid_bm_unit = stored.national_grid_bm_unit
         where (
             stored.national_grid_bm_unit is null
             or stored.fuel_type is distinct from cohort.fuel_type
+            or stored.fuel_group is distinct from cohort.fuel_group
             or stored.elexon_bm_unit is distinct from cohort.elexon_bm_unit
         )
             and exists (

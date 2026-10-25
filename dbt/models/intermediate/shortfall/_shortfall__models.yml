@@ -117,9 +117,12 @@ models:
         description: >
           The code's group from elexon_fuel_codes (gas_turbine, nuclear, wind,
           bioenergy, hydro, coal, oil, pumped_storage, interconnector, other);
-          unclassified when the code is not in the seed.
+          unclassified when the code is not in the seed. A change to the
+          seed's grouping rebuilds the unit's rows the next night.
       - name: pn_mwh
-        description: The notified energy from fct_commitments; null unless complete.
+        description: >
+          The notified energy from fct_commitments; null unless complete and
+          mapped to the unit.
       - name: pn_coverage_status
         description: complete, incomplete or invalid, from fct_commitments.
       - name: metered_mwh
@@ -156,12 +159,15 @@ models:
       - name: instructed_mwh
         description: Energy of the acceptances in force over their minutes; null when uninstructed.
       - name: pn_in_instructed_mwh
-        description: PN energy over those same minutes, from the chosen PN capture.
+        description: >
+          PN energy over those same minutes, from the chosen PN capture; null
+          when the PN is not mapped to the unit.
       - name: expected_mwh
         description: >
           pn_mwh minus pn_in_instructed_mwh plus instructed_mwh; instructed_mwh
           alone when the acceptances cover the whole half-hour. Null when the
-          PN is not complete and the acceptances do not cover it.
+          PN is not complete or not mapped to the unit, and the acceptances do
+          not cover it.
       - name: unexplained_shortfall_mwh
         description: expected_mwh minus metered_mwh. Positive means under-delivery.
       - name: deviation_from_pn_mwh
@@ -184,6 +190,7 @@ models:
       - name: determinability
         description: >
           determinable, or why not: no_metered_value, ambiguous_metered,
+          pn_conflict (the PN's Elexon ID conflicts with the registry's),
           pn_incomplete, pn_invalid.
         data_tests:
           - accepted_values:
@@ -192,6 +199,7 @@ models:
                   - determinable
                   - no_metered_value
                   - ambiguous_metered
+                  - pn_conflict
                   - pn_incomplete
                   - pn_invalid
               config:

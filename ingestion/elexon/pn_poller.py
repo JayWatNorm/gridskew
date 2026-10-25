@@ -1,5 +1,7 @@
 """Fetch, validate, quarantine and load Elexon Physical Notifications."""
 
+import json
+import logging
 from datetime import date, datetime, timezone
 
 import requests
@@ -7,6 +9,8 @@ import requests
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import PN_SPEC
 from ingestion.routing import ContractRejected, process_rows
+
+logger = logging.getLogger(__name__)
 
 
 def fetch(from_date, to_date):
@@ -91,7 +95,12 @@ def _utc_from_text_with_seconds(value):
 
 
 def load(parsed_rows, conn):
-    """Insert typed PN rows, ignoring existing target keys, and commit."""
+    """Insert typed PN rows, ignoring existing target keys, and commit.
+
+    Every row of one load shares its retrieved_at, so a row skipped on the key
+    is a second segment of the same unit starting at the same instant in this
+    capture. Only the first is stored, and a warning gives the count.
+    """
 
     insert_sql = (
         "INSERT INTO raw.elexon_pn (settlement_date, settlement_period, time_from, time_to, level_from, "
@@ -101,4 +110,17 @@ def load(parsed_rows, conn):
 
     with conn.cursor() as cursor:
         insert_rows(cursor, insert_sql, parsed_rows)
+        inserted_count = cursor.rowcount
     conn.commit()
+
+    skipped_count = len(parsed_rows) - inserted_count
+    if skipped_count:
+        payload = {
+            "dataset": "PN",
+            "severity": "warning",
+            "reason": "Rows share a unit and start time within one capture",
+            "rows_sent": len(parsed_rows),
+            "rows_inserted": inserted_count,
+            "rows_skipped": skipped_count,
+        }
+        logger.warning("%s", json.dumps(payload))
