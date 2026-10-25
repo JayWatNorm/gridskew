@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ingestion.database import DEFAULT_PORT, connect, insert_rows, one_row_statement
+from ingestion.database import connect, insert_rows, one_row_statement
 
 
 def airflow_connection(port):
@@ -34,7 +34,7 @@ def test_a_connection_without_a_port_uses_the_postgres_default():
     with patch("ingestion.database.psycopg.connect") as psycopg_connect:
         connect(airflow_connection(port=None))
 
-    assert psycopg_connect.call_args.kwargs["port"] == DEFAULT_PORT
+    assert psycopg_connect.call_args.kwargs["port"] == 5432
 
 
 def test_the_values_slot_becomes_one_placeholder_per_column():

@@ -5,20 +5,20 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from fakes import connection_returning
 
 from ingestion.elexon.b1610_poller import (
     british_day_window,
     capture_settlement_date,
     decimal_json_dumps,
-    expected_period_count,
     fetch,
     parse,
     replaced_by_a_later_run,
     run_in_force,
 )
 from ingestion.elexon.b1610_poller import run as run_poller
+from ingestion.elexon.settlement_calendar import expected_period_count
 from ingestion.routing import ContractRejected
+from tests.fakes import connection_returning
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "b1610_stream.json"
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)

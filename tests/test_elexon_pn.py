@@ -3,11 +3,16 @@ from datetime import date, datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from fakes import cursor_of
 
-from ingestion.elexon import boalf_poller, pn_poller, qpn_poller
+from ingestion.elexon import (
+    boalf_poller,
+    physical_notifications,
+    pn_poller,
+    qpn_poller,
+)
 from ingestion.elexon.contracts import BOALF_SPEC, PN_SPEC, QPN_SPEC
 from ingestion.routing import ContractRejected
+from tests.fakes import cursor_of
 
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)
 WINDOW_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
@@ -35,10 +40,11 @@ SOURCE_ROW = {
     "bmUnit": "T_DRAXX-1",
 }
 
+# Each entry point, and the module whose fetch and routing it runs.
 POLLERS = [
-    pytest.param(pn_poller, id="PN"),
-    pytest.param(qpn_poller, id="QPN"),
-    pytest.param(boalf_poller, id="BOALF"),
+    pytest.param(pn_poller, physical_notifications, id="PN"),
+    pytest.param(qpn_poller, physical_notifications, id="QPN"),
+    pytest.param(boalf_poller, boalf_poller, id="BOALF"),
 ]
 
 
@@ -65,13 +71,13 @@ def test_parse_maps_each_source_field_to_its_own_column():
         pytest.param([], id="empty-list"),
     ],
 )
-@pytest.mark.parametrize("poller", POLLERS)
-def test_run_rejects_an_invalid_response_envelope(poller, response):
+@pytest.mark.parametrize("poller,worker", POLLERS)
+def test_run_rejects_an_invalid_response_envelope(poller, worker, response):
     conn = Mock()
 
     with (
-        patch.object(poller, "fetch", return_value=response),
-        patch.object(poller, "process_rows") as mock_process_rows,
+        patch.object(worker, "fetch", return_value=response),
+        patch.object(worker, "process_rows") as mock_process_rows,
     ):
         with pytest.raises(RuntimeError, match="expected a non-empty list"):
             poller.run(conn, WINDOW_START, WINDOW_END)
@@ -80,21 +86,21 @@ def test_run_rejects_an_invalid_response_envelope(poller, response):
 
 
 @pytest.mark.parametrize(
-    "poller,spec,dataset",
+    "poller,worker,spec,dataset",
     [
-        pytest.param(pn_poller, PN_SPEC, "PN", id="PN"),
-        pytest.param(qpn_poller, QPN_SPEC, "QPN", id="QPN"),
-        pytest.param(boalf_poller, BOALF_SPEC, "BOALF", id="BOALF"),
+        pytest.param(pn_poller, physical_notifications, PN_SPEC, "PN", id="PN"),
+        pytest.param(qpn_poller, physical_notifications, QPN_SPEC, "QPN", id="QPN"),
+        pytest.param(boalf_poller, boalf_poller, BOALF_SPEC, "BOALF", id="BOALF"),
     ],
 )
 def test_run_routes_rows_through_its_own_parse_load_and_dataset_label(
-    poller, spec, dataset
+    poller, worker, spec, dataset
 ):
     source_rows = [Mock(name="source_row")]
 
     with (
-        patch.object(poller, "fetch", return_value=source_rows),
-        patch.object(poller, "process_rows", return_value=0) as mock_process_rows,
+        patch.object(worker, "fetch", return_value=source_rows),
+        patch.object(worker, "process_rows", return_value=0) as mock_process_rows,
     ):
         poller.run(Mock(), WINDOW_START, WINDOW_END)
 
@@ -106,13 +112,13 @@ def test_run_routes_rows_through_its_own_parse_load_and_dataset_label(
     assert routed.kwargs["dataset"] == dataset
 
 
-@pytest.mark.parametrize("poller", POLLERS)
-def test_run_fails_after_shared_routing_rejects_a_row(poller):
+@pytest.mark.parametrize("poller,worker", POLLERS)
+def test_run_fails_after_shared_routing_rejects_a_row(poller, worker):
     conn = Mock()
 
     with (
-        patch.object(poller, "fetch", return_value=[Mock(name="source_row")]),
-        patch.object(poller, "process_rows", return_value=1),
+        patch.object(worker, "fetch", return_value=[Mock(name="source_row")]),
+        patch.object(worker, "process_rows", return_value=1),
     ):
         with pytest.raises(ContractRejected, match="Quarantined 1 row"):
             poller.run(conn, WINDOW_START, WINDOW_END)
@@ -127,7 +133,7 @@ def test_load_warns_with_the_number_of_rows_the_key_skipped(caplog):
     conn = MagicMock()
     cursor_of(conn).rowcount = 1
 
-    with caplog.at_level("WARNING", logger="ingestion.elexon.pn_poller"):
+    with caplog.at_level("WARNING", logger="ingestion.elexon.physical_notifications"):
         pn_poller.load(parsed_rows, conn)
 
     (warning,) = caplog.records

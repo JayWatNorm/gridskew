@@ -1,9 +1,8 @@
 from datetime import date
 from unittest.mock import MagicMock, patch
 
-from fakes import cursor_of
-
 from ingestion.elexon import qas_backfill
+from tests.fakes import cursor_of
 
 AUGUST_22 = date(2025, 8, 22)
 AUGUST_23 = date(2025, 8, 23)

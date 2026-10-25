@@ -60,7 +60,9 @@ def drop_table(writer):
 
 
 def row_numbered(row_id, label_prefix="row"):
-    """One row whose values all differ from every other row's (T9)."""
+    """A row built from its id. Its label, amount, capture time and evidence
+    differ from every other row's, except that every seventh amount is null;
+    the settlement date repeats every 365 rows."""
 
     amount = None
     if row_id % 7:

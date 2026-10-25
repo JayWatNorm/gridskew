@@ -5,7 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from fakes import connection_returning, cursor_of, load_dag_file
+
+from tests.fakes import connection_returning, cursor_of, load_dag_file
 
 FINISHED_AT = datetime(2026, 10, 9, 2, 41, tzinfo=timezone.utc)
 

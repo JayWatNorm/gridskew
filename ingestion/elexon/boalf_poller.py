@@ -7,6 +7,7 @@ import requests
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import BOALF_SPEC
 from ingestion.routing import ContractRejected, process_rows
+from ingestion.source_api import USER_AGENT, utc_from_text_with_seconds
 
 
 def fetch(from_date, to_date):
@@ -18,9 +19,7 @@ def fetch(from_date, to_date):
             "from": from_date.strftime("%Y-%m-%dT%H:%MZ"),
             "to": to_date.strftime("%Y-%m-%dT%H:%MZ"),
         },
-        headers={
-            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
-        },
+        headers={"User-Agent": USER_AGENT},
         timeout=30,
     )
     response.raise_for_status()
@@ -67,12 +66,12 @@ def _parse_row(source_row, retrieved_at):
     national_grid_bm_unit = source_row["nationalGridBmUnit"]
     bm_unit = source_row["bmUnit"]
     acceptance_number = source_row["acceptanceNumber"]
-    acceptance_time = _utc_from_text_with_seconds(source_row["acceptanceTime"])
+    acceptance_time = utc_from_text_with_seconds(source_row["acceptanceTime"])
     settlement_date = date.fromisoformat(source_row["settlementDate"])
     settlement_period_from = source_row["settlementPeriodFrom"]
     settlement_period_to = source_row["settlementPeriodTo"]
-    time_from = _utc_from_text_with_seconds(source_row["timeFrom"])
-    time_to = _utc_from_text_with_seconds(source_row["timeTo"])
+    time_from = utc_from_text_with_seconds(source_row["timeFrom"])
+    time_to = utc_from_text_with_seconds(source_row["timeTo"])
     level_from = source_row["levelFrom"]
     level_to = source_row["levelTo"]
     so_flag = source_row["soFlag"]
@@ -100,10 +99,6 @@ def _parse_row(source_row, retrieved_at):
         amendment_flag,
         retrieved_at,
     )
-
-
-def _utc_from_text_with_seconds(value):
-    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
 
 def load(parsed_rows, conn):

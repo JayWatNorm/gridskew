@@ -11,7 +11,8 @@ select = ["E4", "E7", "E9", "F", "B", "I", "TID251"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# tests/adhoc holds exploratory scripts that call the live API at import time.
-# Without this, one file named test_*.py in there would make real HTTP requests
-# during collection - including in CI.
+# tests/adhoc holds scripts run on their own: live-API explorations, some of
+# which make requests at import time, and checks that write to a disposable
+# database. Keep pytest out of it, so a file there named test_*.py is never
+# collected, in CI or locally.
 norecursedirs = ["adhoc"]

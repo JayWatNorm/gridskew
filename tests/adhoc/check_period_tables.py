@@ -1,12 +1,14 @@
 """Acceptance checks for the period models in a disposable PostgreSQL.
 
 Loads small, controlled raw rows, runs the real dbt models and asserts the
-acceptance matrix: the incremental period tables recompute
-only touched unit-periods and equal a full refresh; the fact views show
-current registry evidence; the shortfall tables follow acceptances, registry
-changes, late settlement runs and ABSVD captures and equal a full refresh. It mutates the target database, so it refuses to
-run unless explicitly pointed at a local disposable gridskew_dev. The raw
-tables must exist first: apply sql/migrations to the empty database.
+acceptance matrix: the incremental period tables recompute only touched
+unit-periods and equal a full refresh; the fact views show current registry
+evidence; the shortfall tables follow acceptances, registry changes, late
+settlement runs and ABSVD captures and equal a full refresh.
+
+It mutates the target database, so it refuses to run unless explicitly
+pointed at a local disposable gridskew_dev. The raw tables must exist first:
+apply sql/migrations to the empty database.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
@@ -225,7 +227,7 @@ def insert_b1610(conn, rows):
                 ng_id,
                 settlement_date,
                 period,
-                T0,  # Not used by S6; the period start comes from date/period.
+                T0,  # Not read: the period tables work from date and period.
                 run,
                 Decimal(quantity),
                 seen,
@@ -393,7 +395,7 @@ def check_generation(conn):
 
 
 def period_start(settlement_date, period):
-    """UTC start of a settlement period, stepping in elapsed time from local midnight."""
+    """UTC start of a settlement period: elapsed half-hours from local midnight."""
     midnight = datetime.combine(settlement_date, time(), tzinfo=LONDON)
     return midnight.astimezone(timezone.utc) + (period - 1) * timedelta(minutes=30)
 
@@ -692,7 +694,7 @@ def units_needing_shared_id_refresh(conn):
 
 
 def assert_same_rows(name, incremental, full):
-    """The incremental table equals the full refresh; name the first rows that differ."""
+    """The incremental table must equal the full refresh; name the first differences."""
     differing = [
         (key, incremental.get(key), full.get(key))
         for key in sorted(set(incremental) | set(full))
@@ -961,8 +963,8 @@ def check_absvd(conn, p1, p2):
 
 def check_job_commands_keep_views(conn):
     """Scheduled jobs write data; only releases recreate views. Rebuilding a
-    view drops its dependants (DROP ... CASCADE), so the nightly S6 commands and
-    the registry job's commands must leave every view in place."""
+    view drops its dependants (DROP ... CASCADE), so the nightly job's commands
+    and the registry job's commands must leave every view in place."""
     # Release: create every view once. (The earlier `build +fct_commitments`
     # rebuilt the registry view and so dropped fct_generation, which is the
     # hazard this check guards against.)
@@ -996,8 +998,8 @@ def check_job_commands_keep_views(conn):
         "int_elexon__pn_period_mwh+",
         "--exclude",
         "tag:full_population",
-        # Unit tests are CI job 1's: they mock staging views this partial
-        # database does not hold.
+        # The CI `test` job runs the unit tests: they mock staging views this
+        # partial database does not hold.
         "test_type:unit",
     )
     # Registry job: the DAG's own commands.

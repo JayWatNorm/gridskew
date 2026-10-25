@@ -1,3 +1,5 @@
+"""Elexon source contracts: each field's type, presence and nullability."""
+
 from decimal import Decimal
 
 PN_SPEC = {

@@ -12,6 +12,7 @@ from ingestion.carbon_intensity.completeness import (
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
 from ingestion.database import insert_rows
 from ingestion.routing import ContractRejected, process_rows
+from ingestion.source_api import USER_AGENT, utc_from_text_to_the_minute
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,7 @@ def fetch(timestamp):
 
     response = requests.get(
         f"https://api.carbonintensity.org.uk/intensity/{timestamp}/fw48h",
-        headers={
-            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
-        },
+        headers={"User-Agent": USER_AGENT},
         timeout=10,
     )
     response.raise_for_status()
@@ -58,18 +57,14 @@ def parse(source_rows, retrieved_at):
 
 
 def _parse_row(source_row, retrieved_at):
-    period_start = _utc_from_text_to_the_minute(source_row["from"])
-    period_end = _utc_from_text_to_the_minute(source_row["to"])
+    period_start = utc_from_text_to_the_minute(source_row["from"])
+    period_end = utc_from_text_to_the_minute(source_row["to"])
     intensity = source_row["intensity"]
     forecast = intensity["forecast"]
     actual = intensity["actual"]
     intensity_index = intensity["index"]
 
     return (period_start, period_end, retrieved_at, forecast, actual, intensity_index)
-
-
-def _utc_from_text_to_the_minute(value):
-    return datetime.strptime(value, "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
 
 
 def load(parsed_rows, conn):

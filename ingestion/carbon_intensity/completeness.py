@@ -1,7 +1,9 @@
 """Semantic period-window checks for Carbon Intensity responses."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from itertools import pairwise
+
+from ingestion.source_api import utc_from_text_to_the_minute
 
 PERIOD = timedelta(minutes=30)
 FORECAST_WINDOW = timedelta(hours=48)
@@ -52,8 +54,8 @@ def _periods(rows, dataset):
 
     periods = []
     for row in rows:
-        period_start = _utc_from_text_to_the_minute(row["from"])
-        period_end = _utc_from_text_to_the_minute(row["to"])
+        period_start = utc_from_text_to_the_minute(row["from"])
+        period_end = utc_from_text_to_the_minute(row["to"])
         periods.append((period_start, period_end))
     periods.sort()
 
@@ -81,10 +83,6 @@ def _periods(rows, dataset):
             )
 
     return periods
-
-
-def _utc_from_text_to_the_minute(value):
-    return datetime.strptime(value, "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
 
 
 def _ceil_to_period(value):

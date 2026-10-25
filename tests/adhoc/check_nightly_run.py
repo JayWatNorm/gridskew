@@ -44,7 +44,8 @@ def disposable_connection():
 
 
 def run_dbt(args, airflow_run_id):
-    """Run one dbt command and return the node IDs in its run results."""
+    """Run one dbt command; return its invocation ID and the sorted node IDs
+    in its run results."""
 
     env = os.environ.copy()
     env.pop("GRIDSKEW_AIRFLOW_RUN_ID", None)

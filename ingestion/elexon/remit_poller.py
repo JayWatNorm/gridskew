@@ -6,12 +6,12 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import requests
-import simplejson
 from psycopg.types.json import Jsonb
 
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import REMIT_SPEC
 from ingestion.routing import ContractRejected, process_rows
+from ingestion.source_api import USER_AGENT, decimal_json_dumps
 
 # One year before the first Physical Notification day, so that a notice
 # published up to a year ahead of its outage is held.
@@ -19,12 +19,6 @@ HISTORY_START = datetime(2024, 8, 22, tzinfo=timezone.utc)
 OVERLAP = timedelta(hours=1)
 WINDOW = timedelta(days=1)
 SECONDS_BETWEEN_REQUESTS = 0.2
-
-
-def decimal_json_dumps(values):
-    """Encode REMIT payloads without converting Decimal values."""
-
-    return simplejson.dumps(values, use_decimal=True)
 
 
 def fetch(publish_from, publish_to):
@@ -36,9 +30,7 @@ def fetch(publish_from, publish_to):
             "publishDateTimeFrom": _utc_text_to_the_minute(publish_from),
             "publishDateTimeTo": _utc_text_to_the_minute(publish_to),
         },
-        headers={
-            "User-Agent": "gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)"
-        },
+        headers={"User-Agent": USER_AGENT},
         timeout=60,
     )
     response.raise_for_status()
