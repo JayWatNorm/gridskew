@@ -1,4 +1,4 @@
-"""Check the Q10, Q4 and Q2-RF one-look analyses on hand-worked rows (GS-20 C7).
+"""Check the Q10, Q4, Q2-RF and Q27 one-look analyses on hand-worked rows (GS-20 C7).
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -23,18 +23,29 @@ from tests.adhoc.check_analyses_compile import compile_analyses, disposable_conn
 Q10 = "q10_forecast_accuracy_by_lead_time"
 Q4 = "q4_forecast_error_vs_shortfall"
 Q2RF = "q2rf_restatement_r3_to_rf"
+Q27 = "q27_forecast_stalls"
 READ_UNTIL = "2026-09-05 00:00:00+00"
+STALLS_FROM = "2026-09-01 00:00:00+00"
+STALLS_WINDOW_VARS = {
+    "forecast_stalls_from": STALLS_FROM,
+    "forecast_stalls_exploratory_from": "2026-08-25 05:00:00+00",
+    "forecast_stalls_exploratory_until": "2026-08-25 06:30:00+00",
+}
 REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 7,
     "shortfall_error_matched_days_needed": 2,
     "rf_restatement_dates_needed": 2,
+    "forecast_stalls_days_needed": 4,
+    **STALLS_WINDOW_VARS,
 }
 NOT_REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 8,
     "shortfall_error_matched_days_needed": 3,
     "rf_restatement_dates_needed": 4,
+    "forecast_stalls_days_needed": 5,
+    **STALLS_WINDOW_VARS,
 }
 # The bootstrap's fixed seed and draw count, as in the Q4 analysis.
 BOOTSTRAP_SEED = 20261012
@@ -529,6 +540,145 @@ Q2RF_NOT_REACHED_EXPECTED = {
 }
 
 
+# Q27's slot polls: (poll_slot UTC, first poll in its slot, partial, no change).
+# The window runs from 1 September 00:00 to analysis_read_until (5 September
+# 00:00), both included. In it:
+#   A 00:00, 00:30, 01:00 on 1 September, part of a stall that began at 23:30
+#     on 31 August: cut at the start; 3 polls, 90 minutes either way; block
+#     18:00-23:59 (the stall's first poll, before the window).
+#   B 12:00, 12:30 (partial), 13:30, 14:00 on 2 September, with 13:00 lost:
+#     4 polls, 120 minutes poll-equivalent, 150 elapsed; block 12:00-17:59,
+#     starting on the block's first hour.
+#   C 23:30 on 4 September and 00:00 on 5 September, running on past the
+#     cutoff: cut at the end; 2 polls, 60 minutes either way; block
+#     18:00-23:59.
+# Changed polls at 01:30 on 1 September, 14:30 on 2 September (with a second,
+# ignored poll in that slot) and 08:00 on 3 September (partial). 12 slot polls
+# in the window; 9 inside a stall (0.750000); 2 partial (0.166667), 1 of them
+# inside a stall. Durations: poll-equivalent 90, 120, 60 (median 90, longest
+# 120); elapsed 90, 150, 60 (median 90, longest 150). The window spans 4 days
+# 30 minutes, so 4 days are covered; 4 days hold 193 slots, so 181 have no
+# poll. Blocks: 0, 0, 1 (B) and 2 (A, C). The exploratory window, 05:00 to 06:30 on 25 August, holds exactly
+# one stall of 4 polls (120 minutes either way; 1.000000 of its 4 slot polls),
+# none partial; the stall starts at the window's start and ends at its end, so
+# it is not cut.
+Q27_FIXTURES = """
+create temporary table synthetic_revisions (
+    poll_slot timestamptz,
+    is_first_poll_in_slot boolean,
+    is_partial_poll boolean,
+    is_no_change_poll boolean
+) on commit drop;
+insert into synthetic_revisions values
+    ('2026-08-25 05:00+00', true, false, true),
+    ('2026-08-25 05:30+00', true, false, true),
+    ('2026-08-25 06:00+00', true, false, true),
+    ('2026-08-25 06:30+00', true, false, true),
+    ('2026-08-25 07:00+00', true, false, false),
+    ('2026-08-31 23:00+00', true, false, false),
+    ('2026-08-31 23:30+00', true, false, true),
+    ('2026-09-01 00:00+00', true, false, true),
+    ('2026-09-01 00:30+00', true, false, true),
+    ('2026-09-01 01:00+00', true, false, true),
+    ('2026-09-01 01:30+00', true, false, false),
+    ('2026-09-02 12:00+00', true, false, true),
+    ('2026-09-02 12:30+00', true, true, true),
+    ('2026-09-02 13:30+00', true, false, true),
+    ('2026-09-02 14:00+00', true, false, true),
+    ('2026-09-02 14:30+00', true, false, false),
+    ('2026-09-02 14:30+00', false, false, true),
+    ('2026-09-03 08:00+00', true, true, false),
+    ('2026-09-04 23:30+00', true, false, true),
+    ('2026-09-05 00:00+00', true, false, true),
+    ('2026-09-05 00:30+00', true, false, true)
+    {after_cutoff_rows};
+"""
+# After the cutoff: 00:30 above, then 01:00 and the changed 02:00 poll make
+# three slot polls, enough to settle stall C. Without 01:00 the last poll is
+# still two hours past the cutoff, but only two slot polls follow it.
+Q27_SETTLED_ROWS = (
+    ",\n    ('2026-09-05 01:00+00', true, false, true)"
+    ",\n    ('2026-09-05 02:00+00', true, false, false)"
+)
+Q27_GAP_ROWS = ",\n    ('2026-09-05 02:00+00', true, false, false)"
+Q27_TABLES = {"int_carbon_forecast__revisions": "pg_temp.synthetic_revisions"}
+EXPLORATORY = "exploratory, seen before registration: "
+BLOCK = "stalls starting {} UTC (split informed by the exploratory stalls)"
+
+
+def q27_fixtures(after_cutoff_rows=Q27_SETTLED_ROWS):
+    return Q27_FIXTURES.format(after_cutoff_rows=after_cutoff_rows)
+
+
+Q27_WINDOW_EXPECTED = {
+    (1, "window start", None): dict(value=None, detail=STALLS_FROM),
+    (1, "first slot poll", None): dict(value=None, detail="2026-09-01 00:00 UTC"),
+    (1, "last slot poll", None): dict(value=None, detail="2026-09-05 00:00 UTC"),
+    (1, "slot polls", None): dict(value="12", detail=None),
+    (1, "slots with no poll", None): dict(value="181", detail=None),
+}
+Q27_EXPLORATORY_EXPECTED = {
+    (5, f"{EXPLORATORY}stalls", None): dict(value="1"),
+    (5, f"{EXPLORATORY}median duration, poll-equivalent minutes", None): dict(
+        value="120"
+    ),
+    (5, f"{EXPLORATORY}longest duration, poll-equivalent minutes", None): dict(
+        value="120"
+    ),
+    (5, f"{EXPLORATORY}median duration, elapsed minutes", None): dict(value="120"),
+    (5, f"{EXPLORATORY}longest duration, elapsed minutes", None): dict(value="120"),
+    (5, f"{EXPLORATORY}share of slot polls inside a stall", None): dict(
+        value="1.000000"
+    ),
+    (5, f"{EXPLORATORY}stalls cut at the window start", None): dict(value="0"),
+    (5, f"{EXPLORATORY}stalls cut at the window end", None): dict(value="0"),
+    (5, f"{EXPLORATORY}partial polls", None): dict(value="0"),
+    (5, f"{EXPLORATORY}share of slot polls that are partial", None): dict(
+        value="0.000000"
+    ),
+    (5, f"{EXPLORATORY}partial polls inside a stall", None): dict(value="0"),
+}
+Q27_EXPECTED = {
+    **Q27_WINDOW_EXPECTED,
+    (1, "days covered (4 needed)", None): dict(value="4"),
+    (1, "slot polls stored after analysis_read_until (3 needed)", None): dict(
+        detail="yes"
+    ),
+    (1, "read possible", None): dict(detail="yes"),
+    (2, "stalls", None): dict(value="3"),
+    (2, "median duration, poll-equivalent minutes", None): dict(value="90"),
+    (2, "longest duration, poll-equivalent minutes", None): dict(value="120"),
+    (2, "median duration, elapsed minutes", None): dict(value="90"),
+    (2, "longest duration, elapsed minutes", None): dict(value="150"),
+    (2, "share of slot polls inside a stall", None): dict(value="0.750000"),
+    (2, "stalls cut at the window start", None): dict(value="1"),
+    (2, "stalls cut at the window end", None): dict(value="1"),
+    (3, "partial polls", None): dict(value="2"),
+    (3, "share of slot polls that are partial", None): dict(value="0.166667"),
+    (3, "partial polls inside a stall", None): dict(value="1"),
+    (4, BLOCK.format("00:00-05:59"), None): dict(value="0"),
+    (4, BLOCK.format("06:00-11:59"), None): dict(value="0"),
+    (4, BLOCK.format("12:00-17:59"), None): dict(value="1"),
+    (4, BLOCK.format("18:00-23:59"), None): dict(value="2"),
+    **Q27_EXPLORATORY_EXPECTED,
+}
+Q27_GATED = ({2, 3, 4}, ("value",))
+# Not reached on days (5 needed), and, with the look-ahead row removed, not
+# reached on the look-ahead: either way only sections 1 and 5 have values.
+Q27_NOT_REACHED_EXPECTED = {
+    **Q27_WINDOW_EXPECTED,
+    (1, "days covered (5 needed)", None): dict(value="4"),
+    (1, "read possible", None): dict(detail="no"),
+    **Q27_EXPLORATORY_EXPECTED,
+}
+Q27_NO_LOOK_AHEAD_EXPECTED = {
+    (1, "slot polls stored after analysis_read_until (3 needed)", None): dict(
+        detail="no"
+    ),
+    (1, "read possible", None): dict(detail="no"),
+}
+
+
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
@@ -769,6 +919,30 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     return found
 
 
+def q27_mismatches(conn, reached, not_reached, time_zone):
+    title = f"[{time_zone}] Q27"
+    main_run = run_analysis(conn, q27_fixtures(), reached, Q27, Q27_TABLES, time_zone)
+    found = mismatches(title, main_run, Q27_EXPECTED)
+    found += unexpected_rows(title, main_run, Q27_EXPECTED)
+
+    early_run = run_analysis(
+        conn, q27_fixtures(), not_reached, Q27, Q27_TABLES, time_zone
+    )
+    found += mismatches(f"{title} early", early_run, Q27_NOT_REACHED_EXPECTED)
+    found += gated_values_left_null(f"{title} early", early_run, Q27_GATED)
+
+    no_look_ahead_run = run_analysis(
+        conn, q27_fixtures(Q27_GAP_ROWS), reached, Q27, Q27_TABLES, time_zone
+    )
+    found += mismatches(
+        f"{title} no look-ahead", no_look_ahead_run, Q27_NO_LOOK_AHEAD_EXPECTED
+    )
+    found += gated_values_left_null(
+        f"{title} no look-ahead", no_look_ahead_run, Q27_GATED
+    )
+    return found
+
+
 def check_all(reached, not_reached, boundary):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
@@ -784,6 +958,7 @@ def check_all(reached, not_reached, boundary):
             found += q10_mismatches(conn, reached, not_reached, time_zone)
             found += q4_mismatches(conn, reached, not_reached, boundary, time_zone)
             found += q2rf_mismatches(conn, reached, not_reached, time_zone)
+            found += q27_mismatches(conn, reached, not_reached, time_zone)
     finally:
         conn.close()
     return found
@@ -819,7 +994,7 @@ def main():
         raise SystemExit(
             f"{len(found)} one-look analysis cells differ from the worked values"
         )
-    print("One-look analyses: Q10, Q4 and Q2-RF match every worked value")
+    print("One-look analyses: Q10, Q4, Q2-RF and Q27 match every worked value")
 
 
 if __name__ == "__main__":

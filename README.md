@@ -231,8 +231,9 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   read once, when 2,880 complete half-hours exist; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 - Analyses for forecast accuracy by lead time, forecast error against the
-  shortfall, and the change from the settled to the final settlement run.
-  Each rule is fixed in advance and read once its data exists.
+  shortfall, the change from the settled to the final settlement run, and how
+  often the published forecast stops changing. Each rule is fixed in advance
+  and read once its data exists.
 
 **Available reference data**
 
