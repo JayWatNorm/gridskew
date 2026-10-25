@@ -46,11 +46,11 @@ by_fuel_group as (
         round(
             percentile_cont(0.25) within group (order by deviation_from_pn_mwh)::numeric,
             3
-        ) as q1_deviation_mwh,
+        ) as p25_deviation_mwh,
         round(
             percentile_cont(0.75) within group (order by deviation_from_pn_mwh)::numeric,
             3
-        ) as q3_deviation_mwh,
+        ) as p75_deviation_mwh,
         round(sum(abs(metered_mwh)), 1) as abs_metered_mwh,
         round(sum(abs(pn_mwh)), 1) as abs_pn_mwh,
         count(*) filter (where instruction_status <> 'uninstructed')
@@ -97,8 +97,8 @@ select
     by_fuel_group.first_date,
     by_fuel_group.last_date,
     by_fuel_group.median_deviation_mwh,
-    by_fuel_group.q1_deviation_mwh,
-    by_fuel_group.q3_deviation_mwh,
+    by_fuel_group.p25_deviation_mwh,
+    by_fuel_group.p75_deviation_mwh,
     by_fuel_group.abs_metered_mwh,
     by_fuel_group.abs_pn_mwh,
     by_fuel_group.instructed_periods,

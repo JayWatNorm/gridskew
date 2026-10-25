@@ -1,16 +1,16 @@
 {{ config(group='analysis') }}
 
 -- Does NESO resubmit QAS values that reach Insights, and can a later capture
--- leave a unit out? GS-33 relies on its 35- and 450-day captures only once
--- this has been read. Counts only, no energy value.
+-- leave a unit out? The ABSVD columns rely on the 35- and 450-day captures
+-- only once this has been read. Counts only, no energy value.
 --
 -- For each settlement date captured more than once, each capture is compared
 -- with the capture before it: the unit-periods in either, how many changed
 -- value, how many are new and how many are dropped (in the earlier capture,
 -- not the later). int_shortfall_by_unit_period keeps a dropped unit-period's
--- earlier value; a dropped count above 0 asks James how a dropped unit should
--- read before Q26 is read. Grouped by the later capture's age in days (UTC
--- capture date minus settlement date), with the earlier capture's ages.
+-- earlier value; a dropped count above 0 requires a decision on how a dropped
+-- unit reads before Q26 is read. Grouped by the later capture's age in days
+-- (UTC capture date minus settlement date), with the earlier capture's ages.
 
 with captures as (
     select

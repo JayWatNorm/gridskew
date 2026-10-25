@@ -18,8 +18,8 @@ select
     first_date,
     last_date,
     median_deviation_mwh,
-    q1_deviation_mwh,
-    q3_deviation_mwh,
+    p25_deviation_mwh,
+    p75_deviation_mwh,
     abs_metered_mwh,
     abs_pn_mwh
 from {{ ref('agg_delivery_by_fuel_group') }}

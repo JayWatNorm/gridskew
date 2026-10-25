@@ -34,6 +34,7 @@ def settlement_date_to_capture(data_interval_start):
     dag_id="gridskew_elexon_b1610_II",
     # Not "@daily": this timetable keeps a full-day data interval on Airflow 3.
     schedule=CronDataIntervalTimetable("0 0 * * *", timezone="UTC"),
+    # The B1610 history start, 2025-08-22, plus LAG: the first run captures it.
     start_date=datetime(2025, 9, 5, tzinfo=timezone.utc),
     catchup=True,
     # A date that keeps retrying does not hold up the dates after it; the one

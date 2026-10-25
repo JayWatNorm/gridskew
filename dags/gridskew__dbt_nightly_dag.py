@@ -43,8 +43,8 @@ ARTIFACTS = "/opt/airflow/data/gridskew/artifacts"
 ARTIFACT_FILES = ("manifest.json", "run_results.json")
 ARTIFACT_DAYS_KEPT = 30
 LOG_DAYS_KEPT = 30
-# One budget for the whole task: a full refresh, about an hour today, grows
-# with the B1610 table. A scheduled command stops sooner (run_dbt below).
+# One budget for the whole task: a full refresh, about an hour in October 2026,
+# grows with the B1610 table. A scheduled command stops sooner (run_dbt below).
 TASK_TIME_LIMIT = timedelta(hours=4)
 SCHEDULED_COMMAND_MINUTES = 45
 
