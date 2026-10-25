@@ -8,6 +8,7 @@ import pytest
 
 from ingestion.carbon_intensity.forecast_poller import parse
 from ingestion.carbon_intensity.forecast_poller import run as run_poller
+from ingestion.routing import ContractRejected
 
 FIXTURE_PATH = (
     Path(__file__).parent / "fixtures" / "carbon_intensity" / "forecast_fw48h.json"
@@ -97,7 +98,7 @@ def test_run_fails_after_shared_routing_rejects_a_row(payload):
             "ingestion.carbon_intensity.forecast_poller.validate_forecast_periods"
         ) as mock_validate_completeness,
     ):
-        with pytest.raises(RuntimeError, match="Quarantined 1 row"):
+        with pytest.raises(ContractRejected, match="Quarantined 1 row"):
             run_poller(conn)
 
     mock_validate_completeness.assert_not_called()

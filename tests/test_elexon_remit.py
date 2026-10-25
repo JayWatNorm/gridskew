@@ -17,6 +17,7 @@ from ingestion.elexon.remit_poller import (
     parse,
 )
 from ingestion.elexon.remit_poller import run as run_poller
+from ingestion.routing import ContractRejected
 from ingestion.validation import validate_rows
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "remit_publications.json"
@@ -239,7 +240,7 @@ def test_run_loads_the_compatible_rows_before_it_fails(source_rows):
         patch("ingestion.elexon.remit_poller.fetch", return_value=source_rows),
         patch("ingestion.elexon.remit_poller.process_rows") as mock_process_rows,
     ):
-        with pytest.raises(RuntimeError, match="2 REMIT rows are in quarantine"):
+        with pytest.raises(ContractRejected, match="2 REMIT rows are in quarantine"):
             run_at_run_time(conn)
 
     mock_process_rows.assert_called_once()

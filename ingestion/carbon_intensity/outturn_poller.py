@@ -8,7 +8,7 @@ import requests
 from ingestion.carbon_intensity.completeness import validate_outturn_window
 from ingestion.carbon_intensity.contracts import OUTTURN_SPEC
 from ingestion.database import insert_rows
-from ingestion.routing import process_rows
+from ingestion.routing import ContractRejected, process_rows
 
 logger = logging.getLogger(__name__)
 
@@ -189,18 +189,17 @@ def run(conn):
     # so an incomplete history window is a logged warning, not a failure that
     # would recur every Monday for a year. The recent window above still fails.
     for window_start, window_end in history_windows:
-        window_rejected_count, _ = process_history_window(
+        rejected_count += process_history_window(
             conn, window_start, window_end, retrieved_at
         )
-        rejected_count += window_rejected_count
 
     if rejected_count and incomplete_count:
-        raise RuntimeError(
+        raise ContractRejected(
             f"Quarantined {rejected_count} rows due to validation errors and "
             f"found {incomplete_count} incomplete outturn windows"
         )
     if rejected_count:
-        raise RuntimeError(
+        raise ContractRejected(
             f"Quarantined {rejected_count} rows due to validation errors"
         )
     if incomplete_count:
@@ -210,21 +209,26 @@ def run(conn):
 
 
 def process_history_window(conn, from_date, to_date, retrieved_at):
-    """Process one history window; a failed request counts as incomplete.
+    """Process one history window and return its rejected row count.
 
-    One window that cannot be fetched must not stop the windows after it.
+    A window the source cannot serve (a failed request or an empty or invalid
+    response) is logged and skipped, so it does not stop the windows after
+    it. Any other error, such as a database fault, fails the run.
     """
 
     try:
-        return process_window(conn, from_date, to_date, retrieved_at)
-    except Exception:
+        rejected_count, _incomplete = process_window(
+            conn, from_date, to_date, retrieved_at
+        )
+    except (requests.RequestException, RuntimeError):
         logger.exception(
             "Outturn history re-fetch failed from %s to %s",
             from_date.isoformat(),
             to_date.isoformat(),
         )
         conn.rollback()
-        return 0, True
+        return 0
+    return rejected_count
 
 
 def process_window(conn, from_date, to_date, retrieved_at):

@@ -5,7 +5,9 @@
 -- decision 024). Per fuel group and calendar month, each with its n:
 --
 -- 1. Dispatch granularity: the share of acceptances whose own span (first
---    ramp point's start to last ramp point's end, latest capture) is under
+--    ramp point's start to last ramp point's end, the latest capture of
+--    each ramp point, as an acceptance that crosses midnight is split
+--    across two daily captures) is under
 --    10 minutes, and the median span. Not called CADL.
 -- 2. Continuous acceptance duration as BSC Section T Annex T-1 Part 2
 --    paragraph 12 defines it, per acceptance k: the related acceptances are
@@ -38,7 +40,7 @@ with ramp_points as (
         time_to,
         retrieved_at,
         max(retrieved_at) over (
-            partition by national_grid_bm_unit, acceptance_number
+            partition by national_grid_bm_unit, acceptance_number, time_from
         ) as latest_retrieved_at
     from {{ ref('stg_elexon__boalf') }}
 ),

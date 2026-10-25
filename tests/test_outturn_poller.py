@@ -4,6 +4,7 @@ from itertools import pairwise
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
+import psycopg
 import pytest
 
 from ingestion.carbon_intensity.outturn_poller import (
@@ -14,6 +15,7 @@ from ingestion.carbon_intensity.outturn_poller import (
     process_window,
 )
 from ingestion.carbon_intensity.outturn_poller import run as run_poller
+from ingestion.routing import ContractRejected
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "carbon_intensity" / "outturn.json"
 RETRIEVED_AT = datetime(2026, 8, 19, 21, 43, 17, tzinfo=timezone.utc)
@@ -192,7 +194,7 @@ def test_run_backfills_all_windows_and_reports_the_total_failures(summary_output
     ):
         mock_datetime.now.return_value = RETRIEVED_AT
         with pytest.raises(
-            RuntimeError,
+            ContractRejected,
             match="Quarantined 3 rows.*found 1 incomplete",
         ):
             run_poller(conn)
@@ -307,8 +309,13 @@ def test_an_incomplete_recent_window_still_fails_the_run():
         run_with_one_history_gap((0, True), (0, False))
 
 
+def test_a_database_fault_in_a_history_window_fails_the_run():
+    with pytest.raises(psycopg.OperationalError):
+        run_with_one_history_gap((0, False), psycopg.OperationalError("lost"))
+
+
 def test_rows_rejected_in_a_history_window_still_fail_the_run():
-    with pytest.raises(RuntimeError, match="Quarantined 2 rows"):
+    with pytest.raises(ContractRejected, match="Quarantined 2 rows"):
         run_with_one_history_gap((0, False), (2, False))
 
 
