@@ -172,6 +172,7 @@ docs/           Source, ingestion and deployment documentation
 - [Data source documentation](docs/README.md)
 - [Ingestion patterns](docs/sources/ingestion-patterns.md)
 - [Endpoint validation](docs/sources/endpoint-validation.md)
+- [Design decisions](docs/design-decisions.md)
 - [Operations](docs/operations.md)
 - [Homelab CD overview](docs/deployment.md)
 
