@@ -164,6 +164,7 @@ sql/            Raw-layer migrations and provisioning scripts
 dbt/            Sources, seeds, models, tests and macros
 dbt_profiles/   Connection profile using environment variables
 tests/          pytest suite, captured fixtures and ad-hoc checks
+scripts/        README chart script, run by hand
 docs/           Source, ingestion and deployment documentation
 .github/        Continuous-integration workflow
 ```
