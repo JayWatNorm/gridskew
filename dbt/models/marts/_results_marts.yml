@@ -1,0 +1,121 @@
+models:
+  - name: agg_delivery_by_fuel_group
+    description: >
+      Table, built by hand when the README results are refreshed. One row per
+      cohort fuel group: the Q3 statistics of deviation_from_pn_mwh and the
+      Q12 split of the deviation into instructed and unexplained energy, over
+      determinable unit-periods with a PN up to analysis_read_until. The
+      cohort is every registry unit with a fuel type; units without one are
+      left out, as are periods that cannot be judged and periods with no PN.
+      q3_metered_vs_notified.sql and q12_instructed_vs_residual.sql select
+      from it.
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: primary_key
+        columns: [fuel_group]
+    columns:
+      - name: fuel_group
+        data_type: varchar
+        description: The fuel code's group from elexon_fuel_codes.
+      - name: unit_periods
+        data_type: bigint
+        description: Determinable unit-periods with a PN.
+        constraints: [{type: not_null}]
+      - name: units
+        data_type: bigint
+        description: Distinct National Grid BM units.
+        constraints: [{type: not_null}]
+      - name: first_date
+        data_type: date
+        description: First settlement date.
+      - name: last_date
+        data_type: date
+        description: Last settlement date.
+      - name: median_deviation_mwh
+        data_type: numeric
+        description: Median of deviation_from_pn_mwh, 3 decimals.
+      - name: q1_deviation_mwh
+        data_type: numeric
+        description: Lower quartile of deviation_from_pn_mwh, 3 decimals.
+      - name: q3_deviation_mwh
+        data_type: numeric
+        description: Upper quartile of deviation_from_pn_mwh, 3 decimals.
+      - name: abs_metered_mwh
+        data_type: numeric
+        description: Summed absolute metered energy, beside the statistics as coverage.
+      - name: abs_pn_mwh
+        data_type: numeric
+        description: Summed absolute PN energy, beside the statistics as coverage.
+      - name: instructed_periods
+        data_type: bigint
+        description: Unit-periods with an acceptance in force for any part.
+        constraints: [{type: not_null}]
+      - name: instructed_period_share
+        data_type: numeric
+        description: instructed_periods over unit_periods, 6 decimals.
+      - name: abs_deviation_mwh
+        data_type: numeric
+        description: Summed absolute deviation from PN.
+      - name: abs_instructed_deviation_mwh
+        data_type: numeric
+        description: Summed absolute instructed deviation.
+      - name: abs_unexplained_shortfall_mwh
+        data_type: numeric
+        description: Summed absolute unexplained shortfall.
+      - name: instructed_share_of_abs_deviation
+        data_type: numeric
+        description: >
+          The instructed part's share of the two absolute sums, 6 decimals; null
+          when both are 0.
+      - name: unit_periods_by_run
+        data_type: jsonb
+        description: >
+          Context only: unit-periods per settlement run of the metered value,
+          for example {"R1": 10, "SF": 90}. Never a statistic per run.
+      - name: analysis_read_until
+        data_type: timestamptz
+        description: The cutoff the table was built with; null when it covers all stored history.
+
+  - name: agg_generation_coverage
+    description: >
+      Table, built by hand with agg_delivery_by_fuel_group. How much metered
+      generation (positive B1610 energy of the latest settlement run) the
+      cohort holds, up to analysis_read_until. Section 1: by the kind of BM
+      unit, read from its Elexon ID prefix (T_, E_, I_, 2__, V__, other),
+      then all units and all except interconnector traders (I_). Section 2:
+      the selection from all metered unit-periods to the Q3 and Q12
+      population. Consumption (negative energy) is left out.
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: primary_key
+        columns: [section, item]
+    columns:
+      - name: section
+        data_type: integer
+        description: 1 generation by unit kind; 2 selection flow.
+      - name: item
+        data_type: text
+        description: The unit kind, total or selection step.
+      - name: unit_periods
+        data_type: bigint
+        description: Metered unit-periods.
+        constraints: [{type: not_null}]
+      - name: generation_mwh
+        data_type: numeric
+        description: Positive metered energy, 1 decimal.
+      - name: cohort_unit_periods
+        data_type: bigint
+        description: Section 1 only. Unit-periods of cohort units.
+      - name: cohort_generation_mwh
+        data_type: numeric
+        description: Section 1 only. Positive metered energy of cohort units.
+      - name: cohort_generation_share
+        data_type: numeric
+        description: Section 1 only. cohort_generation_mwh over generation_mwh, 6 decimals; null when there is no generation.
+      - name: analysis_read_until
+        data_type: timestamptz
+        description: The cutoff the table was built with; null when it covers all stored history.
