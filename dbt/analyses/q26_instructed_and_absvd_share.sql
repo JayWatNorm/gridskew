@@ -3,8 +3,9 @@
 -- Q26: how much of the deviation from PN do the system operator's balancing
 -- actions explain once services settled outside the balancing mechanism
 -- (ABSVD) are counted? Reading rule: research questions, Q26 (recorded 12
--- October 2026, GS-33 D3). Per fuel group, over determinable cohort periods
--- with a PN whose settlement date has been captured (absvd_mwh not null):
+-- October 2026, before any ABSVD capture). Per fuel group, over
+-- determinable cohort periods with a PN whose settlement date has been
+-- captured (absvd_mwh not null):
 -- (sum|instructed_deviation| + sum|absvd|) / (sum|instructed_deviation| +
 -- sum|absvd| + sum|unexplained_after_absvd|). It is a share of the three
 -- components' sizes, not of each period's own deviation (signed parts can

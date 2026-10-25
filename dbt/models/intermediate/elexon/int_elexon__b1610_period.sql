@@ -69,8 +69,7 @@ runs as (
 
 -- Each source row is ranked twice within its period, then one grouped pass
 -- selects the rank-1 values (one row each, so max() returns that row's
--- value). On the recorded synthetic benchmark this form was faster than the
--- prior per-period ordered aggregates.
+-- value).
 -- First captured: earliest retrieved_at, ties broken by run order.
 -- Latest: highest run order. An unknown run code (NULL run_order) would sort
 -- first here; it never reaches this model because the staging relationship

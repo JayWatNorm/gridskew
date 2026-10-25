@@ -1,22 +1,12 @@
 # Carbon intensity outturn
 
-## In plain terms
-
-What the carbon intensity **actually turned out to be**, once each half hour
-had happened. The scorecard the forecasts get marked against.
+What the carbon intensity **actually turned out to be** in each settlement
+period, once it had happened. The scorecard the forecasts get marked against.
 
 The endpoint also hands back a forecast figure for the same period, but it is
 the last-minute version, issued when the model already knew nearly everything.
 Useful, but not the same thing as the 48-hour-ahead prediction, which is why
 the column is called `forecast_final`.
-
-Unlike the forecast archive, this can always be re-downloaded, so nothing here
-is irreplaceable.
-
----
-
-What carbon intensity actually was, per settlement period, alongside the
-forecast as it stood at settlement time.
 
 Unlike the forecast archive, this data can be fetched again, so missing windows
 are re-fetched and a full rebuild remains possible.

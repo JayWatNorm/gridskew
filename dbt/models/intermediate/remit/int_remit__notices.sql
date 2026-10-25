@@ -1,10 +1,11 @@
 {{ config(group='analysis', access='private') }}
 
 -- One row per REMIT notice: its first publication, its current publication
--- (decision 022) and the BM unit it names. The first publication is the one
--- in force at the notice's earliest publish_time. When several publications
--- share that time, it is the last of them in publication order; the others
--- were never in force, so their validity is empty. The publication lag is
+-- (the last in publication order) and the BM unit it names. The first
+-- publication is the one in force at the notice's earliest publish_time.
+-- When several publications share that time, it is the last of them in
+-- publication order; the others were never in force, so their validity is
+-- empty. The publication lag is
 -- measured from the first publication: its publish_time minus its
 -- event_start_time, in whole seconds, positive when the notice was published
 -- after the event began. The unit is the current publication's, mapped in

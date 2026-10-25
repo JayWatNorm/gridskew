@@ -14,19 +14,21 @@
 with metered as (
     select
         case
-            when bm_unit like 'T\_%' then 'T_'
-            when bm_unit like 'E\_%' then 'E_'
-            when bm_unit like 'I\_%' then 'I_'
-            when bm_unit like '2\_\_%' then '2__'
-            when bm_unit like 'V\_\_%' then 'V__'
+            when generation.bm_unit like 'T\_%' then 'T_'
+            when generation.bm_unit like 'E\_%' then 'E_'
+            when generation.bm_unit like 'I\_%' then 'I_'
+            when generation.bm_unit like '2\_\_%' then '2__'
+            when generation.bm_unit like 'V\_\_%' then 'V__'
             else 'other'
         end as unit_kind,
-        mapping_status = 'mapped' as is_mapped,
-        mapping_status = 'mapped' and current_fuel_type is not null as is_cohort,
-        greatest(latest_quantity_mwh, 0) as generation_mwh
-    from {{ ref('fct_generation') }}
+        generation.mapping_status = 'mapped' as is_mapped,
+        cohort.national_grid_bm_unit is not null as is_cohort,
+        greatest(generation.latest_quantity_mwh, 0) as generation_mwh
+    from {{ ref('fct_generation') }} as generation
+    left join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
+        on generation.mapped_national_grid_bm_unit = cohort.national_grid_bm_unit
 {% if read_until is not none %}
-    where coalesce(period_start_utc, settlement_date::timestamp at time zone 'Europe/London')
+    where coalesce(generation.period_start_utc, generation.settlement_date::timestamp at time zone 'Europe/London')
             <= timestamptz '{{ read_until }}'
 {% endif %}
 ),

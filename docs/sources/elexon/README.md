@@ -47,7 +47,8 @@ API accepts a period as high as 50.
 several times as better meter data arrives. A figure published today can change
 later.
 
-The observed run sequence is II, SF, R1, R2, R3, RF. All six have been seen in
+The run sequence is II, SF, R1, R2, R3, RF, and DF (dispute final) after RF
+when a settlement dispute is corrected. The first six have been seen in
 age-window checks described in [020_b1610.md](020_b1610.md), although the API
 documents `settlementRunType` as a free-text string with no enumerated values.
 

@@ -222,8 +222,6 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   place for those stretches. It also carries ABSVD (`QAS`), the energy of
   balancing services outside the mechanism. The analyses that read it are
   listed in the [dbt guide](dbt/README.md).
-- `elexon_settlement_run_codes` supplies settlement-run ordering and
-  `elexon_fuel_codes` supports registry validation.
 
 **Built, result pending**
 
@@ -236,10 +234,6 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   run (`RF`), and how
   often the published forecast stops changing. Each rule is fixed in advance
   and read once its data exists.
-
-**Available reference data**
-
-- Two version-controlled seeds have explicit PostgreSQL types and data tests.
 
 **Next**
 
@@ -254,8 +248,5 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 
 Demand, system prices and weather remain later extensions.
 
-`QPN` does not alter the settlement-shortfall calculation. The model compares
-integrated `PN MWh` with `B1610 MWh` without subtracting QPN; QPN remains
-available for Dynamic Data comparisons. Across a full year, only 18,300 of 41.5
-million QPN rows were non-zero, all for one BM unit. See the
-[QPN dataset notes](docs/sources/elexon/015_qpn.md).
+The shortfall does not subtract `QPN` from PN; the
+[QPN dataset notes](docs/sources/elexon/015_qpn.md) explain why.

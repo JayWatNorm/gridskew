@@ -1,13 +1,14 @@
 {{ config(group='analysis') }}
 
--- Q1's two secondary splits (decision 024), read in the same look as
--- q1_forecast_drift_verdict.sql and at the same analysis_read_until: the
--- reading rule's half-hours by time of day (four blocks by UTC start) and by
--- the source band on the poll that gave first_forecast. Each cell is
--- described with the verdict's own measures, not tested. Every listed cell
--- appears, with zero half-hours if it has none. Before the population is
--- reached, with at least three slot polls stored after the cutoff (the
--- verdict's gate), it returns each cell's count and no drift.
+-- Q1's two secondary splits, fixed with its reading rule and read in the
+-- same look as q1_forecast_drift_verdict.sql, at the same
+-- analysis_read_until: the reading rule's half-hours by time of day (four
+-- blocks by UTC start) and by the source band on the poll that gave
+-- first_forecast. Each cell is described with the verdict's own measures,
+-- not tested. Every listed cell appears, with zero half-hours if it has
+-- none. Before the population is reached, with at least three slot polls
+-- stored after the cutoff (the verdict's gate), it returns each cell's
+-- count and no drift.
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
 {% set read_until = analysis_read_until() %}

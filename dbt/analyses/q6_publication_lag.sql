@@ -3,7 +3,8 @@
 -- Q6: how late are unplanned outages published? Reading rule (research
 -- questions): the median and 90th-percentile lag by outage class, where the
 -- lag is the first publication's publish_time minus its event_start_time
--- (decision 022) and the class is the one the notice was first published
+-- (publications ordered by publish_time, then created_time, then
+-- revision_number) and the class is the one the notice was first published
 -- under. REMIT's "without delay" duty is not judged from this: the data
 -- cannot show when the participant knew.
 --

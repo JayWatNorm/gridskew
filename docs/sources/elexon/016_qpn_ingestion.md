@@ -86,16 +86,6 @@ Run both experiments over the same four weeks so the results are comparable.
 
 ## Settlement shortfall
 
-QPN does not alter the settlement-shortfall calculation. Use integrated
-`PN MWh - B1610 MWh`; do not subtract QPN. The BSC glossary states that QPN is
-not used in Settlement and scopes the net operating level to Dynamic Data.
-
-The 10–16 August 2026 cohort corroborates that rule.
-Across all 336 `WILCT-1` periods, `PN - B1610` had +0.309 MWh mean error;
-`(PN - QPN) - B1610` introduced a +30.309 MWh mean error. The complete decision,
-including the limits of that one-unit comparison, is in
-[015_qpn.md](015_qpn.md).
-
-QPN remains useful for Dynamic Data comparisons. Any such comparison must align
-PN and QPN on the union of their segment boundaries, preserve QPN's sign and
-keep an absent optional submission distinct from a submitted zero.
+QPN is not subtracted from PN in the shortfall. [015_qpn.md](015_qpn.md)
+gives the rule, its evidence and how to combine QPN with PN for Dynamic Data
+comparisons.

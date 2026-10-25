@@ -1,25 +1,17 @@
 # Carbon intensity forecast archive
 
-## In plain terms
-
 NESO publishes a prediction of how dirty Britain's electricity will be over the
 next two days, updated every half hour. Each update quietly replaces the last.
 
-This table keeps **every version**. It is the difference between saving every
-weather forecast for next Tuesday as the week goes on, and only ever seeing the
-one issued on Monday night.
+This table keeps **every version** polled for each settlement period since the
+archive started, from roughly 48 hours ahead down to minutes before. It is the
+difference between saving every weather forecast for next Tuesday as the week
+goes on, and only ever seeing the one issued on Monday night. The sequence
+exists nowhere else and cannot be reconstructed after the fact. This is the
+dataset the project was built around.
 
-The interesting question it answers: as a given half hour got closer, did the
-prediction drift in a consistent direction?
-
----
-
-Every forecast polled for a given settlement period since the archive started,
-from roughly 48 hours ahead down to minutes before.
-
-The source overwrites its forecast every 30 minutes, so this sequence exists
-nowhere else and cannot be reconstructed after the fact. This is the dataset
-the project was built around.
+The question it answers: as a given half hour got closer, did the prediction
+drift in a consistent direction?
 
 ## Endpoint
 

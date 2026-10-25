@@ -3,10 +3,11 @@
 -- For each unit and settlement half-hour, whether an outage of that unit was
 -- already published at the half-hour's start (Q5). A half-hour starting at t
 -- has a known outage when a publication that names the unit (by its own
--- identifiers) is a production unavailability, is the notice's
--- publication in force at t (decision 022), is Active, and its event
--- overlaps the half-hour: it starts before t + 30 minutes and ends after t
--- (no end means it has not ended). Only half-hours up to now are listed.
+-- identifiers) is a production unavailability, is the notice's publication
+-- in force at t (ordered by publish_time, then created_time, then
+-- revision_number), is Active, and its event overlaps the half-hour: it
+-- starts before t + 30 minutes and ends after t (no end means it has not
+-- ended). Only half-hours up to now are listed.
 -- Candidate half-hours are enumerated generously from each publication's
 -- window and the five conditions are then applied exactly.
 

@@ -83,11 +83,13 @@ The project has two seeds:
 
 | Seed | Grain and purpose |
 |---|---|
-| `elexon_settlement_run_codes` | One row per settlement-run code, ordering II → SF → R1 → R2 → R3 → RF |
+| `elexon_settlement_run_codes` | One row per settlement-run code, ordering II → SF → R1 → R2 → R3 → RF → DF |
 | `elexon_fuel_codes` | One row per published Elexon fuel-type code, grouped by code meaning |
 
 The CSVs are version-controlled sources of truth; their `dbt_dev` tables are
-reloadable copies. `elexon_fuel_codes.code_group` includes plant technologies,
+reloadable copies. `elexon_settlement_run_codes` is consumed by the B1610
+period model, and `elexon_fuel_codes` by registry validation and the
+shortfall cohort. `elexon_fuel_codes.code_group` includes plant technologies,
 storage and interconnectors, so it does not verify an individual BM unit's
 fuel, renewable status or emissions. `INTELE` remains unclassified because
 its published meaning is unresolved.
@@ -250,7 +252,7 @@ cohort holds, by kind of BM unit. No job builds them; they are rebuilt
 together when the results are refreshed:
 
 ```bash
-dbt build --project-dir dbt --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "2026-11-30 23:30:00+00"}'
+dbt build --project-dir dbt --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "<cutoff>"}'
 ```
 
 `q3_coverage.sql` reports what the cohort holds against every mapped
@@ -339,7 +341,3 @@ registry and records its snapshot. The nightly job updates the four
 incremental tables and runs the project's data tests without recreating
 views. CI runs a full build against an ephemeral PostgreSQL service, then the
 nightly commands; it does not deploy relations to the homelab.
-
-
-`elexon_settlement_run_codes` is consumed by the B1610 period model, and
-`elexon_fuel_codes` by registry validation and the shortfall cohort.

@@ -15,14 +15,14 @@ unit_tests:
       - input: ref('fct_generation')
         format: csv
         rows: |
-          bm_unit,settlement_date,period_start_utc,mapping_status,current_fuel_type,latest_quantity_mwh
-          T_A,2026-10-01,2026-10-01 00:00:00+00,mapped,CCGT,10
-          T_B,2026-10-01,2026-10-01 00:00:00+00,mapped,,5
+          bm_unit,settlement_date,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh
+          T_A,2026-10-01,2026-10-01 00:00:00+00,mapped,NG_A,10
+          T_B,2026-10-01,2026-10-01 00:00:00+00,mapped,NG_B,5
           TXC,2026-10-01,2026-10-01 00:00:00+00,unmapped,,7
           2ABC,2026-10-01,2026-10-01 00:00:00+00,unmapped,,1
           VABC,2026-10-01,2026-10-01 00:00:00+00,unmapped,,2
-          E_D,2026-10-01,2026-10-01 00:00:00+00,mapped,WIND,-3
-          I_E,2026-10-01,2026-10-01 00:00:00+00,mapped,INTFR,20
+          E_D,2026-10-01,2026-10-01 00:00:00+00,mapped,NG_D,-3
+          I_E,2026-10-01,2026-10-01 00:00:00+00,mapped,NG_E,20
       - input: ref('int_shortfall_by_unit_period')
         format: csv
         rows: |
@@ -37,6 +37,7 @@ unit_tests:
           national_grid_bm_unit
           NG_A
           NG_D
+          NG_E
     expect:
       format: csv
       rows: |
