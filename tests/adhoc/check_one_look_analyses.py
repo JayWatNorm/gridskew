@@ -658,6 +658,10 @@ Q25_EXPECTED = {
     (2, "other", None, GRANULARITY): dict(
         n=2, under_10_minutes=0, median_minutes="15.0"
     ),
+    # Both acceptances span two captures; one ramp point of each, the one
+    # from 00:00, is captured twice.
+    (3, None, None, "acceptances spanning more than one capture"): dict(n=2),
+    (3, None, None, "ramp points captured more than once"): dict(n=2),
 }
 
 

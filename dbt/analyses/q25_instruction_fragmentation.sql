@@ -18,7 +18,11 @@
 --    the earliest to the latest time of k and its continuous acceptances
 --    (12.3); the share under 10 minutes is the share CADL would flag (12.4,
 --    CADL 10 minutes, 1.9.1). Counted in acceptances. Read only after its
---    check against Elexon's cadlFlag.
+--    check against Elexon's cadlFlag. A half-hour boundary is both the end
+--    of one settlement period and the start of the next, so an acceptance
+--    issued exactly on one counts as a related acceptance in both periods;
+--    as k, its own window is built from the later period. This is the
+--    reading of 12.1 applied here.
 -- 3. For comparison, the simpler overlap chain: every acceptance of a unit
 --    chained while each starts no later than the latest end so far, with no
 --    12.1 window; counted in chains. A BSC chain is always part of one of
@@ -344,6 +348,22 @@ captures_per_acceptance as (
     group by national_grid_bm_unit, acceptance_number
 ),
 
+captures_per_cohort_ramp_point as (
+    select
+        ramp_points.national_grid_bm_unit,
+        ramp_points.acceptance_number,
+        ramp_points.time_from,
+        count(distinct ramp_points.retrieved_at) as captures
+    from ramp_points
+    inner join cohort_acceptances
+        on ramp_points.national_grid_bm_unit = cohort_acceptances.national_grid_bm_unit
+        and ramp_points.acceptance_number = cohort_acceptances.acceptance_number
+    group by
+        ramp_points.national_grid_bm_unit,
+        ramp_points.acceptance_number,
+        ramp_points.time_from
+),
+
 coverage as (
     select
         3 as section,
@@ -368,12 +388,26 @@ coverage as (
         3,
         null,
         null,
-        'acceptances captured more than once (latest capture used)',
+        'acceptances spanning more than one capture',
         count(*),
         null,
         null,
         null
     from captures_per_acceptance
+    where captures > 1
+
+    union all
+
+    select
+        3,
+        null,
+        null,
+        'ramp points captured more than once',
+        count(*),
+        null,
+        null,
+        null
+    from captures_per_cohort_ramp_point
     where captures > 1
 )
 

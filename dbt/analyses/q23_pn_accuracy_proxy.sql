@@ -105,10 +105,12 @@ so_flagged_wind_stretch_energy as (
 ),
 
 -- A day with at least one SO-flagged wind acceptance below the PN: a bid.
+-- Instructed energy is stored to 6 decimal places, so the PN energy is
+-- rounded the same way: a stretch held at its PN is not a bid.
 flagged_days as (
     select distinct settlement_date
     from so_flagged_wind_stretch_energy
-    where instructed_mwh < pn_mwh
+    where instructed_mwh < round(pn_mwh, 6)
 ),
 
 population as (
