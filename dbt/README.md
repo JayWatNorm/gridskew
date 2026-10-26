@@ -271,6 +271,11 @@ the outputs:
 dbt build --project-dir dbt --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "<cutoff>"}'
 ```
 
+The nightly job's guard and full refresh leave both tables out (tag
+`results_mart`), so nothing flags a stale one: a release that changes either
+table, or a model above it that changes its figures, rebuilds both with this
+command at their recorded cutoff as one of its steps.
+
 `q3_coverage.sql` reports what the cohort holds against every mapped
 unit-period. Every result is conditional on the cohort.
 
