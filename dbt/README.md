@@ -148,9 +148,11 @@ otherwise.
 A model-logic or settlement-run seed change requires an observed full
 refresh: trigger `gridskew__dbt_nightly` with `full_refresh=true`; it rebuilds
 the tables and views that changed since the last published run, with
-everything below them, and runs their tests. After a manual load outside the
-capture-time margin or a raw edit, add `rebuild_all=true`, because that change
-cannot be detected. Use the platform runbook
+everything below them, and runs their tests. It leaves out the results tables
+(tag `results_mart`), which are rebuilt by hand at their recorded
+`analysis_read_until`; a change to one never blocks the nightly job. After a
+manual load outside the capture-time margin or a raw edit, add
+`rebuild_all=true`, because that change cannot be detected. Use the platform runbook
 (`homelab-platform/docs/gridskew-release.md` in the platform checkout). Its
 run-code and source tests run before anything is written, and its descendant
 build restores the fact views. Coordinate the shared dbt pool,
@@ -188,8 +190,9 @@ A nightly run that succeeds copies `manifest.json` and the `run_results.json`
 of its last command to `/opt/airflow/data/gridskew/artifacts/<UTC day>/` and
 to `artifacts/latest/` in the Airflow container. Each file is replaced whole.
 Day folders older than 30 days are removed. A failed run publishes nothing.
-A scheduled run refuses to start while a period table, or a view below one,
-has changed since the published manifest; trigger a full refresh once.
+A scheduled run refuses to start while a period table, or a view below one
+other than a results table, has changed since the published manifest; trigger
+a full refresh once.
 
 ## Balancing instructions and outage notices
 
@@ -267,6 +270,11 @@ the outputs:
 ```bash
 dbt build --project-dir dbt --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "<cutoff>"}'
 ```
+
+The nightly job's guard and full refresh leave both tables out (tag
+`results_mart`), so nothing flags a stale one: a release that changes either
+table, or a model above it that changes its figures, rebuilds both with this
+command at their recorded cutoff as one of its steps.
 
 `q3_coverage.sql` reports what the cohort holds against every mapped
 unit-period. Every result is conditional on the cohort.

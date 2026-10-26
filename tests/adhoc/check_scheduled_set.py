@@ -6,7 +6,8 @@ change structure. This reads the dbt commands of the nightly DAG's default run
 and of the BM-unit DAG, and dbt's manifest, and reports every command, model or
 seed that would break that rule. It also reports an incremental model that the
 nightly DAG's missing-table guard does not name: the first scheduled run would
-build that table in full.
+build that table in full; and a model built at analysis_read_until that is not
+tagged results_mart, which a nightly full refresh would rebuild without it.
 
 Run after `dbt parse`, from the repository root, with PYTHONPATH set to it:
     python tests/adhoc/check_scheduled_set.py dbt/target/manifest.json
@@ -53,6 +54,25 @@ def unguarded_incremental_models(manifest, guarded_tables):
                 f"{node_id}: the nightly DAG's PERIOD_TABLES does not name this "
                 "incremental model, so a scheduled run would build it in full "
                 "when the table is missing"
+            )
+    return problems
+
+
+def untagged_results_marts(manifest):
+    """Return one sentence for each model built at analysis_read_until that
+    the nightly full refresh would not leave out."""
+
+    problems = []
+    for node_id, node in sorted(manifest["nodes"].items()):
+        if node["resource_type"] != "model":
+            continue
+        if "macro.gridskew.analysis_read_until" not in node["depends_on"]["macros"]:
+            continue
+        if "results_mart" not in node["tags"]:
+            problems.append(
+                f"{node_id}: built at analysis_read_until but not tagged "
+                "results_mart, so a nightly full refresh would rebuild it "
+                "without its cutoff"
             )
     return problems
 
@@ -246,13 +266,15 @@ def main():
     scheduled_commands = nightly_default_commands() + bmunit_job_commands()
     problems = scheduled_set_problems(manifest, scheduled_commands)
     problems += unguarded_incremental_models(manifest, nightly_guarded_tables())
+    problems += untagged_results_marts(manifest)
     for problem in problems:
         print(problem)
     if problems:
         raise SystemExit(1)
     print(
         "Scheduled dbt set: no nightly or BM-unit command, model or seed replaces "
-        "a relation, and the nightly guard names every incremental model"
+        "a relation, the nightly guard names every incremental model, and every "
+        "model built at analysis_read_until is tagged results_mart"
     )
 
 

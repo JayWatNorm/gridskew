@@ -9,8 +9,9 @@ nothing changed, or a period table is missing, it rebuilds them all. After a
 load outside Airflow or a raw edit, add "rebuild_all": true. A scheduled run
 refuses to start while a period table or a view below one has changed since
 the last published run, so a model change cannot reach the tables without
-that full refresh. The DAG is created paused; enable it after an observed
-full refresh.
+that full refresh. The results tables (tag results_mart) are left out of both:
+they are rebuilt by hand at their recorded analysis_read_until. The DAG is
+created paused; enable it after an observed full refresh.
 
 Each dbt command records its node results in dbt_dev.dbt_node_results. A run
 that succeeds publishes dbt's manifest and its last run results.
@@ -38,6 +39,9 @@ PERIOD_TABLES = (
 # Views the tables read that no scheduled command builds; a full refresh
 # creates them first, so a new view reaches production with its table.
 REFRESH_VIEWS = ("int_elexon__bm_unit_cohort", "stg_elexon__qas")
+# The results tables sit below the shortfall table but are built by hand at a
+# fixed analysis_read_until; a full refresh would rebuild them without it.
+RESULTS_MARTS = "tag:results_mart"
 RECORD_NODE_RESULTS = ("--vars", "{audit: true}")
 ARTIFACTS = "/opt/airflow/data/gridskew/artifacts"
 ARTIFACT_FILES = ("manifest.json", "run_results.json")
@@ -136,6 +140,8 @@ def dbt_commands(full_refresh, rebuild=(*REFRESH_VIEWS, *PERIOD_TABLES)):
         "build",
         "--select",
         *period_tables_and_descendants,
+        "--exclude",
+        RESULTS_MARTS,
         "--full-refresh",
     ]
     update_incremental_models = ["run", "--selector", "nightly_models"]
@@ -167,6 +173,8 @@ def models_needing_full_refresh(env, state_dir):
         "name",
         "--select",
         *changed_below_a_period_table,
+        "--exclude",
+        RESULTS_MARTS,
         "--state",
         str(state_dir),
         *RECORD_NODE_RESULTS,

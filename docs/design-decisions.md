@@ -104,7 +104,8 @@ data, so Q24 is not called pre-registered.
 
 **Results tables are built by hand at a fixed cutoff.** The shortfall and
 coverage results come from two tables rebuilt together when the results are
-refreshed, each recording its cutoff. The cutoff (`analysis_read_until`)
+refreshed, each recording its cutoff. No scheduled job or full refresh
+rebuilds them. The cutoff (`analysis_read_until`)
 fixes which settlement periods count, not which data is read: a later build
 reads later settlement runs and refreshed sources for the same periods, so
 it can give different figures. Each build therefore runs at least 14 days
