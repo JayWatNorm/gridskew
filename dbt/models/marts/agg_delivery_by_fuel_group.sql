@@ -1,4 +1,4 @@
-{{ config(materialized='table', group='analysis') }}
+{{ config(materialized='table', group='analysis', tags=['results_mart']) }}
 
 -- Delivery by fuel group: the single definition behind Q3 (metered against
 -- notified) and Q12 (instructed against unexplained deviation). Determinable

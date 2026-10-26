@@ -185,6 +185,8 @@ def test_changed_models_below_a_period_table_need_a_full_refresh(
     # A new staging view above a period table is built by the full refresh only
     # when it is listed here.
     assert "state:modified+,stg_elexon__qas+" in command
+    # A changed results table is rebuilt by hand, so it never blocks the job.
+    assert command[command.index("--exclude") + 1] == "tag:results_mart"
 
 
 def test_a_full_refresh_rebuilds_only_what_changed(nightly):
@@ -217,4 +219,6 @@ def test_a_full_refresh_builds_the_chosen_relations_and_below(nightly):
     assert commands[0] == ["test", "--selector", "nightly_run_code_check"]
     rebuild = commands[-1]
     assert rebuild[:3] == ["build", "--select", "int_shortfall_by_unit_period+"]
+    # The results tables below the shortfall table keep their recorded cutoff.
+    assert rebuild[rebuild.index("--exclude") + 1] == "tag:results_mart"
     assert rebuild[-1] == "--full-refresh"

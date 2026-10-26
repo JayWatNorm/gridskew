@@ -1,4 +1,4 @@
-{{ config(materialized='table', group='analysis') }}
+{{ config(materialized='table', group='analysis', tags=['results_mart']) }}
 
 -- How much metered generation the cohort holds. Generation is the positive
 -- metered energy of the latest settlement run captured; the cohort is every
