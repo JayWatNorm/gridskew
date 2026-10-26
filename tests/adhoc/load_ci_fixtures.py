@@ -30,11 +30,14 @@ from ingestion.elexon.boalf_poller import parse as parse_boalf
 from ingestion.elexon.contracts import (
     B1610_SPEC,
     BOALF_SPEC,
+    INDO_SPEC,
+    NDF_SPEC,
     PN_SPEC,
     QAS_SPEC,
     QPN_SPEC,
     REMIT_SPEC,
 )
+from ingestion.elexon.demand_poller import load_indo, load_ndf, parse_indo, parse_ndf
 from ingestion.elexon.pn_poller import load as load_pn
 from ingestion.elexon.pn_poller import parse as parse_pn
 from ingestion.elexon.qas_poller import load as load_qas
@@ -136,6 +139,24 @@ def main():
             load_qas,
             data_envelope=True,
             preserve_decimals=True,
+        )
+        load_fixture(
+            conn,
+            "elexon/ndf_truncated.json",
+            NDF_SPEC,
+            "NDF",
+            parse_ndf,
+            load_ndf,
+            data_envelope=True,
+        )
+        load_fixture(
+            conn,
+            "elexon/indo.json",
+            INDO_SPEC,
+            "INDO",
+            parse_indo,
+            load_indo,
+            data_envelope=True,
         )
         load_fixture(
             conn,

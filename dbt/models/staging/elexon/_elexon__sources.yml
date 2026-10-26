@@ -3,9 +3,10 @@ sources:
     description: >
       Elexon Insights commitments (PN and QPN), metered volumes (B1610),
       bid-offer acceptances (BOALF), outage messages (REMIT), balancing
-      services volumes (QAS) and complete BM-unit registry observations.
-      PN and QPN contain declared segments; B1610 and QAS contain
-      settlement-period quantities. All tables are append-only.
+      services volumes (QAS), national demand forecast and outturn (NDF and
+      INDO) and complete BM-unit registry observations. PN and QPN contain
+      declared segments; B1610, QAS, NDF and INDO contain settlement-period
+      quantities. All tables are append-only.
     schema: raw
     config:
       loaded_at_field: retrieved_at
@@ -449,3 +450,71 @@ sources:
             description: >
               When this capture ran. Part of the key: the source carries no
               version, so a resubmitted value is kept beside the first.
+
+      # ------------------------------------------------------------------
+      - name: elexon_ndf
+        description: >
+          National Demand forecast (NDF): one row per settlement period,
+          boundary and issue. A new issue every half-hour re-forecasts the
+          next day or two, and every issue is kept. Loaded once, by
+          ingestion/elexon/demand_backfill.py, for publish days 20 August
+          2025 to 17 August 2026; no schedule, so no freshness check.
+          Includes transmission losses; excludes interconnectors, station
+          transformers and pumped storage demand.
+        columns:
+
+          - name: settlement_date
+            description: >
+              British local time. Never derive it from start_time. Part of
+              the key.
+
+          - name: settlement_period
+            description: Settlement period, 1 to 46/48/50. Part of the key.
+
+          - name: start_time
+            description: Start of the settlement period, UTC, as the source gives it.
+
+          - name: boundary
+            description: N (national) on every observed row. Part of the key.
+
+          - name: publish_time
+            description: When Elexon published the issue, UTC. Part of the key.
+
+          - name: demand
+            description: MW, averaged over the settlement period.
+
+          - name: retrieved_at
+            description: >
+              When the request that first stored this row ran. Not part of
+              the key: fetching a publish window again inserts nothing.
+
+      # ------------------------------------------------------------------
+      - name: elexon_indo
+        description: >
+          Initial National Demand outturn (INDO): one row per settlement
+          period and issue, issued after the period ends. The outturn on
+          NDF's basis; never compare it with TSDF. Loaded once with NDF, for
+          the same publish days; no freshness check.
+        columns:
+
+          - name: settlement_date
+            description: >
+              British local time. Never derive it from start_time. Part of
+              the key.
+
+          - name: settlement_period
+            description: Settlement period, 1 to 46/48/50. Part of the key.
+
+          - name: start_time
+            description: Start of the settlement period, UTC, as the source gives it.
+
+          - name: publish_time
+            description: When Elexon published the issue, UTC. Part of the key.
+
+          - name: demand
+            description: MW, averaged over the settlement period.
+
+          - name: retrieved_at
+            description: >
+              When the request that first stored this row ran. Not part of
+              the key.

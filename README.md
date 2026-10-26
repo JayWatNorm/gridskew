@@ -128,13 +128,13 @@ Neither provider endorses this project.
 Each ingested endpoint has an explicit field contract. Shared validation and
 routing report missing, null, incompatible and unexpected fields before typed
 parsing; Carbon contracts also validate the nested `intensity` object. Runtime
-validation and quarantine are deployed for PN, QPN, B1610, BOALF, REMIT, QAS
-and both Carbon datasets. Carbon also checks that each response covers its
-periods completely.
+validation and quarantine are deployed for PN, QPN, B1610, BOALF, REMIT, QAS,
+the NDF and INDO back-fill and both Carbon datasets. Carbon also checks that
+each response covers its periods completely.
 The BM-unit registry uses a complete-response gate: a rejected or suspiciously
 small response publishes no successful extract.
 
-For those eight datasets, compatible rows continue to typed loading.
+For those ten datasets, compatible rows continue to typed loading.
 Rejected rows are committed to `raw.endpoint_quarantine` with their request
 context and complete payload;
 warning-only rows remain loadable and produce grouped logs. Tests cover the
@@ -234,6 +234,9 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   run (`RF`), and how
   often the published forecast stops changing. Each rule is fixed in advance
   and read once its data exists.
+- An analysis of whether demand forecast error or unexplained shortfall lines
+  up more with carbon forecast error, and whether larger final-forecast errors
+  coincide with more shortfall, on a year of 2025 to 2026 history.
 
 **Next**
 
@@ -246,7 +249,7 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   exist
 - A write-up of the results with charts
 
-Demand, system prices and weather remain later extensions.
+A daily demand collector, system prices and weather remain later extensions.
 
 The shortfall does not subtract `QPN` from PN; the
 [QPN dataset notes](docs/sources/elexon/015_qpn.md) explain why.

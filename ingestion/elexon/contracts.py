@@ -109,6 +109,26 @@ QAS_SPEC = {
 }
 
 
+NDF_SPEC = {
+    "dataset": {"type": str, "required": False, "nullable": True},
+    "demand": {"type": int, "required": True, "nullable": False},
+    "publishTime": {"type": str, "required": True, "nullable": False},
+    "startTime": {"type": str, "required": True, "nullable": False},
+    "settlementDate": {"type": str, "required": True, "nullable": False},
+    "settlementPeriod": {"type": int, "required": True, "nullable": False},
+    "boundary": {"type": str, "required": True, "nullable": False},
+}
+
+INDO_SPEC = {
+    "dataset": {"type": str, "required": False, "nullable": True},
+    "demand": {"type": int, "required": True, "nullable": False},
+    "publishTime": {"type": str, "required": True, "nullable": False},
+    "startTime": {"type": str, "required": True, "nullable": False},
+    "settlementDate": {"type": str, "required": True, "nullable": False},
+    "settlementPeriod": {"type": int, "required": True, "nullable": False},
+}
+
+
 # The full registry has many rows with no Elexon identifier and nullable
 # descriptive fields. National Grid identity is present on every observed row.
 BM_UNITS_SPEC = {

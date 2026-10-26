@@ -50,7 +50,8 @@ docs/sources/
     031_remit_ingestion.md      hourly, window from the table, every publication kept
     040_boalf.md              The intervention                         [running]
     041_boalf_ingestion.md      daily, catchup=True, every poll kept
-    050_demand.md             Expected versus actual usage             [later]
+    050_demand.md             Expected versus actual usage             [NDF, INDO]
+    051_demand_ingestion.md     one-off back-fill of a year, no DAG
     060_system-prices.md      The cost of fixing the imbalance         [later]
     070_bmunits.md            The address book                         [running]
     071_bmunits_ingestion.md    daily registry capture and observed history
@@ -79,7 +80,8 @@ BM-unit registry records it once per extract, in `raw.elexon_bm_units_extracts`.
 only way to tell a revision from the original. Where the source labels its own
 revisions it is not: `raw.elexon_b1610` keys on `settlement_run_type` and
 `raw.elexon_remit` on its message ID, `revision_number`, `publish_time`
-and `created_time` instead,
+and `created_time`, and `raw.elexon_ndf` and `raw.elexon_indo` on
+`publish_time` instead,
 so a re-poll finding nothing new inserts nothing and `retrieved_at` records
 when a run was first seen. Each dataset's page states which applies.
 

@@ -1,0 +1,38 @@
+unit_tests:
+  - name: test_demand_error_uses_the_last_forecast_before_the_half_hour
+    description: >
+      For 10:30, the 10:29:59 issue is the last before the half-hour and the
+      issue at exactly 10:30 is not. For 11:00, the 10:46 national issue is
+      the last; a later issue on another boundary and an issue after the
+      half-hour starts are not used. 11:30 has no issue before it. Each
+      half-hour takes its first outturn issue, not the 11:30 revision of
+      10:30.
+    model: int_demand_error_by_period
+    given:
+      - input: ref('stg_elexon__indo')
+        format: csv
+        rows: |
+          settlement_date,settlement_period,start_time,publish_time,demand_mw
+          2026-08-19,24,2026-08-19 10:30:00+00,2026-08-19 11:00:00+00,22748
+          2026-08-19,24,2026-08-19 10:30:00+00,2026-08-19 11:30:00+00,22800
+          2026-08-19,25,2026-08-19 11:00:00+00,2026-08-19 11:30:00+00,22500
+          2026-08-19,26,2026-08-19 11:30:00+00,2026-08-19 12:00:00+00,23000
+      - input: ref('stg_elexon__ndf')
+        format: csv
+        rows: |
+          start_time,boundary,publish_time,demand_mw
+          2026-08-19 10:30:00+00,N,2026-08-19 10:16:00+00,22939
+          2026-08-19 10:30:00+00,N,2026-08-19 10:29:59+00,22950
+          2026-08-19 10:30:00+00,N,2026-08-19 10:30:00+00,99999
+          2026-08-19 11:00:00+00,N,2026-08-19 10:16:00+00,22710
+          2026-08-19 11:00:00+00,N,2026-08-19 10:46:00+00,22690
+          2026-08-19 11:00:00+00,X,2026-08-19 10:50:00+00,11111
+          2026-08-19 11:00:00+00,N,2026-08-19 11:16:00+00,50000
+          2026-08-19 11:30:00+00,N,2026-08-19 11:46:00+00,40000
+    expect:
+      format: csv
+      rows: |
+        start_time,outturn_published_at,outturn_demand_mw,forecast_published_at,forecast_demand_mw,demand_error_final_mw
+        2026-08-19 10:30:00+00,2026-08-19 11:00:00+00,22748,2026-08-19 10:29:59+00,22950,-202
+        2026-08-19 11:00:00+00,2026-08-19 11:30:00+00,22500,2026-08-19 10:46:00+00,22690,-190
+        2026-08-19 11:30:00+00,2026-08-19 12:00:00+00,23000,,,

@@ -4,8 +4,8 @@ This project transforms raw API captures and owns small, version-controlled
 reference datasets. It holds source-grain staging models, a BM-unit current
 dimension with an observed-history snapshot, incremental period tables for
 metered (B1610) and committed (PN) energy exposed as the `fct_generation` and
-`fct_commitments` views, and private models that prepare the research
-questions.
+`fct_commitments` views, a year of national demand forecast and outturn,
+and private models that prepare the research questions.
 
 **`dbt_dev` is in the production database and is not disposable.** The local
 profile reads `gridskew_prod.raw` and writes to `dbt_dev`; the deployed
@@ -210,6 +210,17 @@ the data tests of these views; no scheduled job builds them.
 that holds each unit-period, and `unexplained_after_absvd_mwh`, which adds
 it to the unexplained energy as Settlement adds QAS to the expected volume.
 
+## Demand forecast and outturn
+
+`stg_elexon__ndf` and `stg_elexon__indo` are source-grain views of every
+national demand forecast (NDF) issue and outturn (INDO) issue, loaded once
+by `ingestion/elexon/demand_backfill.py`. `int_demand_error_by_period`, a
+private view in the `analysis` group, has one row per half-hour with an
+outturn: its first INDO issue, the last NDF issue (boundary `N`) published
+before the half-hour starts, and `demand_error_final_mw`, outturn minus
+forecast. The nightly job runs its key tests; no scheduled job builds
+these views.
+
 ## Shortfall
 
 Two private incremental tables in the `analysis` group answer how far a
@@ -288,8 +299,13 @@ outturn has settled. See
 (`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`) and
 Q23 to Q26 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
 `q25_instruction_fragmentation.sql`, `q26_instructed_and_absvd_share.sql`)
-and Q27 (`q27_forecast_stalls.sql`, how often and how long the published
-forecast stops changing, read after 90 days of polls from 1 November 2026).
+Q27 (`q27_forecast_stalls.sql`, how often and how long the published
+forecast stops changing, read after 90 days of polls from 1 November 2026)
+and Q8 with Q28 (`q8_q28_history.sql`, on one shared population of
+settlement dates 22 August 2025 to 16 August 2026: whether demand
+forecast error or unexplained shortfall lines up more with the API's
+final carbon forecast error, and Q4's quintile test on that error; read
+once, after the demand back-fill and its coverage check).
 Each states its reading rule in its header and is read once.
 `analysis_read_until` is a UTC date and time with its offset (for example
 `2026-09-30 22:30:00+00`); a value without one stops the compile. A read

@@ -87,7 +87,7 @@ Numbered in build order, not alphabetically.
 | [020_b1610.md](020_b1610.md) | [021](021_b1610_ingestion.md) | `B1610` | The receipt | Running |
 | [030_remit.md](030_remit.md) | [031](031_remit_ingestion.md) | `REMIT` | Outage notice, planned or unplanned | Running |
 | [040_boalf.md](040_boalf.md) | [041](041_boalf_ingestion.md) | `BOALF` | The intervention | Running |
-| [050_demand.md](050_demand.md) | — | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | Later |
+| [050_demand.md](050_demand.md) | [051](051_demand_ingestion.md) | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | `NDF` and `INDO`: one-off back-fill |
 | [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Later |
 | [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Running |
 | [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
