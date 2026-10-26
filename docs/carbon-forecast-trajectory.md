@@ -36,6 +36,15 @@ A slot with no poll does not end a run: the next poll is compared with the
 last poll before the gap. A poll that shares no half-hour with the poll before
 it is a new forecast.
 
+**Polls before 10 September 2026.** Until 10:30 UTC that day the forecast was
+polled on the half-hour itself, and each window began with the half-hour that
+had just ended. Since 11:05 UTC it is polled five minutes later, and each
+window begins with the half-hour in progress. The extra half-hour in each of
+the 1,129 earlier polls had already ended, so it is never a first, final,
+24-hour or 4-hour forecast. It adds a slot to that half-hour's count, but
+removing it leaves the same half-hours complete, under the rule and as
+published.
+
 ## The trajectory of one half-hour
 
 `int_carbon_forecast__by_period` has one row per forecast half-hour.

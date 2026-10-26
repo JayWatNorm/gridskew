@@ -12,7 +12,7 @@ How `raw.carbon_intensity_forecast` is loaded. For what the data means, see
 | Table | `raw.carbon_intensity_forecast` |
 | DDL | `sql/migrations/V001__carbon_intensity_forecast.sql` |
 | DAG | `dags/gridskew_carbon_intensity_forecast_dag.py`, `dag_id` `gridskew_carbon_intensity` |
-| Schedule | `5,35 * * * *` (five minutes after each half-hour boundary) |
+| Schedule | `5,35 * * * *` (five minutes after each half-hour boundary); `0,30` until 10 September 2026 |
 | `catchup` | **`False`** |
 
 The five-minute schedule offset reduces the risk of polling while NESO is still
@@ -45,8 +45,10 @@ datasets could wait, because their history is still retrievable.
 
 ## Volume
 
-The API normally returns 96 or 97 rows per poll — **roughly 1.7M rows and 250
-MB a year.**
+The API normally returns 96 rows per poll — **roughly 1.7M rows and 250 MB a
+year.** Polls made on the half-hour, as they were until 10 September 2026,
+returned 97: the window also held the half-hour that had just ended
+([Carbon forecast trajectory](../../carbon-forecast-trajectory.md#which-polls-count)).
 
 At that size none of the chunking, memory or rate-limit considerations that shape
 the Elexon pollers apply. Each run makes one request without splitting windows.
