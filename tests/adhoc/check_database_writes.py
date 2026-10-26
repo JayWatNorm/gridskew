@@ -28,7 +28,7 @@ from ingestion.carbon_intensity.forecast_poller import load as load_forecast
 from ingestion.carbon_intensity.forecast_poller import parse as parse_forecast
 from ingestion.carbon_intensity.outturn_poller import load as load_outturn
 from ingestion.carbon_intensity.outturn_poller import parse as parse_outturn
-from ingestion.elexon import qas_poller
+from ingestion.elexon import demand_backfill, qas_poller
 from ingestion.elexon.b1610_poller import (
     decimal_json_dumps,
     recent_unit_count,
@@ -38,6 +38,7 @@ from ingestion.elexon.b1610_poller import load as load_b1610
 from ingestion.elexon.b1610_poller import parse as parse_b1610
 from ingestion.elexon.boalf_poller import load as load_boalf
 from ingestion.elexon.boalf_poller import parse as parse_boalf
+from ingestion.elexon.demand_poller import load_indo, load_ndf, parse_indo, parse_ndf
 from ingestion.elexon.pn_poller import load as load_pn
 from ingestion.elexon.pn_poller import parse as parse_pn
 from ingestion.elexon.qpn_poller import load as load_qpn
@@ -117,6 +118,25 @@ QAS_COLUMNS = (
     "bm_unit_applicable_balancing_services_volume",
     "retrieved_at",
 )
+NDF_COLUMNS = (
+    "settlement_date",
+    "settlement_period",
+    "start_time",
+    "boundary",
+    "publish_time",
+    "demand",
+    "retrieved_at",
+)
+INDO_COLUMNS = (
+    "settlement_date",
+    "settlement_period",
+    "start_time",
+    "publish_time",
+    "demand",
+    "retrieved_at",
+)
+# A UTC publish day after the moved fixture rows' (19 August 2000).
+HELD_PUBLISH_DAY = date(2000, 8, 20)
 B1610_COLUMNS = (
     "bm_unit",
     "national_grid_bm_unit_id",
@@ -130,13 +150,18 @@ B1610_COLUMNS = (
 )
 
 
-def disposable_connection():
+def disposable_connection(time_zone=None):
+    """A connection to the disposable database; psycopg leaves out a None
+    option, so the session keeps the server's time zone unless one is given."""
+
+    options = f"-c TimeZone={time_zone}" if time_zone else None
     return psycopg.connect(
         host=os.environ["DBT_HOST"],
         port=os.environ["DBT_PORT"],
         user=os.environ["DBT_USER"],
         password=os.environ["DBT_PASSWORD"],
         dbname=os.environ["DBT_DBNAME"],
+        options=options,
     )
 
 
@@ -436,6 +461,40 @@ def check_b1610_keeps_the_first_capture(writer, reader):
     assert stored == expected, (stored, expected)
 
 
+def demand_rows_published_in_2000(relative_path):
+    """The fixture's rows with each publish time moved to 2000, so they share
+    no key with the CI fixtures already loaded."""
+
+    rows = deepcopy(fixture_rows(relative_path)["data"])
+    for row in rows:
+        row["publishTime"] = "2000" + row["publishTime"][4:]
+    return rows
+
+
+def check_a_held_publish_day_is_a_utc_day(writer):
+    """48 NDF issues on one UTC day hold that day in a London session too,
+    though in summer its last two issues fall on the next London day."""
+
+    template = fixture_rows("elexon/ndf_truncated.json")["data"][0]
+    first_issue = datetime(2000, 8, 20, 0, 16, tzinfo=timezone.utc)
+    rows = []
+    for issue in range(demand_backfill.ISSUES_PER_PUBLISH_DAY):
+        row = dict(template)
+        published = first_issue + issue * timedelta(minutes=30)
+        row["publishTime"] = published.strftime("%Y-%m-%dT%H:%M:%SZ")
+        rows.append(row)
+    load_ndf(parse_ndf(rows, CHECK_CAPTURE), writer)
+
+    london = disposable_connection("Europe/London")
+    try:
+        held = demand_backfill.held_days(
+            london, "NDF", [HELD_PUBLISH_DAY, HELD_PUBLISH_DAY + timedelta(days=1)]
+        )
+    finally:
+        london.close()
+    assert held == {HELD_PUBLISH_DAY}, f"NDF days held in a London session: {held}"
+
+
 def check_qas_captures(writer, reader):
     """Every QAS value reads back from its own column, and a second capture of
     the same date is kept beside the first."""
@@ -533,6 +592,8 @@ def delete_check_rows(writer):
             "raw.elexon_qpn",
             "raw.elexon_boalf",
             "raw.elexon_remit",
+            "raw.elexon_ndf",
+            "raw.elexon_indo",
         ):
             cursor.execute(
                 f"DELETE FROM {table} WHERE retrieved_at = %s", (CHECK_CAPTURE,)
@@ -615,6 +676,27 @@ def main():
             # The source row as jsonb, the one column of its type.
             unread=("payload",),
         )
+        check_elexon_load(
+            writer,
+            reader,
+            "raw.elexon_ndf",
+            demand_rows_published_in_2000("elexon/ndf_truncated.json"),
+            parse_ndf,
+            load_ndf,
+            NDF_COLUMNS,
+            ("settlement_date", "settlement_period", "boundary", "publish_time"),
+        )
+        check_elexon_load(
+            writer,
+            reader,
+            "raw.elexon_indo",
+            demand_rows_published_in_2000("elexon/indo.json"),
+            parse_indo,
+            load_indo,
+            INDO_COLUMNS,
+            ("settlement_date", "settlement_period", "publish_time"),
+        )
+        check_a_held_publish_day_is_a_utc_day(writer)
     finally:
         writer.rollback()
         delete_check_rows(writer)

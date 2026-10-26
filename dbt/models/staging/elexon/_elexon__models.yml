@@ -274,3 +274,44 @@ models:
           The optional MW profile of the event as a JSON array of startTime,
           endTime and capacity, as published. Null on about three quarters of
           rows
+
+  - name: stg_elexon__ndf
+    description: >
+      One row per settlement period, boundary and issue of the National
+      Demand forecast (NDF). Every issue is kept; the raw table's primary key
+      (settlement_date, settlement_period, boundary, publish_time) holds the
+      grain, so the view has no separate key tests.
+    columns:
+      - name: settlement_date
+        description: British local time. Part of the key.
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50. Part of the key.
+      - name: start_time
+        description: Start of the settlement period, UTC, from the source.
+      - name: boundary
+        description: N (national) on every observed row. Part of the key.
+      - name: publish_time
+        description: When Elexon published the issue, UTC. Part of the key.
+      - name: demand_mw
+        description: The source's demand, MW averaged over the period.
+      - name: retrieved_at
+        description: When the request that first stored the row ran.
+
+  - name: stg_elexon__indo
+    description: >
+      One row per settlement period and issue of the Initial National Demand
+      outturn (INDO). The raw table's primary key (settlement_date,
+      settlement_period, publish_time) holds the grain.
+    columns:
+      - name: settlement_date
+        description: British local time. Part of the key.
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50. Part of the key.
+      - name: start_time
+        description: Start of the settlement period, UTC, from the source.
+      - name: publish_time
+        description: When Elexon published the issue, UTC. Part of the key.
+      - name: demand_mw
+        description: The source's demand, MW averaged over the period.
+      - name: retrieved_at
+        description: When the request that first stored the row ran.

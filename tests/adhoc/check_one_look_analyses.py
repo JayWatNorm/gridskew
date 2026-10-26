@@ -1,4 +1,4 @@
-"""Check the Q10, Q4, Q2-RF, Q25 and Q27 one-look analyses on hand-worked rows.
+"""Check the one-look analyses (Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28) on worked rows.
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -819,6 +819,390 @@ Q27_NO_LOOK_AHEAD_EXPECTED = {
 }
 
 
+# Q8 and Q28 read the fixed window, settlement dates 22 August 2025 to 16
+# August 2026 (360 dates, 17,280 half-hours: the 50-period and 46-period days
+# cancel out), all in summer time here. A (22 August 2025, the first date)
+# has all three values in every half-hour. B (23 August) has them in 46:
+# period 47 has a null demand error and period 48 a null final forecast. C
+# (16 August 2026, the last date) has them in 45: no shortfall in period 46
+# (one null value), no demand row in 47, no carbon row in 48. So A and B are
+# matched and C is not. The dates either side of the window have all three
+# in every half-hour. C and those dates carry larger values than any on A
+# or B, so letting one in would move every rank. U2's -5 in every half-hour
+# adds nothing once its positive part is taken; U3 (outside the cohort) and
+# U4 (not determinable) put 100 in A's first half-hour and must not count.
+#
+# On A and B, half-hour p has abs(error_api_final) p (sign alternating), so
+# A's and B's p tie: 46 tied pairs, then A47 and A48. The demand error and
+# the shortfall follow the same tie pattern. Each half-hour p takes a place:
+# p itself, except inside a reversed block of periods (a to b), where it
+# takes a + b - p. The abs demand error is 10 x place squared MW (sign
+# alternating) and the shortfall is place MWh, so raw values are not a
+# straight line in their ranks. The shortfall reverses periods 11 to 38;
+# each case below chooses the demand blocks.
+#
+# Spearman with average ranks: pair p ranks 2p - 0.5, A47 93 and A48 94, mean
+# 47.5, and every measure's squared deviations sum to 94 x (94^2 - 1) / 12 -
+# 46 x 0.5 = 69,184.5. Moving p to place q changes two ranks by 2(p - q), so
+# with D the sum of (p - q)^2, rho = 1 - 8D / 138,369. Reversing a block of n
+# periods gives D = n(n^2 - 1) / 3: the shortfall's 28 give 7,308 and
+# rho_shortfall = 79,905 / 138,369 = 0.577478.
+#
+# Bootstrap with two matched days: a draw is A twice (272 draws with this
+# seed), A and B (506, the observed sample) or B twice (222). A twice ties
+# every value with its copy, ranks 2r - 0.5 of A's own, so its correlations
+# are A's alone: no ties, rho = 1 - 6D / (48 x 2,303) = 1 - D / 18,424. B
+# twice likewise gives 1 - D / 16,215. Both are over 5% of the draws, so the
+# 5th and 95th percentiles fall on their values.
+#
+# The main case reverses demand periods 1 to 16: D 1,360, rho_demand
+# 127,489 / 138,369 = 0.921370; gap 8 x (7,308 - 1,360) / 138,369 =
+# 0.343892, demand stronger. A twice: 5,948 / 18,424 = 0.322840; B twice:
+# 5,948 / 16,215 = 0.366821.
+#
+# Q28 on the same rows: ntile(5) of 94 is 19, 19, 19, 19, 18, in the order A1,
+# B1, A2, B2, ... A46, B46, A47, A48. Quintile 1 is A1 to A10 and B1 to B9:
+# 100 / 19 = 5.263158. Quintile 2 is B10 and both days' 11 to 19 (places 38
+# to 30): (10 + 2 x 306) / 19. Quintile 3 is both days' 20 to 28 (29 to 21)
+# and A29 (20): 470 / 19. Quintile 4 is B29 (20) and both days' 30 to 38 (19
+# to 11): 290 / 19. Quintile 5 is both days' 39 to 46 and A47, A48:
+# (2 x 340 + 95) / 18 = 43.055556. Ratio 775 x 19 / (18 x 100) = 8.180556:
+# supported. A twice (20, 19, 19, 19, 19): bottom A1 to A10 twice, 5.5; top
+# the second A39 and A40 to A48 twice, 831 / 19; ratio 7.952153. B twice (19,
+# 19, 18, 18, 18): bottom B1 to B9 twice and one B10, 100 / 19; top B38
+# twice (place 11) and B39 to B46 twice, 702 / 18 = 39; ratio 7.41. The
+# observed sample is half the draws, so the interval is 7.41 to 8.180556.
+Q8_Q28 = "q8_q28_history"
+# The bootstrap's fixed seed, as in the Q8 and Q28 analysis.
+HISTORY_BOOTSTRAP_SEED = 20261025
+MAIN_DEMAND_BLOCKS = "(1, 16)"
+Q8_Q28_FIXTURES = """
+create temporary table synthetic_carbon_outturn (
+    period_start timestamptz,
+    actual integer,
+    api_final_forecast integer
+) on commit drop;
+create temporary table synthetic_demand_error (
+    settlement_date date,
+    start_time timestamptz,
+    demand_error_final_mw integer,
+    forecast_published_at timestamptz,
+    outturn_published_at timestamptz
+) on commit drop;
+create temporary table synthetic_shortfall (
+    national_grid_bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    unexplained_shortfall_mwh numeric,
+    determinability text
+) on commit drop;
+create temporary table synthetic_cohort (national_grid_bm_unit text) on commit drop;
+insert into synthetic_cohort values ('U1'), ('U2'), ('U4');
+
+create temporary table synthetic_places on commit drop as
+select
+    periods.period,
+    coalesce(demand_blocks.first_period + demand_blocks.last_period - periods.period,
+        periods.period) as demand_place,
+    coalesce(shortfall_blocks.first_period + shortfall_blocks.last_period - periods.period,
+        periods.period) as shortfall_place
+from generate_series(1, 48) as periods (period)
+left join (values {demand_blocks}) as demand_blocks (first_period, last_period)
+    on periods.period between demand_blocks.first_period and demand_blocks.last_period
+left join (values (11, 38)) as shortfall_blocks (first_period, last_period)
+    on periods.period between shortfall_blocks.first_period and shortfall_blocks.last_period;
+
+create temporary table synthetic_periods on commit drop as
+select
+    days.day,
+    days.settlement_date,
+    places.period,
+    (days.settlement_date::timestamp at time zone 'Europe/London')
+        + (places.period - 1) * interval '30 minutes' as period_start,
+    case when places.period % 2 = 1 then 1 else -1 end as error_sign,
+    case
+        when days.day not in ('A', 'B') then 1000 + places.period
+        else places.period
+    end as abs_carbon_error,
+    case
+        when days.day not in ('A', 'B') then 100000 + places.period
+        when days.day = 'B' and {constant_b} then 0
+        else 10 * places.demand_place * places.demand_place
+    end as abs_demand_error,
+    case
+        when days.day not in ('A', 'B') then 5000 + places.period
+        when {constant_shortfall} is not null then {constant_shortfall}
+        when days.day = 'B' and {constant_b} and places.period <= 10 then 0
+        when places.period <= 10 and {bottom_shortfall} is not null then {bottom_shortfall}
+        when places.period >= 39 and {top_shortfall} is not null then {top_shortfall}
+        else places.shortfall_place
+    end as shortfall
+from (
+    values ('A', date '2025-08-22'), ('B', date '2025-08-23'), ('C', date '2026-08-16'),
+        ('before', date '2025-08-21'), ('after', date '2026-08-17')
+) as days (day, settlement_date)
+cross join synthetic_places as places;
+
+insert into synthetic_carbon_outturn
+select
+    period_start,
+    2000 + error_sign * abs_carbon_error,
+    case when day = 'B' and period = 48 then null else 2000 end
+from synthetic_periods
+where not (day = 'C' and period = 48);
+
+insert into synthetic_demand_error
+select
+    settlement_date,
+    period_start,
+    case when day = 'B' and period = 47 then null else -error_sign * abs_demand_error end,
+    period_start - case when day = 'A' and period = 5 then interval '3 hours' else interval '14 minutes' end,
+    period_start + case when day = 'B' and period = 6 then interval '150 minutes' else interval '30 minutes' end
+from synthetic_periods
+where {with_demand}
+    and not (day = 'C' and period = 47);
+
+insert into synthetic_shortfall
+select
+    'U1',
+    settlement_date,
+    period_start,
+    case when day = 'C' and period = 46 then null else shortfall end,
+    'determinable'
+from synthetic_periods
+union all
+select 'U2', settlement_date, period_start, -5, 'determinable'
+from synthetic_periods
+where not (day = 'C' and period = 46)
+union all
+select 'U3', settlement_date, period_start, 100, 'determinable'
+from synthetic_periods
+where day = 'A' and period = 1
+union all
+select 'U4', settlement_date, period_start, 100, 'not determinable'
+from synthetic_periods
+where day = 'A' and period = 1;
+"""
+
+Q8_Q28_TABLES = {
+    "int_carbon_outturn__latest": "pg_temp.synthetic_carbon_outturn",
+    "int_demand_error_by_period": "pg_temp.synthetic_demand_error",
+    "int_shortfall_by_unit_period": "pg_temp.synthetic_shortfall",
+    "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+}
+
+HISTORY_POPULATION = (
+    1,
+    "population: matched days (all three values in at least 46 half-hours), "
+    "every half-hour on them with all three",
+    None,
+)
+RHO_DEMAND = (
+    2,
+    "rho_demand: abs(error_api_final) with abs(demand_error_final_mw)",
+    None,
+)
+RHO_SHORTFALL = (2, "rho_shortfall: abs(error_api_final) with positive shortfall", None)
+GAP = (2, "gap, rho_demand minus rho_shortfall", None)
+Q8_VERDICT = (2, "verdict (stronger at a gap of 0.1 or more either way)", None)
+GAP_DRAWS = (2, "bootstrap draws with a gap (900 of 1000 needed)", None)
+GAP_LOW = (2, "bootstrap 90% interval for the gap, low", None)
+GAP_HIGH = (2, "bootstrap 90% interval for the gap, high", None)
+Q28_BOTTOM = (3, "bottom quintile mean, MWh", None)
+Q28_TOP = (3, "top quintile mean, MWh", None)
+Q28_DIFFERENCE = (3, "difference, top minus bottom, MWh", None)
+Q28_RATIO = (3, "ratio, top over bottom", None)
+Q28_VERDICT = (3, "verdict (supported at a ratio of 1.25 or more)", None)
+RATIO_DRAWS = (3, "bootstrap draws with a ratio (900 of 1000 needed)", None)
+RATIO_LOW = (3, "bootstrap 90% interval for the ratio, low", None)
+RATIO_HIGH = (3, "bootstrap 90% interval for the ratio, high", None)
+HISTORY_QUINTILE = "quintile of abs(error_api_final): mean positive shortfall, MWh"
+DEMAND_HALF_HOURS = (5, "half-hours with demand_error_final_mw", None)
+NOT_MATCHED = (5, "settlement dates not matched", None)
+STALE_FORECASTS = (
+    "population half-hours whose last forecast was issued over 30 minutes "
+    "before them (value: the oldest, minutes)"
+)
+LATE_OUTTURNS = (
+    "population half-hours whose first outturn was published over 60 minutes "
+    "after they ended (value: the latest, minutes)"
+)
+
+Q8_Q28_EXPECTED = {
+    HISTORY_POPULATION: dict(
+        half_hours=94, days=2, first_date="2025-08-22", last_date="2025-08-23"
+    ),
+    RHO_DEMAND: dict(half_hours=94, value="0.921370"),
+    RHO_SHORTFALL: dict(half_hours=94, value="0.577478"),
+    GAP: dict(value="0.343892"),
+    Q8_VERDICT: dict(result="demand stronger"),
+    GAP_DRAWS: dict(value="1000", result="available"),
+    GAP_LOW: dict(value="0.322840"),
+    GAP_HIGH: dict(value="0.366821"),
+    Q28_BOTTOM: dict(half_hours=19, value="5.263158"),
+    Q28_TOP: dict(half_hours=18, value="43.055556"),
+    Q28_DIFFERENCE: dict(value="37.792398"),
+    Q28_RATIO: dict(value="8.180556"),
+    Q28_VERDICT: dict(result="supported"),
+    RATIO_DRAWS: dict(value="1000", result="available"),
+    RATIO_LOW: dict(value="7.410000"),
+    RATIO_HIGH: dict(value="8.180556"),
+    (4, HISTORY_QUINTILE, 1): dict(
+        half_hours=19, value="5.263158", result="abs(error_api_final) 1 to 10"
+    ),
+    (4, HISTORY_QUINTILE, 2): dict(
+        half_hours=19, value="32.736842", result="abs(error_api_final) 10 to 19"
+    ),
+    (4, HISTORY_QUINTILE, 3): dict(
+        half_hours=19, value="24.736842", result="abs(error_api_final) 20 to 29"
+    ),
+    (4, HISTORY_QUINTILE, 4): dict(
+        half_hours=19, value="15.263158", result="abs(error_api_final) 29 to 38"
+    ),
+    (4, HISTORY_QUINTILE, 5): dict(
+        half_hours=18, value="43.055556", result="abs(error_api_final) 39 to 48"
+    ),
+    (5, "settlement dates in the window", None): dict(
+        half_hours=17280, days=360, first_date="2025-08-22", last_date="2026-08-16"
+    ),
+    (5, "half-hours with error_api_final", None): dict(half_hours=142),
+    DEMAND_HALF_HOURS: dict(half_hours=142),
+    (5, "half-hours with the cohort shortfall", None): dict(half_hours=143),
+    (5, "half-hours with all three values", None): dict(half_hours=139, days=3),
+    (5, "settlement dates without error_api_final in any half-hour", None): dict(
+        days=357
+    ),
+    (5, "settlement dates without demand_error_final_mw in any half-hour", None): (
+        dict(days=357)
+    ),
+    (5, "settlement dates without the cohort shortfall in any half-hour", None): (
+        dict(days=357)
+    ),
+    NOT_MATCHED: dict(days=358),
+    (5, "half-hours on matched days without all three values", None): dict(
+        half_hours=2, days=1
+    ),
+    # A5's forecast was issued 3 hours before it, the rest 14 minutes; B6's
+    # outturn came 2 hours after it ended, the rest as it ended.
+    (5, STALE_FORECASTS, None): dict(half_hours=1, value="180.000000"),
+    (5, LATE_OUTTURNS, None): dict(half_hours=1, value="120.000000"),
+}
+
+# Every population half-hour's shortfall at 7: rho_shortfall has no value, so
+# there is no gap and no verdict; Q28's means are equal, a ratio of 1.
+Q8_Q28_CONSTANT_SHORTFALL_EXPECTED = {
+    RHO_DEMAND: dict(half_hours=94, value="0.921370"),
+    RHO_SHORTFALL: dict(half_hours=94, value=None),
+    GAP: dict(value=None),
+    Q8_VERDICT: dict(result="not applicable: a measure is constant"),
+    GAP_DRAWS: dict(value=None, result="not applicable"),
+    GAP_LOW: dict(value=None),
+    GAP_HIGH: dict(value=None),
+    Q28_BOTTOM: dict(value="7.000000"),
+    Q28_TOP: dict(value="7.000000"),
+    Q28_RATIO: dict(value="1.000000"),
+    Q28_VERDICT: dict(result="not supported"),
+}
+
+# Other demand blocks against the same shortfall (D 7,308). Periods 1 to 46
+# reversed: D 32,430, rho_demand -0.874986, gap -1.452464. Periods 1 to 28
+# reversed: D 7,308, the shortfall's own, so the gap is 0. Near 0.1: blocks
+# of 25, 10, 5 and 3 periods give D 5,200 + 330 + 40 + 8 = 5,578, gap
+# 8 x 1,730 / 138,369 = 0.100022; one more swapped pair gives 5,580, gap
+# 8 x 1,728 / 138,369 = 0.099907. Near -0.1: 30, 5 and 3 periods give
+# 8,990 + 40 + 8 = 9,038, gap -0.100022; 30, 5 and three swapped pairs give
+# 9,036, gap -0.099907. Minimum ranks in place of average ranks would put
+# the 0.100022 gap at 0.099889.
+Q8_GAP_CASES = (
+    ("(1, 46)", "-0.874986", "-1.452464", "shortfall stronger"),
+    ("(1, 28)", "0.577478", "0.000000", "no clear difference"),
+    (
+        "(1, 25), (26, 35), (36, 40), (41, 43)",
+        "0.677500",
+        "0.100022",
+        "demand stronger",
+    ),
+    (
+        "(1, 25), (26, 35), (36, 40), (41, 43), (44, 45)",
+        "0.677384",
+        "0.099907",
+        "no clear difference",
+    ),
+    ("(1, 30), (31, 35), (36, 38)", "0.477455", "-0.100022", "shortfall stronger"),
+    (
+        "(1, 30), (31, 35), (36, 37), (38, 39), (40, 41)",
+        "0.477571",
+        "-0.099907",
+        "no clear difference",
+    ),
+)
+
+# B's demand error 0 in every half-hour and its shortfall 0 in periods 1 to
+# 10: a draw of B twice has a constant demand measure (no gap) and a bottom
+# quintile of zeros (no ratio), so only the 778 other draws are usable, under
+# 900. Q28: bottom A1 to A10 (55) and B1 to B9 (0) over 19 = 2.894737; ratio
+# 775 x 19 / (18 x 55) = 14.873737.
+Q8_Q28_UNAVAILABLE_EXPECTED = {
+    Q28_BOTTOM: dict(value="2.894737"),
+    Q28_RATIO: dict(value="14.873737"),
+    Q28_VERDICT: dict(result="supported"),
+    GAP_LOW: dict(value=None),
+    GAP_HIGH: dict(value=None),
+    RATIO_LOW: dict(value=None),
+    RATIO_HIGH: dict(value=None),
+}
+
+# The same rows with the usable-draw minimum at exactly the usable count: both
+# intervals are available at their boundary. A twice is the gap's high end
+# (0.322840; the observed gap is negative, B's tied demand errors sitting
+# lowest while its carbon errors spread over the order) and the ratio's low
+# end (7.952153); the observed sample is the ratio's high end (14.873737).
+Q8_Q28_BOUNDARY_EXPECTED = {
+    GAP_HIGH: dict(value="0.322840"),
+    RATIO_LOW: dict(value="7.952153"),
+    RATIO_HIGH: dict(value="14.873737"),
+}
+
+# The shortfall of periods 1 to 10 at 0: not applicable, no ratio, no interval.
+Q28_NOT_APPLICABLE_EXPECTED = {
+    Q28_BOTTOM: dict(value="0.000000"),
+    Q28_TOP: dict(value="43.055556"),
+    Q28_DIFFERENCE: dict(value="43.055556"),
+    Q28_RATIO: dict(value=None),
+    Q28_VERDICT: dict(result="not applicable: bottom quintile mean is 0 or less"),
+    RATIO_DRAWS: dict(value=None, result="not applicable"),
+    RATIO_LOW: dict(value=None),
+    RATIO_HIGH: dict(value=None),
+}
+
+# The shortfall of periods 1 to 10 at 1 and of 39 to 48 at 1.25: the 19
+# bottom half-hours average 1 and the 18 top ones 1.25, supported at the
+# boundary; at 1.24, not supported.
+Q28_BOUNDARY_EXPECTED = {
+    Q28_BOTTOM: dict(value="1.000000"),
+    Q28_TOP: dict(value="1.250000"),
+    Q28_RATIO: dict(value="1.250000"),
+    Q28_VERDICT: dict(result="supported"),
+}
+Q28_BELOW_BOUNDARY_EXPECTED = {
+    Q28_RATIO: dict(value="1.240000"),
+    Q28_VERDICT: dict(result="not supported"),
+}
+
+# No demand error at all: no matched day, and every result is withheld.
+Q8_Q28_EMPTY_EXPECTED = {
+    HISTORY_POPULATION: dict(half_hours=0, days=0, first_date=None),
+    RHO_DEMAND: dict(half_hours=0, value=None),
+    Q8_VERDICT: dict(result="no matched days: no result"),
+    GAP_DRAWS: dict(value=None, result="not applicable"),
+    Q28_BOTTOM: dict(value=None),
+    Q28_VERDICT: dict(result="no matched days: no result"),
+    RATIO_DRAWS: dict(value=None, result="not applicable"),
+    DEMAND_HALF_HOURS: dict(half_hours=0),
+    NOT_MATCHED: dict(days=360),
+}
+
+
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
@@ -842,23 +1226,47 @@ def q2rf_fixtures(extra_cohort_rows=""):
     return Q2RF_FIXTURES.format(extra_cohort_rows=extra_cohort_rows)
 
 
-def usable_draws_without_b_twice():
-    return BOOTSTRAP_DRAWS - draws_without_day_one(2)
+def q8_q28_fixtures(
+    demand_blocks=MAIN_DEMAND_BLOCKS,
+    bottom_shortfall="null",
+    top_shortfall="null",
+    constant_b=False,
+    with_demand=True,
+    constant_shortfall="null",
+):
+    """Q8 and Q28's rows. A shortfall of "null" keeps each half-hour's place."""
+
+    return Q8_Q28_FIXTURES.format(
+        demand_blocks=demand_blocks,
+        bottom_shortfall=bottom_shortfall,
+        top_shortfall=top_shortfall,
+        constant_b=str(constant_b).lower(),
+        with_demand=str(with_demand).lower(),
+        constant_shortfall=constant_shortfall,
+    )
 
 
-def picked_day(draw, pick, days):
+def history_usable_draws():
+    return usable_draws_without_b_twice(HISTORY_BOOTSTRAP_SEED)
+
+
+def usable_draws_without_b_twice(seed=BOOTSTRAP_SEED):
+    return BOOTSTRAP_DRAWS - draws_without_day_one(2, seed)
+
+
+def picked_day(draw, pick, days, seed):
     """The day a bootstrap pick takes, worked out from the contract's rule."""
 
-    digest = hashlib.md5(f"{BOOTSTRAP_SEED}:{draw}:{pick}".encode()).hexdigest()
+    digest = hashlib.md5(f"{seed}:{draw}:{pick}".encode()).hexdigest()
     return 1 + int(digest[:8], 16) % days
 
 
-def draws_without_day_one(days):
+def draws_without_day_one(days, seed):
     """How many draws pick only days other than the first."""
 
     count = 0
     for draw in range(1, BOOTSTRAP_DRAWS + 1):
-        picks = [picked_day(draw, pick, days) for pick in range(1, days + 1)]
+        picks = [picked_day(draw, pick, days, seed) for pick in range(1, days + 1)]
         if 1 not in picks:
             count += 1
     return count
@@ -1151,6 +1559,131 @@ def q27_mismatches(conn, reached, not_reached, time_zone):
     return found
 
 
+def q8_q28_mismatches(conn, reached, boundary, time_zone):
+    title = f"[{time_zone}] Q8 and Q28"
+    main_run = run_analysis(
+        conn, q8_q28_fixtures(), reached, Q8_Q28, Q8_Q28_TABLES, time_zone
+    )
+    found = mismatches(title, main_run, Q8_Q28_EXPECTED)
+    found += unexpected_rows(title, main_run, Q8_Q28_EXPECTED)
+
+    for demand_blocks, rho_demand, gap, verdict in Q8_GAP_CASES:
+        gap_run = run_analysis(
+            conn,
+            q8_q28_fixtures(demand_blocks),
+            reached,
+            Q8_Q28,
+            Q8_Q28_TABLES,
+            time_zone,
+        )
+        found += mismatches(
+            f"{title} demand blocks {demand_blocks}",
+            gap_run,
+            {
+                RHO_DEMAND: dict(value=rho_demand),
+                RHO_SHORTFALL: Q8_Q28_EXPECTED[RHO_SHORTFALL],
+                GAP: dict(value=gap),
+                Q8_VERDICT: dict(result=verdict),
+            },
+        )
+
+    usable_draws = history_usable_draws()
+    unavailable_expected = dict(Q8_Q28_UNAVAILABLE_EXPECTED)
+    unavailable_expected[GAP_DRAWS] = dict(
+        value=str(usable_draws), result="unavailable"
+    )
+    unavailable_expected[RATIO_DRAWS] = dict(
+        value=str(usable_draws), result="unavailable"
+    )
+    unavailable_run = run_analysis(
+        conn,
+        q8_q28_fixtures(constant_b=True),
+        reached,
+        Q8_Q28,
+        Q8_Q28_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} unavailable", unavailable_run, unavailable_expected)
+
+    needed = f"({usable_draws} of {BOOTSTRAP_DRAWS} needed)"
+    boundary_expected = dict(Q8_Q28_BOUNDARY_EXPECTED)
+    boundary_expected[(2, f"bootstrap draws with a gap {needed}", None)] = dict(
+        value=str(usable_draws), result="available"
+    )
+    boundary_expected[(3, f"bootstrap draws with a ratio {needed}", None)] = dict(
+        value=str(usable_draws), result="available"
+    )
+    boundary_run = run_analysis(
+        conn,
+        q8_q28_fixtures(constant_b=True),
+        boundary,
+        Q8_Q28,
+        Q8_Q28_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} boundary", boundary_run, boundary_expected)
+
+    not_applicable_run = run_analysis(
+        conn,
+        q8_q28_fixtures(bottom_shortfall="0"),
+        reached,
+        Q8_Q28,
+        Q8_Q28_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} not applicable", not_applicable_run, Q28_NOT_APPLICABLE_EXPECTED
+    )
+
+    ratio_boundary_run = run_analysis(
+        conn,
+        q8_q28_fixtures(bottom_shortfall="1", top_shortfall="1.25"),
+        reached,
+        Q8_Q28,
+        Q8_Q28_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} ratio at 1.25", ratio_boundary_run, Q28_BOUNDARY_EXPECTED
+    )
+    below_boundary_run = run_analysis(
+        conn,
+        q8_q28_fixtures(bottom_shortfall="1", top_shortfall="1.24"),
+        reached,
+        Q8_Q28,
+        Q8_Q28_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} ratio at 1.24", below_boundary_run, Q28_BELOW_BOUNDARY_EXPECTED
+    )
+
+    constant_shortfall_run = run_analysis(
+        conn,
+        q8_q28_fixtures(constant_shortfall="7"),
+        reached,
+        Q8_Q28,
+        Q8_Q28_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} constant shortfall",
+        constant_shortfall_run,
+        Q8_Q28_CONSTANT_SHORTFALL_EXPECTED,
+    )
+
+    empty_run = run_analysis(
+        conn,
+        q8_q28_fixtures(with_demand=False),
+        reached,
+        Q8_Q28,
+        Q8_Q28_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} no demand", empty_run, Q8_Q28_EMPTY_EXPECTED)
+    return found
+
+
 def check_all(reached, not_reached, boundary):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
@@ -1168,18 +1701,21 @@ def check_all(reached, not_reached, boundary):
             found += q2rf_mismatches(conn, reached, not_reached, time_zone)
             found += q25_mismatches(conn, reached, time_zone)
             found += q27_mismatches(conn, reached, not_reached, time_zone)
+            found += q8_q28_mismatches(conn, reached, boundary, time_zone)
     finally:
         conn.close()
     return found
 
 
 def boundary_vars():
-    """REACHED_VARS with Q4's usable-draw minimum at the fixture's usable count."""
+    """REACHED_VARS with Q4's and the Q8 and Q28 usable-draw minimums at their
+    fixtures' usable counts."""
 
     variables = dict(REACHED_VARS)
     variables["shortfall_error_bootstrap_min_usable_draws"] = (
         usable_draws_without_b_twice()
     )
+    variables["demand_history_bootstrap_min_usable_draws"] = history_usable_draws()
     return variables
 
 
@@ -1203,7 +1739,10 @@ def main():
         raise SystemExit(
             f"{len(found)} one-look analysis cells differ from the worked values"
         )
-    print("One-look analyses: Q10, Q4, Q2-RF, Q25 and Q27 match every worked value")
+    print(
+        "One-look analyses: Q10, Q4, Q2-RF, Q25, Q27, Q8 and Q28 match every "
+        "worked value"
+    )
 
 
 if __name__ == "__main__":

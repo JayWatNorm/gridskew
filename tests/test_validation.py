@@ -10,6 +10,8 @@ from ingestion.elexon.contracts import (
     B1610_SPEC,
     BM_UNITS_SPEC,
     BOALF_SPEC,
+    INDO_SPEC,
+    NDF_SPEC,
     PN_SPEC,
     QAS_SPEC,
     QPN_SPEC,
@@ -159,6 +161,16 @@ def test_qas_fixture_matches_its_contract():
         data_envelope=True,
         preserve_decimals=True,
     )
+
+
+def test_ndf_fixture_matches_its_contract():
+    assert_fixture_matches_contract(
+        "elexon/ndf_truncated.json", NDF_SPEC, data_envelope=True
+    )
+
+
+def test_indo_fixture_matches_its_contract():
+    assert_fixture_matches_contract("elexon/indo.json", INDO_SPEC, data_envelope=True)
 
 
 def test_bm_units_fixture_matches_its_contract():

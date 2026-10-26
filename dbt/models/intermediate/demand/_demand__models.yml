@@ -1,0 +1,32 @@
+models:
+  - name: int_demand_error_by_period
+    description: >
+      Private view. One row per half-hour with a national demand outturn
+      (INDO): the outturn's first issue, the last national demand forecast
+      (NDF, boundary N) issued strictly before the half-hour starts, and the
+      error, outturn minus forecast, in MW. Positive means the country used
+      more than forecast. The two belong to one definitional family; neither
+      is ever compared with TSDF or ITSDO. A half-hour with no forecast issued
+      before it has null forecast and error columns.
+    columns:
+      - name: settlement_date
+        description: British local time, from the outturn.
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50, from the outturn.
+      - name: start_time
+        description: Start of the half-hour, UTC. The key.
+        data_tests: [unique, not_null]
+      - name: outturn_published_at
+        description: When the first outturn issue for the half-hour was published.
+      - name: outturn_demand_mw
+        description: Demand in that first outturn issue, MW.
+      - name: forecast_published_at
+        description: >
+          When the chosen forecast was issued: the latest issue before
+          start_time. Null when no issue precedes the half-hour.
+      - name: forecast_demand_mw
+        description: Demand in the chosen forecast issue, MW.
+      - name: demand_error_final_mw
+        description: >
+          outturn_demand_mw minus forecast_demand_mw. Null when there is no
+          forecast.

@@ -71,6 +71,12 @@ vars:
   shortfall_error_matched_days_needed: 90
   # Q4's bootstrap interval needs this many of its 1,000 draws to form a ratio.
   shortfall_error_bootstrap_min_usable_draws: 900
+  # Q8 and Q28 read one fixed window of history: settlement dates from and
+  # until these, both included, ending the day before the forecast archive
+  # starts. Each bootstrap interval needs this many of its 1,000 draws.
+  demand_history_from: '2025-08-22'
+  demand_history_until: '2026-08-16'
+  demand_history_bootstrap_min_usable_draws: 900
   # Q2-RF is read once, when this many settlement dates hold RF and R3.
   rf_restatement_dates_needed: 30
   # Q27 (forecast stalls) counts slot polls from this start and is read once

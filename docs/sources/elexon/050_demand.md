@@ -1,6 +1,9 @@
 # Demand forecast and outturn
 
-**Not ingested.**
+**NDF and INDO: a one-off back-fill of a year of history**, publish days
+20 August 2025 to 17 August 2026; see
+[051_demand_ingestion.md](051_demand_ingestion.md). `TSDF`, `ITSDO` and
+the longer-horizon variants are not ingested.
 
 Several related datasets, documented together because they share a shape.
 
@@ -114,11 +117,11 @@ Every one of these carries a `publishTime`, and without publish-time filters
 you get the latest published forecast, the same serving pattern as the Carbon
 Intensity API.
 
-**Earlier versions are retrievable for recent windows.** On 2026-08-20 a
-single publish-time window returned two distinct forecast vintages side by
-side. How far back Elexon keeps them is not known. If it keeps the range a
-forecast-error study needs, no self-built archive is required, unlike the
-carbon intensity forecast.
+**Earlier versions are retrievable.** On 2026-08-20 a single publish-time
+window returned two distinct forecast vintages side by side, and on
+2026-10-25 a request for publish day 2025-08-22 returned all 48 of that
+day's NDF issues. A forecast-error study over that range needs no
+self-built archive, unlike the carbon intensity forecast.
 
 ## Storage shape
 
