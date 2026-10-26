@@ -9,7 +9,8 @@
 -- least 46 half-hours; at least 90 matched days, up to a fixed
 -- analysis_read_until. Measure: per half-hour, the cohort sum of the positive
 -- part of unexplained_shortfall_mwh (under-delivery, as Q5). Test: quintiles
--- of abs(error_final), ties broken by period start; "supported" if the top
+-- of abs(error_final), ties ordered by a fixed pseudo-random number (amended
+-- 26 October 2026, before any read; see below); "supported" if the top
 -- quintile's mean is at least 25% above the bottom quintile's, otherwise "not
 -- supported". If the bottom quintile's mean is 0 or less, both means and
 -- their difference are reported and the ratio test and its interval are not
@@ -32,7 +33,12 @@
 -- A half-hour has the cohort's unexplained shortfall when at least one
 -- determinable cohort unit-period holds a value (Q5's population: with or
 -- without a PN; before ABSVD). Quintiles are ntile(5), so the lower quintiles
--- take one extra half-hour when the count is not a multiple of 5. Each
+-- take one extra half-hour when the count is not a multiple of 5. Errors are
+-- whole gCO2/kWh, so many half-hours can share one; ordering a tie by date
+-- would fill the bottom quintile with the earliest of them. Ties are instead
+-- ordered by quintile_tie_order (md5 of the seed, the draw and pick, and the
+-- half-hour), then by period start; section 2 reports how many half-hours
+-- share the bottom quintile's largest error. Each
 -- bootstrap draw takes as many eligible days as there are, with replacement;
 -- its picks come from md5 of a fixed seed, the draw and the pick, so every
 -- run gives the same interval. The interval resamples whole days for the
@@ -142,8 +148,21 @@ quintiles as (
         period_start,
         error_final,
         positive_shortfall_mwh,
-        ntile(5) over (order by abs(error_final), period_start) as quintile
+        ntile(5) over (
+            order by abs(error_final), {{ quintile_tie_order(bootstrap_seed, 0, 0, 'period_start') }}, period_start
+        ) as quintile
     from population
+),
+
+-- How many half-hours share the bottom quintile's largest error, and how
+-- many of them the tie order put in the bottom quintile.
+bottom_boundary_ties as (
+    select
+        count(*) as half_hours,
+        count(*) filter (where quintile = 1) as in_bottom,
+        max(abs(error_final)) as boundary_abs_error_final
+    from quintiles
+    where abs(error_final) = (select max(abs(error_final)) from quintiles where quintile = 1)
 ),
 
 quintile_means as (
@@ -194,7 +213,11 @@ resampled_quintiles as (
         population.positive_shortfall_mwh,
         ntile(5) over (
             partition by picks.draw
-            order by abs(population.error_final), population.period_start, picks.pick
+            order by
+                abs(population.error_final),
+                {{ quintile_tie_order(bootstrap_seed, 'picks.draw', 'picks.pick', 'population.period_start') }},
+                population.period_start,
+                picks.pick
         ) as quintile
     from picks
     inner join population
@@ -338,6 +361,15 @@ quintile_rows as (
     cross join outcome
     left join quintile_means
         on listed.quintile = quintile_means.quintile
+
+    union all
+
+    select 2, 'half-hours sharing the bottom quintile''s largest abs(error_final) (value: that error)', null,
+        case when outcome.is_reached then bottom_boundary_ties.half_hours end, null, null, null,
+        case when outcome.is_reached then bottom_boundary_ties.boundary_abs_error_final end,
+        case when outcome.is_reached then 'in the bottom quintile: ' || bottom_boundary_ties.in_bottom end
+    from bottom_boundary_ties
+    cross join outcome
 ),
 
 error_dates as (

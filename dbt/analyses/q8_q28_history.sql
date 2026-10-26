@@ -28,8 +28,12 @@
 -- more, shortfall at -0.1 or less, otherwise there is no clear difference.
 --
 -- Q28 (sections 3 and 4): Q4's test on abs(error_api_final). Quintiles are
--- ntile(5), ties broken by period start, so the lower quintiles take one
--- extra half-hour when the count is not a multiple of 5. Supported if the
+-- ntile(5), so the lower quintiles take one extra half-hour when the count
+-- is not a multiple of 5. Ties are ordered by quintile_tie_order (amended
+-- 26 October 2026, before any read, with Q4): the errors are whole
+-- gCO2/kWh, and a date order would fill the bottom quintile with the
+-- earliest of many tied half-hours. Section 4 reports how many half-hours
+-- share the bottom quintile's largest error. Supported if the
 -- top quintile's mean shortfall is at least 25% above the bottom
 -- quintile's, otherwise not supported; if the bottom mean is 0 or less, the
 -- means and their difference are reported and the test is not applicable.
@@ -203,7 +207,14 @@ sample_ranks as (
         (rank() over by_carbon + count(*) over by_carbon) / 2.0 as carbon_rank,
         (rank() over by_demand + count(*) over by_demand) / 2.0 as demand_rank,
         (rank() over by_shortfall + count(*) over by_shortfall) / 2.0 as shortfall_rank,
-        ntile(5) over (partition by draw order by abs_carbon_error, period_start, pick) as quintile
+        ntile(5) over (
+            partition by draw
+            order by
+                abs_carbon_error,
+                {{ quintile_tie_order(bootstrap_seed, 'draw', 'pick', 'period_start') }},
+                period_start,
+                pick
+        ) as quintile
     from samples
     window
         by_carbon as (partition by draw order by abs_carbon_error),
@@ -451,6 +462,18 @@ quintile_means as (
     group by quintile
 ),
 
+-- How many half-hours share the bottom quintile's largest error, and how
+-- many of them the tie order put in the bottom quintile.
+bottom_boundary_ties as (
+    select
+        count(*) as half_hours,
+        count(*) filter (where quintile = 1) as in_bottom,
+        max(abs_carbon_error) as boundary_abs_carbon_error
+    from sample_ranks
+    where draw = 0
+        and abs_carbon_error = (select max(abs_carbon_error) from sample_ranks where draw = 0 and quintile = 1)
+),
+
 quintile_rows as (
     select
         4 as section,
@@ -466,6 +489,13 @@ quintile_rows as (
     from generate_series(1, 5) as listed (quintile)
     left join quintile_means
         on listed.quintile = quintile_means.quintile
+
+    union all
+
+    select 4, 'half-hours sharing the bottom quintile''s largest abs(error_api_final) (value: that error)', null,
+        half_hours, null, null, null, boundary_abs_carbon_error,
+        'in the bottom quintile: ' || in_bottom
+    from bottom_boundary_ties
 ),
 
 window_summary as (

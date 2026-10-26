@@ -143,9 +143,9 @@ select
     (days.settlement_date::timestamp at time zone 'Europe/London')
         + (periods.period - 1) * interval '30 minutes' as period_start,
     case
-        when days.settlement_date = date '2026-09-01' and periods.period <= 10 then {a_bottom}
-        when days.settlement_date = date '2026-09-02' and periods.period <= 9 then {b_bottom}
-        when days.settlement_date = date '2026-09-02' and periods.period = 10 then {b_tenth}
+        when days.settlement_date = date '2026-09-01' and periods.period <= 9 then {a_bottom}
+        when days.settlement_date = date '2026-09-01' and periods.period = 10 then {a_tenth}
+        when days.settlement_date = date '2026-09-02' and periods.period <= 10 then {b_bottom}
         when days.settlement_date = date '2026-09-02' and periods.period >= 47 then null
         when days.settlement_date = date '2026-09-03' and periods.period >= 46 then null
         when days.settlement_date in (date '2026-09-01', date '2026-09-02') and periods.period >= 39 then 1.25
@@ -318,19 +318,25 @@ DRAWS = (1, "bootstrap draws with a ratio (900 of 1000 needed)", None)
 LOW = (1, "bootstrap 90% interval, low", None)
 HIGH = (1, "bootstrap 90% interval, high", None)
 QUINTILE = "quintile of abs(error_final): mean positive shortfall, MWh"
+Q4_BOTTOM_TIES = (
+    "half-hours sharing the bottom quintile's largest abs(error_final) "
+    "(value: that error)"
+)
 
-# Q4 with A's and B's first ten half-hours at 1 except B10 at 3; 11 to 38 at
-# 1; 39 onwards at 1.25. Quintile 1: 19 at 1. Quintile 2 (positions 20 to 38):
-# B10 at 3 and 18 at 1, 21 / 19. Quintile 5: 18 at 1.25. Ratio 1.25 exactly:
-# supported at the boundary.
+# Q4 with A's and B's first ten half-hours at 1 except A10 at 3; 11 to 38 at
+# 1; 39 onwards at 1.25. A10 and B10 share an error of 10 at the edge of
+# quintile 1, and the tie order (md5 of the seed, draw 0, pick 0 and the
+# half-hour) puts B10 in it, where a date order would put A10. Quintile 1: 19
+# at 1. Quintile 2 (positions 20 to 38): A10 at 3 and 18 at 1, 21 / 19.
+# Quintile 5: 18 at 1.25. Ratio 1.25 exactly: supported at the boundary.
 #
-# Bootstrap: a draw picks two days. A and B, either order, is the observed
-# sample (ties still break A first): 1.25. A twice: quintile 1 is A1 to A10
-# twice (1), quintile 5 is the second A39 and A40 to A48 twice (1.25): 1.25.
-# B twice (92 rows: 19, 19, 18, 18, 18): quintile 1 is B1 to B9 twice and one
-# B10, 21 / 19; quintile 5 is B38 twice and B39 to B46 twice, 22 / 18; ratio
-# 418 / 378 = 1.105820. B-twice draws are about a quarter, so the 5th
-# percentile is 1.105820 and the 95th 1.25.
+# Bootstrap: a draw picks two days. A twice (96 rows: 20, 19, 19, 19, 19):
+# quintile 1 is A1 to A10 twice, 24 / 20 = 1.2; quintile 5 is 19 of A39 to
+# A48 twice (1.25); ratio 1.041667. A and B: 1.25 when B10 falls in quintile
+# 1, as in the observed sample. B twice: quintile 1 is all 1s and quintile 5
+# all 1.25: 1.25. A-twice draws are about a quarter, so the 5th percentile is
+# 1.041667 and the 95th 1.25. (An independent model of the tie order and the
+# picks gives the same values.)
 Q4_EXPECTED = {
     POPULATION: dict(
         half_hours=94,
@@ -345,7 +351,7 @@ Q4_EXPECTED = {
     RATIO: dict(value="1.250000"),
     VERDICT: dict(result="supported"),
     DRAWS: dict(value="1000", result="available"),
-    LOW: dict(value="1.105820"),
+    LOW: dict(value="1.041667"),
     HIGH: dict(value="1.250000"),
     (2, QUINTILE, 1): dict(
         half_hours=19, value="1.000000", result="abs(error_final) 1 to 10"
@@ -361,6 +367,9 @@ Q4_EXPECTED = {
     ),
     (2, QUINTILE, 5): dict(
         half_hours=18, value="1.250000", result="abs(error_final) 39 to 48"
+    ),
+    (2, Q4_BOTTOM_TIES, None): dict(
+        half_hours=2, value="10", result="in the bottom quintile: 1"
     ),
     (3, "settlement dates with an error_final", None): dict(
         days=3, first_date="2026-09-01", last_date="2026-09-03"
@@ -384,12 +393,13 @@ Q4_EXPECTED = {
     (3, "cohort unit-periods per population half-hour: max", None): dict(value="3"),
 }
 
-# B's first ten half-hours at 0: the observed bottom mean is A's ten 1s over
-# 19, 10 / 19, and the ratio 1.25 x 19 / 10 = 2.375. Every B-twice draw has a
-# bottom mean of 0 and forms no ratio, so fewer than 900 draws are usable.
+# B's first ten half-hours at 0, A's at 1: the tie at 10 puts B10 in
+# quintile 1, so its bottom mean is A1 to A9 over 19, 9 / 19, and the ratio
+# 1.25 x 19 / 9 = 2.638889. Every B-twice draw has a bottom mean of 0 and
+# forms no ratio, so fewer than 900 draws are usable.
 Q4_UNAVAILABLE_EXPECTED = {
-    BOTTOM: dict(value="0.526316"),
-    RATIO: dict(value="2.375000"),
+    BOTTOM: dict(value="0.473684"),
+    RATIO: dict(value="2.638889"),
     VERDICT: dict(result="supported"),
     LOW: dict(value=None),
     HIGH: dict(value=None),
@@ -397,10 +407,11 @@ Q4_UNAVAILABLE_EXPECTED = {
 
 # The same rows with the usable-draw minimum set to exactly the usable count:
 # the interval is available at its boundary. Its draws are A twice (1.25)
-# and A with B (2.375), each well over 5% of them.
+# and A with B (2.375 when A10 falls in quintile 1, 2.638889 when B10 does),
+# the lowest and highest each well over 5% of them.
 Q4_BOUNDARY_EXPECTED = {
     LOW: dict(value="1.250000"),
-    HIGH: dict(value="2.375000"),
+    HIGH: dict(value="2.638889"),
 }
 
 # Every bottom half-hour at 0: not applicable, no ratio, no interval.
@@ -1017,6 +1028,10 @@ RATIO_DRAWS = (3, "bootstrap draws with a ratio (900 of 1000 needed)", None)
 RATIO_LOW = (3, "bootstrap 90% interval for the ratio, low", None)
 RATIO_HIGH = (3, "bootstrap 90% interval for the ratio, high", None)
 HISTORY_QUINTILE = "quintile of abs(error_api_final): mean positive shortfall, MWh"
+Q28_BOTTOM_TIES = (
+    "half-hours sharing the bottom quintile's largest abs(error_api_final) "
+    "(value: that error)"
+)
 DEMAND_HALF_HOURS = (5, "half-hours with demand_error_final_mw", None)
 NOT_MATCHED = (5, "settlement dates not matched", None)
 STALE_FORECASTS = (
@@ -1081,6 +1096,10 @@ Q8_Q28_EXPECTED = {
     NOT_MATCHED: dict(days=358),
     (5, "half-hours on matched days without all three values", None): dict(
         half_hours=2, days=1
+    ),
+    # A10 and B10 share the bottom quintile's largest error, 10; one is in it.
+    (4, Q28_BOTTOM_TIES, None): dict(
+        half_hours=2, value="10", result="in the bottom quintile: 1"
     ),
     # A5's forecast was issued 3 hours before it, the rest 14 minutes; B6's
     # outturn came 2 hours after it ended, the rest as it ended.
@@ -1156,11 +1175,13 @@ Q8_Q28_UNAVAILABLE_EXPECTED = {
 # intervals are available at their boundary. A twice is the gap's high end
 # (0.322840; the observed gap is negative, B's tied demand errors sitting
 # lowest while its carbon errors spread over the order) and the ratio's low
-# end (7.952153); the observed sample is the ratio's high end (14.873737).
+# end (7.952153). The ratio's high end is an A-with-B draw whose tie order
+# puts B10 (0) in quintile 1 in place of A10 (10): 775 x 19 / (18 x 45) =
+# 18.179012. In the observed sample A10 falls in quintile 1 (14.873737).
 Q8_Q28_BOUNDARY_EXPECTED = {
     GAP_HIGH: dict(value="0.322840"),
     RATIO_LOW: dict(value="7.952153"),
-    RATIO_HIGH: dict(value="14.873737"),
+    RATIO_HIGH: dict(value="18.179012"),
 }
 
 # The shortfall of periods 1 to 10 at 0: not applicable, no ratio, no interval.
@@ -1206,11 +1227,11 @@ Q8_Q28_EMPTY_EXPECTED = {
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
-def q4_fixtures(a_bottom, b_bottom, b_tenth, stale_b_half_hours=0, extra_days=""):
+def q4_fixtures(a_bottom, b_bottom, a_tenth, stale_b_half_hours=0, extra_days=""):
     return Q4_FIXTURES.format(
         a_bottom=a_bottom,
         b_bottom=b_bottom,
-        b_tenth=b_tenth,
+        a_tenth=a_tenth,
         stale_b_half_hours=stale_b_half_hours,
         extra_days=extra_days,
     )
@@ -1429,7 +1450,7 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     unavailable_expected = dict(Q4_UNAVAILABLE_EXPECTED)
     unavailable_expected[DRAWS] = dict(value=str(usable_draws), result="unavailable")
     unavailable_run = run_analysis(
-        conn, q4_fixtures(1, 0, 0), reached, Q4, Q4_TABLES, time_zone
+        conn, q4_fixtures(1, 0, 1), reached, Q4, Q4_TABLES, time_zone
     )
     found += mismatches(f"{title} unavailable", unavailable_run, unavailable_expected)
 
@@ -1443,7 +1464,7 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
         value=str(usable_draws), result="available"
     )
     boundary_run = run_analysis(
-        conn, q4_fixtures(1, 0, 0), boundary, Q4, Q4_TABLES, time_zone
+        conn, q4_fixtures(1, 0, 1), boundary, Q4, Q4_TABLES, time_zone
     )
     found += mismatches(f"{title} boundary", boundary_run, boundary_expected)
 
