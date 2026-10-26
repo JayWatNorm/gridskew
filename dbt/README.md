@@ -313,7 +313,7 @@ and Q8 with Q28 (`q8_q28_history.sql`, on one shared population of
 settlement dates 22 August 2025 to 16 August 2026: whether demand
 forecast error or unexplained shortfall lines up more with the API's
 final carbon forecast error, and Q4's quintile test on that error; read
-once, after the demand back-fill and its coverage check).
+once on 26 October 2026, after the demand back-fill and its coverage check).
 Each states its reading rule in its header and is read once.
 `analysis_read_until` is a UTC date and time with its offset (for example
 `2026-09-30 22:30:00+00`); a value without one stops the compile. A read

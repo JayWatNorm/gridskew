@@ -195,10 +195,10 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - `PN`, `QPN`, `B1610`, `BOALF`, `REMIT` and `QAS` ingestion, backfills and
   scheduled Airflow runs
 - Append-only raw storage
-- Runtime validation and quarantine for the eight time-series datasets, plus
+- Runtime validation and quarantine for the ten time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
-- dbt sources, production freshness checks and nine source-grain staging views
+- dbt sources, production freshness checks and eleven source-grain staging views
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
@@ -234,9 +234,18 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   run (`RF`), and how
   often the published forecast stops changing. Each rule is fixed in advance
   and read once its data exists.
-- An analysis of whether demand forecast error or unexplained shortfall lines
-  up more with carbon forecast error, and whether larger final-forecast errors
-  coincide with more shortfall, on a year of 2025 to 2026 history.
+
+**Read**
+
+- On a year of history (17,278 half-hours, 22 August 2025 to 16 August 2026),
+  read once on 26 October 2026 under rules fixed in advance: the size of the
+  carbon forecast's final miss lines up with neither the demand forecast's
+  miss nor the unexplained shortfall (rank correlations 0.04 and 0.05, **no
+  clear difference** between them). The fifth of half-hours with the largest
+  misses carries 5% more unexplained shortfall than the fifth with the
+  smallest, against the 25% the test needed: **not supported**. The final
+  forecast is made minutes ahead, so this says nothing yet about the
+  day-ahead forecast.
 
 **Next**
 
