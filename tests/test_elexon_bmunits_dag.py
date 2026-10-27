@@ -1,5 +1,6 @@
 """Guard the deployed BM-unit dbt target without requiring Airflow to run."""
 
+import re
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -34,9 +35,12 @@ def dag_helpers(monkeypatch, connections):
 
 
 def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
-    env = dag_helpers["dbt_environment"]("/tmp/bmunits", "scheduled__2026-10-12")
+    env = dag_helpers["bmunits_dbt_environment"](
+        "/tmp/bmunits", "scheduled__2026-10-12"
+    )
     assert env["GRIDSKEW_DBT_NAME"] == "gridskew_prod"
     assert env["GRIDSKEW_DBT_USER"] == "gridskew_dbt"
+    assert env["GRIDSKEW_DBT_PASSWORD"] == "test-only"
     assert env["GRIDSKEW_DB_USER"] == "raw_writer"
 
     finished_process = SimpleNamespace(stdout="", stderr="", check_returncode=Mock())
@@ -51,10 +55,20 @@ def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
 
 
 def test_two_runs_log_to_two_folders(dag_helpers):
-    scheduled = dag_helpers["dbt_environment"]("/tmp/bmunits", "scheduled__2026-10-12")
-    manual = dag_helpers["dbt_environment"]("/tmp/bmunits", "manual__2026-10-12")
+    scheduled = dag_helpers["bmunits_dbt_environment"](
+        "/tmp/bmunits", "scheduled__2026-10-12"
+    )
+    manual = dag_helpers["bmunits_dbt_environment"](
+        "/tmp/bmunits", "manual__2026-10-12"
+    )
 
     assert scheduled["DBT_LOG_PATH"] != manual["DBT_LOG_PATH"]
+    # The nightly DAG prunes the day folders under bmunits/.
+    assert re.fullmatch(
+        r"/opt/airflow/data/gridskew/dbt_logs/bmunits/\d{4}-\d{2}-\d{2}"
+        r"/scheduled__2026-10-12",
+        scheduled["DBT_LOG_PATH"],
+    )
 
 
 @pytest.mark.parametrize(
@@ -72,11 +86,11 @@ def test_rejects_a_dbt_connection_it_cannot_trust(
 ):
     setattr(connections["gridskew_dbt"], field, value)
     with pytest.raises(RuntimeError, match=refusal):
-        dag_helpers["dbt_environment"]("/tmp/bmunits", "manual__1")
+        dag_helpers["bmunits_dbt_environment"]("/tmp/bmunits", "manual__1")
 
 
 def test_rejects_connections_that_name_no_database(dag_helpers, connections):
     connections["gridskew_prod"].schema = None
     connections["gridskew_dbt"].schema = None
     with pytest.raises(RuntimeError, match="production database"):
-        dag_helpers["dbt_environment"]("/tmp/bmunits", "manual__1")
+        dag_helpers["bmunits_dbt_environment"]("/tmp/bmunits", "manual__1")

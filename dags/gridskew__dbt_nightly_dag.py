@@ -20,6 +20,7 @@ that succeeds publishes dbt's manifest and its last run results.
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -60,33 +61,14 @@ TASK_TIME_LIMIT = timedelta(hours=4)
 SCHEDULED_COMMAND_MINUTES = 45
 
 
-def dbt_environment(work_dir, airflow_run_id):
-    """Use the dbt role in the production database's development schemas."""
+def nightly_dbt_environment(work_dir, airflow_run_id):
+    """The dbt role's environment, logging to this run's nightly folder. dbt
+    stamps the node results it records with the Airflow run ID."""
 
-    from airflow.sdk import BaseHook
+    sys.path.insert(0, PROJECT_PATH)
+    from ingestion.dbt_environment import dbt_environment
 
-    raw_conn = BaseHook.get_connection("gridskew_prod")
-    conn = BaseHook.get_connection("gridskew_dbt")
-    if (
-        not conn.schema
-        or conn.schema != raw_conn.schema
-        or conn.host != raw_conn.host
-        or (conn.port or 5432) != (raw_conn.port or 5432)
-    ):
-        raise RuntimeError(
-            "gridskew_dbt must point to the GridSkew production database"
-        )
-    if not conn.login or not conn.password:
-        raise RuntimeError("gridskew_dbt needs a database user and password")
-    task_env = os.environ.copy()
-    task_env["DBT_TARGET_PATH"] = f"{work_dir}/target"
-    task_env["DBT_PACKAGES_INSTALL_PATH"] = f"{work_dir}/packages"
-    task_env["DBT_LOG_PATH"] = log_folder(airflow_run_id)
-    task_env["GRIDSKEW_DBT_HOST"] = conn.host
-    task_env["GRIDSKEW_DBT_PORT"] = str(conn.port or 5432)
-    task_env["GRIDSKEW_DBT_USER"] = conn.login
-    task_env["GRIDSKEW_DBT_PASSWORD"] = conn.password
-    task_env["GRIDSKEW_DBT_NAME"] = conn.schema
+    task_env = dbt_environment(work_dir, log_folder(airflow_run_id))
     task_env["GRIDSKEW_AIRFLOW_RUN_ID"] = airflow_run_id
     return task_env
 
@@ -293,11 +275,14 @@ def gridskew__dbt_nightly():
     # dbt job cannot start between its commands.
     @task(pool="gridskew_dbt", execution_timeout=TASK_TIME_LIMIT)
     def update_period_tables(params=None, run_id=None):
-        from airflow.providers.postgres.hooks.postgres import PostgresHook
+        from airflow.sdk import BaseHook
+
+        sys.path.insert(0, PROJECT_PATH)
+        from ingestion.database import connect
 
         full_refresh = bool((params or {}).get("full_refresh"))
         rebuild_all = bool((params or {}).get("rebuild_all"))
-        conn = PostgresHook(postgres_conn_id="gridskew_dbt").get_conn()
+        conn = connect(BaseHook.get_connection("gridskew_dbt"))
         try:
             missing = missing_period_tables(conn)
         finally:
@@ -317,7 +302,7 @@ def gridskew__dbt_nightly():
         with TemporaryDirectory(
             prefix="nightly-", dir="/opt/airflow/data/gridskew"
         ) as work_dir:
-            env = dbt_environment(work_dir, run_id)
+            env = nightly_dbt_environment(work_dir, run_id)
             changed = models_needing_full_refresh(env, Path(ARTIFACTS) / "latest")
             if changed and not full_refresh:
                 raise RuntimeError(
