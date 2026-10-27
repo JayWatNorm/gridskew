@@ -12,6 +12,12 @@ PROJECT_PATH = "/opt/airflow/project/gridskew"
 DBT_PROJECT = f"{PROJECT_PATH}/dbt"
 DBT_PROFILES = "/opt/airflow/dbt_profiles"
 DBT_LOGS = "/opt/airflow/data/gridskew/dbt_logs"
+# A misspelt or renamed selector fails the command instead of selecting nothing
+# and passing.
+FAIL_ON_EMPTY_SELECTION = (
+    "--warn-error-options",
+    '{"error": ["NoNodesForSelectionCriteria"]}',
+)
 
 
 def dbt_environment(work_dir, airflow_run_id):
@@ -56,6 +62,7 @@ def run_dbt(env, *args):
     command = [
         "dbt",
         *args,
+        *FAIL_ON_EMPTY_SELECTION,
         "--project-dir",
         DBT_PROJECT,
         "--profiles-dir",

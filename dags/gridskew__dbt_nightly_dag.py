@@ -43,6 +43,13 @@ REFRESH_VIEWS = ("int_elexon__bm_unit_cohort", "stg_elexon__qas")
 # fixed analysis_read_until; a full refresh would rebuild them without it.
 RESULTS_MARTS = "tag:results_mart"
 RECORD_NODE_RESULTS = ("--vars", "{audit: true}")
+# A misspelt or renamed selector fails the command instead of selecting nothing
+# and passing. The state check in models_needing_full_refresh leaves it out:
+# there an empty selection is the normal answer.
+FAIL_ON_EMPTY_SELECTION = (
+    "--warn-error-options",
+    '{"error": ["NoNodesForSelectionCriteria"]}',
+)
 ARTIFACTS = "/opt/airflow/data/gridskew/artifacts"
 ARTIFACT_FILES = ("manifest.json", "run_results.json")
 ARTIFACT_DAYS_KEPT = 30
@@ -95,6 +102,7 @@ def run_dbt(env, args, timeout_minutes):
     command = [
         "dbt",
         *args,
+        *FAIL_ON_EMPTY_SELECTION,
         *RECORD_NODE_RESULTS,
         "--project-dir",
         DBT_PROJECT,
