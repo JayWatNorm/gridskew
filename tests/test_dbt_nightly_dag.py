@@ -107,6 +107,9 @@ def test_every_dbt_command_runs_in_dev_with_a_timeout_and_records_its_node_resul
     command = run.call_args.args[0]
     assert command[command.index("--target") + 1] == "dev"
     assert command[command.index("--vars") + 1] == "{audit: true}"
+    assert command[command.index("--warn-error-options") + 1] == (
+        '{"error": ["NoNodesForSelectionCriteria"]}'
+    )
     assert run.call_args.kwargs["timeout"] == 30 * 60
 
 
@@ -187,6 +190,8 @@ def test_changed_models_below_a_period_table_need_a_full_refresh(
     assert "state:modified+,stg_elexon__qas+" in command
     # A changed results table is rebuilt by hand, so it never blocks the job.
     assert command[command.index("--exclude") + 1] == "tag:results_mart"
+    # Nothing changed is the normal answer, so an empty selection must not fail.
+    assert "--warn-error-options" not in command
 
 
 def test_a_full_refresh_rebuilds_only_what_changed(nightly):

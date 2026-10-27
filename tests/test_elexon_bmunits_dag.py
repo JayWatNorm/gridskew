@@ -45,6 +45,9 @@ def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
     dag_helpers["run_dbt"](env, "seed", "--select", "elexon_fuel_codes")
     command = run.call_args.args[0]
     assert command[command.index("--target") + 1] == "dev"
+    assert command[command.index("--warn-error-options") + 1] == (
+        '{"error": ["NoNodesForSelectionCriteria"]}'
+    )
 
 
 def test_two_runs_log_to_two_folders(dag_helpers):

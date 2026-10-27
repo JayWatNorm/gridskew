@@ -19,6 +19,19 @@
 
 {% set half_hours_needed = var('forecast_drift_half_hours_needed') %}
 {% set read_until = analysis_read_until() %}
+{% set last_listed_year = (var('bank_holidays_england_and_wales') | last)[:4] | int %}
+{% if read_until is not none %}
+    {% set last_read_year = (read_until | string)[:4] | int %}
+{% else %}
+    {% set last_read_year = modules.datetime.date.today().year %}
+{% endif %}
+{% if last_read_year > last_listed_year %}
+    {{ exceptions.raise_compiler_error(
+        "Q10 lists bank holidays only to " ~ last_listed_year
+        ~ "; add the later years to bank_holidays_england_and_wales before reading to "
+        ~ last_read_year
+    ) }}
+{% endif %}
 
 with q1_half_hours as (
     select
