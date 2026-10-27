@@ -36,11 +36,12 @@ def disposable_connection():
     )
 
 
-def compile_analyses(dbt_vars=None):
+def compile_analyses(dbt_vars=None, also_compiled=()):
     """The manifest of a compile of every analysis, with dbt_vars if given.
 
-    A separate target folder leaves dbt/target, which later checks read, as
-    the last full build wrote it.
+    also_compiled names models whose compiled SQL is wanted too. A separate
+    target folder leaves dbt/target, which later checks read, as the last
+    full build wrote it.
     """
 
     command = [
@@ -48,6 +49,7 @@ def compile_analyses(dbt_vars=None):
         "compile",
         "--select",
         "resource_type:analysis",
+        *also_compiled,
         "--project-dir",
         str(PROJECT_DIR),
         "--profiles-dir",

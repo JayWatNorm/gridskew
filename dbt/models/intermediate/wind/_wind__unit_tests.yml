@@ -1,0 +1,43 @@
+unit_tests:
+  - name: test_wind_error_uses_the_latest_issue_before_the_half_hour
+    description: >
+      08:30 takes the 07:30 issue's 08:00 point: the issue stamped exactly
+      08:30 is not before it. 09:00 and 09:30 both take the 08:30 issue's
+      09:00 point. At 11:00 the latest issue, 10:30, holds no 11:00 point, so
+      there is no forecast, although older issues hold one. 07:00 has no
+      issue before it. Each half-hour takes its first WIND publication; the
+      08:30 revision and a CCGT row published earlier are not used.
+    model: int_wind_error_by_period
+    given:
+      - input: ref('stg_elexon__fuelhh')
+        format: csv
+        rows: |
+          settlement_date,settlement_period,start_time,fuel_type,publish_time,generation_mw
+          2025-08-22,17,2025-08-22 07:00:00+00,WIND,2025-08-22 07:30:00+00,1800
+          2025-08-22,20,2025-08-22 08:30:00+00,WIND,2025-08-22 09:00:00+00,2000
+          2025-08-22,20,2025-08-22 08:30:00+00,WIND,2025-08-22 09:30:00+00,2050
+          2025-08-22,21,2025-08-22 09:00:00+00,CCGT,2025-08-22 09:20:00+00,5000
+          2025-08-22,21,2025-08-22 09:00:00+00,WIND,2025-08-22 09:30:00+00,2450
+          2025-08-22,22,2025-08-22 09:30:00+00,WIND,2025-08-22 10:00:00+00,2700
+          2025-08-22,25,2025-08-22 11:00:00+00,WIND,2025-08-22 11:30:00+00,2800
+      - input: ref('stg_elexon__windfor')
+        format: csv
+        rows: |
+          start_time,publish_time,generation_mw
+          2025-08-22 08:00:00+00,2025-08-22 07:30:00+00,2100
+          2025-08-22 09:00:00+00,2025-08-22 07:30:00+00,2200
+          2025-08-22 11:00:00+00,2025-08-22 07:30:00+00,2350
+          2025-08-22 08:00:00+00,2025-08-22 08:30:00+00,9999
+          2025-08-22 09:00:00+00,2025-08-22 08:30:00+00,2600
+          2025-08-22 10:00:00+00,2025-08-22 08:30:00+00,2610
+          2025-08-22 11:00:00+00,2025-08-22 08:30:00+00,2650
+          2025-08-22 12:00:00+00,2025-08-22 10:30:00+00,2700
+    expect:
+      format: csv
+      rows: |
+        start_time,outturn_published_at,outturn_mw,forecast_published_at,forecast_mw,delivered_wind_error_mw
+        2025-08-22 07:00:00+00,2025-08-22 07:30:00+00,1800,,,
+        2025-08-22 08:30:00+00,2025-08-22 09:00:00+00,2000,2025-08-22 07:30:00+00,2100,-100
+        2025-08-22 09:00:00+00,2025-08-22 09:30:00+00,2450,2025-08-22 08:30:00+00,2600,-150
+        2025-08-22 09:30:00+00,2025-08-22 10:00:00+00,2700,2025-08-22 08:30:00+00,2600,100
+        2025-08-22 11:00:00+00,2025-08-22 11:30:00+00,2800,2025-08-22 10:30:00+00,,

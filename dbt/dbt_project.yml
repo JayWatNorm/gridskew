@@ -81,6 +81,13 @@ vars:
   # these, both included. Its own pair, so the demand window cannot move it.
   final_forecast_error_from: '2025-08-22'
   final_forecast_error_until: '2026-08-16'
+  # Q30 reads one fixed window of history: settlement dates from and until
+  # these, both included. Its bootstrap's picks and quintile tie order come
+  # from this fixed seed, and each interval needs this many of 1,000 draws.
+  q30_window_from: '2025-08-22'
+  q30_window_until: '2026-08-16'
+  q30_bootstrap_seed: 20261027
+  q30_bootstrap_min_usable_draws: 900
   # Q2-RF is read once, when this many settlement dates hold RF and R3.
   rf_restatement_dates_needed: 30
   # Q27 (forecast stalls) counts slot polls from this start and is read once

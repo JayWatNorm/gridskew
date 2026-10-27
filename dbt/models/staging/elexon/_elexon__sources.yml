@@ -4,9 +4,10 @@ sources:
       Elexon Insights commitments (PN and QPN), metered volumes (B1610),
       bid-offer acceptances (BOALF), outage messages (REMIT), balancing
       services volumes (QAS), national demand forecast and outturn (NDF and
-      INDO) and complete BM-unit registry observations. PN and QPN contain
-      declared segments; B1610, QAS, NDF and INDO contain settlement-period
-      quantities. All tables are append-only.
+      INDO), national wind forecast and outturn (WINDFOR and FUELHH WIND) and
+      complete BM-unit registry observations. PN and QPN contain declared
+      segments; B1610, QAS, NDF, INDO and FUELHH contain settlement-period
+      quantities; WINDFOR contains hourly points. All tables are append-only.
     schema: raw
     config:
       loaded_at_field: retrieved_at
@@ -515,6 +516,68 @@ sources:
             description: When Elexon published the issue, UTC. Part of the key.
 
           - name: demand
+            description: MW, averaged over the settlement period.
+
+          - name: retrieved_at
+            description: >
+              When the request that first stored this row ran. Not part of
+              the key.
+
+      # ------------------------------------------------------------------
+      - name: elexon_windfor
+        description: >
+          One row per hourly point and issue: the national wind generation
+          forecast (WINDFOR). Up to eight issues a day, each forecasting about
+          three days of hourly points; every issue is kept. Covers only wind farms visible to NESO with
+          operational metering. Loaded once, by
+          ingestion/elexon/wind_backfill.py, for publish days 20 August 2025 to
+          16 August 2026; no schedule, so no freshness check.
+        columns:
+
+          - name: start_time
+            description: The hour the point forecasts, UTC. Part of the key.
+
+          - name: publish_time
+            description: The source's publish-time stamp for the issue, stored as given (marked UTC; in summer it may show UK clock time). Part of the key.
+
+          - name: generation
+            description: >
+              MW. Whether a point is an hourly mean or an instant is not
+              documented.
+
+          - name: retrieved_at
+            description: >
+              When the request that first stored this row ran. Not part of
+              the key: fetching a publish window again inserts nothing.
+
+      # ------------------------------------------------------------------
+      - name: elexon_fuelhh
+        description: >
+          One row per settlement period, fuel type and publication: the
+          half-hourly generation outturn by fuel type (FUELHH). Only fuel type
+          WIND is loaded; taken to be metered generation (inferred). Loaded once with WINDFOR, for
+          settlement dates 22 August 2025 to 16 August 2026; no freshness
+          check.
+        columns:
+
+          - name: settlement_date
+            description: >
+              British local time. Never derive it from start_time. Part of
+              the key.
+
+          - name: settlement_period
+            description: Settlement period, 1 to 46/48/50. Part of the key.
+
+          - name: start_time
+            description: Start of the settlement period, UTC, as the source gives it.
+
+          - name: fuel_type
+            description: The source fuel type code (WIND). Part of the key.
+
+          - name: publish_time
+            description: When Elexon published the value, UTC. Part of the key.
+
+          - name: generation
             description: MW, averaged over the settlement period.
 
           - name: retrieved_at
