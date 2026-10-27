@@ -61,7 +61,7 @@ unit_tests:
           G,T_G,WIND,wind
           H,T_H,WIND,wind
           J,T_J,CCGT,gas_turbine
-      - input: ref('fct_commitments')
+      - input: ref('int_elexon__pn_period_mapped')
         format: csv
         rows: |
           national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,mapping_status,pn_retrieved_at,last_captured_at
@@ -83,7 +83,7 @@ unit_tests:
           G,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:10:00+00,80,80,2026-01-16 00:00:00+00
           H,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:05:00+00,2026-01-15 10:05:00+00,50,50,2026-01-16 00:00:00+00
           J,2026-01-15,21,2026-01-15 10:00:00+00,2026-01-15 10:00:00+00,2026-01-15 10:30:00+00,100,100,2026-01-16 00:00:00+00
-      - input: ref('fct_generation')
+      - input: ref('int_elexon__b1610_period_mapped')
         format: csv
         rows: |
           bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code,last_captured_at
@@ -147,7 +147,7 @@ unit_tests:
           Q2,T_Q2,PS,other
           Q3,T_Q3,PS,other
           Q4,T_Q4,CCGT,gas_turbine
-      - input: ref('fct_commitments')
+      - input: ref('int_elexon__pn_period_mapped')
         format: csv
         rows: |
           national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,mapping_status,pn_retrieved_at,last_captured_at
@@ -162,7 +162,7 @@ unit_tests:
         format: csv
         rows: |
           national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
-      - input: ref('fct_generation')
+      - input: ref('int_elexon__b1610_period_mapped')
         format: csv
         rows: |
           bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code,last_captured_at
@@ -232,7 +232,7 @@ unit_tests:
           national_grid_bm_unit,elexon_bm_unit,fuel_type,fuel_group
           Q1,T_Q1,PS,other
           Q2,T_Q2,PS,other
-      - input: ref('fct_commitments')
+      - input: ref('int_elexon__pn_period_mapped')
         format: csv
         rows: |
           national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,pn_mwh,coverage_status,mapping_status,pn_retrieved_at,last_captured_at
@@ -243,7 +243,7 @@ unit_tests:
         format: csv
         rows: |
           national_grid_bm_unit,settlement_date,settlement_period,period_start_utc,time_from,time_to,level_from,level_to,retrieved_at
-      - input: ref('fct_generation')
+      - input: ref('int_elexon__b1610_period_mapped')
         format: csv
         rows: |
           bm_unit,settlement_date,settlement_period,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh,latest_run_code,latest_retrieved_at,first_quantity_mwh,first_run_code,last_captured_at

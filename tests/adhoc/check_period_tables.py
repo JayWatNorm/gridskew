@@ -712,12 +712,15 @@ def check_shortfall(conn):
     # snapshot and the staging view the intervals read.
     dbt("seed", "--select", "elexon_fuel_codes")
     # The earlier `build +fct_commitments --full-refresh` rebuilt the registry
-    # view and so dropped fct_generation; a release recreates the views.
+    # view and so dropped the B1610 mapped view and fct_generation; a release
+    # recreates the views.
     dbt(
         "run",
         "--select",
         "stg_elexon__boalf",
         "stg_elexon__qas",
+        "int_elexon__b1610_period_mapped",
+        "int_elexon__pn_period_mapped",
         "fct_generation",
         "fct_commitments",
     )
@@ -966,12 +969,14 @@ def check_job_commands_keep_views(conn):
     view drops its dependants (DROP ... CASCADE), so the nightly job's commands
     and the registry job's commands must leave every view in place."""
     # Release: create every view once. (The earlier `build +fct_commitments`
-    # rebuilt the registry view and so dropped fct_generation, which is the
-    # hazard this check guards against.)
+    # rebuilt the registry view and so dropped the B1610 mapped view and
+    # fct_generation, which is the hazard this check guards against.)
     dbt("seed", "--select", "elexon_fuel_codes")
     dbt(
         "run",
         "--select",
+        "int_elexon__b1610_period_mapped",
+        "int_elexon__pn_period_mapped",
         "fct_generation",
         "fct_commitments",
         # The shortfall tables' upstream views; the nightly run builds the
@@ -981,6 +986,8 @@ def check_job_commands_keep_views(conn):
         "int_elexon__bm_unit_cohort",
     )
     views = (
+        "dbt_dev.int_elexon__b1610_period_mapped",
+        "dbt_dev.int_elexon__pn_period_mapped",
         GENERATION,
         COMMITMENTS,
         "dbt_dev.int_elexon__bm_unit_cohort",

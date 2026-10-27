@@ -119,12 +119,12 @@ models:
           seed's grouping rebuilds the unit's rows the next night.
       - name: pn_mwh
         description: >
-          The notified energy from fct_commitments; null unless complete and
+          The notified energy from int_elexon__pn_period_mapped; null unless complete and
           mapped to the unit.
       - name: pn_coverage_status
-        description: complete, incomplete or invalid, from fct_commitments.
+        description: complete, incomplete or invalid, from int_elexon__pn_period_mapped.
       - name: metered_mwh
-        description: Energy of the latest settlement run captured, from fct_generation.
+        description: Energy of the latest settlement run captured, from int_elexon__b1610_period_mapped.
       - name: metered_run_code
         description: The run that metered_mwh comes from (II, SF, R1 ...).
       - name: first_metered_mwh

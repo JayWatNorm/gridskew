@@ -24,7 +24,7 @@ with metered as (
         generation.mapping_status = 'mapped' as is_mapped,
         cohort.national_grid_bm_unit is not null as is_cohort,
         greatest(generation.latest_quantity_mwh, 0) as generation_mwh
-    from {{ ref('fct_generation') }} as generation
+    from {{ ref('int_elexon__b1610_period_mapped') }} as generation
     left join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
         on generation.mapped_national_grid_bm_unit = cohort.national_grid_bm_unit
 {% if read_until is not none %}
