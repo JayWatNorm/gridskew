@@ -1,12 +1,16 @@
 with latest_extract as (
-    select extract_id
-    from {{ source('elexon', 'elexon_bm_units_extracts') }}
+    select
+        extract_id,
+        retrieved_at
+    from {{ ref('stg_elexon__bm_units_extracts') }}
     order by retrieved_at desc, extract_id desc
     limit 1
 ),
 
 selected as (
-    select source_rows.*
+    select
+        source_rows.*,
+        latest_extract.retrieved_at
     from {{ ref('stg_elexon__bm_units') }} as source_rows
     inner join latest_extract
         on source_rows.extract_id = latest_extract.extract_id

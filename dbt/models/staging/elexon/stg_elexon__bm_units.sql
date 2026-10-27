@@ -1,7 +1,6 @@
 select
     raw.extract_id,
     raw.source_index,
-    manifest.retrieved_at,
     raw.national_grid_bm_unit,
     raw.elexon_bm_unit,
     raw.eic,
@@ -27,5 +26,3 @@ select
     raw.gsp_group_name,
     raw.interconnector_id
 from {{ source('elexon', 'elexon_bm_units') }} as raw
-inner join {{ source('elexon', 'elexon_bm_units_extracts') }} as manifest
-    on raw.extract_id = manifest.extract_id
