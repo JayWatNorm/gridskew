@@ -96,9 +96,11 @@ numbers are the participant's own counter and do not always rise.
 
 **Each question's reading rule is fixed before its data is read, and each
 result is read once.** A result cannot then be tuned after it has been
-seen. Each one-look analysis states its rule at the top of its file. Q24
-is the one exception: its measure was amended after a first read of the
-data, so Q24 is not called pre-registered.
+seen. Each one-look analysis states its rule at the top of its file, and
+[research questions](research-questions.md) lists every rule with its
+status. Q24's measure was amended after a first read of the data, so Q24 is
+not called pre-registered; Q25's first measure and Q23's ABSVD sensitivity
+also follow an exploration, and are labelled so.
 [Carbon forecast trajectory](carbon-forecast-trajectory.md),
 [one-look analyses](../dbt/README.md#one-look-analyses)
 
