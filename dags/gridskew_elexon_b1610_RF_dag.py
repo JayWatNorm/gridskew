@@ -57,7 +57,6 @@ def gridskew_elexon_b1610_RF():
 
     @task(pool="elexon")
     def poll_b1610_RF(data_interval_start=None):
-        from airflow.sdk import BaseHook
         from airflow.sdk.exceptions import AirflowFailException
 
         if data_interval_start is None:
@@ -69,28 +68,18 @@ def gridskew_elexon_b1610_RF():
         settlement_date = settlement_date_to_capture(data_interval_start)
 
         sys.path.insert(0, PROJECT_PATH)
-        from ingestion.database import connect
+        from ingestion.dag_tasks import capture_unless_replaced
         from ingestion.elexon.b1610_poller import (
             capture_settlement_date,
             replaced_by_a_later_run,
         )
-        from ingestion.routing import ContractRejected
 
-        replacing_run = replaced_by_a_later_run(settlement_date, RUN_TYPE)
-        if replacing_run is not None:
-            # Gone for good: fail now instead of retrying for days.
-            raise AirflowFailException(
-                f"{RUN_TYPE} for {settlement_date} has been replaced by "
-                f"{replacing_run} and can no longer be captured"
-            )
-
-        conn = connect(BaseHook.get_connection("gridskew_prod"))
-        try:
-            capture_settlement_date(conn, settlement_date, RUN_TYPE)
-        except ContractRejected as rejected:
-            raise AirflowFailException(str(rejected)) from rejected
-        finally:
-            conn.close()
+        capture_unless_replaced(
+            settlement_date,
+            RUN_TYPE,
+            replaced_by_a_later_run=replaced_by_a_later_run,
+            capture_settlement_date=capture_settlement_date,
+        )
 
     poll_b1610_RF()
 
