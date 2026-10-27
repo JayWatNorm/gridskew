@@ -31,9 +31,9 @@ before running a command that creates or updates relations. Use a full
 | `../dbt_profiles/` | Local profile; credentials come from environment variables |
 
 Models are materialised as views unless a model defines a different strategy.
-Staging models must not aggregate or deduplicate source rows, and join only
-to attach a capture's own metadata (`stg_elexon__bm_units` reads its
-extract's retrieval time from the manifest).
+Staging models are one view per raw table and must not aggregate,
+deduplicate, filter or join source rows; joins start in the intermediate
+layer, which reads staging and intermediate models, never a source.
 
 ## BM-unit registry lineage
 
@@ -45,9 +45,11 @@ row and distinct-unit counts. Rejected or suspiciously small responses do not
 get a successful manifest, so the last good state stays current.
 
 `stg_elexon__bm_units` preserves every accepted raw row and converts blank
-capacity strings to null numeric MW. `int_elexon__bm_units_current` selects the
-latest successful manifest and combines a unit's sorted distinct EICs after
-checking its other attributes agree. It is one current row per National Grid
+capacity strings to null numeric MW; `stg_elexon__bm_units_extracts` holds
+one row per manifest. `int_elexon__bm_units_current` selects the
+latest successful manifest, takes its retrieval time, and combines a unit's
+sorted distinct EICs after checking its other attributes agree.
+It is one current row per National Grid
 ID. It preserves null fuel values; no unit name or identifier is
 used to infer fuel or physical generation. A scoped relationship test checks
 populated fuel codes against `elexon_fuel_codes`. It does not require historical
