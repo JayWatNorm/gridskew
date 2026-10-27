@@ -1,4 +1,4 @@
-"""Check the one-look analyses (Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28) on worked rows.
+"""Check the one-look analyses (Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29) on worked rows.
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -32,6 +32,12 @@ STALLS_WINDOW_VARS = {
     "forecast_stalls_exploratory_from": "2026-08-25 05:00:00+00",
     "forecast_stalls_exploratory_until": "2026-08-25 06:30:00+00",
 }
+# Q29's worked window: the 50-period day 26 October 2025 to the 46-period day
+# 29 March 2026.
+Q29_WINDOW_VARS = {
+    "final_forecast_error_from": "2025-10-26",
+    "final_forecast_error_until": "2026-03-29",
+}
 REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 7,
@@ -39,6 +45,7 @@ REACHED_VARS = {
     "rf_restatement_dates_needed": 2,
     "forecast_stalls_days_needed": 4,
     **STALLS_WINDOW_VARS,
+    **Q29_WINDOW_VARS,
 }
 NOT_REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
@@ -1223,6 +1230,85 @@ Q8_Q28_EMPTY_EXPECTED = {
     NOT_MATCHED: dict(days=360),
 }
 
+Q29 = "q29_final_forecast_error_by_month_and_block"
+# The window runs from the 50-period day 26 October 2025 to the 46-period day
+# 29 March 2026: 155 days, 7,440 half-hours, UTC 25 October 23:00 to
+# 29 March 23:00, so exactly 1,860 in each UTC block. Seven errors fall
+# inside it (+2, -5, 0, +3, +7, -1, +4); one row has no final forecast; one
+# row lies on each side of the window, each with a large error.
+Q29_FIXTURES = """
+create temporary table synthetic_q29_outturn (
+    period_start timestamptz,
+    actual integer,
+    api_final_forecast integer
+) on commit drop;
+insert into synthetic_q29_outturn values
+    ('2025-10-25 22:30+00', 140, 100),
+    ('2025-10-26 00:30+00', 102, 100),
+    ('2025-10-26 01:30+00', 95, 100),
+    ('2025-10-26 05:30+00', 100, 100),
+    ('2025-10-26 06:00+00', 103, 100),
+    ('2025-11-15 12:00+00', 107, 100),
+    ('2025-11-15 18:00+00', 99, 100),
+    ('2026-01-10 10:00+00', 200, null),
+    ('2026-03-29 22:30+00', 104, 100),
+    ('2026-03-29 23:00+00', 70, 100);
+"""
+Q29_TABLES = {"int_carbon_outturn__latest": "pg_temp.synthetic_q29_outturn"}
+Q29_COLUMNS = (
+    "half_hours",
+    "half_hours_with_error",
+    "half_hours_without_error",
+    "mean_absolute_error",
+    "mean_error",
+    "median_error",
+    "zero_error_share",
+)
+NO_ERRORS = (None, None, None, None)
+
+
+def q29_cell(half_hours, with_error, statistics):
+    values = (half_hours, with_error, half_hours - with_error, *statistics)
+    return dict(zip(Q29_COLUMNS, values, strict=True))
+
+
+# Overall: |errors| sum 22 over 7; signed sum 10 over 7; sorted -5, -1, 0, 2,
+# 3, 4, 7 has median 2; one zero in 7. October (26 to 31: 50 + 5 x 48 = 290
+# half-hours): +2, -5, 0, +3, an even-count median of 0 and 2. November: +7
+# and -1. March (1 to 29: 28 x 48 + 46 = 1,390): +4. Blocks: 00:00-05:59
+# holds +2, -5, 0; 06:00-11:59 holds +3 (and the row with no forecast);
+# 12:00-17:59 holds +7; 18:00-23:59 holds -1 and +4.
+Q29_EXPECTED = {
+    (
+        1,
+        "all half-hours (partly seen before the rule as forecast minus actual: mean +0.43, median 0)",
+    ): q29_cell(7440, 7, ("3.143", "1.429", "2.000", "0.143")),
+    (2, "settlement month 2025-10 (partial: 26 to 31)"): q29_cell(
+        290, 4, ("2.500", "0.000", "1.000", "0.250")
+    ),
+    (2, "settlement month 2025-11"): q29_cell(
+        1440, 2, ("4.000", "3.000", "3.000", "0.000")
+    ),
+    (2, "settlement month 2025-12"): q29_cell(1488, 0, NO_ERRORS),
+    (2, "settlement month 2026-01"): q29_cell(1488, 0, NO_ERRORS),
+    (2, "settlement month 2026-02"): q29_cell(1344, 0, NO_ERRORS),
+    (2, "settlement month 2026-03 (partial: 1 to 29)"): q29_cell(
+        1390, 1, ("4.000", "4.000", "4.000", "0.000")
+    ),
+    (3, "UTC block 00:00-05:59"): q29_cell(
+        1860, 3, ("2.333", "-1.000", "0.000", "0.333")
+    ),
+    (3, "UTC block 06:00-11:59"): q29_cell(
+        1860, 1, ("3.000", "3.000", "3.000", "0.000")
+    ),
+    (3, "UTC block 12:00-17:59"): q29_cell(
+        1860, 1, ("7.000", "7.000", "7.000", "0.000")
+    ),
+    (3, "UTC block 18:00-23:59"): q29_cell(
+        1860, 2, ("2.500", "1.500", "1.500", "0.000")
+    ),
+}
+
 
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
@@ -1705,6 +1791,17 @@ def q8_q28_mismatches(conn, reached, boundary, time_zone):
     return found
 
 
+def q29_mismatches(conn, reached, time_zone):
+    title = f"[{time_zone}] Q29"
+    query = on_fixtures(reached, Q29, Q29_TABLES)
+    run = run_on_fixtures(
+        conn, Q29_FIXTURES, query, time_zone, key_columns=("section", "item")
+    )
+    found = mismatches(title, run, Q29_EXPECTED)
+    found += unexpected_rows(title, run, Q29_EXPECTED)
+    return found
+
+
 def check_all(reached, not_reached, boundary):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
@@ -1723,6 +1820,7 @@ def check_all(reached, not_reached, boundary):
             found += q25_mismatches(conn, reached, time_zone)
             found += q27_mismatches(conn, reached, not_reached, time_zone)
             found += q8_q28_mismatches(conn, reached, boundary, time_zone)
+            found += q29_mismatches(conn, reached, time_zone)
     finally:
         conn.close()
     return found
@@ -1761,8 +1859,8 @@ def main():
             f"{len(found)} one-look analysis cells differ from the worked values"
         )
     print(
-        "One-look analyses: Q10, Q4, Q2-RF, Q25, Q27, Q8 and Q28 match every "
-        "worked value"
+        "One-look analyses: Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28 and Q29 match "
+        "every worked value"
     )
 
 
