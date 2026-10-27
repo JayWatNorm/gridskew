@@ -3,7 +3,7 @@ models:
     description: >
       One row per complete registry extract and source position. This view
       preserves every source row, including multiple EICs for one BM unit.
-      retrieved_at is observation time, not the source effective date.
+      Its extract's observation time is in stg_elexon__bm_units_extracts.
       extract_id, source_index and national_grid_bm_unit are NOT NULL in the
       raw tables, so they have no separate null tests.
     columns:
@@ -13,6 +13,18 @@ models:
         description: Source string converted to numeric MW; blanks become null.
       - name: generation_capacity_mw
         description: Source string converted to numeric MW; blanks become null.
+
+  - name: stg_elexon__bm_units_extracts
+    description: >
+      One row per committed, complete BM-unit registry extract: its manifest.
+      retrieved_at is observation time, not the source effective date.
+      extract_id is the raw table's primary key and every column is NOT NULL
+      there, so the view has no separate tests.
+    columns:
+      - name: row_count
+        description: Number of source rows in the extract.
+      - name: unit_count
+        description: Number of distinct National Grid BM-unit IDs in the extract.
 
   - name: stg_elexon__b1610
     description: >
