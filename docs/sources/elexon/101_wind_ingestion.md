@@ -43,8 +43,8 @@ each request covers one day.
 The response must be a dictionary holding a `data` list; an empty list loads
 nothing. A row the contract rejects, such as a point with a null
 `generation`, is quarantined, and then no row of the request is loaded, so a
-day is stored whole or not at all. The run then fails that day with
-`ContractRejected`.
+day is stored whole or not at all. The request then fails with
+`ContractRejected`, which stops the back-fill.
 
 ## The back-fill
 
@@ -63,6 +63,12 @@ WINDFOR first:
 At a second apart the run takes about 15 to 25 minutes and transfers about
 27 MB. Each request prints a summary line.
 
+Elexon publishes no request rate for the Insights API and returns no
+rate-limit headers. Its [licence to use BMRS APIs](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-use-bmrs-api/)
+counts calling more than once a half hour for data that changes half-hourly
+as misuse, and lets Elexon block users who script large volumes without
+notice. The back-fill asks for each day once, one request at a time.
+
 **A WINDFOR publish day is held when it stores at least 8 distinct publish
 times.** In the summer and winter samples all eight issues fell inside the
 UTC day. **A FUELHH settlement date is held when it stores exactly its
@@ -71,12 +77,6 @@ skipped, so running the back-fill again fetches only those still missing or
 short, including one a stopped run left part-way. Whether one request
 returns all 50 periods of an autumn clock-change date is untested; if it
 does not, the date stays not held and is listed.
-
-A failed request is reported and the run goes on; the exit code is 1 when
-any failed. The final report lists, for each dataset, the days still not
-held after the run: a failed day, or a day the source served short. A short
-day is not a failure; the coverage check before the analysis is read
-records it.
 
 Run it in the Airflow container, which holds the `gridskew_prod` connection,
 after V012 is applied:
@@ -89,6 +89,35 @@ python -m ingestion.elexon.wind_backfill
 The dry run makes no request: it prints, for each dataset, its first and
 last day, the days held, the days it would fetch, and the total requests to
 make (722 on an empty table).
+
+## When the back-fill stops
+
+The first failed request stops the run: no further request is made. It
+prints one line naming the dataset, the day and the reason, then the final
+report, and exits with code 1.
+
+| Reason | What it means | Before running again |
+|---|---|---|
+| `rate limited (HTTP 429)` | Elexon refused the request for its rate | Wait: no retry time is published or returned. If it happens again, leave the back-fill and raise the pause first |
+| `server error (HTTP 5xx)` | Elexon failed to answer | Run again later, once the API answers |
+| `request refused (HTTP 4xx)` | The request itself was refused (any 4xx but 429) | Read the error; a wrong request fails every day the same way |
+| `quarantined rows` | A row broke the contract; no row of that day is stored | Read the day's rows in `raw.endpoint_quarantine`; do not run again until the cause is known, or the same day is quarantined again |
+| `other failure` | No answer (timeout, connection) or a database error | Read the error |
+
+A source that has started to refuse or misbehave only gets worse with more
+requests, and a re-run costs nothing, so the run stops on any failure rather
+than skipping the day.
+
+The final report lists, for each dataset: the days held before the run, the
+days requested, rows stored, the failed day with its reason, the days held
+after the run, and the days still not held. A day the source served short is
+not held but is not a failure; the coverage check before the analysis is
+read records it.
+
+**To resume**, run the dry run, check that its days to fetch match the
+report's days still not held, then run the back-fill again. It skips every
+held day and starts from the first day not held, so the stopped day is asked
+for again.
 
 ## Freshness
 

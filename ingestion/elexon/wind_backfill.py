@@ -7,9 +7,15 @@ winter samples all eight fell inside the UTC day, so a publish day is held
 when it stores at least 8 distinct publish times. A settlement date of FUELHH WIND
 is held when it stores exactly its calendar's 46, 48 or 50 distinct periods.
 A held day or date is skipped; any other, including one a stopped run left
-short, is fetched again on the next run. A failed request is reported and the
-run goes on; the exit code is 1 when any failed. The report lists the days
-and dates still not held.
+short, is fetched again on the next run.
+
+The first failure stops the run before another request: a rate limit
+(HTTP 429), a server error (HTTP 5xx), a quarantined row, or anything else.
+Elexon publishes no request rate and returns no rate-limit headers, so going
+on after a refusal or an unexplained failure could only make it worse; a
+re-run resumes from the held-day check. The exit code is 1 after a stop. The
+report lists, per dataset, the days requested, held, failed and still not
+held.
 
 Run in the Airflow container, which holds the gridskew_prod connection:
     python -m ingestion.elexon.wind_backfill --dry-run
@@ -22,9 +28,12 @@ import sys
 import time
 from datetime import date, datetime, timedelta, timezone
 
+import requests
+
 from ingestion.database import connect_to_gridskew_prod
 from ingestion.elexon import wind_poller
 from ingestion.elexon.settlement_calendar import expected_period_count
+from ingestion.routing import ContractRejected
 
 # Two days before the first settlement date read (22 August 2025), so the
 # last forecast issued before its first half-hour is held.
@@ -178,41 +187,82 @@ def plan(conn, days_to_hold):
     return summary
 
 
+def request_queue(days_to_hold, held):
+    """Every (dataset, day) not yet held, in fetch order."""
+
+    queue = []
+    for dataset, days in days_to_hold.items():
+        for day in days_to_fetch(days, held[dataset]):
+            queue.append((dataset, day))
+    return queue
+
+
+def http_status(error):
+    if not isinstance(error, requests.HTTPError):
+        return None
+    if error.response is None:
+        return None
+    return error.response.status_code
+
+
+def reason_for_stopping(error):
+    """A short label for why a request failed, which tells the operator what
+    to check before running again."""
+
+    if isinstance(error, ContractRejected):
+        return "quarantined rows"
+    status = http_status(error)
+    if status == 429:
+        return "rate limited (HTTP 429)"
+    if status is None:
+        return "other failure"
+    if status >= 500:
+        return f"server error (HTTP {status})"
+    return f"request refused (HTTP {status})"
+
+
 def backfill(conn, days_to_hold, pause_seconds=PAUSE_SECONDS):
-    """Fetch every day not yet held, for each dataset; return a report."""
+    """Fetch every day not yet held, stopping at the first failure; return a
+    report."""
 
     held_before = held_by_dataset(conn, days_to_hold)
     outcomes = {}
+    for dataset in days_to_hold:
+        outcomes[dataset] = {"requested": [], "fetched": 0, "rows": 0, "failed": {}}
+
     first_request = True
-    for dataset, days in days_to_hold.items():
+    for dataset, day in request_queue(days_to_hold, held_before):
+        if not first_request:
+            time.sleep(pause_seconds)
+        first_request = False
         _, fetch_day = DATASETS[dataset]
-        outcome = {"fetched": 0, "rows": 0, "failed": {}}
-        outcomes[dataset] = outcome
-        for day in days_to_fetch(days, held_before[dataset]):
-            if not first_request:
-                time.sleep(pause_seconds)
-            first_request = False
-            try:
-                summary = fetch_day(conn, day)
-            except Exception as error:
-                conn.rollback()
-                outcome["failed"][day.isoformat()] = str(error)
-                print(
-                    json.dumps(
-                        {
-                            "dataset": dataset,
-                            "day": day.isoformat(),
-                            "failed": str(error),
-                        }
-                    )
-                )
-                continue
-            outcome["fetched"] += 1
-            outcome["rows"] += summary["rows"]
-            print(json.dumps(summary))
+        outcome = outcomes[dataset]
+        outcome["requested"].append(day.isoformat())
+        try:
+            summary = fetch_day(conn, day)
+        except Exception as error:
+            conn.rollback()
+            reason = reason_for_stopping(error)
+            outcome["failed"][day.isoformat()] = f"{reason}: {error}"
+            print(json.dumps(stop_notice(dataset, day, reason, error)))
+            break
+        outcome["fetched"] += 1
+        outcome["rows"] += summary["rows"]
+        print(json.dumps(summary))
 
     held_after = held_by_dataset(conn, days_to_hold)
     return report(days_to_hold, held_before, held_after, outcomes)
+
+
+def stop_notice(dataset, day, reason, error):
+    return {
+        "stopped": f"Back-fill stopped at {dataset} {day.isoformat()}: {reason}. "
+        "No further request was made.",
+        "dataset": dataset,
+        "day": day.isoformat(),
+        "reason": reason,
+        "error": str(error),
+    }
 
 
 def report(days_to_hold, held_before, held_after, outcomes):
@@ -224,9 +274,11 @@ def report(days_to_hold, held_before, held_after, outcomes):
             "last_day": max(days).isoformat(),
             "days": len(days),
             "skipped_as_held": len(held_before[dataset]),
+            "requested": outcome["requested"],
             "fetched": outcome["fetched"],
             "rows": outcome["rows"],
             "failed": outcome["failed"],
+            "held_after_run": len(held_after[dataset]),
             "not_held_after_run": iso_dates(days_to_fetch(days, held_after[dataset])),
         }
     return backfill_report

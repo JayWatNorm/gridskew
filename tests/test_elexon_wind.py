@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -83,9 +84,12 @@ def response_with(body):
     return response
 
 
-def failed_response(message):
+def failed_response(status, message):
     response = MagicMock()
-    response.raise_for_status.side_effect = requests.HTTPError(message)
+    response.status_code = status
+    response.raise_for_status.side_effect = requests.HTTPError(
+        message, response=response
+    )
     return response
 
 
@@ -372,26 +376,83 @@ def test_held_days_are_skipped_and_the_others_fetched_windfor_first():
 
     assert requested(get) == [windfor_request(AUGUST_20), fuelhh_request(AUGUST_23)]
     assert report["WINDFOR"]["skipped_as_held"] == 1
+    assert report["WINDFOR"]["requested"] == ["2025-08-20"]
     assert report["FUELHH"]["skipped_as_held"] == 1
+    assert report["FUELHH"]["requested"] == ["2025-08-23"]
 
 
-def test_a_failed_request_does_not_stop_the_days_after_it():
-    conn = connection_storing([], [], [(AUGUST_21, 8)], [(AUGUST_22, 48)])
+@pytest.mark.parametrize(
+    ("first_answer", "failure"),
+    [
+        pytest.param(
+            failed_response(429, "429 Too Many Requests"),
+            "rate limited (HTTP 429): 429 Too Many Requests",
+            id="rate-limited",
+        ),
+        pytest.param(
+            failed_response(500, "500 Internal Server Error"),
+            "server error (HTTP 500): 500 Internal Server Error",
+            id="server-error",
+        ),
+        pytest.param(
+            failed_response(404, "404 Not Found"),
+            "request refused (HTTP 404): 404 Not Found",
+            id="other-refusal",
+        ),
+        pytest.param(
+            requests.ConnectionError("connection reset"),
+            "other failure: connection reset",
+            id="no-response",
+        ),
+    ],
+)
+def test_a_failed_request_stops_the_run_before_any_further_request(
+    first_answer, failure
+):
+    conn = connection_storing([], [], [], [])
     days_to_hold = {"WINDFOR": [AUGUST_20, AUGUST_21], "FUELHH": [AUGUST_22]}
 
     with http_answering(
-        failed_response("503 Server Error"),
+        first_answer,
         response_with({"data": two_windfor_issues()}),
         response_with({"data": first_two_fuelhh_periods()}),
-    ):
+    ) as get:
         report = wind_backfill.backfill(conn, days_to_hold, pause_seconds=0)
 
-    assert report["WINDFOR"]["failed"] == {"2025-08-20": "503 Server Error"}
-    assert report["WINDFOR"]["fetched"] == 1
-    assert report["WINDFOR"]["not_held_after_run"] == ["2025-08-20"]
-    assert report["FUELHH"]["fetched"] == 1
-    assert report["FUELHH"]["rows"] == 2
+    assert requested(get) == [windfor_request(AUGUST_20)]
+    assert report["WINDFOR"]["requested"] == ["2025-08-20"]
+    assert report["WINDFOR"]["failed"] == {"2025-08-20": failure}
+    assert report["WINDFOR"]["not_held_after_run"] == ["2025-08-20", "2025-08-21"]
+    assert report["FUELHH"]["requested"] == []
+    assert report["FUELHH"]["not_held_after_run"] == ["2025-08-22"]
     assert wind_backfill.exit_code(report) == 1
+
+
+def test_a_quarantined_row_stops_the_run_and_names_the_dataset_and_day(capsys):
+    rows_with_a_missing_value = two_windfor_issues()
+    rows_with_a_missing_value[2]["generation"] = None
+    conn = connection_storing([], [], [(AUGUST_20, 8)], [])
+    days_to_hold = {"WINDFOR": [AUGUST_20, AUGUST_21], "FUELHH": [AUGUST_22]}
+
+    with http_answering(
+        response_with({"data": two_windfor_issues()}),
+        response_with({"data": rows_with_a_missing_value}),
+        response_with({"data": first_two_fuelhh_periods()}),
+    ) as get:
+        report = wind_backfill.backfill(conn, days_to_hold, pause_seconds=0)
+
+    stop_notice = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert requested(get) == [windfor_request(AUGUST_20), windfor_request(AUGUST_21)]
+    assert stop_notice["stopped"] == (
+        "Back-fill stopped at WINDFOR 2025-08-21: quarantined rows. "
+        "No further request was made."
+    )
+    assert report["WINDFOR"]["failed"] == {
+        "2025-08-21": "quarantined rows: Quarantined 1 rows due to validation errors"
+    }
+    assert report["WINDFOR"]["held_after_run"] == 1
+    assert report["WINDFOR"]["not_held_after_run"] == ["2025-08-21"]
+    assert report["FUELHH"]["requested"] == []
 
 
 def test_a_date_still_short_after_its_fetch_is_listed_but_is_not_a_failure():
@@ -401,6 +462,8 @@ def test_a_date_still_short_after_its_fetch_is_listed_but_is_not_a_failure():
     with http_answering(response_with({"data": first_two_fuelhh_periods()})):
         report = wind_backfill.backfill(conn, days_to_hold, pause_seconds=0)
 
+    assert report["FUELHH"]["requested"] == ["2025-08-22"]
+    assert report["FUELHH"]["failed"] == {}
     assert report["FUELHH"]["not_held_after_run"] == ["2025-08-22"]
     assert wind_backfill.exit_code(report) == 0
 
