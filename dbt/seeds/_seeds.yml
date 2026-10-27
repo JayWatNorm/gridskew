@@ -1,9 +1,8 @@
 seeds:
   - name: elexon_settlement_run_codes
     description: >
-      Ordered reference values for Elexon B1610 settlement revisions.
-      One row represents one settlement-run code.
-
+      One row per settlement-run code: ordered reference values for Elexon B1610
+      settlement revisions.
     config:
       column_types:
         settlement_run_code: varchar(2)

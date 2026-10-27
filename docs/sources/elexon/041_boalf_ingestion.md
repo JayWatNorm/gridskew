@@ -21,7 +21,7 @@ How `raw.elexon_boalf` is loaded. For what the data means, see
 ## The same shape as PN
 
 `run(conn, from_date=None, to_date=None)` loads one UTC window; the DAG passes
-its data interval. One day per request, `timeout=30`, `page_size=1000`, the
+its data interval. One day per request, `timeout=30`, pipelined inserts, the
 one-slot `elexon` pool, and the validation and quarantine routing are as in
 [011_pn_ingestion.md](011_pn_ingestion.md). A day is about 27,000 rows and
 10 MB, a fifth of a PN day.

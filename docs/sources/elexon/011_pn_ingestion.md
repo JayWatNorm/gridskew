@@ -168,8 +168,8 @@ Settings that follow:
 
 - `timeout=30`, not 10. A daily chunk is fifty times larger than anything the
   carbon intensity pollers fetch.
-- `page_size=1000` on `execute_values`. The default of 100 means 1,300 round
-  trips per daily chunk.
+- Rows are inserted with psycopg's `executemany`, which pipelines them, so a
+  daily chunk does not wait on one round trip per row.
 
 ## Backfill
 

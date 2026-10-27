@@ -27,25 +27,24 @@ models:
 
   - name: int_elexon__bm_unit_ids
     description: >
-      Private view. The National Grid and Elexon identifiers of every unit in
-      the latest registry extract, without the eics array, so that unit tests
-      can mock the registry. The REMIT notice mapping reads it.
-
+      One row per unit in the latest registry extract: its National Grid and
+      Elexon identifiers, without the eics array, so that unit tests can mock
+      the registry. The REMIT notice mapping reads it. Private view.
   - name: int_elexon__b1610_period
     description: >
-      Private incremental table. One row per B1610 BM unit and settlement
-      period, with the first captured and the latest settlement-run value.
-      "First captured" is the earliest retrieved_at (ties broken by run
-      order): it is first observed, not the lowest run now available. Live
-      dates normally start at II; backfilled dates start at SF or later, so a
-      consumer must filter or label on first_run_code before it treats a
-      first value as II. "Latest" is the highest run_order in the settlement-run seed. Each
-      run recomputes only periods with a source row captured since the stored
-      watermark minus capture_margin; this equals a full rebuild while every
-      new raw row becomes visible within the margin. After a manual load, a
-      raw edit, a seed change or a logic change, run
-      `--select int_elexon__b1610_period+ --full-refresh`. Registry evidence
-      is attached in fct_generation.
+      One row per B1610 BM unit and settlement period, with the first captured
+      and the latest settlement-run value. "First captured" is the earliest
+      retrieved_at (ties broken by run order): it is first observed, not the
+      lowest run now available. Live dates normally start at II; backfilled
+      dates start at SF or later, so a consumer must filter or label on
+      first_run_code before it treats a first value as II. "Latest" is the
+      highest run_order in the settlement-run seed. Each run recomputes only
+      periods with a source row captured since the stored watermark minus
+      capture_margin; this equals a full rebuild while every new raw row becomes
+      visible within the margin. After a manual load, a raw edit, a seed change
+      or a logic change, run `--select int_elexon__b1610_period+
+      --full-refresh`. Registry evidence is attached in fct_generation. Private
+      incremental table.
     columns:
       - name: bm_unit
         description: Elexon BM-unit identifier from B1610. Part of the key.
@@ -76,18 +75,18 @@ models:
 
   - name: int_elexon__pn_period_mwh
     description: >
-      Private incremental table. One row per PN National Grid BM unit and
-      settlement period, integrated to MWh from one capture. The chosen
-      capture is the latest one that is not an echo: an echo only repeats
-      segments already captured for that period (the next day's poll re-sends
-      the segment touching its requested start). Segments are never mixed
-      across captures. The capture must cover the period exactly once: a
-      segment outside the period or with no duration makes it invalid; a gap,
-      overlap or missing edge makes it incomplete. Both keep the row with a
-      NULL pn_mwh. A unit-period with no PN has no row; absence is never zero.
-      This is the latest captured PN, not the state at gate closure. The
-      incremental rule and full-refresh cases match int_elexon__b1610_period.
-      Registry evidence is attached in fct_commitments.
+      One row per PN National Grid BM unit and settlement period, integrated to
+      MWh from one capture. The chosen capture is the latest one that is not an
+      echo: an echo only repeats segments already captured for that period (the
+      next day's poll re-sends the segment touching its requested start).
+      Segments are never mixed across captures. The capture must cover the
+      period exactly once: a segment outside the period or with no duration
+      makes it invalid; a gap, overlap or missing edge makes it incomplete. Both
+      keep the row with a NULL pn_mwh. A unit-period with no PN has no row;
+      absence is never zero. This is the latest captured PN, not the state at
+      gate closure. The incremental rule and full-refresh cases match
+      int_elexon__b1610_period. Registry evidence is attached in
+      fct_commitments. Private incremental table.
     columns:
       - name: national_grid_bm_unit
         description: National Grid BM-unit identifier from PN. Part of the key.

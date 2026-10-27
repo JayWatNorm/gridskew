@@ -10,8 +10,8 @@ and private models that prepare the research questions.
 **`dbt_dev` is in the production database and is not disposable.** The local
 profile reads `gridskew_prod.raw` and writes to `dbt_dev`; the deployed
 BM-unit and nightly jobs select the homelab `dev` target in the same database,
-and `dbt_dev_snapshots` holds observed registry history. Freshness uses the
-separate `prod` target. Verify the effective database, target, schema and user
+and `dbt_dev_snapshots` holds observed registry history. Freshness passes no
+target, so it uses the homelab profile's default, `prod`. Verify the effective database, target, schema and user
 before running a command that creates or updates relations. Use a full
 `dbt build` only against a verified disposable database containing fixtures.
 
@@ -306,7 +306,7 @@ outturn has settled. See
 (`q2rf_restatement_r3_to_rf.sql`, read at 30 dates with RF and R3), Q5
 (`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`) and
 Q23 to Q26 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
-`q25_instruction_fragmentation.sql`, `q26_instructed_and_absvd_share.sql`)
+`q25_instruction_fragmentation.sql`, `q26_instructed_and_absvd_share.sql`),
 Q27 (`q27_forecast_stalls.sql`, how often and how long the published
 forecast stops changing, read after 90 days of polls from 1 November 2026)
 and Q8 with Q28 (`q8_q28_history.sql`, on one shared population of

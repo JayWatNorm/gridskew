@@ -1,13 +1,12 @@
 models:
   - name: int_remit__revisions
     description: >
-      Private view. One row per stored publication of a REMIT notice, in
-      publication order: publish_time, then created_time, then
-      revision_number. Each publication is in force from its
-      publish_time until the next publication's. The notice as known at t is
-      the row with valid_from <= t and (valid_to is null or t < valid_to);
-      a publication tied on publish_time with a later one has an empty
-      validity and is never selected.
+      One row per stored publication of a REMIT notice, in publication order:
+      publish_time, then created_time, then revision_number. Each publication is
+      in force from its publish_time until the next publication's. The notice as
+      known at t is the row with valid_from <= t and (valid_to is null or t <
+      valid_to); a publication tied on publish_time with a later one has an
+      empty validity and is never selected. Private view.
     columns:
       - name: mrid
         description: Message identifier, shared by every publication of a notice.
@@ -41,10 +40,10 @@ models:
 
   - name: int_remit__notices
     description: >
-      Private view. One row per REMIT notice: its first publication, its
-      current publication (the last in publication order) and the BM unit
-      that publication names. Q6 reads publication_lag_seconds. The unit
-      comes from the latest registry extract.
+      One row per REMIT notice: its first publication, its current publication
+      (the last in publication order) and the BM unit that publication names. Q6
+      reads publication_lag_seconds. The unit comes from the latest registry
+      extract. Private view.
     columns:
       - name: mrid
         description: Message identifier. The grain.
@@ -68,11 +67,11 @@ models:
 
   - name: int_remit__known_outage_periods
     description: >
-      Private view. One row per BM unit and settlement half-hour in which an
-      outage of the unit was already published at the half-hour's start: the
-      notice's publication in force at that moment names the unit, is an
-      Active production unavailability and has an event that overlaps the
-      half-hour. Q5 joins it to the shortfall table. Half-hours up to now.
+      One row per BM unit and settlement half-hour in which an outage of the
+      unit was already published at the half-hour's start: the notice's
+      publication in force at that moment names the unit, is an Active
+      production unavailability and has an event that overlaps the half-hour. Q5
+      joins it to the shortfall table. Half-hours up to now. Private view.
     columns:
       - name: national_grid_bm_unit
         description: >

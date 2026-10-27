@@ -61,7 +61,8 @@ sources:
       # ------------------------------------------------------------------
       - name: carbon_intensity_forecast
         description: >
-          Next 48 hours worth of carbon intensity forecast data on each poll.
+          One row per forecast half-hour per poll: the next 48 hours of carbon
+          intensity forecast on each poll.
         config:
           freshness:
             warn_after: {count: 90, period: minute}

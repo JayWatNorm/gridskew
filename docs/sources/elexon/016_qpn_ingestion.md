@@ -28,7 +28,7 @@ applicable writes commit.
 QPN shares an OpenAPI schema object with PN (`PhysicalNotificationData`), the
 same parameters, the same grain and the same timestamp formats. **Everything in
 [011_pn_ingestion.md](011_pn_ingestion.md) applies unchanged**: one day per
-chunk, `catchup=True` a year back, `timeout=30`, `page_size=1000`,
+chunk, `catchup=True` a year back, `timeout=30`, pipelined inserts,
 and serialization through the one-slot `elexon` Airflow pool.
 
 The modules also use the same validation and quarantine routing while keeping

@@ -1,9 +1,10 @@
 snapshots:
   - name: snap_elexon__bm_units
     description: >
-      Observed BM-unit registry history from the first complete GridSkew
-      capture onward. Validity timestamps record observation, not the source's
-      business effective date. A source disappearance closes the prior row.
+      One row per National Grid BM unit and observed version: registry history
+      from the first complete GridSkew capture onward. Validity timestamps
+      record observation, not the source's business effective date. A source
+      disappearance closes the prior row.
     relation: ref('int_elexon__bm_units_current')
     config:
       schema: snapshots
