@@ -57,7 +57,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install pip==26.2.1
           pip install -r requirements-dev.txt
 
       - name: Lint
@@ -193,7 +193,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install pip==26.2.1
           pip install -r requirements-dev.txt
 
       - name: Apply raw migrations with Flyway

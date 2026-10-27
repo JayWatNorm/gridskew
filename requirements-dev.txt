@@ -4,6 +4,7 @@
 
 psycopg2-binary==2.9.13  # dbt-postgres's driver, pinned so CI does not drift
 pytest==9.1.1
+PyYAML==6.0.3  # tests read dbt/dbt_project.yml
 tzdata==2026.5
 ruff==0.16.3
 dbt-core==1.11.12  # same version as the Airflow image

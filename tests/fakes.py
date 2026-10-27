@@ -1,12 +1,25 @@
-"""Stand-ins the tests use in place of Airflow and a database connection."""
+"""Stand-ins the tests use in place of Airflow and a database connection, and
+the helpers several test modules share."""
 
 import runpy
 import sys
+from datetime import timedelta
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock
 
 DAGS_DIRECTORY = Path(__file__).resolve().parents[1] / "dags"
+# An Elexon outage over a long weekend.
+MULTI_DAY_OUTAGE = timedelta(days=3)
+QUARANTINE_COLUMNS = (
+    "dataset",
+    "retrieved_at",
+    "request_context",
+    "validation_errors",
+    "observed_fields",
+    "payload",
+    "quarantined_at",
+)
 
 
 def load_dag_file(monkeypatch, file_name, connections=None):
@@ -108,3 +121,54 @@ def cursor_of(conn):
     """Return the fake cursor that `with conn.cursor() as cursor:` yields."""
 
     return conn.cursor.return_value.__enter__.return_value
+
+
+def rows_inserted_by_table(conn):
+    """The rows the fake connection's cursor was given to insert, by table."""
+
+    rows_by_table = {}
+    for call in cursor_of(conn).executemany.call_args_list:
+        statement, rows = call.args
+        table = statement.split()[2]
+        if table not in rows_by_table:
+            rows_by_table[table] = []
+        rows_by_table[table].extend(rows)
+    return rows_by_table
+
+
+def quarantined_records(conn):
+    """The rows inserted into raw.endpoint_quarantine, each as a dictionary of
+    column name to value."""
+
+    records = []
+    for row in rows_inserted_by_table(conn).get("raw.endpoint_quarantine", []):
+        records.append(dict(zip(QUARANTINE_COLUMNS, row, strict=True)))
+    return records
+
+
+def waits_before_each_retry(retry_policy, jitter):
+    """Airflow waits retry_delay * 2**(n-1) before retry n, capped at
+    max_retry_delay; its jitter adds up to the same again before the cap."""
+
+    retries = retry_policy["retries"]
+    if not retry_policy.get("retry_exponential_backoff"):
+        return [retry_policy["retry_delay"]] * retries
+
+    waits = []
+    wait = retry_policy["retry_delay"] * jitter
+    for _retry in range(retries):
+        waits.append(min(wait, retry_policy["max_retry_delay"]))
+        wait = wait * 2
+    return waits
+
+
+def shortest_retry_span(retry_policy):
+    return sum(waits_before_each_retry(retry_policy, jitter=1), timedelta())
+
+
+def longest_retry_span(retry_policy):
+    """Every wait at its longest, and every try running to its time limit."""
+
+    tries = retry_policy["retries"] + 1
+    waits = sum(waits_before_each_retry(retry_policy, jitter=2), timedelta())
+    return waits + tries * retry_policy["execution_timeout"]

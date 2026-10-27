@@ -6,6 +6,11 @@
         incremental_strategy='delete+insert',
         unique_key=['national_grid_bm_unit', 'settlement_date', 'settlement_period'],
         on_schema_change='fail',
+        post_hook=(
+            "{% if not is_incremental() %}"
+            "alter table {{ this }} set (autovacuum_vacuum_scale_factor = 0.02)"
+            "{% endif %}"
+        ),
         indexes=[
             {
                 'columns': [

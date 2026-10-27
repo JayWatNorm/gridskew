@@ -38,7 +38,10 @@ def error_messages(rejected):
 def contains(messages, text):
     """Return True when any message includes `text`."""
 
-    return any(text in message for message in messages)
+    for message in messages:
+        if text in message:
+            return True
+    return False
 
 
 def units_named(prefix, count):

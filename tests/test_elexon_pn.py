@@ -10,9 +10,8 @@ from ingestion.elexon import (
     pn_poller,
     qpn_poller,
 )
-from ingestion.elexon.contracts import BOALF_SPEC, PN_SPEC, QPN_SPEC
 from ingestion.routing import ContractRejected
-from tests.fakes import cursor_of
+from tests.fakes import cursor_of, quarantined_records, rows_inserted_by_table
 
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)
 WINDOW_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
@@ -38,6 +37,25 @@ SOURCE_ROW = {
     "levelTo": 474,
     "nationalGridBmUnit": "DRAXX-1",
     "bmUnit": "T_DRAXX-1",
+}
+BOALF_SOURCE_ROW = {
+    "dataset": "BOALF",
+    "settlementDate": "2026-10-06",
+    "settlementPeriodFrom": 3,
+    "settlementPeriodTo": 4,
+    "timeFrom": "2026-10-06T00:00:00Z",
+    "timeTo": "2026-10-06T00:30:00Z",
+    "levelFrom": 218,
+    "levelTo": 218,
+    "acceptanceNumber": 186869,
+    "acceptanceTime": "2026-10-05T23:04:00Z",
+    "deemedBoFlag": False,
+    "soFlag": True,
+    "amendmentFlag": "ORI",
+    "storFlag": False,
+    "rrFlag": False,
+    "nationalGridBmUnit": "PEHE-1",
+    "bmUnit": "T_PEHE-1",
 }
 
 # Each entry point, and the module whose fetch and routing it runs.
@@ -86,30 +104,50 @@ def test_run_rejects_an_invalid_response_envelope(poller, worker, response):
 
 
 @pytest.mark.parametrize(
-    "poller,worker,spec,dataset",
+    "poller,worker,table,dataset,valid_row",
     [
-        pytest.param(pn_poller, physical_notifications, PN_SPEC, "PN", id="PN"),
-        pytest.param(qpn_poller, physical_notifications, QPN_SPEC, "QPN", id="QPN"),
-        pytest.param(boalf_poller, boalf_poller, BOALF_SPEC, "BOALF", id="BOALF"),
+        pytest.param(
+            pn_poller,
+            physical_notifications,
+            "raw.elexon_pn",
+            "PN",
+            SOURCE_ROW,
+            id="PN",
+        ),
+        pytest.param(
+            qpn_poller,
+            physical_notifications,
+            "raw.elexon_qpn",
+            "QPN",
+            SOURCE_ROW,
+            id="QPN",
+        ),
+        pytest.param(
+            boalf_poller,
+            boalf_poller,
+            "raw.elexon_boalf",
+            "BOALF",
+            BOALF_SOURCE_ROW,
+            id="BOALF",
+        ),
     ],
 )
-def test_run_routes_rows_through_its_own_parse_load_and_dataset_label(
-    poller, worker, spec, dataset
+def test_run_stores_valid_rows_in_its_own_table_and_quarantines_the_rest(
+    poller, worker, table, dataset, valid_row
 ):
-    source_rows = [Mock(name="source_row")]
+    invalid_row = {**valid_row, "nationalGridBmUnit": None}
+    conn = MagicMock()
+    cursor_of(conn).rowcount = 1
 
-    with (
-        patch.object(worker, "fetch", return_value=source_rows),
-        patch.object(worker, "process_rows", return_value=0) as mock_process_rows,
-    ):
-        poller.run(Mock(), WINDOW_START, WINDOW_END)
+    with patch.object(worker, "fetch", return_value=[valid_row, invalid_row]):
+        with pytest.raises(ContractRejected, match="Quarantined 1 row"):
+            poller.run(conn, WINDOW_START, WINDOW_END)
 
-    routed = mock_process_rows.call_args
-    assert routed.args == (source_rows,)
-    assert routed.kwargs["parse_rows"] is poller.parse
-    assert routed.kwargs["load_rows"] is poller.load
-    assert routed.kwargs["spec"] is spec
-    assert routed.kwargs["dataset"] == dataset
+    stored_rows = rows_inserted_by_table(conn)[table]
+    (record,) = quarantined_records(conn)
+    assert len(stored_rows) == 1
+    assert record["dataset"] == dataset
+    assert record["payload"].obj == invalid_row
 
 
 @pytest.mark.parametrize("poller,worker", POLLERS)

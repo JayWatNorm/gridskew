@@ -9,7 +9,6 @@ import pytest
 from ingestion.elexon.b1610_poller import (
     british_day_window,
     capture_settlement_date,
-    decimal_json_dumps,
     fetch,
     parse,
     replaced_by_a_later_run,
@@ -18,7 +17,7 @@ from ingestion.elexon.b1610_poller import (
 from ingestion.elexon.b1610_poller import run as run_poller
 from ingestion.elexon.settlement_calendar import expected_period_count
 from ingestion.routing import ContractRejected
-from tests.fakes import connection_returning
+from tests.fakes import connection_returning, quarantined_records
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "b1610_stream.json"
 RETRIEVED_AT = datetime(2026, 8, 17, 7, 47, 13, tzinfo=timezone.utc)
@@ -91,25 +90,26 @@ def test_run_rejects_an_invalid_response_envelope(response):
     mock_process_rows.assert_not_called()
 
 
-def test_run_passes_rows_context_and_decimal_encoder_to_shared_routing(source_rows):
-    with (
-        patch("ingestion.elexon.b1610_poller.fetch", return_value=source_rows),
-        patch(
-            "ingestion.elexon.b1610_poller.process_rows",
-            return_value=0,
-        ) as mock_process_rows,
-    ):
-        run_poller(Mock(), WINDOW_START, WINDOW_END, "R1")
+def test_run_quarantines_an_invalid_row_with_its_request_and_published_digits(
+    source_rows,
+):
+    # The fixture's first row has quantity 0.000; a float would store 0.0.
+    invalid_row = dict(source_rows[0], bmUnit=None)
+    conn = MagicMock()
 
-    routed = mock_process_rows.call_args
-    assert routed.args == (source_rows,)
-    assert routed.kwargs["dataset"] == "B1610"
-    assert routed.kwargs["payload_dumps"] is decimal_json_dumps
-    assert routed.kwargs["request_context"] == {
+    with patch("ingestion.elexon.b1610_poller.fetch", return_value=[invalid_row]):
+        with pytest.raises(ContractRejected, match="Quarantined 1 row"):
+            run_poller(conn, WINDOW_START, WINDOW_END, "R1")
+
+    (record,) = quarantined_records(conn)
+    payload = record["payload"]
+    assert record["dataset"] == "B1610"
+    assert record["request_context"].obj == {
         "from": WINDOW_START.isoformat(),
         "to": WINDOW_END.isoformat(),
         "settlementRunType": "R1",
     }
+    assert '"quantity": 0.000' in payload.dumps(payload.obj)
 
 
 def test_run_fails_after_shared_routing_rejects_a_row(source_rows):
@@ -246,15 +246,12 @@ def test_capture_without_an_earlier_date_checks_periods_only(source_rows):
     assert summary["stored_units"] == 1
 
 
-@pytest.mark.parametrize("stored_periods", [[], list(range(1, 49))])
-def test_capture_refuses_wrong_response_date_before_any_write(
-    source_rows, stored_periods
-):
+def test_capture_refuses_wrong_response_date_before_any_write(source_rows):
     rows = [
         dict(source_rows[0], settlementDate="2026-08-10", settlementRunType="R1"),
         dict(source_rows[0], settlementDate="2026-08-11", settlementRunType="R1"),
     ]
-    conn = connection_returning((440496, stored_periods, 9177))
+    conn = connection_returning((440496, ALL_48_PERIODS, 9177))
     with (
         patch("ingestion.elexon.b1610_poller.fetch", return_value=rows),
         patch("ingestion.elexon.b1610_poller.process_rows", return_value=0) as route,

@@ -16,6 +16,7 @@ from ingestion.carbon_intensity.outturn_poller import (
 )
 from ingestion.carbon_intensity.outturn_poller import run as run_poller
 from ingestion.routing import ContractRejected
+from tests.fakes import cursor_of
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "carbon_intensity" / "outturn.json"
 RETRIEVED_AT = datetime(2026, 8, 19, 21, 43, 17, tzinfo=timezone.utc)
@@ -33,10 +34,24 @@ def payload():
     return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
-def a_period_start_100_days_ago():
-    """`run` reads the real clock, so a missing period is placed relative to now."""
+def clock_reading(now):
+    """Patch the poller's clock, so `run` reads `now`."""
 
-    this_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    clock = Mock()
+    clock.now.return_value = now
+    return patch("ingestion.carbon_intensity.outturn_poller.datetime", clock)
+
+
+def clock_reading_in_turn(*readings):
+    """Patch the poller's clock, so each read of it returns the next reading."""
+
+    clock = Mock()
+    clock.now.side_effect = readings
+    return patch("ingestion.carbon_intensity.outturn_poller.datetime", clock)
+
+
+def a_period_start_100_days_before(now):
+    this_hour = now.replace(minute=0, second=0, microsecond=0)
     return this_hour - timedelta(days=100)
 
 
@@ -169,49 +184,52 @@ def test_process_window_skips_completeness_after_rejected_rows(payload):
         ),
     ],
 )
-def test_run_backfills_all_windows_and_reports_the_total_failures(summary_output):
-    conn = Mock()
-    windows = [
-        (WINDOW_START, WINDOW_START + timedelta(days=30)),
-        (WINDOW_START + timedelta(days=30), WINDOW_START + timedelta(days=60)),
-        (WINDOW_START + timedelta(days=60), WINDOW_END),
-    ]
+def test_run_backfills_all_windows_and_reports_the_total_failures(
+    payload, summary_output
+):
+    valid_row = payload["data"][0]
+    invalid_row = {**valid_row, "intensity": {**valid_row["intensity"], "actual": None}}
+    one_row_rejected = {"data": [invalid_row]}
+    two_rows_rejected = {"data": [invalid_row, invalid_row]}
+    incomplete_window = {"data": [valid_row]}
+    conn = MagicMock()
+    cursor_of(conn).fetchone.return_value = summary_output
 
     with (
-        patch("ingestion.carbon_intensity.outturn_poller.datetime") as mock_datetime,
+        clock_reading(RETRIEVED_AT),
         patch(
-            "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
-            return_value=summary_output,
-        ),
-        patch(
-            "ingestion.carbon_intensity.outturn_poller.build_windows",
-            return_value=windows,
-        ),
-        patch(
-            "ingestion.carbon_intensity.outturn_poller.process_window",
-            side_effect=[(1, False), (0, True), (2, False)],
-        ) as mock_process_window,
+            "ingestion.carbon_intensity.outturn_poller.fetch",
+            side_effect=[one_row_rejected, two_rows_rejected]
+            + [incomplete_window] * 11,
+        ) as mock_fetch,
     ):
-        mock_datetime.now.return_value = RETRIEVED_AT
         with pytest.raises(
             ContractRejected,
-            match="Quarantined 3 rows.*found 1 incomplete",
+            match="Quarantined 3 rows.*found 11 incomplete",
         ):
             run_poller(conn)
 
-    calls = mock_process_window.call_args_list
-    assert len(calls) == 3
-    shared_capture_time = calls[0].args[3]
-    for window_call, window in zip(calls, windows, strict=True):
-        window_start, window_end = window
-        assert window_call.args == (conn, window_start, window_end, shared_capture_time)
+    requested_windows = []
+    for fetch_call in mock_fetch.call_args_list:
+        requested_windows.append(fetch_call.args)
+    first_start, _ = requested_windows[0]
+    _, last_end = requested_windows[-1]
+    assert len(requested_windows) == 13
+    assert first_start == datetime(2025, 8, 18, 21, 43, tzinfo=timezone.utc)
+    assert last_end == datetime(2026, 8, 18, 21, 43, tzinfo=timezone.utc)
+    for window, next_window in pairwise(requested_windows):
+        _, window_end = window
+        next_window_start, _ = next_window
+        assert window_end == next_window_start
 
 
 def test_run_refetches_a_history_gap_after_the_recent_refresh():
     conn = Mock()
-    missing_start = a_period_start_100_days_ago()
+    missing_start = a_period_start_100_days_before(RETRIEVED_AT)
+    a_later_reading = RETRIEVED_AT + timedelta(minutes=5)
 
     with (
+        clock_reading_in_turn(RETRIEVED_AT, a_later_reading),
         patch(
             "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
             return_value=HISTORY_OLDER_THAN_THE_HORIZON,
@@ -233,7 +251,10 @@ def test_run_refetches_a_history_gap_after_the_recent_refresh():
 
     recent_call, history_call = mock_process_window.call_args_list
     _conn, recent_start, recent_end, retrieved_at = recent_call.args
-    _conn, history_start, history_end, _retrieved_at = history_call.args
+    _conn, history_start, history_end, history_retrieved_at = history_call.args
+    # One capture time for the whole run: every window is stamped with it.
+    assert retrieved_at == RETRIEVED_AT
+    assert history_retrieved_at == RETRIEVED_AT
     assert recent_end == retrieved_at - timedelta(days=1)
     assert recent_start == recent_end - timedelta(days=7)
     assert history_start <= missing_start < history_end
@@ -247,13 +268,14 @@ def test_run_refetches_a_history_gap_after_the_recent_refresh():
 
 def test_run_attempts_every_history_gap_when_one_request_fails():
     conn = Mock()
-    older_gap = a_period_start_100_days_ago() - timedelta(days=100)
-    newer_gap = a_period_start_100_days_ago()
+    older_gap = a_period_start_100_days_before(RETRIEVED_AT) - timedelta(days=100)
+    newer_gap = a_period_start_100_days_before(RETRIEVED_AT)
     recent_refresh = (0, False)
     failed_request = RuntimeError("expected a non-empty data list")
     later_window = (0, False)
 
     with (
+        clock_reading(RETRIEVED_AT),
         patch(
             "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
             return_value=HISTORY_OLDER_THAN_THE_HORIZON,
@@ -279,6 +301,7 @@ def test_run_attempts_every_history_gap_when_one_request_fails():
 
 def run_with_one_history_gap(recent_outcome, history_outcome):
     with (
+        clock_reading(RETRIEVED_AT),
         patch(
             "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
             return_value=HISTORY_OLDER_THAN_THE_HORIZON,
@@ -289,7 +312,7 @@ def run_with_one_history_gap(recent_outcome, history_outcome):
         ),
         patch(
             "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
-            return_value=[a_period_start_100_days_ago()],
+            return_value=[a_period_start_100_days_before(RETRIEVED_AT)],
         ),
         patch(
             "ingestion.carbon_intensity.outturn_poller.process_window",
@@ -323,6 +346,7 @@ def test_run_leaves_history_gaps_alone_between_refetch_days():
     conn = Mock()
 
     with (
+        clock_reading(RETRIEVED_AT),
         patch(
             "ingestion.carbon_intensity.outturn_poller.stored_period_summary",
             return_value=HISTORY_OLDER_THAN_THE_HORIZON,
@@ -333,7 +357,7 @@ def test_run_leaves_history_gaps_alone_between_refetch_days():
         ),
         patch(
             "ingestion.carbon_intensity.outturn_poller.missing_period_starts",
-            return_value=[a_period_start_100_days_ago()],
+            return_value=[a_period_start_100_days_before(RETRIEVED_AT)],
         ) as mock_missing_period_starts,
         patch(
             "ingestion.carbon_intensity.outturn_poller.process_window",

@@ -17,6 +17,7 @@ from ingestion.source_api import USER_AGENT
 from ingestion.validation import validate_rows
 
 URL = "https://data.elexon.co.uk/bmrs/api/v1/reference/bmunits/all"
+FIRST_EXTRACT_MINIMUM_ROWS = 2500
 CAPACITY_FIELDS = ("demandCapacity", "generationCapacity")
 CAPACITY_WHITESPACE = " \t\n\r\f\v"
 CAPACITY_NUMBER = re.compile(
@@ -220,16 +221,20 @@ def previous_extract(conn):
         previous = cursor.fetchone()
         if previous is None:
             return None, set()
+        previous_extract_id, _, _ = previous
         cursor.execute(
             "SELECT DISTINCT national_grid_bm_unit FROM raw.elexon_bm_units "
             "WHERE extract_id = %s",
-            (previous[0],),
+            (previous_extract_id,),
         )
-        return previous, {row[0] for row in cursor.fetchall()}
+        previous_keys = set()
+        for (national_grid_bm_unit,) in cursor.fetchall():
+            previous_keys.add(national_grid_bm_unit)
+        return previous, previous_keys
 
 
 def check_completeness(
-    rows, unit_count, previous, previous_keys, *, first_min=2500, accept_shrink=False
+    rows, unit_count, previous, previous_keys, *, accept_shrink=False
 ):
     """Block obvious truncation or mass disappearance before publication.
 
@@ -238,22 +243,22 @@ def check_completeness(
     with this extract."""
 
     if previous is None:
-        if len(rows) < first_min:
+        if len(rows) < FIRST_EXTRACT_MINIMUM_ROWS:
             raise RuntimeError("BM-unit first extract is below the reviewed minimum")
         return
 
+    _, previous_rows, previous_units = previous
     if accept_shrink:
         logger.warning(
             "Shrink checks skipped by accept_shrink: %s rows and %s units; "
             "the previous extract had %s rows and %s units",
             len(rows),
             unit_count,
-            previous[1],
-            previous[2],
+            previous_rows,
+            previous_units,
         )
         return
 
-    _, previous_rows, previous_units = previous
     if len(rows) < previous_rows * 0.95 or unit_count < previous_units * 0.95:
         raise RuntimeError("BM-unit extract shrank by more than five percent")
 
@@ -322,14 +327,17 @@ def locked_extract(conn, expected_id):
                 "ORDER BY retrieved_at DESC, extract_id DESC LIMIT 1"
             )
             manifest = cursor.fetchone()
-            if manifest is None or str(manifest[0]) != str(expected_id):
+            if manifest is None:
+                raise RuntimeError("The expected BM-unit extract is not latest")
+            latest_id, manifest_rows, manifest_units = manifest
+            if str(latest_id) != str(expected_id):
                 raise RuntimeError("The expected BM-unit extract is not latest")
             cursor.execute(
                 "SELECT count(*), count(DISTINCT national_grid_bm_unit) "
                 "FROM raw.elexon_bm_units WHERE extract_id = %s",
                 (str(expected_id),),
             )
-            if cursor.fetchone() != (manifest[1], manifest[2]):
+            if cursor.fetchone() != (manifest_rows, manifest_units):
                 raise RuntimeError("The BM-unit manifest counts do not match raw rows")
         yield
     finally:
