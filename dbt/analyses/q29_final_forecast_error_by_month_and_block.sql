@@ -17,7 +17,8 @@
 -- window, with and without an error, and over those with one: the mean
 -- absolute error, the mean error, the median error and the share of errors
 -- equal to 0. Describe only: nothing is tested. The overall row was partly
--- seen before the rule (a September 2026 exploration: mean +0.43, median 0).
+-- seen before the rule: a September 2026 exploration over a different window
+-- read mean +0.43 and median 0 as forecast minus actual, the opposite sign.
 
 {% set error_from = var('final_forecast_error_from') %}
 {% set error_until = var('final_forecast_error_until') %}
@@ -87,7 +88,7 @@ window_errors as (
 cells as (
     select
         1 as section,
-        'all half-hours (partly seen before the rule: mean +0.43, median 0)' as item,
+        'all half-hours (partly seen before the rule as forecast minus actual: mean +0.43, median 0)' as item,
         error_api_final
     from window_errors
 

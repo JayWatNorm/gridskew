@@ -1281,7 +1281,7 @@ def q29_cell(half_hours, with_error, statistics):
 Q29_EXPECTED = {
     (
         1,
-        "all half-hours (partly seen before the rule: mean +0.43, median 0)",
+        "all half-hours (partly seen before the rule as forecast minus actual: mean +0.43, median 0)",
     ): q29_cell(7440, 7, ("3.143", "1.429", "2.000", "0.143")),
     (2, "settlement month 2025-10 (partial: 26 to 31)"): q29_cell(
         290, 4, ("2.500", "0.000", "1.000", "0.250")
