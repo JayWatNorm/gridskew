@@ -1,11 +1,11 @@
 models:
   - name: int_elexon__bm_unit_cohort
     description: >
-      Private view. The analysis cohort: one row per registry unit with a
-      published fuel type, with the fuel group from elexon_fuel_codes
-      (unclassified when the code is not in the seed). A unit without a fuel
-      type has no physical baseline and is outside every shortfall result.
-      The cohort rule lives here only.
+      One row per registry unit with a published fuel type: the analysis cohort,
+      with the fuel group from elexon_fuel_codes (unclassified when the code is
+      not in the seed). A unit without a fuel type has no physical baseline and
+      is outside every shortfall result. The cohort rule lives here only.
+      Private view.
     columns:
       - name: national_grid_bm_unit
         description: National Grid BM-unit identifier. The grain.
@@ -21,21 +21,20 @@ models:
 
   - name: int_elexon__instruction_intervals
     description: >
-      Private incremental table. One row per National Grid BM unit,
-      settlement half-hour and stretch of time in which one acceptance is in
-      force. Acceptances overlap, and a later acceptance supersedes an earlier
-      one only for the minutes they share, which is how the balancing
-      mechanism settles them. Each half-hour is cut wherever an acceptance
-      starts or stops and every piece goes to the most recently issued
-      acceptance covering it. Minutes no acceptance covers have no row; the
-      PN applies there. Built from the latest capture of each ramp point.
-      Each run recomputes every half-hour
-      touched by any capture of a ramp point captured since the stored
-      watermark minus capture_margin, replacing all of that half-hour's rows;
-      a half-hour recomputed to no stretch keeps one row with a null
-      interval_from so that its old rows are replaced. After a manual load, a
-      raw edit or a logic change, run
-      `--select int_elexon__instruction_intervals+ --full-refresh`.
+      One row per National Grid BM unit, settlement half-hour and stretch of
+      time in which one acceptance is in force. Acceptances overlap, and a later
+      acceptance supersedes an earlier one only for the minutes they share,
+      which is how the balancing mechanism settles them. Each half-hour is cut
+      wherever an acceptance starts or stops and every piece goes to the most
+      recently issued acceptance covering it. Minutes no acceptance covers have
+      no row; the PN applies there. Built from the latest capture of each ramp
+      point. Each run recomputes every half-hour touched by any capture of a
+      ramp point captured since the stored watermark minus capture_margin,
+      replacing all of that half-hour's rows; a half-hour recomputed to no
+      stretch keeps one row with a null interval_from so that its old rows are
+      replaced. After a manual load, a raw edit or a logic change, run `--select
+      int_elexon__instruction_intervals+ --full-refresh`. Private incremental
+      table.
     columns:
       - name: national_grid_bm_unit
         description: National Grid BM-unit identifier. Part of the grain.
@@ -67,29 +66,28 @@ models:
 
   - name: int_shortfall_by_unit_period
     description: >
-      Private incremental table. One row per cohort unit and settlement period
-      that has a PN. The cohort is every registry unit with a published fuel
-      type, grouped by elexon_fuel_codes; a unit without a fuel type has no
-      physical baseline and is outside the table. Expected output is the PN
-      with the instructed level in its place for the minutes an acceptance
-      was in force. metered_mwh is the latest settlement run captured; the first
-      captured value is carried for the restatement check. ABSVD (QAS) sits
-      beside the other columns and changes none of them. Each run recomputes
-      only unit-periods with a PN, metered or acceptance capture since the
-      stored watermark minus capture_margin, every period of a settlement
-      date with a QAS capture since then, and every period of a unit whose
-      fuel type or Elexon ID in the cohort differs from the ones stored or that
-      has PN but no rows yet. Two registry events need a full refresh: a unit that
-      loses its fuel type keeps its rows (the analyses join the cohort, so it
-      leaves the results at once), and another unit starting or stopping to
-      share this unit's Elexon ID changes the metered mapping without
-      touching this unit's registry row; the nightly warning
-      warn_cohort_elexon_id_shared names the units concerned. After a manual
-      load (the QAS backfill included), a raw edit,
-      a seed change or a logic change, run
-      `--select int_shortfall_by_unit_period+ --full-refresh`. Every result
-      read from this table is conditional on the cohort; the coverage analysis
-      reports what the cohort leaves out.
+      One row per cohort unit and settlement period that has a PN. The cohort is
+      every registry unit with a published fuel type, grouped by
+      elexon_fuel_codes; a unit without a fuel type has no physical baseline and
+      is outside the table. Expected output is the PN with the instructed level
+      in its place for the minutes an acceptance was in force. metered_mwh is
+      the latest settlement run captured; the first captured value is carried
+      for the restatement check. ABSVD (QAS) sits beside the other columns and
+      changes none of them. Each run recomputes only unit-periods with a PN,
+      metered or acceptance capture since the stored watermark minus
+      capture_margin, every period of a settlement date with a QAS capture since
+      then, and every period of a unit whose fuel type or Elexon ID in the
+      cohort differs from the ones stored or that has PN but no rows yet. Two
+      registry events need a full refresh: a unit that loses its fuel type keeps
+      its rows (the analyses join the cohort, so it leaves the results at once),
+      and another unit starting or stopping to share this unit's Elexon ID
+      changes the metered mapping without touching this unit's registry row; the
+      nightly warning warn_cohort_elexon_id_shared names the units concerned.
+      After a manual load (the QAS backfill included), a raw edit, a seed change
+      or a logic change, run `--select int_shortfall_by_unit_period+
+      --full-refresh`. Every result read from this table is conditional on the
+      cohort; the coverage analysis reports what the cohort leaves out. Private
+      incremental table.
     columns:
       - name: national_grid_bm_unit
         description: National Grid BM-unit identifier. Part of the key.

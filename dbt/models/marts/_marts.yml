@@ -1,16 +1,16 @@
 models:
   - name: fct_generation
     description: >
-      View. One row per B1610 BM unit and settlement period: metered MWh from
-      the first captured and the latest settlement run (persisted in
-      int_elexon__b1610_period, see that model for the rules and the
-      caveat on first_run_code), with current registry mapping and evidence
-      joined at query time. A registry change shows at once without rewriting
-      any row. Zero, negative, unmapped and non-generator rows are kept;
-      positive MWh alone does not prove physical generation. Registry
-      candidates are grouped per Elexon ID, so the join cannot multiply
-      periods. The tests below re-run the view over all history, so they are
-      tagged full_population and run with full refreshes.
+      One row per B1610 BM unit and settlement period: metered MWh from the
+      first captured and the latest settlement run (persisted in
+      int_elexon__b1610_period, see that model for the rules and the caveat on
+      first_run_code), with current registry mapping and evidence joined at
+      query time. A registry change shows at once without rewriting any row.
+      Zero, negative, unmapped and non-generator rows are kept; positive MWh
+      alone does not prove physical generation. Registry candidates are grouped
+      per Elexon ID, so the join cannot multiply periods. The tests below re-run
+      the view over all history, so they are tagged full_population and run with
+      full refreshes. View.
     columns:
       - name: bm_unit
         description: Elexon BM-unit identifier. Part of the key.
@@ -75,14 +75,14 @@ models:
 
   - name: fct_commitments
     description: >
-      View. One row per PN National Grid BM unit and settlement period: the
-      committed MWh integrated from the latest non-echo capture and its
-      coverage status (persisted in int_elexon__pn_period_mwh, see that model
-      for the capture and coverage rules), with current registry mapping and
-      evidence joined at query time. Incomplete or invalid periods are kept
-      with a NULL pn_mwh; absence of PN is never zero. The registry is unique
-      on National Grid ID, so the join cannot multiply periods. The tests
-      below are tagged full_population, as for fct_generation.
+      One row per PN National Grid BM unit and settlement period: the committed
+      MWh integrated from the latest non-echo capture and its coverage status
+      (persisted in int_elexon__pn_period_mwh, see that model for the capture
+      and coverage rules), with current registry mapping and evidence joined at
+      query time. Incomplete or invalid periods are kept with a NULL pn_mwh;
+      absence of PN is never zero. The registry is unique on National Grid ID,
+      so the join cannot multiply periods. The tests below are tagged
+      full_population, as for fct_generation. View.
     columns:
       - name: national_grid_bm_unit
         description: National Grid BM-unit identifier. Part of the key.

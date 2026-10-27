@@ -1,14 +1,13 @@
 models:
   - name: agg_delivery_by_fuel_group
     description: >
-      Table, built by hand when the README results are refreshed. One row per
-      cohort fuel group: the Q3 statistics of deviation_from_pn_mwh and the
-      Q12 split of the deviation into instructed and unexplained energy, over
-      determinable unit-periods with a PN up to analysis_read_until. The
-      cohort is every registry unit with a fuel type; units without one are
-      left out, as are periods that cannot be judged and periods with no PN.
-      q3_metered_vs_notified.sql and q12_instructed_vs_residual.sql select
-      from it.
+      One row per cohort fuel group: the Q3 statistics of deviation_from_pn_mwh
+      and the Q12 split of the deviation into instructed and unexplained energy,
+      over determinable unit-periods with a PN up to analysis_read_until. The
+      cohort is every registry unit with a fuel type; units without one are left
+      out, as are periods that cannot be judged and periods with no PN.
+      q3_metered_vs_notified.sql and q12_instructed_vs_residual.sql select from
+      it. Table, built by hand when the README results are refreshed.
     config:
       contract:
         enforced: true
@@ -80,13 +79,13 @@ models:
 
   - name: agg_generation_coverage
     description: >
-      Table, built by hand with agg_delivery_by_fuel_group. How much metered
-      generation (positive B1610 energy of the latest settlement run) the
-      cohort holds, up to analysis_read_until. Section 1: by the kind of BM
-      unit, read from its Elexon ID prefix (T_, E_, I_, 2__, V__, other),
-      then all units and all except interconnector traders (I_). Section 2:
-      the selection from all metered unit-periods to the Q3 and Q12
-      population. Consumption (negative energy) is left out.
+      One row per section and item: how much metered generation (positive B1610
+      energy of the latest settlement run) the cohort holds, up to
+      analysis_read_until. Section 1: by the kind of BM unit, read from its
+      Elexon ID prefix (T_, E_, I_, 2__, V__, other), then all units and all
+      except interconnector traders (I_). Section 2: the selection from all
+      metered unit-periods to the Q3 and Q12 population. Consumption (negative
+      energy) is left out. Table, built by hand with agg_delivery_by_fuel_group.
     config:
       contract:
         enforced: true

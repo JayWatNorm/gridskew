@@ -67,7 +67,7 @@ automated tests check that the nightly method and a full rebuild give
 identical tables.
 [Period facts](../dbt/README.md#period-facts)
 
-**Facts are views (saved queries) over stored tables, joined to the current
+**Facts are views over stored tables, joined to the current
 registry.** The heavy half-hour work is stored once; the unit details (fuel
 type, mapping) are joined when the fact is read. A registry change therefore
 shows at once without rewriting any history.

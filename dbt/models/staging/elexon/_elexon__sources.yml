@@ -15,9 +15,10 @@ sources:
 
       - name: elexon_bm_units_extracts
         description: >
-          One committed manifest per complete BM-unit registry response.
-          row_count counts source rows; unit_count counts distinct National
-          Grid BM-unit IDs. Only a successful full response gets a manifest.
+          One row per committed, complete BM-unit registry response: its
+          manifest. row_count counts source rows; unit_count counts distinct
+          National Grid BM-unit IDs. Only a successful full response gets a
+          manifest.
         config:
           freshness:
             warn_after: {count: 25, period: hour}
@@ -36,9 +37,9 @@ sources:
 
       - name: elexon_bm_units
         description: >
-          Every row from each committed full registry response. One unit may
-          have multiple source rows with different EICs; source_index retains
-          the exact response grain.
+          One row per source row of each committed full registry response. One
+          unit may have multiple source rows with different EICs; source_index
+          retains the exact response grain.
         columns:
           - name: extract_id
             description: Complete response identifier.
@@ -56,8 +57,9 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_pn
         description: >
-          Physical Notifications — what each unit said it would export or
-          import. The shortfall models do not subtract QPN from it; see
+          One row per National Grid BM unit, segment start and poll: Physical
+          Notifications, what each unit said it would export or import. The
+          shortfall models do not subtract QPN from it; see
           docs/sources/elexon/015_qpn.md.
         config:
           freshness:
@@ -109,11 +111,12 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_qpn
         description: >
-          Quiescent Physical Notifications — an underlying process quantity
-          deducted from PN to establish the operating level to which Dynamic
-          Data apply. Optional, and almost always zero: in the completed
-          2025-08-22 to 2026-08-23 backfill, 18,300 of 41.5M rows are non-zero,
-          all belonging to one unit.
+          One row per National Grid BM unit, segment start and poll: Quiescent
+          Physical Notifications, an underlying process quantity deducted from
+          PN to establish the operating level to which Dynamic Data apply.
+          Optional, and almost always zero: in the completed 2025-08-22 to
+          2026-08-23 backfill, 18,300 of 41.5M rows are non-zero, all belonging
+          to one unit.
         config:
           freshness:
             warn_after: {count: 25, period: hour}
@@ -158,12 +161,12 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_boalf
         description: >
-          Bid-offer acceptance levels: the MW level the system operator
-          instructed a unit to follow, as ramp points. One row per unit,
-          acceptance, ramp point and poll. A daily poll returns the ramp
-          points that start in its UTC day, both ends included, so an
-          acceptance that crosses midnight is spread over two polls and its
-          midnight point is in both.
+          One row per unit, acceptance, ramp point and poll: bid-offer
+          acceptance levels, the MW level the system operator instructed a unit
+          to follow, as ramp points. A daily poll returns the ramp points that
+          start in its UTC day, both ends included, so an acceptance that
+          crosses midnight is spread over two polls and its midnight point is in
+          both.
         config:
           freshness:
             warn_after: {count: 25, period: hour}
@@ -240,11 +243,10 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_remit
         description: >
-          REMIT messages: outage and availability notices that market
-          participants publish. One row per publication of a message. A
-          notice is revised by publishing it again; every publication is
-          kept. Fields with no column here, such as the outage profile, are
-          in payload.
+          One row per publication of a REMIT message: the outage and
+          availability notices that market participants publish. A notice is
+          revised by publishing it again; every publication is kept. Fields with
+          no column here, such as the outage profile, are in payload.
         config:
           loaded_at_field: publish_time
           # Warn only: the source has no cadence, and two days have passed
@@ -335,11 +337,12 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_b1610
         description: >
-          Metered export or import energy per unit and settlement period — the
-          receipt against PN's promise. Published after five working days,
-          normally seven calendar days and sometimes about twelve around bank
-          holidays. The poller uses a 14-day offset. Later settlement runs
-          arrive as new rows under different settlement_run_type values.
+          One row per BM unit, settlement period and settlement run: metered
+          export or import energy, the receipt against PN's promise. Published
+          after five working days, normally seven calendar days and sometimes
+          about twelve around bank holidays. The poller uses a 14-day offset.
+          Later settlement runs arrive as new rows under different
+          settlement_run_type values.
         config:
           freshness:
             warn_after: {count: 25, period: hour}
@@ -411,14 +414,14 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_qas
         description: >
-          Balancing services volume (QAS): the ABSVD NESO sends for each BM
-          unit and settlement period, energy delivered for services settled
-          outside the balancing mechanism (frequency response, intertrips,
-          Maximum Generation Service, Demand Flexibility Service). One row per
-          unit, period and capture; one capture is one settlement date,
-          captured at 14, 35 and 450 days. Normally only non-zero volumes are
-          sent; exact zeros occur. A unit-period with no row in any capture of
-          a captured date has no ABSVD.
+          One row per unit, settlement period and capture: the balancing
+          services volume (QAS), the ABSVD NESO sends for each BM unit and
+          settlement period, energy delivered for services settled outside the
+          balancing mechanism (frequency response, intertrips, Maximum
+          Generation Service, Demand Flexibility Service). One capture is one
+          settlement date, captured at 14, 35 and 450 days. Normally only
+          non-zero volumes are sent; exact zeros occur. A unit-period with no
+          row in any capture of a captured date has no ABSVD.
         config:
           # Warn only: each capture retries for about four days.
           freshness:
@@ -454,13 +457,13 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_ndf
         description: >
-          National Demand forecast (NDF): one row per settlement period,
-          boundary and issue. A new issue every half-hour re-forecasts the
-          next day or two, and every issue is kept. Loaded once, by
-          ingestion/elexon/demand_backfill.py, for publish days 20 August
-          2025 to 17 August 2026; no schedule, so no freshness check.
-          Includes transmission losses; excludes interconnectors, station
-          transformers and pumped storage demand.
+          One row per settlement period, boundary and issue: the National Demand
+          forecast (NDF). A new issue every half-hour re-forecasts the next day
+          or two, and every issue is kept. Loaded once, by
+          ingestion/elexon/demand_backfill.py, for publish days 20 August 2025
+          to 17 August 2026; no schedule, so no freshness check. Includes
+          transmission losses; excludes interconnectors, station transformers
+          and pumped storage demand.
         columns:
 
           - name: settlement_date
@@ -491,10 +494,10 @@ sources:
       # ------------------------------------------------------------------
       - name: elexon_indo
         description: >
-          Initial National Demand outturn (INDO): one row per settlement
-          period and issue, issued after the period ends. The outturn on
-          NDF's basis; never compare it with TSDF. Loaded once with NDF, for
-          the same publish days; no freshness check.
+          One row per settlement period and issue: the Initial National Demand
+          outturn (INDO), issued after the period ends. The outturn on NDF's
+          basis; never compare it with TSDF. Loaded once with NDF, for the same
+          publish days; no freshness check.
         columns:
 
           - name: settlement_date

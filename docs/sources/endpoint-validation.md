@@ -26,12 +26,13 @@ Elexon contracts are flat. Carbon contracts recurse through `intensity` and
 report dotted paths such as `intensity.actual`. A non-dictionary row produces
 an error finding and does not stop later rows from being checked.
 
-Pollers validate the response envelope before row validation. Elexon expects a
-non-empty list; Carbon expects a dictionary containing a non-empty `data` list.
-Invalid envelopes fail without parsing, loading or quarantine. REMIT is the
-exception: an empty list is a normal window in which nothing was published,
-and the run continues (see
-[REMIT ingestion](elexon/031_remit_ingestion.md)).
+Pollers validate the response envelope before row validation. Most Elexon
+datasets expect a non-empty list; QAS, NDF and INDO expect a dictionary
+holding a `data` list, as Carbon does. Invalid envelopes fail without parsing,
+loading or quarantine. An empty list fails too, except in two places where it
+is a quiet window that loads nothing: REMIT (see
+[REMIT ingestion](elexon/031_remit_ingestion.md)) and NDF and INDO (see
+[demand ingestion](elexon/051_demand_ingestion.md)).
 
 Carbon also checks semantic period coverage after compatible rows are loaded.
 Forecast requires consecutive half-hour periods, the first of which contains
@@ -64,9 +65,11 @@ task fails. All-rejected responses skip typed parsing and loading. Outturn
 applies this per request window: it continues after rejected or incomplete
 windows and raises once after all requested windows. HTTP, envelope, parsing,
 quarantine and database failures stop immediately. The exception is the Monday
-re-fetch of outturn history: a failed history window is logged and counted as
-incomplete, the remaining history windows are still attempted, and the run then
-fails.
+re-fetch of outturn history: a failed history request is logged and the
+remaining history windows are still attempted, and a history window the source
+never fills is a warning, not a failure. Rejected rows and database faults
+still fail the run (see
+[outturn ingestion](carbon-intensity/021_outturn_ingestion.md)).
 
 `process_rows` returns the rejected-row count. Each poller that calls it uses
 that count to set its final task status after successful writes. Available
