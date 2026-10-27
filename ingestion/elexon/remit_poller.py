@@ -11,7 +11,12 @@ from psycopg.types.json import Jsonb
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import REMIT_SPEC
 from ingestion.routing import ContractRejected, process_rows
-from ingestion.source_api import USER_AGENT, decimal_json_dumps
+from ingestion.source_api import (
+    USER_AGENT,
+    decimal_json_dumps,
+    utc_from_text_with_seconds,
+    utc_text_to_the_minute,
+)
 
 # One year before the first Physical Notification day, so that a notice
 # published up to a year ahead of its outage is held.
@@ -27,20 +32,14 @@ def fetch(publish_from, publish_to):
     response = requests.get(
         "https://data.elexon.co.uk/bmrs/api/v1/datasets/REMIT/stream",
         params={
-            "publishDateTimeFrom": _utc_text_to_the_minute(publish_from),
-            "publishDateTimeTo": _utc_text_to_the_minute(publish_to),
+            "publishDateTimeFrom": utc_text_to_the_minute(publish_from),
+            "publishDateTimeTo": utc_text_to_the_minute(publish_to),
         },
         headers={"User-Agent": USER_AGENT},
         timeout=60,
     )
     response.raise_for_status()
     return json.loads(response.text, parse_float=Decimal)
-
-
-def _utc_text_to_the_minute(value):
-    # The newest stored publish time comes back in the database session's
-    # time zone, which need not be UTC.
-    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
 
 
 def run(conn, first_publish_time=None):
@@ -116,7 +115,7 @@ def newest_stored_publish_time(conn):
             "SELECT max(publish_time) FROM raw.elexon_remit "
             "WHERE publish_time <= retrieved_at"
         )
-        newest_publish_time = cursor.fetchone()[0]
+        (newest_publish_time,) = cursor.fetchone()
     return newest_publish_time
 
 
@@ -150,7 +149,7 @@ def quarantined_row_count(conn):
               )
             """
         )
-        row_count = cursor.fetchone()[0]
+        (row_count,) = cursor.fetchone()
     return row_count
 
 
@@ -178,8 +177,8 @@ def parse(source_rows, retrieved_at):
 def _parse_row(source_row, retrieved_at):
     mrid = source_row["mrid"]
     revision_number = source_row["revisionNumber"]
-    publish_time = _utc_from_text_with_seconds(source_row["publishTime"])
-    created_time = _utc_from_text_with_seconds(source_row["createdTime"])
+    publish_time = utc_from_text_with_seconds(source_row["publishTime"])
+    created_time = utc_from_text_with_seconds(source_row["createdTime"])
     message_type = source_row.get("messageType")
     event_type = source_row.get("eventType")
     unavailability_type = source_row.get("unavailabilityType")
@@ -190,8 +189,10 @@ def _parse_row(source_row, retrieved_at):
     normal_capacity = source_row.get("normalCapacity")
     available_capacity = source_row.get("availableCapacity")
     unavailable_capacity = source_row.get("unavailableCapacity")
-    event_start_time = _utc_from_text_with_seconds(source_row["eventStartTime"])
-    event_end_time = _utc_from_text_with_seconds(source_row.get("eventEndTime"))
+    event_start_time = utc_from_text_with_seconds(source_row["eventStartTime"])
+    event_end_time = _utc_from_optional_text_with_seconds(
+        source_row.get("eventEndTime")
+    )
     payload = Jsonb(source_row, dumps=decimal_json_dumps)
 
     return (
@@ -216,10 +217,10 @@ def _parse_row(source_row, retrieved_at):
     )
 
 
-def _utc_from_text_with_seconds(value):
+def _utc_from_optional_text_with_seconds(value):
     if value is None:
         return None
-    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return utc_from_text_with_seconds(value)
 
 
 def load(parsed_rows, conn):

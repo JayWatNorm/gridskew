@@ -10,15 +10,18 @@ from ingestion.elexon.contracts import REMIT_SPEC
 from ingestion.elexon.remit_poller import (
     HISTORY_START,
     build_windows,
-    decimal_json_dumps,
     fetch,
-    load,
     parse,
 )
 from ingestion.elexon.remit_poller import run as run_poller
 from ingestion.routing import ContractRejected
 from ingestion.validation import validate_rows
-from tests.fakes import connection_returning_in_turn, cursor_of
+from tests.fakes import (
+    connection_returning_in_turn,
+    cursor_of,
+    quarantined_records,
+    rows_inserted_by_table,
+)
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "elexon" / "remit_publications.json"
 RUN_TIME = datetime(2026, 10, 8, 9, 15, 4, tzinfo=timezone.utc)
@@ -195,26 +198,26 @@ def test_run_rejects_a_response_that_is_not_a_list():
     mock_process_rows.assert_not_called()
 
 
-def test_run_routes_rows_with_its_dataset_label_spec_loader_and_decimal_encoder(
+def test_run_stores_valid_messages_and_quarantines_the_rest_with_published_digits(
     source_rows,
 ):
-    conn = database_with(RUN_TIME - timedelta(minutes=30))
+    valid_message = message_with_mrid(source_rows, "48X000000000284H-ELXP-RMT-00105746")
+    message_without_mrid = {**valid_message, "mrid": None}
+    conn = database_with(RUN_TIME - timedelta(minutes=30), quarantined_rows=1)
 
-    with (
-        patch("ingestion.elexon.remit_poller.fetch", return_value=source_rows),
-        patch(
-            "ingestion.elexon.remit_poller.process_rows",
-            return_value=0,
-        ) as mock_process_rows,
+    with patch(
+        "ingestion.elexon.remit_poller.fetch",
+        return_value=[valid_message, message_without_mrid],
     ):
-        run_at_run_time(conn)
+        with pytest.raises(ContractRejected, match="1 REMIT rows are in quarantine"):
+            run_at_run_time(conn)
 
-    routed = mock_process_rows.call_args
-    assert routed.args == (source_rows,)
-    assert routed.kwargs["dataset"] == "REMIT"
-    assert routed.kwargs["spec"] is REMIT_SPEC
-    assert routed.kwargs["load_rows"] is load
-    assert routed.kwargs["payload_dumps"] is decimal_json_dumps
+    stored_rows = rows_inserted_by_table(conn)["raw.elexon_remit"]
+    (record,) = quarantined_records(conn)
+    payload = record["payload"]
+    assert len(stored_rows) == 1
+    assert record["dataset"] == "REMIT"
+    assert '"normalCapacity": 49.920' in payload.dumps(payload.obj)
 
 
 def test_run_reads_the_newest_publish_time_only_from_rows_stored_after_it():

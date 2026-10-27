@@ -19,6 +19,7 @@ import sys
 import time
 from datetime import date, datetime, timedelta, timezone
 
+from ingestion.database import connect_to_gridskew_prod
 from ingestion.elexon import demand_poller
 
 # Two days before the first settlement date read (22 August 2025), so the
@@ -184,16 +185,6 @@ def exit_code(backfill_report):
     return 0
 
 
-def airflow_connection():
-    """The gridskew_prod connection, as the DAGs open it."""
-
-    from airflow.sdk import BaseHook
-
-    from ingestion.database import connect
-
-    return connect(BaseHook.get_connection("gridskew_prod"))
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -203,7 +194,7 @@ def main(argv=None):
     )
     arguments = parser.parse_args(argv)
     days = publish_days()
-    conn = airflow_connection()
+    conn = connect_to_gridskew_prod()
     try:
         if arguments.dry_run:
             print(json.dumps(plan(conn, days)))

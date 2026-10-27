@@ -246,7 +246,19 @@ def recent_unit_count(conn, settlement_date, run_type):
             "GROUP BY settlement_date) AS per_date",
             (run_type, settlement_date - timedelta(days=7), settlement_date),
         )
-        return cursor.fetchone()[0]
+        (most_units,) = cursor.fetchone()
+        return most_units
+
+
+def _run_type_counts(rows):
+    """Count the rows of each settlement run type in a response."""
+
+    counts = Counter()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        counts[row.get("settlementRunType")] += 1
+    return counts
 
 
 def capture_settlement_date(conn, settlement_date, run_type):
@@ -265,9 +277,7 @@ def capture_settlement_date(conn, settlement_date, run_type):
         settlement_run_type=run_type,
         expected_settlement_date=settlement_date,
     )
-    returned = Counter(
-        row.get("settlementRunType") for row in rows if isinstance(row, dict)
-    )
+    returned = _run_type_counts(rows)
     row_count, stored_periods, unit_count = stored_coverage(
         conn, settlement_date, run_type
     )

@@ -30,8 +30,8 @@ def forecast_covers_48_hours(rows):
     """
 
     periods = _periods(rows, "forecast")
-    first_start = periods[0][0]
-    final_end = periods[-1][1]
+    first_start, _ = periods[0]
+    _, final_end = periods[-1]
     return final_end >= first_start + FORECAST_WINDOW
 
 
@@ -39,10 +39,12 @@ def validate_outturn_window(rows, request_start, request_end):
     """Require the inclusive half-hour coverage observed from the range endpoint."""
 
     periods = _periods(rows, "outturn")
+    first_start, _ = periods[0]
+    _, final_end = periods[-1]
     expected_first_start = _ceil_to_period(request_start) - PERIOD
     expected_final_end = _ceil_to_period(request_end)
 
-    if periods[0][0] != expected_first_start or periods[-1][1] != expected_final_end:
+    if first_start != expected_first_start or final_end != expected_final_end:
         raise ValueError(
             "Incomplete Carbon Intensity outturn response: returned boundaries do "
             "not cover the inclusive request window"
@@ -75,8 +77,8 @@ def _periods(rows, dataset):
         seen_starts.add(start)
 
     for period, next_period in pairwise(periods):
-        period_end = period[1]
-        next_period_start = next_period[0]
+        _, period_end = period
+        next_period_start, _ = next_period
         if period_end != next_period_start:
             raise ValueError(
                 f"Incomplete Carbon Intensity {dataset} response: period gap"

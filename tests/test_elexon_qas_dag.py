@@ -5,14 +5,15 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from test_elexon_b1610_daily_dags import MULTI_DAY_OUTAGE, shortest_retry_span
 
 from ingestion.elexon.qas_backfill import BACKFILL_LAST_DATE, FIRST_QAS_DATE
 from tests.fakes import (
     DAG_SETTINGS,
     DECORATED_FUNCTIONS,
+    MULTI_DAY_OUTAGE,
     FakeAirflowSkipException,
     load_dag_file,
+    shortest_retry_span,
 )
 
 DAG_FILE = "gridskew_elexon_qas_dag.py"

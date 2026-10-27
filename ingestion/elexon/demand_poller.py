@@ -15,7 +15,11 @@ import requests
 from ingestion.database import insert_rows
 from ingestion.elexon.contracts import INDO_SPEC, NDF_SPEC
 from ingestion.routing import ContractRejected, process_rows
-from ingestion.source_api import USER_AGENT, utc_from_text_with_seconds
+from ingestion.source_api import (
+    USER_AGENT,
+    utc_from_text_with_seconds,
+    utc_text_to_the_minute,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,18 +32,14 @@ def fetch(dataset, publish_from, publish_to):
     response = requests.get(
         f"{BASE_URL}/{dataset}",
         params={
-            "publishDateTimeFrom": _utc_text_to_the_minute(publish_from),
-            "publishDateTimeTo": _utc_text_to_the_minute(publish_to),
+            "publishDateTimeFrom": utc_text_to_the_minute(publish_from),
+            "publishDateTimeTo": utc_text_to_the_minute(publish_to),
         },
         headers={"User-Agent": USER_AGENT},
         timeout=60,
     )
     response.raise_for_status()
     return response.json()
-
-
-def _utc_text_to_the_minute(value):
-    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
 
 
 def run(conn, dataset, publish_from, publish_to):

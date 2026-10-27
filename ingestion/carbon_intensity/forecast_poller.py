@@ -12,7 +12,11 @@ from ingestion.carbon_intensity.completeness import (
 from ingestion.carbon_intensity.contracts import FORECAST_SPEC
 from ingestion.database import insert_rows
 from ingestion.routing import ContractRejected, process_rows
-from ingestion.source_api import USER_AGENT, utc_from_text_to_the_minute
+from ingestion.source_api import (
+    USER_AGENT,
+    carbon_intensity_rows,
+    utc_from_text_to_the_minute,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,24 +31,6 @@ def fetch(timestamp):
     )
     response.raise_for_status()
     return response.json()
-
-
-def response_rows(response):
-    """Return rows from a valid Carbon Intensity response envelope."""
-
-    if not isinstance(response, dict):
-        raise RuntimeError(
-            "Invalid response returned from Carbon Intensity forecast API: "
-            "expected a non-empty data list"
-        )
-
-    rows = response.get("data")
-    if not isinstance(rows, list) or not rows:
-        raise RuntimeError(
-            "Invalid response returned from Carbon Intensity forecast API: "
-            "expected a non-empty data list"
-        )
-    return rows
 
 
 def parse(source_rows, retrieved_at):
@@ -90,7 +76,7 @@ def run(conn):
 
     retrieved_at = datetime.now(timezone.utc)
     timestamp = retrieved_at.strftime("%Y-%m-%dT%H:%MZ")
-    rows = response_rows(fetch(timestamp))
+    rows = carbon_intensity_rows(fetch(timestamp), "forecast")
     request_context = {"timestamp": timestamp, "horizon_hours": 48}
 
     rejected_count = process_rows(

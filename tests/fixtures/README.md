@@ -36,10 +36,7 @@ behaviour. The pytest suite makes no live API or database calls. See
 | `qas_volumes.json` | `/balancing/nonbm/volumes`, settlement date 2026-10-01, periods 1 to 50 | 2026-10-16 | **Truncated**: 27 of 5,571 rows, three units, periods 40 to 48: a `V__` and a `2__` unit, two exact zeros, eight negative volumes |
 | `remit_stream.json` | `/datasets/REMIT/stream`, 2h publish window | 2026-08-20 | 4 rows: one mrid at revisions 4, 5, 6 and one other message. `Unplanned` and `Dismissed` observed. No `outageProfile` field |
 | `remit_publications.json` | `/datasets/REMIT/stream`, one request for the UTC day 2026-09-26, **6 of 186 messages** | 2026-10-07 | **Composite**, built by `tests/adhoc/remit_capture_fixture.py`. One publication stored twice with the same `mrid`, `revisionNumber` and `publishTime` and a different `createdTime` and `eventEndTime`; a planned and a dismissed message; an `OtherMarketInformation` message with no unit fields; a three-segment `outageProfile`; a fractional capacity |
-| `mels_stream.json` | `/datasets/MELS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
-| `mils_stream.json` | `/datasets/MILS/stream`, 30min, `T_DRAXX-1` | 2026-08-20 | |
 | `indo.json` | `/datasets/INDO`, 1h publish window | 2026-08-20 | Base endpoint: `{data: [...]}` envelope |
-| `itsdo.json` | `/datasets/ITSDO`, 1h publish window | 2026-08-20 | Envelope |
 | `ndf_truncated.json` | `/datasets/NDF`, 1h publish window | 2026-08-20 | **Truncated extract**: 6 rows of ~119, keeping two forecast vintages (10:16 and 10:49) and a local-date rollover row |
 | `system_prices.json` | `/balancing/settlement/system-prices/2026-08-01/5` | 2026-08-20 | `{metadata, data}` envelope. 18-decimal numerics |
 | `bmunits_truncated.json` | `/reference/bmunits/all` | 2026-08-20 | **Truncated extract**: first 10 of an unknown total. Includes null `fuelType`, null `eic`, and one unit with null `elexonBmUnit` |

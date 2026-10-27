@@ -4,7 +4,13 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from tests.fakes import DAG_SETTINGS, load_dag_file
+from tests.fakes import (
+    DAG_SETTINGS,
+    MULTI_DAY_OUTAGE,
+    load_dag_file,
+    longest_retry_span,
+    shortest_retry_span,
+)
 
 DAILY_CAPTURES = [
     pytest.param("gridskew_elexon_b1610_II_dag.py", "II", id="II"),
@@ -25,41 +31,11 @@ DAYS_UNTIL_REPLACED = [
     pytest.param("gridskew_elexon_b1610_II_dag.py", "II", 21, id="II"),
     pytest.param("gridskew_elexon_b1610_SF_dag.py", "SF", 42, id="SF"),
 ]
-# An Elexon outage over a long weekend.
-MULTI_DAY_OUTAGE = timedelta(days=3)
 
 
 def retry_policy_of(monkeypatch, file_name, run_type):
     load_dag_file(monkeypatch, file_name)
     return DAG_SETTINGS[f"gridskew_elexon_b1610_{run_type}"]["default_args"]
-
-
-def waits_before_each_retry(retry_policy, jitter):
-    """Airflow waits retry_delay * 2**(n-1) before retry n, capped at
-    max_retry_delay; its jitter adds up to the same again before the cap."""
-
-    retries = retry_policy["retries"]
-    if not retry_policy.get("retry_exponential_backoff"):
-        return [retry_policy["retry_delay"]] * retries
-
-    waits = []
-    wait = retry_policy["retry_delay"] * jitter
-    for _retry in range(retries):
-        waits.append(min(wait, retry_policy["max_retry_delay"]))
-        wait = wait * 2
-    return waits
-
-
-def shortest_retry_span(retry_policy):
-    return sum(waits_before_each_retry(retry_policy, jitter=1), timedelta())
-
-
-def longest_retry_span(retry_policy):
-    """Every wait at its longest, and every try running to its time limit."""
-
-    tries = retry_policy["retries"] + 1
-    waits = sum(waits_before_each_retry(retry_policy, jitter=2), timedelta())
-    return waits + tries * retry_policy["execution_timeout"]
 
 
 @pytest.mark.parametrize("file_name,run_type", DAILY_CAPTURES)

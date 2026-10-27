@@ -21,6 +21,17 @@ def connect(airflow_connection):
     )
 
 
+def connect_to_gridskew_prod():
+    """The gridskew_prod connection, as the DAGs open it.
+
+    For the one-off backfills, which run in the Airflow container.
+    """
+
+    from airflow.sdk import BaseHook
+
+    return connect(BaseHook.get_connection("gridskew_prod"))
+
+
 def one_row_statement(insert_sql, column_count):
     """The statement with its one `VALUES %s` slot filled by one row's
     placeholders."""

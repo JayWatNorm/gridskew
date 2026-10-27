@@ -117,6 +117,11 @@ captures: the two period tables that feed the fact views, and the two
 shortfall tables below them. Why this equals a full rebuild is in
 [design decisions](../docs/design-decisions.md).
 
+Each night's delete-and-insert leaves millions of dead rows in the two
+period tables, below PostgreSQL's default autovacuum trigger (20% of a
+table). Each model's `post_hook` sets `autovacuum_vacuum_scale_factor` to
+0.02 on its table, so the setting survives a full refresh.
+
 The following is the normal nightly command sequence for reference. Live runs
 use the guarded Airflow task in the shared `gridskew_dbt` pool; these commands
 alone do not supply its missing-table guard, connection checks or serialisation:

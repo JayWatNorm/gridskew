@@ -9,11 +9,16 @@ from ingestion.carbon_intensity.completeness import validate_outturn_window
 from ingestion.carbon_intensity.contracts import OUTTURN_SPEC
 from ingestion.database import insert_rows
 from ingestion.routing import ContractRejected, process_rows
-from ingestion.source_api import USER_AGENT, utc_from_text_to_the_minute
+from ingestion.source_api import (
+    USER_AGENT,
+    carbon_intensity_rows,
+    utc_from_text_to_the_minute,
+)
 
 logger = logging.getLogger(__name__)
 
 HALF_HOUR = timedelta(minutes=30)
+WINDOW = timedelta(days=30)
 MONDAY = 0
 # Missing history is requested again on one day a week only, so a period the
 # source never publishes is not requested every day.
@@ -34,30 +39,12 @@ def fetch(from_date, to_date):
     return response.json()
 
 
-def response_rows(response):
-    """Return rows from a valid Carbon Intensity response envelope."""
-
-    if not isinstance(response, dict):
-        raise RuntimeError(
-            "Invalid response returned from Carbon Intensity outturn API: "
-            "expected a non-empty data list"
-        )
-
-    rows = response.get("data")
-    if not isinstance(rows, list) or not rows:
-        raise RuntimeError(
-            "Invalid response returned from Carbon Intensity outturn API: "
-            "expected a non-empty data list"
-        )
-    return rows
-
-
-def build_windows(window_start, window_end, chunk_days=30):
+def build_windows(window_start, window_end):
     """Split one request range into windows within the API limit."""
 
     windows = []
     while window_start < window_end:
-        next_end = min(window_start + timedelta(days=chunk_days), window_end)
+        next_end = min(window_start + WINDOW, window_end)
         windows.append((window_start, next_end))
         window_start = next_end
     return windows
@@ -238,7 +225,7 @@ def process_window(conn, from_date, to_date, retrieved_at):
 
     request_start = from_date.replace(second=0, microsecond=0)
     request_end = to_date.replace(second=0, microsecond=0)
-    rows = response_rows(fetch(request_start, request_end))
+    rows = carbon_intensity_rows(fetch(request_start, request_end), "outturn")
     request_context = {
         "from": request_start.isoformat(),
         "to": request_end.isoformat(),
