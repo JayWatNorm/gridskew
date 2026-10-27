@@ -117,3 +117,19 @@ models:
         description: >
           Latest retrieved_at over all captures of the period, echoes
           included; the source of the incremental watermark.
+
+  - name: int_elexon__b1610_period_mapped
+    description: >
+      One row per B1610 BM unit and settlement period: int_elexon__b1610_period
+      with current registry mapping and evidence joined at query time.
+      Protected, so models in other groups read the private period table
+      through it; fct_generation publishes the same columns, and its column
+      descriptions and tests cover these rows. View.
+
+  - name: int_elexon__pn_period_mapped
+    description: >
+      One row per PN National Grid BM unit and settlement period:
+      int_elexon__pn_period_mwh with current registry mapping and evidence
+      joined at query time. Protected, so models in other groups read the
+      private period table through it; fct_commitments publishes the same
+      columns, and its column descriptions and tests cover these rows. View.

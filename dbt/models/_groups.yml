@@ -4,8 +4,10 @@ groups:
       name: James
     description: >
       Period facts and the private intermediate tables that prepare them.
-      A model outside this group cannot reference the private tables; a model
-      that reuses them joins this group.
+      A model outside this group cannot reference the private tables; it
+      reads them through the protected mapped views
+      (int_elexon__b1610_period_mapped, int_elexon__pn_period_mapped), which
+      add the registry mapping.
 
   - name: analysis
     owner:

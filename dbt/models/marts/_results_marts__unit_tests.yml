@@ -12,7 +12,7 @@ unit_tests:
       and NG_X is outside the cohort, so only NG_A's first period counts.
     model: agg_generation_coverage
     given:
-      - input: ref('fct_generation')
+      - input: ref('int_elexon__b1610_period_mapped')
         format: csv
         rows: |
           bm_unit,settlement_date,period_start_utc,mapping_status,mapped_national_grid_bm_unit,latest_quantity_mwh

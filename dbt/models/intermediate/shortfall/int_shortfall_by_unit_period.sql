@@ -28,7 +28,7 @@
 -- means the unit delivered less than expected. Nothing is dropped: a period
 -- that cannot be judged keeps its row and says why in determinability.
 --
--- The PN is used only when fct_commitments maps it to the unit. A PN whose
+-- The PN is used only when int_elexon__pn_period_mapped maps it to the unit. A PN whose
 -- Elexon ID conflicts with the registry's is treated like an incomplete one:
 -- no PN energy, so only an acceptance covering the whole half-hour gives an
 -- expected value, and otherwise the period is labelled pn_conflict.
@@ -60,11 +60,11 @@ with cohort as (
 
 {% if is_incremental() %}
 {% set changed_units = changed_cohort_units(
-    this, ref('int_elexon__bm_unit_cohort'), ref('fct_commitments')
+    this, ref('int_elexon__bm_unit_cohort'), ref('int_elexon__pn_period_mapped')
 ) %}
 -- Each source is filtered on its period table's indexed last_captured_at:
 -- the latest capture of any row of the period, never earlier than the
--- capture the fact view reports, so no recent capture is missed. Keyed like
+-- capture the mapped view reports, so no recent capture is missed. Keyed like
 -- the table, on the settlement date and period, so a period with no UTC
 -- start (a period number beyond a 46-period day) is recomputed too.
 touched as (
@@ -72,7 +72,7 @@ touched as (
         commitments.national_grid_bm_unit,
         commitments.settlement_date,
         commitments.settlement_period
-    from {{ ref('fct_commitments') }} as commitments
+    from {{ ref('int_elexon__pn_period_mapped') }} as commitments
     inner join cohort
         on commitments.national_grid_bm_unit = cohort.national_grid_bm_unit
     where commitments.last_captured_at
@@ -87,7 +87,7 @@ touched as (
         cohort.national_grid_bm_unit,
         generation.settlement_date,
         generation.settlement_period
-    from {{ ref('fct_generation') }} as generation
+    from {{ ref('int_elexon__b1610_period_mapped') }} as generation
     inner join cohort
         on generation.bm_unit = cohort.elexon_bm_unit
     where generation.last_captured_at
@@ -102,7 +102,7 @@ touched as (
     from {{ ref('int_elexon__instruction_intervals') }} as intervals
     inner join cohort
         on intervals.national_grid_bm_unit = cohort.national_grid_bm_unit
-    inner join {{ ref('fct_commitments') }} as commitments
+    inner join {{ ref('int_elexon__pn_period_mapped') }} as commitments
         on commitments.national_grid_bm_unit = intervals.national_grid_bm_unit
         -- Follows from the equal start times; it lets the join use the
         -- period table's index on unit and settlement date.
@@ -128,7 +128,7 @@ touched as (
         from {{ ref('stg_elexon__qas') }}
         where retrieved_at > {{ capture_watermark(this) }} - {{ capture_margin() }}
     ) as captured
-    inner join {{ ref('fct_commitments') }} as commitments
+    inner join {{ ref('int_elexon__pn_period_mapped') }} as commitments
         on commitments.national_grid_bm_unit = cohort.national_grid_bm_unit
         and commitments.settlement_date = captured.settlement_date
     {% if changed_units %}
@@ -143,7 +143,7 @@ touched as (
         commitments.national_grid_bm_unit,
         commitments.settlement_date,
         commitments.settlement_period
-    from {{ ref('fct_commitments') }} as commitments
+    from {{ ref('int_elexon__pn_period_mapped') }} as commitments
     where commitments.national_grid_bm_unit in (
         {%- for unit in changed_units %}
         '{{ unit | replace("'", "''") }}'{{ ',' if not loop.last }}
@@ -166,7 +166,7 @@ commitments as (
         cohort.elexon_bm_unit,
         cohort.fuel_type,
         cohort.fuel_group
-    from {{ ref('fct_commitments') }} as commitments
+    from {{ ref('int_elexon__pn_period_mapped') }} as commitments
     inner join cohort
         on commitments.national_grid_bm_unit = cohort.national_grid_bm_unit
     inner join touched
@@ -189,7 +189,7 @@ commitments as (
         cohort.elexon_bm_unit,
         cohort.fuel_type,
         cohort.fuel_group
-    from {{ ref('fct_commitments') }} as commitments
+    from {{ ref('int_elexon__pn_period_mapped') }} as commitments
     inner join cohort
         on commitments.national_grid_bm_unit = cohort.national_grid_bm_unit
 ),
@@ -233,7 +233,7 @@ qas_latest as (
 ),
 
 -- Metered rows are read by the Elexon ID the registry gives the cohort unit
--- and kept only when the fact view maps them back to the same unit. More
+-- and kept only when the mapped view maps them back to the same unit. More
 -- than one metered row for a period (two Elexon IDs for one unit) is
 -- reported, never summed.
 metered as (
@@ -258,7 +258,7 @@ metered as (
             order by generation.latest_retrieved_at desc, generation.bm_unit
         ) as recency_rank
     from commitments
-    inner join {{ ref('fct_generation') }} as generation
+    inner join {{ ref('int_elexon__b1610_period_mapped') }} as generation
         on generation.bm_unit = commitments.elexon_bm_unit
         and generation.period_start_utc = commitments.period_start_utc
 {% if is_incremental() %}
@@ -295,7 +295,7 @@ intervals as (
 ),
 
 -- The PN energy inside those stretches, from the segments of the capture
--- fct_commitments chose, so it can be taken out and the instructed energy
+-- int_elexon__pn_period_mapped chose, so it can be taken out and the instructed energy
 -- put in its place.
 pn_inside_intervals as (
     select

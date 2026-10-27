@@ -10,7 +10,7 @@ models:
       alone does not prove physical generation. Registry candidates are grouped
       per Elexon ID, so the join cannot multiply periods. The tests below re-run
       the view over all history, so they are tagged full_population and run with
-      full refreshes. View.
+      full refreshes. Published from int_elexon__b1610_period_mapped. View.
     columns:
       - name: bm_unit
         description: Elexon BM-unit identifier. Part of the key.
@@ -82,7 +82,8 @@ models:
       query time. Incomplete or invalid periods are kept with a NULL pn_mwh;
       absence of PN is never zero. The registry is unique on National Grid ID,
       so the join cannot multiply periods. The tests below are tagged
-      full_population, as for fct_generation. View.
+      full_population, as for fct_generation. Published from
+      int_elexon__pn_period_mapped. View.
     columns:
       - name: national_grid_bm_unit
         description: National Grid BM-unit identifier. Part of the key.
