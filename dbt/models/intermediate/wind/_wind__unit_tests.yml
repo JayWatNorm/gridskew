@@ -1,0 +1,104 @@
+unit_tests:
+  - name: test_wind_error_uses_the_latest_issue_before_the_half_hour
+    description: >
+      08:30 takes the 07:30 issue's 08:00 point: the issue stamped exactly
+      08:30 is not before it. 09:00 and 09:30 both take the 08:30 issue's
+      09:00 point. At 11:00 the latest issue, 10:30, holds no 11:00 point, so
+      there is no forecast, although older issues hold one. 07:00 has no
+      issue before it. Each half-hour takes its first WIND publication; the
+      08:30 revision and a CCGT row published earlier are not used.
+    model: int_wind_error_by_period
+    given:
+      - input: ref('stg_elexon__fuelhh')
+        format: csv
+        rows: |
+          settlement_date,settlement_period,start_time,fuel_type,publish_time,generation_mw
+          2025-08-22,17,2025-08-22 07:00:00+00,WIND,2025-08-22 07:30:00+00,1800
+          2025-08-22,20,2025-08-22 08:30:00+00,WIND,2025-08-22 09:00:00+00,2000
+          2025-08-22,20,2025-08-22 08:30:00+00,WIND,2025-08-22 09:30:00+00,2050
+          2025-08-22,21,2025-08-22 09:00:00+00,CCGT,2025-08-22 09:20:00+00,5000
+          2025-08-22,21,2025-08-22 09:00:00+00,WIND,2025-08-22 09:30:00+00,2450
+          2025-08-22,22,2025-08-22 09:30:00+00,WIND,2025-08-22 10:00:00+00,2700
+          2025-08-22,25,2025-08-22 11:00:00+00,WIND,2025-08-22 11:30:00+00,2800
+      - input: ref('stg_elexon__windfor')
+        format: csv
+        rows: |
+          start_time,publish_time,generation_mw
+          2025-08-22 08:00:00+00,2025-08-22 07:30:00+00,2100
+          2025-08-22 09:00:00+00,2025-08-22 07:30:00+00,2200
+          2025-08-22 11:00:00+00,2025-08-22 07:30:00+00,2350
+          2025-08-22 08:00:00+00,2025-08-22 08:30:00+00,9999
+          2025-08-22 09:00:00+00,2025-08-22 08:30:00+00,2600
+          2025-08-22 10:00:00+00,2025-08-22 08:30:00+00,2610
+          2025-08-22 11:00:00+00,2025-08-22 08:30:00+00,2650
+          2025-08-22 12:00:00+00,2025-08-22 10:30:00+00,2700
+      - input: ref('int_shortfall_by_unit_period')
+        rows: []
+      - input: ref('int_elexon__bm_unit_cohort')
+        rows: []
+    expect:
+      format: csv
+      rows: |
+        start_time,outturn_published_at,outturn_mw,forecast_published_at,forecast_mw,curtailment_add_back_mw,wind_error_mw,delivered_wind_error_mw
+        2025-08-22 07:00:00+00,2025-08-22 07:30:00+00,1800,,,0.000000,,
+        2025-08-22 08:30:00+00,2025-08-22 09:00:00+00,2000,2025-08-22 07:30:00+00,2100,0.000000,-100.000000,-100
+        2025-08-22 09:00:00+00,2025-08-22 09:30:00+00,2450,2025-08-22 08:30:00+00,2600,0.000000,-150.000000,-150
+        2025-08-22 09:30:00+00,2025-08-22 10:00:00+00,2700,2025-08-22 08:30:00+00,2600,0.000000,100.000000,100
+        2025-08-22 11:00:00+00,2025-08-22 11:30:00+00,2800,2025-08-22 10:30:00+00,,0.000000,,
+
+  - name: test_wind_add_back_is_a_signed_wind_sum_or_unknown
+    description: >
+      08:30: one wind unit's 50 MWh deviation adds 100 MW; a gas unit's is
+      left out. 09:00: wind deviations of 100 and -30 MWh add 140 MW; a unit
+      outside the cohort is left out. 09:30: a wind unit with an acceptance
+      and a null deviation makes the add-back unknown, so the wind error is
+      null and the delivered error is not. 10:00: no wind unit has an
+      acceptance, so the add-back is 0 although one has a null deviation.
+      Wind error is outturn plus add-back minus forecast.
+    model: int_wind_error_by_period
+    given:
+      - input: ref('stg_elexon__fuelhh')
+        format: csv
+        rows: |
+          settlement_date,settlement_period,start_time,fuel_type,publish_time,generation_mw
+          2025-08-22,20,2025-08-22 08:30:00+00,WIND,2025-08-22 09:00:00+00,950
+          2025-08-22,21,2025-08-22 09:00:00+00,WIND,2025-08-22 09:30:00+00,1100
+          2025-08-22,22,2025-08-22 09:30:00+00,WIND,2025-08-22 10:00:00+00,1150
+          2025-08-22,23,2025-08-22 10:00:00+00,WIND,2025-08-22 10:30:00+00,1000
+      - input: ref('stg_elexon__windfor')
+        format: csv
+        rows: |
+          start_time,publish_time,generation_mw
+          2025-08-22 08:00:00+00,2025-08-22 06:30:00+00,1000
+          2025-08-22 09:00:00+00,2025-08-22 06:30:00+00,1200
+          2025-08-22 10:00:00+00,2025-08-22 06:30:00+00,900
+      - input: ref('int_elexon__bm_unit_cohort')
+        format: csv
+        rows: |
+          national_grid_bm_unit,fuel_group
+          W1,wind
+          W2,wind
+          W3,wind
+          G1,gas_turbine
+      - input: ref('int_shortfall_by_unit_period')
+        format: csv
+        rows: |
+          national_grid_bm_unit,settlement_date,settlement_period,acceptance_count,instructed_deviation_mwh
+          W1,2025-08-22,20,1,50.000000
+          G1,2025-08-22,20,1,500.000000
+          W1,2025-08-22,21,2,100.000000
+          W2,2025-08-22,21,1,-30.000000
+          N1,2025-08-22,21,1,999.000000
+          W1,2025-08-22,22,1,20.000000
+          W2,2025-08-22,22,1,
+          W3,2025-08-22,22,0,
+          W3,2025-08-22,23,0,
+          W1,2025-08-22,23,0,0.000000
+    expect:
+      format: csv
+      rows: |
+        start_time,wind_units_with_acceptance,wind_units_with_acceptance_and_null_deviation,wind_units_with_null_deviation,curtailment_add_back_mw,wind_error_mw,delivered_wind_error_mw
+        2025-08-22 08:30:00+00,1,0,0,100.000000,50.000000,-50
+        2025-08-22 09:00:00+00,2,0,0,140.000000,40.000000,-100
+        2025-08-22 09:30:00+00,2,1,2,,,-50
+        2025-08-22 10:00:00+00,0,0,1,0.000000,100.000000,100

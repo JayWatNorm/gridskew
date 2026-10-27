@@ -28,7 +28,7 @@ from ingestion.carbon_intensity.forecast_poller import load as load_forecast
 from ingestion.carbon_intensity.forecast_poller import parse as parse_forecast
 from ingestion.carbon_intensity.outturn_poller import load as load_outturn
 from ingestion.carbon_intensity.outturn_poller import parse as parse_outturn
-from ingestion.elexon import demand_backfill, qas_poller
+from ingestion.elexon import demand_backfill, qas_poller, wind_backfill
 from ingestion.elexon.b1610_poller import (
     decimal_json_dumps,
     recent_unit_count,
@@ -49,6 +49,12 @@ from ingestion.elexon.remit_poller import (
     quarantined_row_count,
 )
 from ingestion.elexon.remit_poller import parse as parse_remit
+from ingestion.elexon.wind_poller import (
+    load_fuelhh,
+    load_windfor,
+    parse_fuelhh,
+    parse_windfor,
+)
 from ingestion.routing import ContractRejected, quarantine_rows
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
@@ -137,6 +143,28 @@ INDO_COLUMNS = (
 )
 # A UTC publish day after the moved fixture rows' (19 August 2000).
 HELD_PUBLISH_DAY = date(2000, 8, 20)
+WINDFOR_COLUMNS = ("start_time", "publish_time", "generation", "retrieved_at")
+FUELHH_COLUMNS = (
+    "settlement_date",
+    "settlement_period",
+    "start_time",
+    "fuel_type",
+    "publish_time",
+    "generation",
+    "retrieved_at",
+)
+# A summer day's eight WINDFOR issue times, UTC. The last falls on the next
+# London day.
+WINDFOR_ISSUE_TIMES = (
+    "03:30",
+    "05:30",
+    "08:30",
+    "10:30",
+    "12:30",
+    "16:30",
+    "19:30",
+    "23:30",
+)
 B1610_COLUMNS = (
     "bm_unit",
     "national_grid_bm_unit_id",
@@ -495,6 +523,63 @@ def check_a_held_publish_day_is_a_utc_day(writer):
     assert held == {HELD_PUBLISH_DAY}, f"NDF days held in a London session: {held}"
 
 
+def windfor_issues_of_a_summer_day():
+    """Eight WINDFOR issues on 20 August 2000 (UTC), each with two hourly
+    points, shaped as the API returns them."""
+
+    rows = []
+    for issue_number, issue_time in enumerate(WINDFOR_ISSUE_TIMES):
+        for point_start in ("2000-08-20T21:00:00Z", "2000-08-20T22:00:00Z"):
+            rows.append(
+                {
+                    "dataset": "WINDFOR",
+                    "publishTime": f"2000-08-20T{issue_time}:00Z",
+                    "startTime": point_start,
+                    "generation": 3000 + 10 * issue_number + int(point_start[11:13]),
+                }
+            )
+    return rows
+
+
+def fuelhh_wind_periods_of_a_summer_day():
+    """Periods 1 and 2 of 20 August 2000: they start on 19 August in UTC."""
+
+    return [
+        {
+            "dataset": "FUELHH",
+            "publishTime": "2000-08-19T23:30:00Z",
+            "startTime": "2000-08-19T23:00:00Z",
+            "settlementDate": "2000-08-20",
+            "settlementPeriod": 1,
+            "fuelType": "WIND",
+            "generation": 2578,
+        },
+        {
+            "dataset": "FUELHH",
+            "publishTime": "2000-08-20T00:00:00Z",
+            "startTime": "2000-08-19T23:30:00Z",
+            "settlementDate": "2000-08-20",
+            "settlementPeriod": 2,
+            "fuelType": "WIND",
+            "generation": 2541,
+        },
+    ]
+
+
+def check_a_held_wind_publish_day_is_a_utc_day():
+    """The eight WINDFOR issues already loaded hold their UTC day in a London
+    session too, though in summer the last falls on the next London day."""
+
+    london = disposable_connection("Europe/London")
+    try:
+        held = wind_backfill.held_windfor_days(
+            london, [HELD_PUBLISH_DAY, HELD_PUBLISH_DAY + timedelta(days=1)]
+        )
+    finally:
+        london.close()
+    assert held == {HELD_PUBLISH_DAY}, f"WINDFOR days held in a London session: {held}"
+
+
 def check_qas_captures(writer, reader):
     """Every QAS value reads back from its own column, and a second capture of
     the same date is kept beside the first."""
@@ -594,6 +679,8 @@ def delete_check_rows(writer):
             "raw.elexon_remit",
             "raw.elexon_ndf",
             "raw.elexon_indo",
+            "raw.elexon_windfor",
+            "raw.elexon_fuelhh",
         ):
             cursor.execute(
                 f"DELETE FROM {table} WHERE retrieved_at = %s", (CHECK_CAPTURE,)
@@ -697,6 +784,27 @@ def main():
             ("settlement_date", "settlement_period", "publish_time"),
         )
         check_a_held_publish_day_is_a_utc_day(writer)
+        check_elexon_load(
+            writer,
+            reader,
+            "raw.elexon_windfor",
+            windfor_issues_of_a_summer_day(),
+            parse_windfor,
+            load_windfor,
+            WINDFOR_COLUMNS,
+            ("start_time", "publish_time"),
+        )
+        check_a_held_wind_publish_day_is_a_utc_day()
+        check_elexon_load(
+            writer,
+            reader,
+            "raw.elexon_fuelhh",
+            fuelhh_wind_periods_of_a_summer_day(),
+            parse_fuelhh,
+            load_fuelhh,
+            FUELHH_COLUMNS,
+            ("settlement_date", "settlement_period", "fuel_type", "publish_time"),
+        )
     finally:
         writer.rollback()
         delete_check_rows(writer)

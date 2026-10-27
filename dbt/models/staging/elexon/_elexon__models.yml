@@ -315,3 +315,41 @@ models:
         description: The source's demand, MW averaged over the period.
       - name: retrieved_at
         description: When the request that first stored the row ran.
+
+  - name: stg_elexon__windfor
+    description: >
+      One row per hourly point and issue of the national wind generation
+      forecast (WINDFOR). Every issue is kept; the raw table's primary key
+      (start_time, publish_time) holds the grain, so the view has no separate
+      key tests.
+    columns:
+      - name: start_time
+        description: The hour the point forecasts, UTC. Part of the key.
+      - name: publish_time
+        description: The source's publish-time stamp for the issue, stored as given (marked UTC; in summer it may show UK clock time). Part of the key.
+      - name: generation_mw
+        description: The source's generation, MW; hourly mean or instant is not documented.
+      - name: retrieved_at
+        description: When the request that first stored the row ran.
+
+  - name: stg_elexon__fuelhh
+    description: >
+      One row per settlement period, fuel type and publication of the
+      half-hourly generation outturn by fuel type (FUELHH); only WIND is
+      loaded. The raw table's primary key (settlement_date,
+      settlement_period, fuel_type, publish_time) holds the grain.
+    columns:
+      - name: settlement_date
+        description: British local time. Part of the key.
+      - name: settlement_period
+        description: Settlement period, 1 to 46/48/50. Part of the key.
+      - name: start_time
+        description: Start of the settlement period, UTC, from the source.
+      - name: fuel_type
+        description: The source fuel type code (WIND). Part of the key.
+      - name: publish_time
+        description: When Elexon published the value, UTC. Part of the key.
+      - name: generation_mw
+        description: The source's generation, MW averaged over the period.
+      - name: retrieved_at
+        description: When the request that first stored the row ran.

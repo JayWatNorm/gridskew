@@ -1,4 +1,4 @@
-"""Check the one-look analyses (Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29) on worked rows.
+"""Check the one-look analyses (Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29, Q30) on worked rows.
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -38,6 +38,8 @@ Q29_WINDOW_VARS = {
     "final_forecast_error_from": "2025-10-26",
     "final_forecast_error_until": "2026-03-29",
 }
+# Q30's worked window: 25 to 27 October 2025, round the 50-period day.
+Q30_WINDOW_VARS = {"q30_window_from": "2025-10-25", "q30_window_until": "2025-10-27"}
 REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 7,
@@ -46,6 +48,7 @@ REACHED_VARS = {
     "forecast_stalls_days_needed": 4,
     **STALLS_WINDOW_VARS,
     **Q29_WINDOW_VARS,
+    **Q30_WINDOW_VARS,
 }
 NOT_REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
@@ -1309,6 +1312,416 @@ Q29_EXPECTED = {
     ),
 }
 
+# Q30 runs on the raw-shaped rows below through the compiled
+# int_wind_error_by_period (a temporary view over them), so the pairing, the
+# add-back and the analysis are worked together. The window is settlement
+# dates C 25 October 2025 (48 periods), A 26 October (the 50-period day,
+# starting 23:00 UTC on the 25th) and B 27 October (48 periods, GMT): 146
+# half-hours. Times below are UTC.
+#
+# Population, nine half-hours (carbon error e = actual - 200; forecast F from
+# the latest issue before the half-hour; outturn O; add-back K; wind error
+# W = O + K - F; delivered error D = O - F):
+#   A1 00:00 (period 3, the first 01:00 local) e +3, F 5000 (issue 23:00 on
+#      the 25th, 1 h old), O 4600: D = W = -400
+#   A2 01:00 (period 5, the second 01:00 local) e -7, F 6000 (same issue,
+#      2 h old), O 6700: D = W = +700
+#   A3 01:30 e +1, the same issue's 01:00 point 6000 (2.5 h old), O 5950:
+#      D = W = -50. A2 and A3 share one point.
+#   A4 06:00 e +9, F 7000 from the 02:00 issue (4 h old): an issue stamped
+#      exactly 06:00, whose 06:00 point is 100, is not before it. O 6300,
+#      D -700; wind unit W1's 50 MWh adds K = +100 (gas unit G1's 500 MWh is
+#      left out): W = -600. A reversed add-back would give -800.
+#   A5 12:30 e -5, F 4000 from the 06:00 issue (6.5 h old), O 4200: +200
+#   B1 03:00 e +2, F 3000 (0.5 h old), O 2800: -200
+#   B2 09:30 e -6, F 3500 (1 h old), O 3700, D +200; W1 100 and W2 50 MWh
+#      add K = +300: W = +500
+#   B3 14:00 e +8, F 8000 (1.5 h old), first O 7200 (a later 9000 is not
+#      used): -800
+#   B4 20:30 e -4, F 2500 (1 h old), O 2840, D +340; W1 30 and W2 -50 MWh
+#      give K = -40 (unit N1, outside the cohort, is left out): W = +300
+# Left out, by first reason: 133 half-hours with no carbon error; B 04:30
+# (no outturn); C 23:00 on the 24th (the only earlier issue is stamped at
+# exactly its start); C 13:30 (the latest issue, 12:30, holds no 13:00
+# point; an older one does); B 14:30 (W2 has an acceptance and a null
+# deviation). 28 October 00:00, after the window, has every value and
+# carbon error +50. Unit W3, uninstructed with a null deviation at A1, does
+# not leave A1 out. A CCGT row at A1, published before its WIND row, is not
+# used.
+#
+# Spearman with average ranks, pooled (n = 9, rank deviations from 5):
+# abs(e) ranks are the values 1 to 9, sum of squares 60. abs(W) ranks A3 1,
+# B1 and A5 2.5 (tied at 200), B4 4, A1 5, B2 6, A4 7, A2 8, B3 9: sum of
+# squares 59.5, cross sum 51.5, rho_abs = 51.5 / sqrt(60 x 59.5) = 0.861932.
+# Signed W and e have no ties: sum of d^2 236, rho_signed = 1 - 236 / 120 =
+# -0.966667. abs(D) ties A5, B1, B2 (200, rank 3) and A2, A4 (700, rank
+# 7.5): cross sum 45, squares 57.5, 45 / sqrt(60 x 57.5) = 0.766131. Signed
+# D ties A5 and B2 (6.5): cross sum -55.5, squares 59.5, -55.5 /
+# sqrt(60 x 59.5) = -0.928878. Minimum ranks would move every tied value.
+#
+# Bootstrap over the two population dates: with seed 20261027 a draw is A
+# twice (249 draws), A and B (504) or B twice (247), so each interval runs
+# from the lowest to the highest of A alone, the pooled value and B alone.
+# A alone (n = 5): rho_abs 1 - 6 x 4 / 120 = 0.8, rho_signed -1, delivered
+# rho_abs 8.5 / sqrt(10 x 9.5) = 0.872082, delivered rho_signed -1. B alone
+# (n = 4): rho_abs 1, rho_signed -1, delivered rho_abs 3 / sqrt(5 x 4.5) =
+# 0.632456, delivered rho_signed 1 - 6 x 18 / 60 = -0.8.
+#
+# Quintiles of abs(W), ntile(5) of 9 is 2, 2, 2, 2, 1. The tie key puts B1
+# (03:00 on the 27th) before A5 (12:30 on the 26th), against period-start
+# order, so quintile 1 is A3 and B1 (e +1, +2: mean abs 1.5, median 1.5),
+# quintile 2 A5 and B4 (-5, -4), 3 A1 and B2 (+3, -6), 4 A4 and A2 (+9,
+# -7), 5 B3 (+8).
+Q30 = "q30_wind_vs_carbon_error"
+Q30_BOOTSTRAP_SEED = 20261027
+WIND_ERROR_MODEL = "int_wind_error_by_period"
+Q30_FIXTURES = """
+create temporary table synthetic_q30_outturn (
+    period_start timestamptz,
+    actual integer,
+    api_final_forecast integer
+) on commit drop;
+create temporary table synthetic_windfor (
+    start_time timestamptz,
+    publish_time timestamptz,
+    generation_mw integer,
+    retrieved_at timestamptz
+) on commit drop;
+create temporary table synthetic_fuelhh (
+    settlement_date date,
+    settlement_period integer,
+    start_time timestamptz,
+    fuel_type text,
+    publish_time timestamptz,
+    generation_mw integer,
+    retrieved_at timestamptz
+) on commit drop;
+create temporary table synthetic_wind_shortfall (
+    national_grid_bm_unit text,
+    settlement_date date,
+    settlement_period integer,
+    acceptance_count integer,
+    instructed_deviation_mwh numeric
+) on commit drop;
+create temporary table synthetic_wind_cohort (
+    national_grid_bm_unit text,
+    fuel_group text
+) on commit drop;
+
+insert into synthetic_q30_outturn
+select period_start::timestamptz, 200 + carbon_error, 200
+from (
+    values
+        ('2025-10-26 00:00+00', 3),
+        ('2025-10-26 01:00+00', -7),
+        ('2025-10-26 01:30+00', 1),
+        ('2025-10-26 06:00+00', 9),
+        ('2025-10-26 12:30+00', -5),
+        ('2025-10-27 03:00+00', {b_carbon_error[0]}),
+        ('2025-10-27 09:30+00', {b_carbon_error[1]}),
+        ('2025-10-27 14:00+00', {b_carbon_error[2]}),
+        ('2025-10-27 20:30+00', {b_carbon_error[3]}),
+        ('2025-10-27 04:30+00', 0),
+        ('2025-10-24 23:00+00', 0),
+        ('2025-10-25 13:30+00', 0),
+        ('2025-10-27 14:30+00', 0),
+        ('2025-10-28 00:00+00', 50)
+) as errors (period_start, carbon_error)
+where {with_carbon};
+
+insert into synthetic_fuelhh
+select settlement_date::date, settlement_period, start_time::timestamptz, fuel_type,
+    start_time::timestamptz + interval '30 minutes' + publish_delay::interval, generation_mw,
+    '2026-10-27 12:00+00'
+from (
+    values
+        ('2025-10-25', 1, '2025-10-24 23:00+00', 'WIND', '0', 1000),
+        ('2025-10-25', 30, '2025-10-25 13:30+00', 'WIND', '0', 1000),
+        ('2025-10-26', 3, '2025-10-26 00:00+00', 'CCGT', '-10 minutes', 99999),
+        ('2025-10-26', 3, '2025-10-26 00:00+00', 'WIND', '0', 4600),
+        ('2025-10-26', 5, '2025-10-26 01:00+00', 'WIND', '0', 6700),
+        ('2025-10-26', 6, '2025-10-26 01:30+00', 'WIND', '0', 5950),
+        ('2025-10-26', 15, '2025-10-26 06:00+00', 'WIND', '0', 6300),
+        ('2025-10-26', 28, '2025-10-26 12:30+00', 'WIND', '0', 4200),
+        ('2025-10-27', 7, '2025-10-27 03:00+00', 'WIND', '0', 2800),
+        ('2025-10-27', 20, '2025-10-27 09:30+00', 'WIND', '0', 3700),
+        ('2025-10-27', 29, '2025-10-27 14:00+00', 'WIND', '0', 7200),
+        ('2025-10-27', 29, '2025-10-27 14:00+00', 'WIND', '30 minutes', 9000),
+        ('2025-10-27', 30, '2025-10-27 14:30+00', 'WIND', '0', 7900),
+        ('2025-10-27', 42, '2025-10-27 20:30+00', 'WIND', '0', 2840),
+        ('2025-10-28', 1, '2025-10-28 00:00+00', 'WIND', '0', 20000)
+) as outturns (
+    settlement_date, settlement_period, start_time, fuel_type, publish_delay, generation_mw
+);
+
+insert into synthetic_windfor
+select start_time::timestamptz, publish_time::timestamptz, generation_mw, '2026-10-27 12:00+00'
+from (
+    values
+        ('2025-10-24 23:00+00', '2025-10-24 23:00+00', 9999),
+        ('2025-10-25 13:00+00', '2025-10-25 03:30+00', 7777),
+        ('2025-10-25 12:00+00', '2025-10-25 12:30+00', 1100),
+        ('2025-10-26 00:00+00', '2025-10-25 23:00+00', 5000),
+        ('2025-10-26 01:00+00', '2025-10-25 23:00+00', 6000),
+        ('2025-10-26 06:00+00', '2025-10-26 02:00+00', 7000),
+        ('2025-10-26 06:00+00', '2025-10-26 06:00+00', 100),
+        ('2025-10-26 12:00+00', '2025-10-26 06:00+00', 4000),
+        ('2025-10-27 03:00+00', '2025-10-27 02:30+00', 3000),
+        ('2025-10-27 09:00+00', '2025-10-27 08:30+00', 3500),
+        ('2025-10-27 14:00+00', '2025-10-27 12:30+00', 8000),
+        ('2025-10-27 20:00+00', '2025-10-27 19:30+00', 2500),
+        ('2025-10-28 00:00+00', '2025-10-27 23:30+00', 1000)
+) as points (start_time, publish_time, generation_mw);
+
+insert into synthetic_wind_cohort values
+    ('W1', 'wind'), ('W2', 'wind'), ('W3', 'wind'), ('G1', 'gas_turbine');
+
+insert into synthetic_wind_shortfall values
+    ('W1', '2025-10-26', 15, 1, 50),
+    ('G1', '2025-10-26', 15, 1, 500),
+    ('W3', '2025-10-26', 3, 0, null),
+    ('W1', '2025-10-26', 3, 0, 0),
+    ('W1', '2025-10-27', 20, 2, 100),
+    ('W2', '2025-10-27', 20, 1, 50),
+    ('W1', '2025-10-27', 42, 1, 30),
+    ('W2', '2025-10-27', 42, 1, -50),
+    ('N1', '2025-10-27', 42, 1, 999),
+    ('W1', '2025-10-27', 30, 1, 20),
+    ('W2', '2025-10-27', 30, 1, null),
+    ('W1', '2025-10-28', 1, 1, 5000);
+"""
+Q30_B_CARBON_ERRORS = (2, -6, 8, -4)
+Q30_CONSTANT_B_CARBON_ERRORS = (4, 4, 4, 4)
+Q30_WIND_TABLES = {
+    "stg_elexon__fuelhh": "pg_temp.synthetic_fuelhh",
+    "stg_elexon__windfor": "pg_temp.synthetic_windfor",
+    "int_shortfall_by_unit_period": "pg_temp.synthetic_wind_shortfall",
+    "int_elexon__bm_unit_cohort": "pg_temp.synthetic_wind_cohort",
+}
+Q30_TABLES = {
+    "int_carbon_outturn__latest": "pg_temp.synthetic_q30_outturn",
+    "int_wind_error_by_period": "pg_temp.synthetic_wind_error",
+}
+
+PRIMARY_ERROR = "wind error, outturn with cohort curtailment add-back"
+DELIVERED_ERROR = "wind error, delivered outturn"
+Q30_POPULATION = (
+    1,
+    "population: window half-hours with error_api_final, a forecast, a first "
+    "outturn and a known add-back",
+    None,
+)
+Q30_READING = (
+    1,
+    "reading: describe only, no test, threshold or verdict; associated with, "
+    "never caused by",
+    None,
+)
+RHO_ABS = (2, "rho_abs (primary)", f"abs({PRIMARY_ERROR}) with abs(error_api_final)")
+RHO_SIGNED = (
+    3,
+    "rho_signed (secondary)",
+    f"{PRIMARY_ERROR}, with error_api_final; expected direction negative",
+)
+DELIVERED_RHO_ABS = (
+    4,
+    "rho_abs (sensitivity)",
+    f"abs({DELIVERED_ERROR}) with abs(error_api_final)",
+)
+DELIVERED_RHO_SIGNED = (
+    4,
+    "rho_signed (sensitivity)",
+    f"{DELIVERED_ERROR}, with error_api_final",
+)
+Q30_MEASURES = (RHO_ABS, RHO_SIGNED, DELIVERED_RHO_ABS, DELIVERED_RHO_SIGNED)
+QUINTILE_MEAN = f"quintile of abs({PRIMARY_ERROR}): mean abs(error_api_final)"
+QUINTILE_MEDIAN = f"quintile of abs({PRIMARY_ERROR}): median error_api_final"
+QUINTILE_EDGE = (
+    "half-hours sharing the quintile's largest abs(wind error) (value: that error, MW)"
+)
+LEFT_OUT_REASONS = (
+    "no error_api_final",
+    "no first FUELHH wind outturn",
+    "no WINDFOR issue before the half-hour",
+    "the latest issue holds no point for the hour",
+    "add-back unknown: a wind unit with an acceptance has a null instructed deviation",
+)
+AGE_BANDS = ("at most 1 h", "over 1 h to 2 h", "over 2 h to 4 h", "over 4 h")
+CLOCK_CHANGE_DATES = (
+    "clock-change dates with {} periods, held whole (value: their window half-hours)"
+)
+
+
+def measure_key(measure, part=None):
+    """The row key of a measure, or of one of its bootstrap rows."""
+
+    section, name, description = measure
+    if part is None:
+        return (section, f"{name}: {description}", None)
+    return (section, f"{name}: {part}", None)
+
+
+def draws_part(usable_needed):
+    return f"bootstrap draws with a value ({usable_needed} of {BOOTSTRAP_DRAWS} needed)"
+
+
+def measure_cells(measure, rho, interval, usable_needed=900, usable_draws=1000):
+    """A measure's four rows: its rho over the nine half-hours, the usable
+    draws and an available interval (low, high)."""
+
+    low, high = interval
+    return {
+        measure_key(measure): dict(half_hours=9, value=rho),
+        measure_key(measure, draws_part(usable_needed)): dict(
+            value=str(usable_draws), result="available"
+        ),
+        measure_key(measure, "bootstrap 90% interval, low"): dict(value=low),
+        measure_key(measure, "bootstrap 90% interval, high"): dict(value=high),
+    }
+
+
+def quintile_cells(quintile, half_hours, mean, median, wind_range):
+    return {
+        (3, QUINTILE_MEAN, quintile): dict(
+            half_hours=half_hours, value=mean, result=f"abs(wind error) {wind_range} MW"
+        ),
+        (3, QUINTILE_MEDIAN, quintile): dict(half_hours=half_hours, value=median),
+    }
+
+
+def left_out_key(reason_number):
+    reason = LEFT_OUT_REASONS[reason_number - 1]
+    return (5, f"left out, first reason {reason_number}: {reason}", None)
+
+
+def age_band_key(band_number):
+    band = AGE_BANDS[band_number - 1]
+    return (
+        5,
+        f"population forecast age from the source stamp (stamp to half-hour start), band {band_number}: {band}",
+        None,
+    )
+
+
+Q30_EXPECTED = {
+    Q30_POPULATION: dict(
+        half_hours=9, days=2, first_date="2025-10-26", last_date="2025-10-27"
+    ),
+    Q30_READING: dict(
+        result="stated expectation, not a test: abs(rho) under about 0.2"
+    ),
+    **measure_cells(RHO_ABS, "0.861932", ("0.800000", "1.000000")),
+    **measure_cells(RHO_SIGNED, "-0.966667", ("-1.000000", "-0.966667")),
+    **measure_cells(DELIVERED_RHO_ABS, "0.766131", ("0.632456", "0.872082")),
+    **measure_cells(DELIVERED_RHO_SIGNED, "-0.928878", ("-1.000000", "-0.800000")),
+    **quintile_cells(1, 2, "1.500000", "1.500000", "50 to 200"),
+    **quintile_cells(2, 2, "4.500000", "-4.500000", "200 to 300"),
+    **quintile_cells(3, 2, "4.500000", "-1.500000", "400 to 500"),
+    **quintile_cells(4, 2, "8.000000", "1.000000", "600 to 700"),
+    **quintile_cells(5, 1, "8.000000", "8.000000", "800 to 800"),
+    # B1 and A5 share quintile 1's largest abs(wind error), 200; it holds B1.
+    (3, QUINTILE_EDGE, 1): dict(
+        half_hours=2, value="200", result="in this quintile: 1"
+    ),
+    (3, QUINTILE_EDGE, 2): dict(
+        half_hours=1, value="300", result="in this quintile: 1"
+    ),
+    (3, QUINTILE_EDGE, 3): dict(
+        half_hours=1, value="500", result="in this quintile: 1"
+    ),
+    (3, QUINTILE_EDGE, 4): dict(
+        half_hours=1, value="700", result="in this quintile: 1"
+    ),
+    (5, "settlement dates in the window", None): dict(
+        half_hours=146, days=3, first_date="2025-10-25", last_date="2025-10-27"
+    ),
+    left_out_key(1): dict(half_hours=133),
+    left_out_key(2): dict(half_hours=1),
+    left_out_key(3): dict(half_hours=1),
+    left_out_key(4): dict(half_hours=1),
+    left_out_key(5): dict(half_hours=1),
+    (5, "settlement dates with fewer than 46 population half-hours", None): dict(
+        half_hours=9, days=3
+    ),
+    (5, CLOCK_CHANGE_DATES.format(46), None): dict(half_hours=0, days=0, value="0"),
+    (5, CLOCK_CHANGE_DATES.format(50), None): dict(half_hours=5, days=1, value="50"),
+    (5, "population half-hours with a non-zero add-back", None): dict(half_hours=3),
+    (
+        5,
+        "wind unit-periods with an acceptance and a null instructed deviation, in "
+        "window half-hours with an outturn (value: unit-periods)",
+        None,
+    ): dict(value="1"),
+    (
+        5,
+        "wind unit-periods with a null instructed deviation, with or without an "
+        "acceptance, in window half-hours with an outturn (value: unit-periods)",
+        None,
+    ): dict(value="2"),
+    # A1, B1, B2 and B4 (1 h counts as at most 1 h); A2 (exactly 2 h) and B3;
+    # A3 and A4 (exactly 4 h); A5.
+    age_band_key(1): dict(half_hours=4),
+    age_band_key(2): dict(half_hours=2),
+    age_band_key(3): dict(half_hours=2),
+    age_band_key(4): dict(half_hours=1),
+}
+
+# B's carbon errors all +4: a draw of B twice has a constant carbon measure
+# and forms no rho, so 1,000 - 247 = 753 draws are usable for every rho,
+# under 900. Pooled, abs(e) ranks become A3 1, A1 2, B 4.5 (four tied), A5
+# 7, A2 8, A4 9: squares 55, cross sum with abs(W) 27.25, rho_abs = 27.25 /
+# sqrt(55 x 59.5) = 0.476351. With 753 usable draws needed, the intervals
+# are available: rho_abs runs from this pooled value to A alone's 0.8.
+Q30_CONSTANT_B_RHO_ABS = "0.476351"
+
+
+def q30_usable_draws_without_b_twice():
+    return BOOTSTRAP_DRAWS - draws_without_day_one(2, Q30_BOOTSTRAP_SEED)
+
+
+def q30_unavailable_expected(usable_draws):
+    expected = {measure_key(RHO_ABS): dict(value=Q30_CONSTANT_B_RHO_ABS)}
+    for measure in Q30_MEASURES:
+        expected[measure_key(measure, draws_part(900))] = dict(
+            value=str(usable_draws), result="unavailable"
+        )
+        expected[measure_key(measure, "bootstrap 90% interval, low")] = dict(value=None)
+        expected[measure_key(measure, "bootstrap 90% interval, high")] = dict(
+            value=None
+        )
+    return expected
+
+
+def q30_boundary_expected(usable_draws):
+    expected = {}
+    for measure in Q30_MEASURES:
+        expected[measure_key(measure, draws_part(usable_draws))] = dict(
+            value=str(usable_draws), result="available"
+        )
+    expected[measure_key(RHO_ABS, "bootstrap 90% interval, low")] = dict(
+        value=Q30_CONSTANT_B_RHO_ABS
+    )
+    expected[measure_key(RHO_ABS, "bootstrap 90% interval, high")] = dict(
+        value="0.800000"
+    )
+    return expected
+
+
+def q30_empty_expected():
+    """No carbon error at all: no population, and every measure withheld."""
+
+    expected = {
+        Q30_POPULATION: dict(half_hours=0, days=0, first_date=None),
+        left_out_key(1): dict(half_hours=146),
+        (3, QUINTILE_MEAN, 1): dict(half_hours=None, value=None),
+    }
+    for measure in Q30_MEASURES:
+        expected[measure_key(measure)] = dict(half_hours=0, value=None)
+        expected[measure_key(measure, draws_part(900))] = dict(
+            value=None, result="not applicable"
+        )
+    return expected
+
 
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
@@ -1382,7 +1795,13 @@ def draws_without_day_one(days, seed):
 def on_fixtures(manifest, analysis, tables):
     """The analysis's compiled SQL reading the temporary tables instead."""
 
-    node = manifest["nodes"][f"analysis.gridskew.{analysis}"]
+    return compiled_on_fixtures(manifest, f"analysis.gridskew.{analysis}", tables)
+
+
+def compiled_on_fixtures(manifest, node_id, tables):
+    """A compiled node's SQL reading the temporary tables instead."""
+
+    node = manifest["nodes"][node_id]
     sql = node["compiled_code"]
     for relation_id in node["depends_on"]["nodes"]:
         if relation_id.startswith("source."):
@@ -1391,7 +1810,7 @@ def on_fixtures(manifest, analysis, tables):
             relation = manifest["nodes"][relation_id]
         if relation["name"] not in tables:
             raise SystemExit(
-                f"{analysis} reads {relation['name']}, which has no fixture"
+                f"{node['name']} reads {relation['name']}, which has no fixture"
             )
         sql = sql.replace(relation["relation_name"], tables[relation["name"]])
     return sql
@@ -1802,6 +2221,54 @@ def q29_mismatches(conn, reached, time_zone):
     return found
 
 
+def q30_fixtures(reached, b_carbon_errors=Q30_B_CARBON_ERRORS, with_carbon=True):
+    """Q30's rows, and int_wind_error_by_period as a temporary view over them."""
+
+    wind_error_view = compiled_on_fixtures(
+        reached, f"model.gridskew.{WIND_ERROR_MODEL}", Q30_WIND_TABLES
+    )
+    tables = Q30_FIXTURES.format(
+        b_carbon_error=b_carbon_errors, with_carbon=str(with_carbon).lower()
+    )
+    return (
+        f"{tables}\ncreate temporary view synthetic_wind_error as\n"
+        f"{wind_error_view.rstrip()}\n;"
+    )
+
+
+def q30_mismatches(conn, reached, boundary, time_zone):
+    title = f"[{time_zone}] Q30"
+    main_run = run_analysis(
+        conn, q30_fixtures(reached), reached, Q30, Q30_TABLES, time_zone
+    )
+    found = mismatches(title, main_run, Q30_EXPECTED)
+    found += unexpected_rows(title, main_run, Q30_EXPECTED)
+
+    usable_draws = q30_usable_draws_without_b_twice()
+    constant_b = q30_fixtures(reached, Q30_CONSTANT_B_CARBON_ERRORS)
+    unavailable_run = run_analysis(
+        conn, constant_b, reached, Q30, Q30_TABLES, time_zone
+    )
+    found += mismatches(
+        f"{title} unavailable", unavailable_run, q30_unavailable_expected(usable_draws)
+    )
+    boundary_run = run_analysis(conn, constant_b, boundary, Q30, Q30_TABLES, time_zone)
+    found += mismatches(
+        f"{title} boundary", boundary_run, q30_boundary_expected(usable_draws)
+    )
+
+    empty_run = run_analysis(
+        conn,
+        q30_fixtures(reached, with_carbon=False),
+        reached,
+        Q30,
+        Q30_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} no carbon error", empty_run, q30_empty_expected())
+    return found
+
+
 def check_all(reached, not_reached, boundary):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
@@ -1821,20 +2288,22 @@ def check_all(reached, not_reached, boundary):
             found += q27_mismatches(conn, reached, not_reached, time_zone)
             found += q8_q28_mismatches(conn, reached, boundary, time_zone)
             found += q29_mismatches(conn, reached, time_zone)
+            found += q30_mismatches(conn, reached, boundary, time_zone)
     finally:
         conn.close()
     return found
 
 
 def boundary_vars():
-    """REACHED_VARS with Q4's and the Q8 and Q28 usable-draw minimums at their
-    fixtures' usable counts."""
+    """REACHED_VARS with Q4's, the Q8 and Q28 and Q30's usable-draw minimums
+    at their fixtures' usable counts."""
 
     variables = dict(REACHED_VARS)
     variables["shortfall_error_bootstrap_min_usable_draws"] = (
         usable_draws_without_b_twice()
     )
     variables["demand_history_bootstrap_min_usable_draws"] = history_usable_draws()
+    variables["q30_bootstrap_min_usable_draws"] = q30_usable_draws_without_b_twice()
     return variables
 
 
@@ -1848,7 +2317,7 @@ def main():
             "One-look analysis checks require opt-in to a local disposable gridskew_dev"
         )
     found = check_all(
-        compile_analyses(REACHED_VARS),
+        compile_analyses(REACHED_VARS, also_compiled=(WIND_ERROR_MODEL,)),
         compile_analyses(NOT_REACHED_VARS),
         compile_analyses(boundary_vars()),
     )
@@ -1859,7 +2328,7 @@ def main():
             f"{len(found)} one-look analysis cells differ from the worked values"
         )
     print(
-        "One-look analyses: Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28 and Q29 match "
+        "One-look analyses: Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29 and Q30 match "
         "every worked value"
     )
 

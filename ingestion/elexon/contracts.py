@@ -129,6 +129,26 @@ INDO_SPEC = {
 }
 
 
+# The API marks generation nullable. A point or period without a value cannot
+# be paired, so it is rejected, and with it the whole request.
+WINDFOR_SPEC = {
+    "dataset": {"type": str, "required": False, "nullable": True},
+    "generation": {"type": int, "required": True, "nullable": False},
+    "publishTime": {"type": str, "required": True, "nullable": False},
+    "startTime": {"type": str, "required": True, "nullable": False},
+}
+
+FUELHH_SPEC = {
+    "dataset": {"type": str, "required": False, "nullable": True},
+    "generation": {"type": int, "required": True, "nullable": False},
+    "fuelType": {"type": str, "required": True, "nullable": False},
+    "publishTime": {"type": str, "required": True, "nullable": False},
+    "startTime": {"type": str, "required": True, "nullable": False},
+    "settlementDate": {"type": str, "required": True, "nullable": False},
+    "settlementPeriod": {"type": int, "required": True, "nullable": False},
+}
+
+
 # The full registry has many rows with no Elexon identifier and nullable
 # descriptive fields. National Grid identity is present on every observed row.
 BM_UNITS_SPEC = {

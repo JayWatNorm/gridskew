@@ -58,6 +58,8 @@ docs/sources/
     080_mels-mils.md          The headroom                             [optional]
     090_qas.md                Services outside the mechanism (ABSVD)   [running]
     091_qas_ingestion.md        14, 35 and 450 days; one-off backfill
+    100_wind.md               Expected versus metered wind             [WINDFOR, FUELHH]
+    101_wind_ingestion.md       one-off back-fill of a year, no DAG
 ```
 
 The four ideas every dataset follows from are in **How the GB electricity
@@ -80,8 +82,8 @@ BM-unit registry records it once per extract, in `raw.elexon_bm_units_extracts`.
 only way to tell a revision from the original. Where the source labels its own
 revisions it is not: `raw.elexon_b1610` keys on `settlement_run_type` and
 `raw.elexon_remit` on its message ID, `revision_number`, `publish_time`
-and `created_time`, and `raw.elexon_ndf` and `raw.elexon_indo` on
-`publish_time` instead,
+and `created_time`, and `raw.elexon_ndf`, `raw.elexon_indo`,
+`raw.elexon_windfor` and `raw.elexon_fuelhh` on `publish_time` instead,
 so a re-poll finding nothing new inserts nothing and `retrieved_at` records
 when a run was first seen. Each dataset's page states which applies.
 

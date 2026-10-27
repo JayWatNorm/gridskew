@@ -92,6 +92,7 @@ Numbered in build order, not alphabetically.
 | [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Running |
 | [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
 | [090_qas.md](090_qas.md) | [091](091_qas_ingestion.md) | `QAS` (`/balancing/nonbm/volumes`) | Services outside the mechanism (ABSVD) | Running |
+| [100_wind.md](100_wind.md) | [101](101_wind_ingestion.md) | `WINDFOR` `FUELHH` (WIND) | What the wind was expected to do, and did | One-off back-fill |
 
 The BM-unit ingestion page describes the deployed capture and snapshot
 path. The patterns behind the collectors are in

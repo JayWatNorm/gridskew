@@ -27,12 +27,13 @@ report dotted paths such as `intensity.actual`. A non-dictionary row produces
 an error finding and does not stop later rows from being checked.
 
 Pollers validate the response envelope before row validation. Most Elexon
-datasets expect a non-empty list; QAS, NDF and INDO expect a dictionary
-holding a `data` list, as Carbon does. Invalid envelopes fail without parsing,
-loading or quarantine. An empty list fails too, except in two places where it
-is a quiet window that loads nothing: REMIT (see
-[REMIT ingestion](elexon/031_remit_ingestion.md)) and NDF and INDO (see
-[demand ingestion](elexon/051_demand_ingestion.md)).
+datasets expect a non-empty list; QAS, NDF, INDO, WINDFOR and FUELHH expect a
+dictionary holding a `data` list, as Carbon does. Invalid envelopes fail
+without parsing, loading or quarantine. An empty list fails too, except in
+three places where it is a quiet window that loads nothing: REMIT (see
+[REMIT ingestion](elexon/031_remit_ingestion.md)), NDF and INDO (see
+[demand ingestion](elexon/051_demand_ingestion.md)), and WINDFOR and FUELHH
+(see [wind ingestion](elexon/101_wind_ingestion.md)).
 
 Carbon also checks semantic period coverage after compatible rows are loaded.
 Forecast requires consecutive half-hour periods, the first of which contains
@@ -102,6 +103,8 @@ also block suspiciously small responses. See
 | [`qas_backfill.py`](../../ingestion/elexon/qas_backfill.py) | One-off QAS capture of every date before the DAG's first run |
 | [`demand_poller.py`](../../ingestion/elexon/demand_poller.py) | NDF and INDO publish window, whole-window load, parsers and loaders |
 | [`demand_backfill.py`](../../ingestion/elexon/demand_backfill.py) | One-off NDF and INDO back-fill by publish day, with the held-day rule |
+| [`wind_poller.py`](../../ingestion/elexon/wind_poller.py) | WINDFOR publish window and FUELHH WIND settlement date, whole-request load, parsers and loaders |
+| [`wind_backfill.py`](../../ingestion/elexon/wind_backfill.py) | One-off WINDFOR and FUELHH back-fill by day, with the held-day and held-date rules |
 | [`bmunits_poller.py`](../../ingestion/elexon/bmunits_poller.py) | Complete registry gate, manifest and raw-row loader |
 | [`completeness.py`](../../ingestion/carbon_intensity/completeness.py) | Carbon period-coverage checks |
 | [`forecast_poller.py`](../../ingestion/carbon_intensity/forecast_poller.py) | Forecast envelope, parser, loader and 48-hour warning |
