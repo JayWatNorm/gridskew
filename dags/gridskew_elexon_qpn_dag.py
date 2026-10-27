@@ -39,7 +39,6 @@ def gridskew_elexon_qpn():
 
     @task(pool="elexon")
     def poll_qpn(data_interval_start=None, data_interval_end=None):
-        from airflow.sdk import BaseHook
         from airflow.sdk.exceptions import AirflowFailException
 
         if data_interval_start is None or data_interval_end is None:
@@ -51,17 +50,10 @@ def gridskew_elexon_qpn():
 
         sys.path.insert(0, PROJECT_PATH)
 
-        from ingestion.database import connect
+        from ingestion.dag_tasks import poll_into_gridskew_prod
         from ingestion.elexon.qpn_poller import run
-        from ingestion.routing import ContractRejected
 
-        conn = connect(BaseHook.get_connection("gridskew_prod"))
-        try:
-            run(conn, data_interval_start, data_interval_end)
-        except ContractRejected as rejected:
-            raise AirflowFailException(str(rejected)) from rejected
-        finally:
-            conn.close()
+        poll_into_gridskew_prod(run, data_interval_start, data_interval_end)
 
     poll_qpn()
 
