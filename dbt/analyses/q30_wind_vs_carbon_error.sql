@@ -14,8 +14,16 @@
 -- holds only half-hours with an archived forecast, none in this window).
 -- Wind: int_wind_error_by_period, which pairs each half-hour with the
 -- latest WINDFOR issue strictly before it and that issue's point for the
--- hour (no fall-back to an older issue), the first FUELHH WIND outturn and
--- the cohort wind curtailment add-back.
+-- hour (no fall-back to an older issue) and the first FUELHH WIND outturn;
+-- and the cohort wind curtailment add-back, computed here from
+-- int_shortfall_by_unit_period and int_elexon__bm_unit_cohort over the
+-- window's settlement dates, as Q8 and Q28 take the shortfall. The add-back
+-- is the signed sum of instructed_deviation_mwh (PN minus expected) over
+-- cohort wind units with an acceptance in the half-hour, times 2 for MW: 0
+-- when no wind unit had an acceptance, unknown (null) when any wind unit
+-- with an acceptance has a null instructed deviation. Wind error is outturn
+-- plus add-back minus forecast; the delivered wind error is outturn minus
+-- forecast. Negative means less wind than forecast.
 --
 -- Population: every window half-hour with error_api_final, a forecast, a
 -- first outturn and a known add-back, so the primary and the sensitivity
@@ -84,18 +92,66 @@ carbon_errors as (
     where api_final_forecast is not null
 ),
 
+wind_unit_periods as (
+    select
+        shortfall.settlement_date,
+        shortfall.settlement_period,
+        shortfall.acceptance_count,
+        shortfall.instructed_deviation_mwh
+    from {{ ref('int_shortfall_by_unit_period') }} as shortfall
+    inner join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
+        on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
+    where cohort.fuel_group = 'wind'
+        and shortfall.settlement_date between date '{{ window_from }}' and date '{{ window_until }}'
+),
+
+wind_curtailment as (
+    select
+        settlement_date,
+        settlement_period,
+        count(*) filter (where acceptance_count > 0) as wind_units_with_acceptance,
+        count(*) filter (
+            where acceptance_count > 0 and instructed_deviation_mwh is null
+        ) as wind_units_with_acceptance_and_null_deviation,
+        count(*) filter (where instructed_deviation_mwh is null) as wind_units_with_null_deviation,
+        sum(instructed_deviation_mwh) filter (where acceptance_count > 0) as instructed_deviation_mwh
+    from wind_unit_periods
+    group by settlement_date, settlement_period
+),
+
+wind_pairs_with_add_back as (
+    select
+        wind_pairs.start_time,
+        wind_pairs.outturn_mw,
+        wind_pairs.forecast_published_at,
+        wind_pairs.forecast_mw,
+        wind_pairs.delivered_wind_error_mw,
+        coalesce(wind_curtailment.wind_units_with_acceptance_and_null_deviation, 0)
+            as wind_units_with_acceptance_and_null_deviation,
+        coalesce(wind_curtailment.wind_units_with_null_deviation, 0) as wind_units_with_null_deviation,
+        case
+            when coalesce(wind_curtailment.wind_units_with_acceptance, 0) = 0 then 0
+            when wind_curtailment.wind_units_with_acceptance_and_null_deviation > 0 then null
+            else 2 * wind_curtailment.instructed_deviation_mwh
+        end as curtailment_add_back_mw
+    from {{ ref('int_wind_error_by_period') }} as wind_pairs
+    left join wind_curtailment
+        on wind_pairs.settlement_date = wind_curtailment.settlement_date
+        and wind_pairs.settlement_period = wind_curtailment.settlement_period
+),
+
 wind_errors as (
     select
         start_time as period_start,
         outturn_mw,
         forecast_published_at,
         forecast_mw,
-        curtailment_add_back_mw,
+        round(curtailment_add_back_mw, 6) as curtailment_add_back_mw,
         wind_units_with_acceptance_and_null_deviation,
         wind_units_with_null_deviation,
-        wind_error_mw,
+        round(outturn_mw + curtailment_add_back_mw - forecast_mw, 6) as wind_error_mw,
         delivered_wind_error_mw
-    from {{ ref('int_wind_error_by_period') }}
+    from wind_pairs_with_add_back
 ),
 
 window_inputs as (

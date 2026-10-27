@@ -1313,8 +1313,9 @@ Q29_EXPECTED = {
 }
 
 # Q30 runs on the raw-shaped rows below through the compiled
-# int_wind_error_by_period (a temporary view over them), so the pairing, the
-# add-back and the analysis are worked together. The window is settlement
+# int_wind_error_by_period (a temporary view over them), with the add-back
+# read from the shortfall and cohort rows, so the pairing, the add-back and
+# the analysis are worked together. The window is settlement
 # dates C 25 October 2025 (48 periods), A 26 October (the 50-period day,
 # starting 23:00 UTC on the 25th) and B 27 October (48 periods, GMT): 146
 # half-hours. Times below are UTC.
@@ -1495,12 +1496,12 @@ Q30_CONSTANT_B_CARBON_ERRORS = (4, 4, 4, 4)
 Q30_WIND_TABLES = {
     "stg_elexon__fuelhh": "pg_temp.synthetic_fuelhh",
     "stg_elexon__windfor": "pg_temp.synthetic_windfor",
-    "int_shortfall_by_unit_period": "pg_temp.synthetic_wind_shortfall",
-    "int_elexon__bm_unit_cohort": "pg_temp.synthetic_wind_cohort",
 }
 Q30_TABLES = {
     "int_carbon_outturn__latest": "pg_temp.synthetic_q30_outturn",
     "int_wind_error_by_period": "pg_temp.synthetic_wind_error",
+    "int_shortfall_by_unit_period": "pg_temp.synthetic_wind_shortfall",
+    "int_elexon__bm_unit_cohort": "pg_temp.synthetic_wind_cohort",
 }
 
 PRIMARY_ERROR = "wind error, outturn with cohort curtailment add-back"

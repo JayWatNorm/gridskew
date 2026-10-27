@@ -90,15 +90,18 @@ No Elexon or NESO page read states whether WINDFOR forecasts output before
 or after transmission constraints. NESO scores its own day-ahead unit wind
 forecast only for units without a bid-offer acceptance, which suggests its
 wind forecasts do not try to predict curtailment, but that is indirect
-evidence. The pairing therefore carries two wind errors: outturn with the
+evidence. The Q30 analysis therefore uses two wind errors: outturn with the
 cohort's curtailment added back, and the delivered outturn.
 
 **Curtailment is rebuilt, not published here.** The add-back is the signed
 sum of `instructed_deviation_mwh` (PN minus expected output) over cohort
 units in fuel group wind with an acceptance in the half-hour, times 2 for
-MW, from `int_shortfall_by_unit_period`. It depends on PN completeness for
-those units; a wind unit with an acceptance and a null instructed deviation
-makes the add-back unknown.
+MW, from `int_shortfall_by_unit_period` and `int_elexon__bm_unit_cohort`.
+The Q30 analysis (`dbt/analyses/q30_wind_vs_carbon_error.sql`) computes it
+over its window's settlement dates, so the wind view stays outside the
+period tables' lineage. It depends on PN completeness for those units; a
+wind unit with an acceptance and a null instructed deviation makes the
+add-back unknown.
 
 **Zero values.** A 2012 Elexon change proposal records negative WINDFOR
 values being set to zero. Whether that still applies is not known; the
@@ -115,11 +118,12 @@ outturn:
   issue stamped 08:30 is not used for the 08:30 half-hour. If that issue
   holds no point for the hour, the half-hour has no forecast; an older issue
   is never used in its place;
-- the curtailment add-back above, 0 when no cohort wind unit had an
-  acceptance;
-- `wind_error_mw`, outturn plus add-back minus forecast, and
-  `delivered_wind_error_mw`, outturn minus forecast. Negative means less
+- `delivered_wind_error_mw`, outturn minus forecast. Negative means less
   wind than forecast.
+
+The Q30 analysis joins the curtailment add-back above to each half-hour, 0
+when no cohort wind unit had an acceptance, and takes the wind error as
+outturn plus add-back minus forecast.
 
 ## Licence
 

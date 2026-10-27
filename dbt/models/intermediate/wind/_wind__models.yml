@@ -3,11 +3,13 @@ models:
     description: >
       One row per half-hour with a FUELHH wind outturn: the outturn's first
       publication, the latest WINDFOR issue published strictly before the
-      half-hour starts, that issue's hourly point for the hour containing the
-      half-hour's start (both halves of an hour share it; no interpolation),
-      and the cohort wind curtailment add-back. If the latest issue holds no
-      point for the hour, the forecast is null; an older issue is never used
-      in its place. WINDFOR covers metered wind; FUELHH is taken to (inferred). Private view.
+      half-hour starts, and that issue's hourly point for the hour containing
+      the half-hour's start (both halves of an hour share it; no
+      interpolation). If the latest issue holds no point for the hour, the
+      forecast is null; an older issue is never used in its place. WINDFOR
+      covers metered wind; FUELHH is taken to (inferred). The cohort wind
+      curtailment add-back is computed in the Q30 analysis
+      (q30_wind_vs_carbon_error), not here. Private view.
     columns:
       - name: settlement_date
         description: British local time, from the outturn.
@@ -30,29 +32,8 @@ models:
           The chosen issue's point for the hour containing start_time, MW.
           Null when there is no issue, or when that issue holds no point for
           the hour.
-      - name: wind_units_with_acceptance
-        description: >
-          Cohort units in fuel group wind with an acceptance in force in the
-          half-hour (int_shortfall_by_unit_period).
-      - name: wind_units_with_acceptance_and_null_deviation
-        description: >
-          Of those, the units whose instructed_deviation_mwh is null. Any
-          makes the add-back unknown.
-      - name: wind_units_with_null_deviation
-        description: >
-          Cohort wind units with a null instructed_deviation_mwh in the
-          half-hour, with or without an acceptance.
-      - name: curtailment_add_back_mw
-        description: >
-          2 x the signed sum of instructed_deviation_mwh (PN minus expected)
-          over the wind units with an acceptance. 0 when none had one; null
-          when any of them has a null instructed deviation.
-      - name: wind_error_mw
-        description: >
-          outturn_mw plus curtailment_add_back_mw minus forecast_mw: outturn
-          with cohort curtailment add-back, minus the forecast. Negative means
-          less wind than forecast. Null when the forecast or the add-back is.
       - name: delivered_wind_error_mw
         description: >
-          outturn_mw minus forecast_mw, the delivered outturn's error. Null
-          when there is no forecast.
+          outturn_mw minus forecast_mw, the delivered outturn's error.
+          Negative means less wind than forecast. Null when there is no
+          forecast.
