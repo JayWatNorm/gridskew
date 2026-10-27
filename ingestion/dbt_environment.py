@@ -6,7 +6,7 @@ from ingestion.database import DEFAULT_PORT
 
 
 def dbt_environment(work_dir, log_path):
-    """Use the dbt role in the production database's development schemas.
+    """Use the dbt role, which writes dbt_dev in the production database.
 
     dbt keeps its compiled files and packages under `work_dir` and writes its
     logs to `log_path`.

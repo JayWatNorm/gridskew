@@ -20,10 +20,7 @@ FAIL_ON_EMPTY_SELECTION = (
 
 
 def bmunits_dbt_environment(work_dir, airflow_run_id):
-    """The dbt role's environment, logging to this run's BM-unit folder, with
-    the raw connection as GRIDSKEW_DB_* too."""
-
-    from airflow.sdk import BaseHook
+    """The dbt role's environment, logging to this run's BM-unit folder."""
 
     sys.path.insert(0, PROJECT_PATH)
     from ingestion.dbt_environment import dbt_environment
@@ -32,14 +29,7 @@ def bmunits_dbt_environment(work_dir, airflow_run_id):
     # day folders older than 30 days.
     today = datetime.now(timezone.utc).date().isoformat()
     log_path = f"{DBT_LOGS}/bmunits/{today}/{airflow_run_id}"
-    task_env = dbt_environment(work_dir, log_path)
-    raw_conn = BaseHook.get_connection("gridskew_prod")
-    task_env["GRIDSKEW_DB_HOST"] = raw_conn.host
-    task_env["GRIDSKEW_DB_PORT"] = str(raw_conn.port or 5432)
-    task_env["GRIDSKEW_DB_USER"] = raw_conn.login
-    task_env["GRIDSKEW_DB_PASSWORD"] = raw_conn.password
-    task_env["GRIDSKEW_DB_NAME"] = raw_conn.schema
-    return task_env
+    return dbt_environment(work_dir, log_path)
 
 
 def run_dbt(env, *args):
