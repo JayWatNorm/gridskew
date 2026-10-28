@@ -1,6 +1,5 @@
 """Capture a complete BM-unit registry and update observed dbt history."""
 
-import os
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -20,42 +19,17 @@ FAIL_ON_EMPTY_SELECTION = (
 )
 
 
-def dbt_environment(work_dir, airflow_run_id):
-    """Use the dbt role in the production database's development schemas."""
+def bmunits_dbt_environment(work_dir, airflow_run_id):
+    """The dbt role's environment, logging to this run's BM-unit folder."""
 
-    from airflow.sdk import BaseHook
+    sys.path.insert(0, PROJECT_PATH)
+    from ingestion.dbt_environment import dbt_environment
 
-    raw_conn = BaseHook.get_connection("gridskew_prod")
-    conn = BaseHook.get_connection("gridskew_dbt")
-    if (
-        not conn.schema
-        or conn.schema != raw_conn.schema
-        or conn.host != raw_conn.host
-        or (conn.port or 5432) != (raw_conn.port or 5432)
-    ):
-        raise RuntimeError(
-            "gridskew_dbt must point to the GridSkew production database"
-        )
-    if not conn.login or not conn.password:
-        raise RuntimeError("gridskew_dbt needs a database user and password")
-    task_env = os.environ.copy()
-    task_env["DBT_TARGET_PATH"] = f"{work_dir}/target"
-    task_env["DBT_PACKAGES_INSTALL_PATH"] = f"{work_dir}/packages"
     # A folder per run inside a folder per UTC day; the nightly DAG removes
     # day folders older than 30 days.
     today = datetime.now(timezone.utc).date().isoformat()
-    task_env["DBT_LOG_PATH"] = f"{DBT_LOGS}/bmunits/{today}/{airflow_run_id}"
-    task_env["GRIDSKEW_DBT_HOST"] = conn.host
-    task_env["GRIDSKEW_DBT_PORT"] = str(conn.port or 5432)
-    task_env["GRIDSKEW_DBT_USER"] = conn.login
-    task_env["GRIDSKEW_DBT_PASSWORD"] = conn.password
-    task_env["GRIDSKEW_DBT_NAME"] = conn.schema
-    task_env["GRIDSKEW_DB_HOST"] = raw_conn.host
-    task_env["GRIDSKEW_DB_PORT"] = str(raw_conn.port or 5432)
-    task_env["GRIDSKEW_DB_USER"] = raw_conn.login
-    task_env["GRIDSKEW_DB_PASSWORD"] = raw_conn.password
-    task_env["GRIDSKEW_DB_NAME"] = raw_conn.schema
-    return task_env
+    log_path = f"{DBT_LOGS}/bmunits/{today}/{airflow_run_id}"
+    return dbt_environment(work_dir, log_path)
 
 
 def run_dbt(env, *args):
@@ -161,7 +135,7 @@ def gridskew_elexon_bmunits():
                 ) as work_dir,
                 locked_extract(conn, extract_id),
             ):
-                env = dbt_environment(work_dir, run_id)
+                env = bmunits_dbt_environment(work_dir, run_id)
                 print(f"BM-unit dbt logs: {env['DBT_LOG_PATH']}")
                 for args in dbt_commands():
                     run_dbt(env, *args)
