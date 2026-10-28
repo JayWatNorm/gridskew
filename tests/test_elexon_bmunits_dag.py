@@ -3,7 +3,7 @@
 import re
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -20,8 +20,8 @@ DBT_SETTINGS = (
     "GRIDSKEW_DBT_PASSWORD",
     "GRIDSKEW_DBT_NAME",
 )
-# The raw writer's connection, as the platform profile's prod target reads it.
-RAW_CONNECTION_SETTINGS = (
+# Read only by the platform profile's prod target; this DAG runs the dev target.
+GRIDSKEW_DB_VARIABLES = (
     "GRIDSKEW_DB_HOST",
     "GRIDSKEW_DB_PORT",
     "GRIDSKEW_DB_USER",
@@ -33,7 +33,8 @@ RAW_CONNECTION_SETTINGS = (
 @pytest.fixture
 def connections():
     return {
-        # No port: the default 5432 must still match the dbt connection's.
+        # Neither sets a port, so the 5432 default must apply on both sides of
+        # the check and in GRIDSKEW_DBT_PORT.
         "gridskew_prod": SimpleNamespace(
             host="postgres",
             port=None,
@@ -43,7 +44,7 @@ def connections():
         ),
         "gridskew_dbt": SimpleNamespace(
             host="postgres",
-            port=5432,
+            port=None,
             schema="gridskew_prod",
             login="gridskew_dbt",
             password="test-only",
@@ -56,12 +57,15 @@ def dag_helpers(monkeypatch, connections):
     return load_dag_file(monkeypatch, "gridskew_elexon_bmunits_dag.py", connections)
 
 
-def stop_the_clock_at(monkeypatch, function, moment):
-    """Make datetime.now() in the DAG file return `moment` when `function` runs."""
+def stop_the_utc_clock_at(monkeypatch, function, moment):
+    """Make datetime.now(timezone.utc) in the DAG file return `moment` when
+    `function` runs. A reading in any other time zone fails the test."""
 
-    clock = MagicMock()
-    clock.now.return_value = moment
-    monkeypatch.setitem(function.__globals__, "datetime", clock)
+    def now(tz=None):
+        assert tz is timezone.utc, f"datetime.now({tz!r}) is not a UTC reading"
+        return moment
+
+    monkeypatch.setitem(function.__globals__, "datetime", SimpleNamespace(now=now))
 
 
 def dbt_settings(env):
@@ -73,7 +77,7 @@ def dbt_settings(env):
     return settings
 
 
-def raw_connection_settings(env):
+def gridskew_db_variables(env):
     """Every GRIDSKEW_DB_* variable in the environment, by name."""
 
     names = []
@@ -85,7 +89,7 @@ def raw_connection_settings(env):
 
 def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
     bmunits_dbt_environment = dag_helpers["bmunits_dbt_environment"]
-    stop_the_clock_at(monkeypatch, bmunits_dbt_environment, RUN_CLOCK)
+    stop_the_utc_clock_at(monkeypatch, bmunits_dbt_environment, RUN_CLOCK)
     env = bmunits_dbt_environment("/tmp/bmunits", "scheduled__2026-10-12")
     assert dbt_settings(env) == {
         "DBT_TARGET_PATH": "/tmp/bmunits/target",
@@ -112,15 +116,18 @@ def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
     )
 
 
-def test_dbt_is_not_given_the_raw_writer_connection(dag_helpers, monkeypatch):
-    for name in RAW_CONNECTION_SETTINGS:
+def test_dbt_is_not_given_the_unused_gridskew_db_variables(dag_helpers, monkeypatch):
+    """No GRIDSKEW_DB_* variable is set. The rest of the task's environment,
+    which dbt inherits whole, is not checked here."""
+
+    for name in GRIDSKEW_DB_VARIABLES:
         monkeypatch.delenv(name, raising=False)
 
     env = dag_helpers["bmunits_dbt_environment"](
         "/tmp/bmunits", "scheduled__2026-10-12"
     )
 
-    assert raw_connection_settings(env) == []
+    assert gridskew_db_variables(env) == []
 
 
 def test_two_runs_log_to_two_folders(dag_helpers):

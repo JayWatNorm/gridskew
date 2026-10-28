@@ -6,10 +6,11 @@ from ingestion.database import DEFAULT_PORT
 
 
 def dbt_environment(work_dir, log_path):
-    """Use the dbt role, which writes dbt_dev in the production database.
+    """Use the dbt role, which writes the dbt_dev schemas in the production database.
 
     dbt keeps its compiled files and packages under `work_dir` and writes its
-    logs to `log_path`.
+    logs to `log_path`. It inherits the task's whole environment, with these
+    settings added.
     """
 
     from airflow.sdk import BaseHook

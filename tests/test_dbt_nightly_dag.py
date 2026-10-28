@@ -35,9 +35,10 @@ def connections():
             login="raw_writer",
             password="test-only-raw",
         ),
+        # No port: its 5432 default must match gridskew_prod's explicit 5432.
         "gridskew_dbt": SimpleNamespace(
             host="postgres",
-            port=5432,
+            port=None,
             schema="gridskew_prod",
             login="gridskew_dbt",
             password="test-only",
