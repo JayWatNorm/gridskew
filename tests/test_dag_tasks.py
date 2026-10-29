@@ -1,5 +1,6 @@
-"""Guard what each daily Elexon DAG task calls, with which arguments and in which
-order, without Airflow, a database or the network."""
+"""Guard what each DAG task that polls into gridskew_prod calls and with which
+arguments (for the daily Elexon tasks, in which order too), without Airflow, a
+database or the network."""
 
 from datetime import date, datetime, timezone
 from types import SimpleNamespace
@@ -9,14 +10,27 @@ import pytest
 import requests
 
 from ingestion.routing import ContractRejected
-from tests.fakes import DECORATED_FUNCTIONS, FakeAirflowFailException, load_dag_file
+from tests.fakes import (
+    DECORATED_FUNCTIONS,
+    FakeAirflowFailException,
+    load_dag_file,
+    stop_the_utc_clock_at,
+)
 
 INTERVAL_START = datetime(2026, 10, 24, tzinfo=timezone.utc)
 INTERVAL_END = datetime(2026, 10, 25, tzinfo=timezone.utc)
 INTERVAL = {"data_interval_start": INTERVAL_START, "data_interval_end": INTERVAL_END}
 SETTLEMENT = {"data_interval_start": INTERVAL_START}
+NO_CONTEXT = {}
+# Every task reads this clock. The forecast task polls only inside the
+# half-hour slot it was scheduled for: here, the 00:05 run's slot.
+TASK_CLOCK = datetime(2026, 10, 25, 0, 7, 30, tzinfo=timezone.utc)
+SCHEDULED_FORECAST = {
+    "dag_run": SimpleNamespace(run_type="scheduled"),
+    "data_interval_end": datetime(2026, 10, 25, 0, 5, tzinfo=timezone.utc),
+}
 # The Airflow connection BaseHook returns for "gridskew_prod", and the
-# psycopg.connect call it must become.
+# psycopg.connect settings it must become.
 GRIDSKEW_PROD = SimpleNamespace(
     host="postgres-prod",
     port=5433,
@@ -24,13 +38,14 @@ GRIDSKEW_PROD = SimpleNamespace(
     login="gridskew_loader",
     password="not-a-real-password",
 )
-OPEN_GRIDSKEW_PROD = call.connect(
-    host="postgres-prod",
-    port=5433,
-    dbname="gridskew_prod",
-    user="gridskew_loader",
-    password="not-a-real-password",
-)
+GRIDSKEW_PROD_SETTINGS = {
+    "host": "postgres-prod",
+    "port": 5433,
+    "dbname": "gridskew_prod",
+    "user": "gridskew_loader",
+    "password": "not-a-real-password",
+}
+OPEN_GRIDSKEW_PROD = call.connect(**GRIDSKEW_PROD_SETTINGS)
 B1610_POLLER = "ingestion.elexon.b1610_poller"
 CAPTURE = f"{B1610_POLLER}.capture_settlement_date"
 
@@ -60,9 +75,47 @@ SETTLEMENT_TASKS = [
         "gridskew_elexon_b1610_RF", "poll_b1610_RF", "RF", date(2025, 7, 31), id="RF"
     ),
 ]
-# Every daily task, the poller function it hands the connection to, and the
-# context Airflow passes it.
-DAILY_TASKS = [
+# The tasks of the QAS, REMIT and carbon DAGs, the poller function each hands
+# the connection to, the context Airflow passes it, and the arguments its
+# poller gets after the connection. QAS's three tasks share one body: the
+# 14-day task stands for them; its settlement date is INTERVAL_START less 14 days.
+QAS_REMIT_AND_CARBON_TASKS = [
+    pytest.param(
+        "gridskew_elexon_qas",
+        "capture_14_days",
+        "ingestion.elexon.qas_poller.run",
+        SETTLEMENT,
+        (date(2026, 10, 10),),
+        id="QAS",
+    ),
+    pytest.param(
+        "gridskew_elexon_remit",
+        "poll_remit",
+        "ingestion.elexon.remit_poller.run",
+        NO_CONTEXT,
+        (),
+        id="REMIT",
+    ),
+    pytest.param(
+        "gridskew_carbon_intensity_forecast",
+        "poll_forecast",
+        "ingestion.carbon_intensity.forecast_poller.run",
+        SCHEDULED_FORECAST,
+        (),
+        id="forecast",
+    ),
+    pytest.param(
+        "gridskew_carbon_intensity_outturn",
+        "poll_outturn",
+        "ingestion.carbon_intensity.outturn_poller.run",
+        NO_CONTEXT,
+        (),
+        id="outturn",
+    ),
+]
+# Every task that polls into gridskew_prod, the poller function it hands the
+# connection to, and the context Airflow passes it.
+POLL_TASKS = [
     pytest.param(
         "gridskew_elexon_pn",
         "poll_pn",
@@ -92,6 +145,34 @@ DAILY_TASKS = [
     ),
     pytest.param(
         "gridskew_elexon_b1610_RF", "poll_b1610_RF", CAPTURE, SETTLEMENT, id="RF"
+    ),
+    pytest.param(
+        "gridskew_elexon_qas",
+        "capture_14_days",
+        "ingestion.elexon.qas_poller.run",
+        SETTLEMENT,
+        id="QAS",
+    ),
+    pytest.param(
+        "gridskew_elexon_remit",
+        "poll_remit",
+        "ingestion.elexon.remit_poller.run",
+        NO_CONTEXT,
+        id="REMIT",
+    ),
+    pytest.param(
+        "gridskew_carbon_intensity_forecast",
+        "poll_forecast",
+        "ingestion.carbon_intensity.forecast_poller.run",
+        SCHEDULED_FORECAST,
+        id="forecast",
+    ),
+    pytest.param(
+        "gridskew_carbon_intensity_outturn",
+        "poll_outturn",
+        "ingestion.carbon_intensity.outturn_poller.run",
+        NO_CONTEXT,
+        id="outturn",
     ),
 ]
 
@@ -129,16 +210,20 @@ def connection_of(calls):
     return calls.connect.return_value
 
 
-def run_task(monkeypatch, dag_id, task_name, poll_path, context, calls):
-    """Run one task body with the boundaries replaced by children of `calls`.
+def run_task(monkeypatch, dag_name, task_name, poll_path, context, calls):
+    """Run one task body at TASK_CLOCK with the boundaries replaced by children
+    of `calls`.
 
-    The fake psycopg.connect stands in only while the task body runs; the
-    guard that refuses a real connection is back once this returns.
+    `dag_name` names the DAG file (`<dag_name>_dag.py`) and its DAG function;
+    it is the dag_id for every DAG but the forecast. The fake psycopg.connect
+    stands in only while the task body runs; the guard that refuses a real
+    connection is back once this returns.
     """
 
-    load_dag_file(monkeypatch, f"{dag_id}_dag.py", {"gridskew_prod": GRIDSKEW_PROD})
-    DECORATED_FUNCTIONS[dag_id]()
+    load_dag_file(monkeypatch, f"{dag_name}_dag.py", {"gridskew_prod": GRIDSKEW_PROD})
+    DECORATED_FUNCTIONS[dag_name]()
     task_body = DECORATED_FUNCTIONS[task_name]
+    stop_the_utc_clock_at(monkeypatch, task_body, TASK_CLOCK)
     with (
         patch("psycopg.connect", calls.connect),
         patch(f"{B1610_POLLER}.replaced_by_a_later_run", calls.replaced_by_a_later_run),
@@ -194,9 +279,24 @@ def test_settlement_task_fails_at_once_without_a_connection_once_its_run_is_repl
     assert calls.mock_calls == [call.replaced_by_a_later_run(settlement_date, run_type)]
 
 
-@pytest.mark.parametrize("dag_id,task_name,poll_path,context", DAILY_TASKS)
+@pytest.mark.parametrize(
+    "dag_name,task_name,poll_path,context,arguments", QAS_REMIT_AND_CARBON_TASKS
+)
+def test_task_polls_on_a_gridskew_prod_connection_that_it_then_closes(
+    monkeypatch, dag_name, task_name, poll_path, context, arguments
+):
+    calls = boundary_calls()
+
+    run_task(monkeypatch, dag_name, task_name, poll_path, context, calls)
+
+    calls.connect.assert_called_with(**GRIDSKEW_PROD_SETTINGS)
+    calls.poll.assert_called_with(connection_of(calls), *arguments)
+    connection_of(calls).close.assert_called_with()
+
+
+@pytest.mark.parametrize("dag_name,task_name,poll_path,context", POLL_TASKS)
 def test_a_contract_rejection_fails_the_task_without_a_retry(
-    monkeypatch, dag_id, task_name, poll_path, context
+    monkeypatch, dag_name, task_name, poll_path, context
 ):
     calls = boundary_calls()
     rejection = ContractRejected("3 rows quarantined")
@@ -205,33 +305,33 @@ def test_a_contract_rejection_fails_the_task_without_a_retry(
     with pytest.raises(
         FakeAirflowFailException, match="^3 rows quarantined$"
     ) as failure:
-        run_task(monkeypatch, dag_id, task_name, poll_path, context, calls)
+        run_task(monkeypatch, dag_name, task_name, poll_path, context, calls)
 
     assert failure.value.__cause__ is rejection
 
 
-@pytest.mark.parametrize("dag_id,task_name,poll_path,context", DAILY_TASKS)
+@pytest.mark.parametrize("dag_name,task_name,poll_path,context", POLL_TASKS)
 def test_any_other_poll_error_is_left_for_airflow_to_retry(
-    monkeypatch, dag_id, task_name, poll_path, context
+    monkeypatch, dag_name, task_name, poll_path, context
 ):
     calls = boundary_calls()
     outage = requests.HTTPError("503 Server Error")
     calls.poll.side_effect = outage
 
     with pytest.raises(requests.HTTPError) as failure:
-        run_task(monkeypatch, dag_id, task_name, poll_path, context, calls)
+        run_task(monkeypatch, dag_name, task_name, poll_path, context, calls)
 
     assert failure.value is outage
 
 
-@pytest.mark.parametrize("dag_id,task_name,poll_path,context", DAILY_TASKS)
+@pytest.mark.parametrize("dag_name,task_name,poll_path,context", POLL_TASKS)
 def test_the_connection_is_closed_when_the_poll_fails(
-    monkeypatch, dag_id, task_name, poll_path, context
+    monkeypatch, dag_name, task_name, poll_path, context
 ):
     calls = boundary_calls()
     calls.poll.side_effect = requests.HTTPError("503 Server Error")
 
     with pytest.raises(requests.HTTPError):
-        run_task(monkeypatch, dag_id, task_name, poll_path, context, calls)
+        run_task(monkeypatch, dag_name, task_name, poll_path, context, calls)
 
     connection_of(calls).close.assert_called_once_with()

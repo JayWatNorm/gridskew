@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from tests.fakes import load_dag_file
+from tests.fakes import load_dag_file, stop_the_utc_clock_at
 
 RUN_CLOCK = datetime(2026, 10, 12, 0, 4, 31, tzinfo=timezone.utc)
 DBT_SETTINGS = (
@@ -48,17 +48,6 @@ def connections():
 @pytest.fixture
 def dag_helpers(monkeypatch, connections):
     return load_dag_file(monkeypatch, "gridskew_elexon_bmunits_dag.py", connections)
-
-
-def stop_the_utc_clock_at(monkeypatch, function, moment):
-    """Make datetime.now(timezone.utc) in the DAG file return `moment` when
-    `function` runs. A reading in any other time zone fails the test."""
-
-    def now(tz=None):
-        assert tz is timezone.utc, f"datetime.now({tz!r}) is not a UTC reading"
-        return moment
-
-    monkeypatch.setitem(function.__globals__, "datetime", SimpleNamespace(now=now))
 
 
 def dbt_settings(env):
