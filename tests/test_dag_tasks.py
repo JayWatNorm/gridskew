@@ -22,8 +22,8 @@ INTERVAL_END = datetime(2026, 10, 25, tzinfo=timezone.utc)
 INTERVAL = {"data_interval_start": INTERVAL_START, "data_interval_end": INTERVAL_END}
 SETTLEMENT = {"data_interval_start": INTERVAL_START}
 NO_CONTEXT = {}
-# Every task reads this clock. The forecast task polls only inside the
-# half-hour slot it was scheduled for: here, the 00:05 run's slot.
+# Every task runs at this clock; only the forecast task reads it. The forecast
+# polls only inside the half-hour slot it was scheduled for: the 00:05 run's.
 TASK_CLOCK = datetime(2026, 10, 25, 0, 7, 30, tzinfo=timezone.utc)
 SCHEDULED_FORECAST = {
     "dag_run": SimpleNamespace(run_type="scheduled"),
@@ -232,13 +232,13 @@ def run_task(monkeypatch, dag_name, task_name, poll_path, context, calls):
         task_body(**context)
 
 
-@pytest.mark.parametrize("dag_id,task_name,poll_path", INTERVAL_TASKS)
+@pytest.mark.parametrize("dag_name,task_name,poll_path", INTERVAL_TASKS)
 def test_interval_task_polls_its_whole_interval_on_gridskew_prod_then_closes_it(
-    monkeypatch, dag_id, task_name, poll_path
+    monkeypatch, dag_name, task_name, poll_path
 ):
     calls = boundary_calls()
 
-    run_task(monkeypatch, dag_id, task_name, poll_path, INTERVAL, calls)
+    run_task(monkeypatch, dag_name, task_name, poll_path, INTERVAL, calls)
 
     assert calls.mock_calls == [
         OPEN_GRIDSKEW_PROD,
@@ -247,13 +247,15 @@ def test_interval_task_polls_its_whole_interval_on_gridskew_prod_then_closes_it(
     ]
 
 
-@pytest.mark.parametrize("dag_id,task_name,run_type,settlement_date", SETTLEMENT_TASKS)
+@pytest.mark.parametrize(
+    "dag_name,task_name,run_type,settlement_date", SETTLEMENT_TASKS
+)
 def test_settlement_task_checks_its_run_is_in_force_then_captures_on_gridskew_prod(
-    monkeypatch, dag_id, task_name, run_type, settlement_date
+    monkeypatch, dag_name, task_name, run_type, settlement_date
 ):
     calls = boundary_calls()
 
-    run_task(monkeypatch, dag_id, task_name, CAPTURE, SETTLEMENT, calls)
+    run_task(monkeypatch, dag_name, task_name, CAPTURE, SETTLEMENT, calls)
 
     assert calls.mock_calls == [
         call.replaced_by_a_later_run(settlement_date, run_type),
@@ -263,14 +265,16 @@ def test_settlement_task_checks_its_run_is_in_force_then_captures_on_gridskew_pr
     ]
 
 
-@pytest.mark.parametrize("dag_id,task_name,run_type,settlement_date", SETTLEMENT_TASKS)
+@pytest.mark.parametrize(
+    "dag_name,task_name,run_type,settlement_date", SETTLEMENT_TASKS
+)
 def test_settlement_task_fails_at_once_without_a_connection_once_its_run_is_replaced(
-    monkeypatch, dag_id, task_name, run_type, settlement_date
+    monkeypatch, dag_name, task_name, run_type, settlement_date
 ):
     calls = boundary_calls(replacing_run="DF")
 
     with pytest.raises(FakeAirflowFailException) as failure:
-        run_task(monkeypatch, dag_id, task_name, CAPTURE, SETTLEMENT, calls)
+        run_task(monkeypatch, dag_name, task_name, CAPTURE, SETTLEMENT, calls)
 
     assert str(failure.value) == (
         f"{run_type} for {settlement_date.isoformat()} has been replaced by DF "
