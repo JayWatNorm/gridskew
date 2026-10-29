@@ -75,19 +75,75 @@ EXPECTED_Q12_CSV = (
 )
 
 
+DELIVERY_FILES = [
+    "q12_instructed_share_by_fuel_group.csv",
+    "q12_instructed_share_by_fuel_group.png",
+    "q12_instructed_share_by_fuel_group.vl.json",
+    "q3_deviation_by_fuel_group.csv",
+    "q3_deviation_by_fuel_group.png",
+    "q3_deviation_by_fuel_group.vl.json",
+]
+
+FILES_WITHOUT_DELIVERY = [
+    "q22_first_against_latest_run.csv",
+    "q23_absolute_deviation_by_month.png",
+    "q23_absolute_deviation_by_month.vl.json",
+    "q23_pn_accuracy_proxy.csv",
+    "q24_system_action_share.csv",
+    "q24_system_action_share_by_fuel_group.png",
+    "q24_system_action_share_by_fuel_group.vl.json",
+    "q25_instruction_fragmentation.csv",
+    "q25_instruction_fragmentation_corrected.csv",
+    "q25_short_acceptances_by_fuel_group.png",
+    "q25_short_acceptances_by_fuel_group.vl.json",
+    "q28_shortfall_by_error_quintile.png",
+    "q28_shortfall_by_error_quintile.vl.json",
+    "q29_error_by_month.png",
+    "q29_error_by_month.vl.json",
+    "q29_error_by_utc_block.png",
+    "q29_error_by_utc_block.vl.json",
+    "q29_final_forecast_error_by_month_and_block.csv",
+    "q2_settlement_run_changes.csv",
+    "q30_carbon_error_by_wind_miss_quintile.png",
+    "q30_carbon_error_by_wind_miss_quintile.vl.json",
+    "q30_wind_vs_carbon_error.csv",
+    "q5_shortfall_by_outage_class.png",
+    "q5_shortfall_by_outage_class.vl.json",
+    "q5_shortfall_with_known_outage.csv",
+    "q6_publication_lag.csv",
+    "q6_publication_lag_by_class.png",
+    "q6_publication_lag_by_class.vl.json",
+    "q8_q28_history.csv",
+]
+
+
 def write_delivery_csv(path, rows):
     path.write_text("\n".join([DELIVERY_HEADER, *rows]) + "\n", encoding="utf-8")
     return path
 
 
-def saved_results_folder(folder, delivery_rows=DELIVERY_ROWS):
-    """A folder of saved outputs as the script reads them: the hand-made
-    fixtures and the delivery result."""
+def saved_outputs_folder(folder):
+    """A folder of the hand-made saved outputs, without the delivery result."""
     folder.mkdir()
     for fixture in FIXTURES.iterdir():
         (folder / fixture.name).write_bytes(fixture.read_bytes())
+    return folder
+
+
+def saved_results_folder(folder, delivery_rows=DELIVERY_ROWS):
+    """A folder of saved outputs as the script reads them: the hand-made
+    fixtures and the delivery result."""
+    saved_outputs_folder(folder)
     write_delivery_csv(folder / "delivery_by_fuel_group.csv", delivery_rows)
     return folder
+
+
+def without_lines_containing(path, fragment):
+    kept = []
+    for line in path.read_text(encoding="utf-8").splitlines(keepends=True):
+        if fragment not in line:
+            kept.append(line)
+    path.write_text("".join(kept), encoding="utf-8")
 
 
 def output_files(folder):
@@ -177,43 +233,24 @@ def test_a_rerun_writes_identical_files(tmp_path):
     write_charts(saved, tmp_path / "second")
 
     first = output_files(tmp_path / "first")
-    assert sorted(first) == [
-        "q12_instructed_share_by_fuel_group.csv",
-        "q12_instructed_share_by_fuel_group.png",
-        "q12_instructed_share_by_fuel_group.vl.json",
-        "q22_first_against_latest_run.csv",
-        "q23_absolute_deviation_by_month.png",
-        "q23_absolute_deviation_by_month.vl.json",
-        "q23_pn_accuracy_proxy.csv",
-        "q24_system_action_share.csv",
-        "q24_system_action_share_by_fuel_group.png",
-        "q24_system_action_share_by_fuel_group.vl.json",
-        "q25_instruction_fragmentation.csv",
-        "q25_short_acceptances_by_fuel_group.png",
-        "q25_short_acceptances_by_fuel_group.vl.json",
-        "q28_shortfall_by_error_quintile.png",
-        "q28_shortfall_by_error_quintile.vl.json",
-        "q29_error_by_month.png",
-        "q29_error_by_month.vl.json",
-        "q29_error_by_utc_block.png",
-        "q29_error_by_utc_block.vl.json",
-        "q29_final_forecast_error_by_month_and_block.csv",
-        "q2_settlement_run_changes.csv",
-        "q30_carbon_error_by_wind_miss_quintile.png",
-        "q30_carbon_error_by_wind_miss_quintile.vl.json",
-        "q30_wind_vs_carbon_error.csv",
-        "q3_deviation_by_fuel_group.csv",
-        "q3_deviation_by_fuel_group.png",
-        "q3_deviation_by_fuel_group.vl.json",
-        "q5_shortfall_by_outage_class.png",
-        "q5_shortfall_by_outage_class.vl.json",
-        "q5_shortfall_with_known_outage.csv",
-        "q6_publication_lag.csv",
-        "q6_publication_lag_by_class.png",
-        "q6_publication_lag_by_class.vl.json",
-        "q8_q28_history.csv",
-    ]
+    assert sorted(first) == sorted([*DELIVERY_FILES, *FILES_WITHOUT_DELIVERY])
     assert output_files(tmp_path / "second") == first
+
+
+def test_a_folder_without_the_delivery_result_writes_every_other_file(tmp_path):
+    write_charts(saved_outputs_folder(tmp_path / "saved"), tmp_path / "out")
+
+    assert sorted(output_files(tmp_path / "out")) == FILES_WITHOUT_DELIVERY
+
+
+def test_a_saved_output_without_its_chart_rows_is_refused(tmp_path):
+    saved = saved_results_folder(tmp_path / "saved")
+    without_lines_containing(
+        saved / "q8_q28_history.csv", "quintile of abs(error_api_final)"
+    )
+
+    with pytest.raises(ValueError, match="no row"):
+        write_charts(saved, tmp_path / "out")
 
 
 def test_each_chart_csv_holds_its_rows_in_reading_order_with_attribution(written):
@@ -242,6 +279,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q23_pn_accuracy_proxy.csv": BMRS_LINE,
         "q24_system_action_share.csv": BMRS_LINE,
         "q25_instruction_fragmentation.csv": BMRS_LINE,
+        "q25_instruction_fragmentation_corrected.csv": BMRS_LINE,
         "q29_final_forecast_error_by_month_and_block.csv": CARBON_LINE,
         "q2_settlement_run_changes.csv": BMRS_LINE,
         "q30_wind_vs_carbon_error.csv": BMRS_AND_CARBON_LINE,

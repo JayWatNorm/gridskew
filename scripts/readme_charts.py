@@ -9,8 +9,11 @@ and writes into the output folder:
   (``results/<name>.csv``), never inlined.
 
 Q3 and Q12 come from the delivery result, whose chart CSVs hold the values
-each chart shows. Nothing is queried and nothing is recomputed. A rerun on
-the same input writes identical files.
+each chart shows; they are written only when the folder holds
+``delivery_by_fuel_group.csv``, and every other file is written without it.
+A saved output that lacks a row a chart reads is refused. Nothing is
+queried and nothing is recomputed. A rerun on the same input writes
+identical files.
 
     python scripts/readme_charts.py <folder of saved outputs> <output folder>
 """
@@ -48,6 +51,7 @@ Q6_RESULT = "q6_publication_lag.csv"
 Q23_RESULT = "q23_pn_accuracy_proxy.csv"
 Q24_RESULT = "q24_system_action_share.csv"
 Q25_RESULT = "q25_instruction_fragmentation.csv"
+Q25_CORRECTED_RESULT = "q25_instruction_fragmentation_corrected.csv"
 Q8_Q28_RESULT = "q8_q28_history.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
@@ -187,16 +191,20 @@ def write_values(path, rows, columns):
             writer.writerow(values)
 
 
-def rows_in_section(rows, section):
+def matching_rows(rows, column, value):
+    """The rows whose column holds the value. None is an error, so a renamed
+    label in a saved output cannot draw an empty chart."""
     selected = []
     for row in rows:
-        if row["section"] == section:
+        if row[column] == value:
             selected.append(row)
+    if not selected:
+        raise ValueError(f"The saved output has no row with {column} {value!r}")
     return selected
 
 
 def row_for(rows, section, item):
-    for row in rows_in_section(rows, section):
+    for row in matching_rows(rows, "section", section):
         if row["item"] == item:
             return row
     raise ValueError(f"The saved output has no row for section {section}, {item!r}")
@@ -600,7 +608,7 @@ def write_q5_chart(rows, output):
 def write_q6_chart(rows, output):
     drawn = []
     unclassified = None
-    for row in rows_in_section(rows, "1"):
+    for row in matching_rows(rows, "section", "1"):
         if row["outage_class"] in OUTAGE_CLASSES_DRAWN:
             drawn.append(row)
         if not row["outage_class"]:
@@ -661,7 +669,8 @@ def draw_lines_by_group(path, rows, measures, y_label, title, subtitle_lines):
     groups = sorted(fuel_groups(rows))
     figure, axes = pyplot.subplots(figsize=(FIGURE_WIDTH_INCHES, 7))
     handles = []
-    for group, colour in zip(groups, FUEL_GROUP_COLOURS, strict=False):
+    colours = FUEL_GROUP_COLOURS[: len(groups)]
+    for group, colour in zip(groups, colours, strict=True):
         handles.append(Line2D([], [], color=colour, label=group))
         for measure, line_style in zip(measures, LINE_STYLES, strict=True):
             positions = []
@@ -700,7 +709,7 @@ def fuel_groups(rows):
 
 
 def write_q23_chart(rows, output):
-    unit_months = rows_in_section(rows, "1")
+    unit_months = matching_rows(rows, "section", "1")
     first_month, last_month = first_and_last(unit_months, "settlement_month")
     title = "Q23. Uninstructed deviation from PN as % of capacity, by fuel group"
     subtitle = [
@@ -764,9 +773,9 @@ def write_q23_chart(rows, output):
 
 def write_q24_chart(rows, output):
     first_month, last_month = first_and_last(
-        rows_in_section(rows, "1"), "settlement_month"
+        matching_rows(rows, "section", "1"), "settlement_month"
     )
-    by_fuel_group = rows_in_section(rows, "2")
+    by_fuel_group = matching_rows(rows, "section", "2")
     title = "Q24. Share flagged as a system action, by fuel group"
     subtitle = [
         "Share of acceptance volume, with the level-energy share beside it; all months",
@@ -828,7 +837,7 @@ def write_q24_chart(rows, output):
 
 def write_q25_chart(rows, output):
     first_month, last_month = first_and_last(
-        rows_in_section(rows, "1"), "settlement_month"
+        matching_rows(rows, "section", "1"), "settlement_month"
     )
     measures = {
         Q25_CHAIN_MEASURE: "continuous acceptance duration (BSC)",
@@ -842,7 +851,7 @@ def write_q25_chart(rows, output):
         "acceptances per group in the CSV",
     ]
     shares = {}
-    for row in rows_in_section(rows, "2"):
+    for row in matching_rows(rows, "section", "2"):
         if row["measure"] not in measures:
             continue
         if row["fuel_group"] not in shares:
@@ -899,14 +908,6 @@ def write_q25_chart(rows, output):
     write_spec(chart, output / f"{name}.vl.json")
 
 
-def quintile_rows(rows, item):
-    selected = []
-    for row in rows:
-        if row["item"] == item:
-            selected.append(row)
-    return selected
-
-
 def quintile_chart(csv_name, quintiles, title, subtitle):
     data = csv_data(csv_name, ["value"])
     return (
@@ -931,7 +932,7 @@ def quintile_chart(csv_name, quintiles, title, subtitle):
 
 def write_quintile_chart(rows, output, name, quintiles, title, subtitle):
     range_prefix = quintiles["range_prefix"]
-    quintile_values = quintile_rows(rows, quintiles["item"])
+    quintile_values = matching_rows(rows, "item", quintiles["item"])
     categories = []
     values = []
     for row in quintile_values:
@@ -993,8 +994,8 @@ def write_q30_chart(rows, output):
 
 
 def write_q29_split_chart(rows, output, section, prefix, name, title):
-    (overall,) = rows_in_section(rows, "1")
-    split = rows_in_section(rows, section)
+    (overall,) = matching_rows(rows, "section", "1")
+    split = matching_rows(rows, "section", section)
     subtitle = [
         "gCO2/kWh, actual minus forecast: positive means dirtier than forecast",
         f"n={overall['half_hours']} half-hours, {Q29_WINDOW}; {Q29_READ}",
@@ -1077,7 +1078,9 @@ def write_charts(result_folder, output_folder):
     output = Path(output_folder)
     output.mkdir(parents=True, exist_ok=True)
 
-    write_delivery_charts(read_delivery(results / DELIVERY_RESULT), output)
+    delivery = results / DELIVERY_RESULT
+    if delivery.exists():
+        write_delivery_charts(read_delivery(delivery), output)
     copy_saved_output(results, output, Q2_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, Q22_RESULT, BMRS_ATTRIBUTION)
     q5 = copy_saved_output(results, output, Q5_RESULT, BMRS_ATTRIBUTION)
@@ -1090,6 +1093,7 @@ def write_charts(result_folder, output_folder):
     write_q24_chart(q24, output)
     q25 = copy_saved_output(results, output, Q25_RESULT, BMRS_ATTRIBUTION)
     write_q25_chart(q25, output)
+    copy_saved_output(results, output, Q25_CORRECTED_RESULT, BMRS_ATTRIBUTION)
     q8_q28 = copy_saved_output(
         results, output, Q8_Q28_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
