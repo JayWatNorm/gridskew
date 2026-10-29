@@ -1,5 +1,6 @@
 """Guard the deployed BM-unit dbt target without requiring Airflow to run."""
 
+import os
 import re
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -19,14 +20,6 @@ DBT_SETTINGS = (
     "GRIDSKEW_DBT_USER",
     "GRIDSKEW_DBT_PASSWORD",
     "GRIDSKEW_DBT_NAME",
-)
-# Read only by the platform profile's prod target; this DAG runs the dev target.
-GRIDSKEW_DB_VARIABLES = (
-    "GRIDSKEW_DB_HOST",
-    "GRIDSKEW_DB_PORT",
-    "GRIDSKEW_DB_USER",
-    "GRIDSKEW_DB_PASSWORD",
-    "GRIDSKEW_DB_NAME",
 )
 
 
@@ -117,11 +110,12 @@ def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
 
 
 def test_dbt_is_not_given_the_unused_gridskew_db_variables(dag_helpers, monkeypatch):
-    """No GRIDSKEW_DB_* variable is set. The rest of the task's environment,
-    which dbt inherits whole, is not checked here."""
+    """No GRIDSKEW_DB_* variable is set: only the platform profile's prod target
+    reads them, and this DAG runs the dev target. The rest of the task's
+    environment, which dbt inherits whole, is not checked here."""
 
-    for name in GRIDSKEW_DB_VARIABLES:
-        monkeypatch.delenv(name, raising=False)
+    for name in gridskew_db_variables(os.environ):
+        monkeypatch.delenv(name)
 
     env = dag_helpers["bmunits_dbt_environment"](
         "/tmp/bmunits", "scheduled__2026-10-12"
