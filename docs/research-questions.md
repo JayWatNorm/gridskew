@@ -651,6 +651,60 @@ Read once on 27 October 2026, 06:15 UTC.
   estimate; each month is seen once; it is not a judgement of NESO's
   method.
 
+### Q30. Is the size of the miss between wind outturn and NESO's latest wind forecast associated with the size of the error in the API's final carbon forecast, on 2025 history?
+
+**Data:** WINDFOR wind forecast issues and FUELHH wind outturn, back-filled
+for a year of history; the cohort wind units' instructed curtailment from
+the shortfall table; the carbon outturn with the API's final forecast.
+**Analysis:**
+[q30_wind_vs_carbon_error.sql](../dbt/analyses/q30_wind_vs_carbon_error.sql)
+
+**Status:** registered 27 October 2026, before any wind data was held.
+Amended the same day, before any read: the carbon error is the one Q28 and
+Q29 read (the registration named a model that holds no half-hour in this
+window), and, before any wind data was held, the issue times are read as
+under Forecast. A counts-only coverage check was recorded before the read.
+Read once on 27 October 2026, with the database cutoff at 14:03:55 UTC.
+
+**Rule:**
+
+- **Window.** Settlement dates 22 August 2025 to 16 August 2026;
+  half-hours from the settlement calendar.
+- **Forecast.** The latest WINDFOR issue with publish time strictly before
+  the half-hour's start, and its hourly point containing the half-hour: no
+  interpolation, no fall-back. As a working inference (not documented),
+  issues come at fixed UTC times, with summer publish times shown in BST but
+  labelled Z and the forecast points' times true UTC. The pairing takes the
+  latest source-stamped issue: under the inference it never uses an issue
+  before it existed, and in summer it may use one up to an hour older than
+  the newest available. Forecast ages are reported from the source stamp.
+- **Outturn.** The first FUELHH wind publication.
+- **Wind error.** Primary: outturn plus the cohort wind units' summed
+  `instructed_deviation_mwh` × 2, minus forecast, labelled "outturn with
+  cohort curtailment add-back" (WINDFOR's constraint basis is not
+  documented). Sensitivity: delivered outturn minus forecast. A half-hour
+  with a wind unit accepted but a null deviation leaves both, counted.
+- **Carbon error.** `error_api_final`: the outturn minus the API's final
+  forecast, as Q28 and Q29.
+- **Population.** Half-hours with `error_api_final`, a forecast and an
+  outturn; no matched-day threshold. Coverage by reason, by forecast-age
+  band (at most 1 hour, over 1 to 2, over 2 to 4, over 4) and dates with
+  fewer than 46 half-hours.
+- **Measures, describe only.** Primary: Spearman `rho_abs`, the absolute
+  wind error with the absolute carbon error. Secondary: `rho_signed`
+  (expected negative) and quintiles of the absolute wind error, with Q4's
+  tie key. Both rhos on the sensitivity. 90% day-block bootstrap intervals
+  (1,000 draws; with fewer than 900 usable draws, unavailable). No test,
+  threshold or verdict; the expectation stated before the read, an
+  absolute rho under about 0.2, is not a test.
+- **Already seen.** One day of wind values (22 August 2025), during
+  endpoint checks.
+- **One look.** Read once, after the build review and the counts-only
+  coverage check.
+- **Limitations stated with the result.** The carbon final forecast is a
+  nowcast made minutes ahead, against a wind forecast up to hours old;
+  metered wind only, with no embedded wind; an association, not a cause.
+
 ## Candidates
 
 Each candidate needs a reading rule recorded before it is designed in.
