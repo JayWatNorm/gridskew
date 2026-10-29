@@ -1,0 +1,3 @@
+run_pair,matched,only_later,only_earlier,changed,moved_mwh,base_abs_mwh,changed_share,moved_share,changed_label,moved_label,pair_label
+II->SF,1000,0,0,150,30.000,1000.000,0.150000,0.030000,intermediate,material,material
+SF->R1,1000,0,0,40,4.000,1000.000,0.040000,0.004000,small,small,small

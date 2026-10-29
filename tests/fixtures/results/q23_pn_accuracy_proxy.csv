@@ -1,0 +1,10 @@
+section,fuel_group,settlement_month,item,units,half_hours,median_net_pct,p90_net_pct,median_absolute_pct,p90_absolute_pct
+1,nuclear,2026-08-01,unit-months,4,5000,1.100,4.000,1.200,4.500
+1,nuclear,2026-09-01,unit-months,4,4800,2.100,5.500,2.300,5.900
+1,wind,2026-08-01,unit-months,30,40000,0.900,5.000,7.500,12.000
+1,wind,2026-09-01,unit-months,31,39000,1.200,6.200,8.700,13.700
+2,wind,,units on days with an SO-flagged wind bid,31,70000,0.700,4.000,7.800,11.000
+2,wind,,units on days without,31,9000,0.200,2.300,4.500,6.400
+2,,,days with an SO-flagged wind bid,,50,,,,
+2,,,days without,,11,,,,
+3,wind,,left out: no positive registry capacity,1,900,,,,
