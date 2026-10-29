@@ -1,0 +1,123 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "section": "number",
+        "under_10_minutes_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q25_instruction_fragmentation.csv"
+  },
+  "encoding": {
+    "color": {
+      "field": "measure",
+      "legend": {
+        "labelExpr": "datum.label == \"2 continuous acceptance duration, BSC (acceptances)\" ? \"continuous acceptance duration (BSC)\" : datum.label == \"1 dispatch granularity (acceptances)\" ? \"own span of each acceptance\" : datum.label",
+        "orient": "bottom",
+        "title": null
+      },
+      "scale": {
+        "domain": [
+          "2 continuous acceptance duration, BSC (acceptances)",
+          "1 dispatch granularity (acceptances)"
+        ],
+        "range": [
+          "#4c72b0",
+          "#dd8452"
+        ]
+      },
+      "sort": [
+        "2 continuous acceptance duration, BSC (acceptances)",
+        "1 dispatch granularity (acceptances)"
+      ],
+      "type": "nominal"
+    },
+    "tooltip": [
+      {
+        "field": "fuel_group",
+        "type": "nominal"
+      },
+      {
+        "field": "measure",
+        "type": "nominal"
+      },
+      {
+        "field": "n",
+        "type": "nominal"
+      },
+      {
+        "field": "under_10_minutes",
+        "type": "nominal"
+      },
+      {
+        "field": "under_10_minutes_pct",
+        "type": "quantitative"
+      },
+      {
+        "field": "median_minutes",
+        "type": "nominal"
+      }
+    ],
+    "x": {
+      "field": "under_10_minutes_pct",
+      "title": "Under 10 minutes, % of acceptances",
+      "type": "quantitative"
+    },
+    "y": {
+      "field": "fuel_group",
+      "sort": null,
+      "title": null,
+      "type": "nominal"
+    },
+    "yOffset": {
+      "field": "measure",
+      "sort": [
+        "2 continuous acceptance duration, BSC (acceptances)",
+        "1 dispatch granularity (acceptances)"
+      ],
+      "type": "nominal"
+    }
+  },
+  "mark": {
+    "type": "bar"
+  },
+  "title": {
+    "anchor": "start",
+    "subtitle": [
+      "Continuous acceptance duration as the BSC chains",
+      "acceptances, with each acceptance's own span beside it",
+      "Months 2025-08 to 2026-09; cutoff 2026-09-30 22:30 UTC;",
+      "acceptances per group in the CSV"
+    ],
+    "text": [
+      "Q25. Share of acceptances under 10 minutes,",
+      "by fuel group"
+    ]
+  },
+  "transform": [
+    {
+      "filter": {
+        "equal": 2,
+        "field": "section"
+      }
+    },
+    {
+      "filter": {
+        "field": "measure",
+        "oneOf": [
+          "2 continuous acceptance duration, BSC (acceptances)",
+          "1 dispatch granularity (acceptances)"
+        ]
+      }
+    }
+  ],
+  "width": "container"
+}

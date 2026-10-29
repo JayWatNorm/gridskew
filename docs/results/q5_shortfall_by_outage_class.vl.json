@@ -1,0 +1,115 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "share_of_positive_shortfall_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q5_shortfall_with_known_outage.csv"
+  },
+  "encoding": {
+    "color": {
+      "field": "item",
+      "legend": {
+        "labelExpr": "datum.label == \"planned\" ? \"planned\" : datum.label == \"unplanned\" ? \"unplanned\" : datum.label == \"both\" ? \"both\" : datum.label == \"none\" ? \"none\" : datum.label",
+        "orient": "bottom",
+        "title": null
+      },
+      "scale": {
+        "domain": [
+          "planned",
+          "unplanned",
+          "both",
+          "none"
+        ],
+        "range": [
+          "#4c72b0",
+          "#c44e52",
+          "#8172b3",
+          "#c8c8c8"
+        ]
+      },
+      "sort": [
+        "planned",
+        "unplanned",
+        "both",
+        "none"
+      ],
+      "type": "nominal"
+    },
+    "tooltip": [
+      {
+        "field": "fuel_group",
+        "type": "nominal"
+      },
+      {
+        "field": "item",
+        "type": "nominal"
+      },
+      {
+        "field": "unit_periods",
+        "type": "nominal"
+      },
+      {
+        "field": "positive_shortfall_mwh",
+        "type": "nominal"
+      },
+      {
+        "field": "share_of_positive_shortfall_pct",
+        "type": "quantitative"
+      }
+    ],
+    "x": {
+      "field": "share_of_positive_shortfall_pct",
+      "title": "Share of positive unexplained shortfall, %",
+      "type": "quantitative"
+    },
+    "y": {
+      "axis": {
+        "labelExpr": "datum.label == \"\" ? \"all fuel groups\" : datum.label"
+      },
+      "field": "fuel_group",
+      "sort": null,
+      "title": null,
+      "type": "nominal"
+    }
+  },
+  "mark": {
+    "type": "bar"
+  },
+  "title": {
+    "anchor": "start",
+    "subtitle": [
+      "Share of positive unexplained shortfall by outage class",
+      "known at the half-hour's start",
+      "n=8675654 determinable cohort unit-periods, 2025-08-22",
+      "to 2026-09-27; cutoff 2026-09-27 22:30 UTC"
+    ],
+    "text": [
+      "Q5. Shortfall in half-hours with an outage",
+      "already published in REMIT"
+    ]
+  },
+  "transform": [
+    {
+      "filter": {
+        "field": "item",
+        "oneOf": [
+          "planned",
+          "unplanned",
+          "both",
+          "none"
+        ]
+      }
+    }
+  ],
+  "width": "container"
+}

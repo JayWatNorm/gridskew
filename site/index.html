@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GridSkew results</title>
+<meta name="description" content="Results of the GridSkew research questions on GB generation shortfalls and carbon-intensity forecast error, each read once under a rule recorded in advance.">
+<style>
+  :root {
+    --text: #1b1f24;
+    --muted: #57606a;
+    --rule: #d0d7de;
+    --tint: #f6f8fa;
+    --link: #0b5cad;
+  }
+  html { color-scheme: light; }
+  body {
+    margin: 0;
+    background: #ffffff;
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+  header, main, footer {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  header { padding-top: 1.5rem; }
+  h1 { font-size: 1.75rem; margin: 0 0 0.5rem; }
+  h2 {
+    font-size: 1.15rem;
+    margin: 2.5rem 0 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+  }
+  a { color: var(--link); }
+  code { font-size: 0.9em; overflow-wrap: anywhere; }
+  .stamp, .context, .pending { color: var(--muted); font-size: 0.92rem; }
+  .pending { border-left: 3px solid var(--rule); padding-left: 0.75rem; }
+  .chart { width: 100%; min-height: 12rem; margin: 1rem 0; }
+  .table-wrap { overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; font-size: 0.9rem; }
+  th, td {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.3rem 0.6rem;
+    text-align: right;
+    white-space: nowrap;
+  }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: var(--tint); }
+  footer {
+    margin-top: 3rem;
+    padding-bottom: 2rem;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>GridSkew results</h1>
+  <p>Where do GB generating units deliver less than they notified, and is that associated with error in the national carbon-intensity forecast? GridSkew answers with public Elexon and NESO data, under reading rules recorded before each result is read.</p>
+  <p class="stamp">Results as of 27 October 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>; each figure comes from the query named beside it, read on the date given.</p>
+</header>
+
+<main>
+<section id="q2">
+  <h2>Q2. How much does metered output change between settlement runs?</h2>
+  <p><strong>Rule</strong> (registered 25 September 2026): over settlement dates 10 to 16 August 2026, the moved share (Σ|later − earlier| ÷ Σ|earlier|) and the changed share of matched unit-periods, from II to SF and from SF to R1, each labelled small, intermediate or material against limits fixed in advance. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">The rule</a></p>
+  <p><strong>Result:</strong> both run pairs are material. II to SF moves 0.033706 of metered energy and changes 0.120580 of unit-periods; SF to R1 moves 0.023300 and changes 0.111695.</p>
+  <p class="context">n: 3,083,376 matched unit-periods in each pair, none in one run only. Read 11 October 2026; the query is not in this repository. Saved output: <a href="results/q2_settlement_run_changes.csv">q2_settlement_run_changes.csv</a>.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Run pair</th><th>Matched unit-periods</th><th>Changed share</th><th>Moved share</th><th>Label</th></tr></thead>
+      <tbody>
+        <tr><td>II to SF</td><td>3,083,376</td><td>0.120580 (intermediate)</td><td>0.033706 (material)</td><td>material</td></tr>
+        <tr><td>SF to R1</td><td>3,083,376</td><td>0.111695 (intermediate)</td><td>0.023300 (material)</td><td>material</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q3">
+  <h2>Q3. How far is metered output from the notified position (PN), by fuel group?</h2>
+  <p><strong>Rule</strong> (registered before its read): describe only, the median and interquartile range of the deviation from PN per fuel group, with coverage beside it. This is not NESO's PN-accuracy measure (see Q23). <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q3-how-far-is-metered-output-from-the-notified-position-pn-by-fuel-group">The rule</a></p>
+  <p class="pending">Draft: the result, n, dates and chart wait for the choice of saved delivery result. Read 11 October 2026 from <code>q3_metered_vs_notified.sql</code>.</p>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q12">
+  <h2>Q12. How much of the deviation from PN was instructed (BOALF) rather than unexplained?</h2>
+  <p><strong>Rule</strong> (restated 11 October 2026, before any Q12 read): per fuel group, over every determinable cohort period with a PN, the instructed part as a share of the absolute deviation from PN, Σ|instructed deviation| ÷ (Σ|instructed deviation| + Σ|unexplained shortfall|). The unexplained part includes balancing services settled outside the balancing mechanism (ABSVD). <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q12-how-much-of-the-deviation-from-pn-was-instructed-boalf-rather-than-unexplained">The rule</a></p>
+  <p class="pending">Draft: the result, n, dates and chart wait for the choice of saved delivery result. Read 11 October 2026 from <code>q12_instructed_vs_residual.sql</code>.</p>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q22">
+  <h2>Q22. Do settlement revisions change the Q3 headline (first against latest run)?</h2>
+  <p><strong>Rule</strong> (registered 10 October 2026): Q3's statistics on the first and the latest settlement run of 10 to 16 August 2026, side by side; the headline changes if the order of the fuel groups by median changes or any group's median changes sign. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q22-do-settlement-revisions-change-the-q3-headline-first-against-latest-run">The rule</a></p>
+  <p><strong>Result:</strong> the headline does not change. The first run is II and the latest R1; the order of the fuel groups by median is the same, and no median changes sign.</p>
+  <p class="context">n: unit-periods per fuel group, in the table. Deviation from PN in MWh per unit-period. Read 11 October 2026; the query is not in this repository. Saved output: <a href="results/q22_first_against_latest_run.csv">q22_first_against_latest_run.csv</a>.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fuel group</th><th>Unit-periods</th><th>II median (Q1 to Q3)</th><th>R1 median (Q1 to Q3)</th></tr></thead>
+      <tbody>
+        <tr><td>bioenergy</td><td>3,696</td><td>0.780 (0.000 to 3.328)</td><td>0.751 (0.000 to 3.327)</td></tr>
+        <tr><td>coal</td><td>2,016</td><td>0.000 (0.000 to 0.000)</td><td>0.000 (0.000 to 0.000)</td></tr>
+        <tr><td>gas_turbine</td><td>26,208</td><td>0.150 (0.000 to 1.085)</td><td>0.150 (0.000 to 1.075)</td></tr>
+        <tr><td>hydro</td><td>7,392</td><td>0.000 (0.000 to 0.105)</td><td>0.000 (0.000 to 0.096)</td></tr>
+        <tr><td>interconnector</td><td>2,688</td><td>0.000 (-1.547 to 0.000)</td><td>0.000 (-1.547 to 0.000)</td></tr>
+        <tr><td>nuclear</td><td>4,704</td><td>1.304 (0.000 to 3.733)</td><td>1.304 (0.000 to 3.733)</td></tr>
+        <tr><td>other</td><td>27,908</td><td>0.033 (0.000 to 0.288)</td><td>0.038 (0.000 to 0.292)</td></tr>
+        <tr><td>pumped_storage</td><td>5,376</td><td>0.000 (0.000 to 0.100)</td><td>0.000 (0.000 to 0.100)</td></tr>
+        <tr><td>wind</td><td>76,944</td><td>0.239 (-0.630 to 1.570)</td><td>0.225 (-0.695 to 1.532)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q5">
+  <h2>Q5. Should the forecast have known? How much shortfall coincides with outages already published in REMIT at the period start?</h2>
+  <p><strong>Rule</strong> (recorded 12 October 2026, before any Q5 value was read): the share of positive unexplained shortfall in half-hours when an outage of the unit is already published in REMIT at the half-hour's start, split planned, unplanned, both and none; a measured share, with no verdict. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q5-should-the-forecast-have-known-how-much-shortfall-coincides-with-outages-already-published-in-remit-at-the-period-start">The rule</a></p>
+  <p><strong>Result:</strong> of 16,409,747.7 MWh of positive unexplained shortfall, 12.0% falls in half-hours with a published planned outage, 11.2% unplanned, 0.4% both and 76.4% none. By fuel group, the share with no known outage runs from 7.3% (nuclear) to 100.0% (coal, interconnector); wind 90.4%. "Known" means published in REMIT, not that the generator knew: an association, not a cause.</p>
+  <p class="context">n: 8,675,654 determinable cohort unit-periods, 22 August 2025 to 27 September 2026; cutoff 27 September 2026 22:30 UTC. Left out: 255,473 unit-periods with no metered value; 10 REMIT publications that name no unit GridSkew can map. Read 12 October 2026 from <code>q5_shortfall_with_known_outage.sql</code>. Saved output: <a href="results/q5_shortfall_with_known_outage.csv">q5_shortfall_with_known_outage.csv</a>.</p>
+  <div class="chart" id="q5-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q6">
+  <h2>Q6. How late are unplanned outages published?</h2>
+  <p><strong>Rule</strong> (population recorded 11 October 2026, before any lag was read): the median and 90th-percentile lag from an outage's event start to its first REMIT publication, by the class it was first published under. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-late-are-unplanned-outages-published">The rule</a></p>
+  <p><strong>Result:</strong> unplanned outages are first published a median 0.9 minutes after the event starts, with the 90th percentile at 29.9 minutes (11,811 notices). Planned outages are published before the event: median -1,362.9 minutes, 90th percentile -4.9 minutes (8,545 notices). REMIT's "without delay" duty is not judged here: the data cannot show when the participant knew.</p>
+  <p class="context">n: 20,368 notices first published from 1 November 2024; 12 notices with no class (median -6,090.5, 90th percentile 20.4 minutes) are not charted. Left out: 9,488 dismissed as of the read, 2,331 first published before the burn-in date, 514 other market information, 8 events that start before the history. Read 12 October 2026 from <code>q6_publication_lag.sql</code>. Saved output: <a href="results/q6_publication_lag.csv">q6_publication_lag.csv</a>.</p>
+  <div class="chart" id="q6-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q23">
+  <h2>Q23. How close to their PNs do units run when not instructed?</h2>
+  <p><strong>Rule</strong> (registered 12 October 2026; interconnectors excluded the same day, before any read): per cohort unit and month, over half-hours with no acceptance in force, the absolute gap between PN and metered energy as a percentage of registry capacity; the median and 90th percentile per fuel group and month. A proxy for NESO's PN-accuracy measure: ABSVD and dynamic MEL/MIL are not used, so no unit is called inaccurate. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q23-how-close-to-their-pns-do-units-run-when-not-instructed">The rule</a></p>
+  <p><strong>Result:</strong> in September 2026 the median absolute percentage is 8.722 for wind (90th percentile 13.744), 2.300 for nuclear, 1.993 for other and 0.395 for gas. Wind's median is 7.795 on days with an SO-flagged wind bid and 4.532 on days without (363 and 42 days): an association, not a cause.</p>
+  <p class="context">Months August 2025 to September 2026, from 22 August 2025; cutoff 30 September 2026 22:30 UTC. Units and half-hours for every point are in the saved output. Left out, with no positive registry capacity: 4 coal, 4 nuclear, 6 other, 3 gas and 1 wind unit. Read 15 October 2026 from <code>q23_pn_accuracy_proxy.sql</code>. Saved output: <a href="results/q23_pn_accuracy_proxy.csv">q23_pn_accuracy_proxy.csv</a>.</p>
+  <div class="chart" id="q23-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q24">
+  <h2>Q24. What share of each fuel group's instructed energy is flagged as a system action rather than energy balancing?</h2>
+  <p><strong>Rule</strong> (registered 12 October 2026, after an exploration had read level-energy shares, and amended the same day to acceptance volume, so not called pre-registered): per fuel group and month, the acceptance volume flagged as a system action, as a share of all acceptance volume, with the level-energy share beside it. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q24-what-share-of-each-fuel-groups-instructed-energy-is-flagged-as-a-system-action-rather-than-energy-balancing">The rule</a></p>
+  <p><strong>Result:</strong> over all months, 96.6% of wind's acceptance volume and 93.1% of hydro's is flagged as a system action; pumped storage 69.8%, gas 34.9%, other 31.0% and bioenergy 24.0%. The level-energy shares are 88.4%, 88.6%, 50.6%, 26.8%, 16.5% and 16.7%. The flag is NESO's real-time classification, not constraint volume.</p>
+  <p class="context">22 August 2025 to 30 September 2026; cutoff 30 September 2026 22:30 UTC. Acceptances and stretches per fuel group are in the saved output; coal and nuclear have no acceptances. Read 15 October 2026 from <code>q24_system_action_share.sql</code>. Saved output: <a href="results/q24_system_action_share.csv">q24_system_action_share.csv</a>.</p>
+  <div class="chart" id="q24-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q25">
+  <h2>Q25. How fragmented are instructions to storage compared with thermal plant?</h2>
+  <p><strong>Rule</strong> (registered 12 October 2026; the continuous-duration measure, added before any read of it, is the registered result; the own-span measure had been explored): per fuel group and month, the share of acceptances whose continuous acceptance duration, as BSC Annex T-1 chains acceptances, is under 10 minutes, with each acceptance's own span beside it. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q25-how-fragmented-are-instructions-to-storage-compared-with-thermal-plant">The rule</a></p>
+  <p><strong>Result:</strong> 21.4% of acceptances in the other group (which includes batteries) and 16.4% of pumped-storage acceptances sit in continuous chains under 10 minutes, against 0.4% or less for hydro, gas, wind and bioenergy. On their own span, 77.6% and 59.0% last under 10 minutes, against 2.9% for gas. These are the figures as read; a correction on 25 October 2026 for acceptances that cross midnight moves them slightly and does not change the reading.</p>
+  <p class="context">22 August 2025 to 30 September 2026; cutoff 30 September 2026 22:30 UTC. Acceptances per fuel group are in the saved output. Read 15 October 2026 from <code>q25_instruction_fragmentation.sql</code>. Saved output: <a href="results/q25_instruction_fragmentation.csv">q25_instruction_fragmentation.csv</a>.</p>
+  <div class="chart" id="q25-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q8">
+  <h2>Q8. Does demand forecast error explain carbon forecast error better than shortfall does?</h2>
+  <p><strong>Rule</strong> (registered before its read and completed 25 October 2026, before any demand value was held): the rank correlation of the absolute carbon forecast error with the absolute demand forecast error, and with the unexplained shortfall, over the same half-hours; one is called stronger only at a gap of 0.1 or more. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q8-does-demand-forecast-error-explain-carbon-forecast-error-better-than-shortfall-does">The rule</a></p>
+  <p><strong>Result:</strong> no clear difference. The gap is -0.012159 (90% interval -0.042422 to 0.017249).</p>
+  <p class="context">n: 17,278 half-hours on 360 matched days, 22 August 2025 to 16 August 2026. The carbon forecast is the API's own final forecast, made minutes ahead. Read 26 October 2026 from <code>q8_q28_history.sql</code>, shared with Q28. Saved output: <a href="results/q8_q28_history.csv">q8_q28_history.csv</a>.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Measure</th><th>n</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>rho_demand: absolute carbon error with absolute demand error</td><td>17,278</td><td>0.040644</td></tr>
+        <tr><td>rho_shortfall: absolute carbon error with positive shortfall</td><td>17,278</td><td>0.052803</td></tr>
+        <tr><td>gap, rho_demand minus rho_shortfall</td><td></td><td>-0.012159</td></tr>
+        <tr><td>90% bootstrap interval for the gap (1,000 of 1,000 draws)</td><td></td><td>-0.042422 to 0.017249</td></tr>
+        <tr><td>verdict (stronger at a gap of 0.1 or more either way)</td><td></td><td>no clear difference</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q28">
+  <h2>Q28. Are half-hours with a larger error in the API's final carbon forecast associated with more unexplained shortfall, on 2025 history?</h2>
+  <p><strong>Rule</strong> (registered 25 October 2026 and amended 26 October 2026, before any read): supported if the fifth of half-hours with the largest absolute error in the API's final carbon forecast carries a mean positive unexplained shortfall at least 25% above the fifth with the smallest. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q28-are-half-hours-with-a-larger-error-in-the-apis-final-carbon-forecast-associated-with-more-unexplained-shortfall-on-2025-history">The rule</a></p>
+  <p><strong>Result:</strong> not supported. The ratio is 1.051428 (90% interval 1.027775 to 1.075448): 800.953575 MWh per half-hour in the top fifth against 761.776637 MWh in the bottom fifth.</p>
+  <p class="context">n: 17,278 half-hours on 360 days, 22 August 2025 to 16 August 2026 (Q8's population). The final forecast is made minutes ahead, so this concerns the nowcast, not the day-ahead forecast. Read 26 October 2026 from <code>q8_q28_history.sql</code>. Saved output: <a href="results/q8_q28_history.csv">q8_q28_history.csv</a>.</p>
+  <div class="chart" id="q28-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q29">
+  <h2>Q29. How does the error of the API's own final carbon forecast vary by month and by time of day, over a year of history?</h2>
+  <p><strong>Rule</strong> (registered 27 October 2026, before any figure of it was read): describe the error of the API's own final forecast (actual minus forecast) by settlement month and by UTC block of the day, each on its own: n, mean absolute error, mean error and median error, with no test. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q29-how-does-the-error-of-the-apis-own-final-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history">The rule</a></p>
+  <p><strong>Result:</strong> over 17,280 half-hours the mean absolute error is 9.327 gCO2/kWh, the mean error -0.615 and the median -1.000. The mean error is negative from August 2025 to March 2026 and positive from April to August 2026; by UTC block it is 0.598 (00:00-05:59), -2.422 (06:00-11:59), 5.305 (12:00-17:59) and -5.940 (18:00-23:59).</p>
+  <p class="context">Settlement dates 22 August 2025 to 16 August 2026; every half-hour has an error. The overall mean and median were seen in a September 2026 exploration, measured with the opposite sign. The final forecast is made minutes ahead, and the outturn is NESO's estimate. Read 27 October 2026 from <code>q29_final_forecast_error_by_month_and_block.sql</code>. Saved output: <a href="results/q29_final_forecast_error_by_month_and_block.csv">q29_final_forecast_error_by_month_and_block.csv</a>.</p>
+  <div class="chart" id="q29-month-chart"></div>
+  <div class="chart" id="q29-block-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="q30">
+  <h2>Q30. Is the size of the miss between wind outturn and NESO's latest wind forecast associated with the size of the error in the API's final carbon forecast, on 2025 history?</h2>
+  <p><strong>Rule</strong> (registered 27 October 2026, before any wind data was held): describe the rank correlation between the absolute miss of NESO's latest wind forecast against outturn (with the cohort's curtailment added back) and the absolute error of the API's final carbon forecast, with quintiles of the wind miss; no test. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">The rules</a></p>
+  <p><strong>Result:</strong> the rank correlation is 0.007930 (90% interval -0.012829 to 0.028041), near zero. The mean absolute carbon forecast error by quintile of the wind miss runs from 9.085648 to 9.536458 gCO2/kWh.</p>
+  <p class="context">n: 17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Read 27 October 2026, database cutoff 14:03 UTC, from <code>q30_wind_vs_carbon_error.sql</code>. Saved output: <a href="results/q30_wind_vs_carbon_error.csv">q30_wind_vs_carbon_error.csv</a>.</p>
+  <div class="chart" id="q30-chart"></div>
+  <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
+</section>
+
+<section id="limitations">
+  <h2>Limitations</h2>
+  <ul>
+    <li>Fuel groups are the current registry's.</li>
+    <li>The metered value is the latest settlement run, which differs by date.</li>
+    <li>PN is the latest capture, not the gate-closure position.</li>
+    <li>Balancing services settled outside the balancing mechanism are not in BOALF.</li>
+    <li>The cohort is not the grid.</li>
+  </ul>
+</section>
+</main>
+
+<footer>
+  <p>Contains BMRS data © Elexon Limited copyright and database right 2026. <a href="https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/">BMRS licence</a></p>
+  <p>Carbon intensity data: <a href="https://carbonintensity.org.uk/">NESO Carbon Intensity API</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, modified: aggregated by GridSkew.</p>
+  <p>Neither provider endorses this project.</p>
+  <p><a href="https://github.com/JayWatNorm/gridskew">GridSkew on GitHub</a></p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/vega@6.4.0/build/vega.min.js" integrity="sha384-VKdcJr3ZaBIJMbVcopTAI/JEuUkSY6qnwVu9iLuw0DnQ9gQ1JjsfZJhXFQAgNi43" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.1/build/vega-lite.min.js" integrity="sha384-QtG7pnWvq1Tk0Rcvl53B1TEVw7U1PUqfciCz3XMUqSmi1fNpJwiv5ml+m5NeOOzH" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@7.3.0/build/vega-embed.min.js" integrity="sha384-Muy1QRxYFeNrA1zShc1KtN4OfipkR/61gt+HWqN57c1Zxu3Oe16TsilsruVVjfKL" crossorigin="anonymous"></script>
+<script>
+  // Every results CSV starts with its attribution line; a chart reads the
+  // rows after it.
+  const fileLoader = vega.loader();
+
+  async function loadWithoutAttribution(uri, options) {
+    const text = await fileLoader.load(uri, options);
+    if (!text.startsWith("# ")) {
+      return text;
+    }
+    return text.slice(text.indexOf("\n") + 1);
+  }
+
+  const chartOptions = {
+    actions: false,
+    renderer: "svg",
+    loader: { ...fileLoader, load: loadWithoutAttribution },
+  };
+
+  vegaEmbed("#q5-chart", "results/q5_shortfall_by_outage_class.vl.json", chartOptions);
+  vegaEmbed("#q6-chart", "results/q6_publication_lag_by_class.vl.json", chartOptions);
+  vegaEmbed("#q23-chart", "results/q23_absolute_deviation_by_month.vl.json", chartOptions);
+  vegaEmbed("#q24-chart", "results/q24_system_action_share_by_fuel_group.vl.json", chartOptions);
+  vegaEmbed("#q25-chart", "results/q25_short_acceptances_by_fuel_group.vl.json", chartOptions);
+  vegaEmbed("#q28-chart", "results/q28_shortfall_by_error_quintile.vl.json", chartOptions);
+  vegaEmbed("#q29-month-chart", "results/q29_error_by_month.vl.json", chartOptions);
+  vegaEmbed("#q29-block-chart", "results/q29_error_by_utc_block.vl.json", chartOptions);
+  vegaEmbed("#q30-chart", "results/q30_carbon_error_by_wind_miss_quintile.vl.json", chartOptions);
+</script>
+</body>
+</html>

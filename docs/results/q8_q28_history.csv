@@ -1,0 +1,36 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026. Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+section,item,quintile,half_hours,days,first_date,last_date,value,result
+1,"population: matched days (all three values in at least 46 half-hours), every half-hour on them with all three",,17278,360,2025-08-22,2026-08-16,,
+2,"bootstrap 90% interval for the gap, high",,,,,,0.017249,
+2,"bootstrap 90% interval for the gap, low",,,,,,-0.042422,
+2,bootstrap draws with a gap (900 of 1000 needed),,,,,,1000,available
+2,"gap, rho_demand minus rho_shortfall",,,,,,-0.012159,
+2,rho_demand: abs(error_api_final) with abs(demand_error_final_mw),,17278,,,,0.040644,
+2,rho_shortfall: abs(error_api_final) with positive shortfall,,17278,,,,0.052803,
+2,verdict (stronger at a gap of 0.1 or more either way),,,,,,,no clear difference
+3,"bootstrap 90% interval for the ratio, high",,,,,,1.075448,
+3,"bootstrap 90% interval for the ratio, low",,,,,,1.027775,
+3,bootstrap draws with a ratio (900 of 1000 needed),,,,,,1000,available
+3,"bottom quintile mean, MWh",,3456,,,,761.776637,
+3,"difference, top minus bottom, MWh",,,,,,39.176938,
+3,"ratio, top over bottom",,,,,,1.051428,
+3,"top quintile mean, MWh",,3455,,,,800.953575,
+3,verdict (supported at a ratio of 1.25 or more),,,,,,,not supported
+4,half-hours sharing the bottom quintile's largest abs(error_api_final) (value: that error),,1360,,,,3,in the bottom quintile: 53
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",1,3456,,,,761.776637,abs(error_api_final) 0 to 3
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",2,3456,,,,765.656933,abs(error_api_final) 3 to 5
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",3,3456,,,,769.059791,abs(error_api_final) 5 to 9
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",4,3455,,,,784.955801,abs(error_api_final) 9 to 15
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",5,3455,,,,800.953575,abs(error_api_final) 15 to 125
+5,half-hours on matched days without all three values,,2,1,,,,
+5,half-hours with all three values,,17278,360,,,,
+5,half-hours with demand_error_final_mw,,17280,,,,,
+5,half-hours with error_api_final,,17280,,,,,
+5,half-hours with the cohort shortfall,,17278,,,,,
+5,"population half-hours whose first outturn was published over 60 minutes after they ended (value: the latest, minutes)",,15,,,,175.000000,
+5,"population half-hours whose last forecast was issued over 30 minutes before them (value: the oldest, minutes)",,392,,,,164.000000,
+5,settlement dates in the window,,17280,360,2025-08-22,2026-08-16,,
+5,settlement dates not matched,,,0,,,,
+5,settlement dates without demand_error_final_mw in any half-hour,,,0,,,,
+5,settlement dates without error_api_final in any half-hour,,,0,,,,
+5,settlement dates without the cohort shortfall in any half-hour,,,0,,,,

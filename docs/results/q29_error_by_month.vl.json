@@ -1,0 +1,128 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "mean_absolute_error": "number",
+        "mean_error": "number",
+        "section": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q29_final_forecast_error_by_month_and_block.csv"
+  },
+  "encoding": {
+    "color": {
+      "field": "measure",
+      "legend": {
+        "labelExpr": "datum.label == \"mean_error\" ? \"mean error\" : datum.label == \"mean_absolute_error\" ? \"mean absolute error\" : datum.label",
+        "orient": "bottom",
+        "title": null
+      },
+      "scale": {
+        "domain": [
+          "mean_error",
+          "mean_absolute_error"
+        ],
+        "range": [
+          "#4c72b0",
+          "#dd8452"
+        ]
+      },
+      "sort": [
+        "mean_error",
+        "mean_absolute_error"
+      ],
+      "type": "nominal"
+    },
+    "tooltip": [
+      {
+        "field": "item",
+        "type": "nominal"
+      },
+      {
+        "field": "half_hours",
+        "type": "nominal"
+      },
+      {
+        "field": "measure",
+        "type": "nominal"
+      },
+      {
+        "field": "value",
+        "type": "quantitative"
+      },
+      {
+        "field": "median_error",
+        "type": "nominal"
+      },
+      {
+        "field": "zero_error_share",
+        "type": "nominal"
+      }
+    ],
+    "x": {
+      "field": "value",
+      "title": "gCO2/kWh",
+      "type": "quantitative"
+    },
+    "y": {
+      "axis": {
+        "labelExpr": "replace(datum.label, \"settlement month \", '')"
+      },
+      "field": "item",
+      "sort": null,
+      "title": null,
+      "type": "nominal"
+    },
+    "yOffset": {
+      "field": "measure",
+      "sort": [
+        "mean_error",
+        "mean_absolute_error"
+      ],
+      "type": "nominal"
+    }
+  },
+  "mark": {
+    "type": "bar"
+  },
+  "title": {
+    "anchor": "start",
+    "subtitle": [
+      "gCO2/kWh, actual minus forecast: positive means dirtier",
+      "than forecast",
+      "n=17280 half-hours, settlement dates 2025-08-22 to",
+      "2026-08-16; read 2026-10-27 06:15 UTC"
+    ],
+    "text": [
+      "Q29. Error of the API's final carbon forecast",
+      "by settlement month"
+    ]
+  },
+  "transform": [
+    {
+      "filter": {
+        "equal": 2,
+        "field": "section"
+      }
+    },
+    {
+      "as": [
+        "measure",
+        "value"
+      ],
+      "fold": [
+        "mean_error",
+        "mean_absolute_error"
+      ]
+    }
+  ],
+  "width": "container"
+}

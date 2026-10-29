@@ -1,11 +1,21 @@
 import json
+import re
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.readme_charts import write_charts
 
 FIXTURES = Path(__file__).parent / "fixtures" / "results"
+REPOSITORY = Path(__file__).parent.parent
+PAGE = REPOSITORY / "site" / "index.html"
+PAGES_WORKFLOW = REPOSITORY / ".github" / "workflows" / "pages.yml"
+PINNED_JSDELIVR_FILE = re.compile(
+    r"https://cdn\.jsdelivr\.net/npm/(?P<package>[a-z][a-z-]*)@\d+\.\d+\.\d+/\S+"
+)
+VEGA_EMBED_CALL = re.compile(r'vegaEmbed\(\s*"[^"]+",\s*"(?P<spec>[^"]+)"')
 
 DELIVERY_HEADER = (
     "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
@@ -289,3 +299,141 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
 
 def test_every_spec_is_written_with_sorted_keys_and_two_space_indents(written):
     assert specs_not_written_sorted(written) == []
+
+
+class PageTags(HTMLParser):
+    """Every start tag on the page, with its attributes."""
+
+    def __init__(self):
+        super().__init__()
+        self.tags = []
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.append((tag, dict(attrs)))
+
+
+def page_tags():
+    parser = PageTags()
+    parser.feed(PAGE.read_text(encoding="utf-8"))
+    return parser.tags
+
+
+def loaded_from_elsewhere(tag, attributes):
+    """A script or stylesheet the browser fetches from another host."""
+    target = attributes.get("src") or attributes.get("href") or ""
+    if tag not in ("script", "link"):
+        return None
+    if not target.startswith(("http:", "https:", "//")):
+        return None
+    return target
+
+
+def unpinned_resources(tags):
+    """Scripts and stylesheets from another host that are not a pinned
+    jsDelivr file with a sha384 integrity hash, loaded anonymously."""
+    unpinned = []
+    for tag, attributes in tags:
+        target = loaded_from_elsewhere(tag, attributes)
+        if target is None:
+            continue
+        pinned = PINNED_JSDELIVR_FILE.fullmatch(target)
+        integrity = attributes.get("integrity") or ""
+        anonymous = attributes.get("crossorigin") == "anonymous"
+        if pinned and integrity.startswith("sha384-") and anonymous:
+            continue
+        unpinned.append(target)
+    return unpinned
+
+
+def external_script_packages(tags):
+    packages = []
+    for tag, attributes in tags:
+        target = loaded_from_elsewhere(tag, attributes)
+        pinned = PINNED_JSDELIVR_FILE.fullmatch(target or "")
+        if tag == "script" and pinned:
+            packages.append(pinned["package"])
+    return packages
+
+
+def shipped_path(target):
+    """Where the Pages workflow takes a page-relative path from: site/,
+    with results/ from docs/results/."""
+    if target.startswith("results/"):
+        return REPOSITORY / "docs" / target
+    return REPOSITORY / "site" / target
+
+
+def local_targets(tags):
+    targets = []
+    for _tag, attributes in tags:
+        for name in ("src", "href"):
+            target = attributes.get(name)
+            if not target or target.startswith(("#", "http:", "https:", "//")):
+                continue
+            targets.append(target)
+    return targets
+
+
+def chart_specs_on_page():
+    return VEGA_EMBED_CALL.findall(PAGE.read_text(encoding="utf-8"))
+
+
+def jobs_with_their_own_permissions(workflow):
+    names = []
+    for name, job in workflow["jobs"].items():
+        if "permissions" in job:
+            names.append(name)
+    return names
+
+
+def not_shipped(targets):
+    missing = []
+    for target in targets:
+        if not shipped_path(target).is_file():
+            missing.append(target)
+    return missing
+
+
+def test_the_page_loads_scripts_only_from_pinned_jsdelivr_urls_with_integrity():
+    tags = page_tags()
+
+    assert unpinned_resources(tags) == []
+    assert external_script_packages(tags) == ["vega", "vega-lite", "vega-embed"]
+
+
+def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
+    specs = chart_specs_on_page()
+
+    assert specs == [
+        "results/q5_shortfall_by_outage_class.vl.json",
+        "results/q6_publication_lag_by_class.vl.json",
+        "results/q23_absolute_deviation_by_month.vl.json",
+        "results/q24_system_action_share_by_fuel_group.vl.json",
+        "results/q25_short_acceptances_by_fuel_group.vl.json",
+        "results/q28_shortfall_by_error_quintile.vl.json",
+        "results/q29_error_by_month.vl.json",
+        "results/q29_error_by_utc_block.vl.json",
+        "results/q30_carbon_error_by_wind_miss_quintile.vl.json",
+    ]
+    assert not_shipped([*local_targets(page_tags()), *specs]) == []
+
+
+def test_the_pages_workflow_runs_on_pushes_to_main_for_the_site_and_results():
+    # BaseLoader keeps the key "on" a string; YAML 1.1 would read it as True.
+    workflow = yaml.load(PAGES_WORKFLOW.read_text(encoding="utf-8"), yaml.BaseLoader)
+
+    assert workflow["on"] == {
+        "push": {"branches": ["main"], "paths": ["site/**", "docs/results/**"]},
+        "workflow_dispatch": "",
+    }
+
+
+def test_the_pages_workflow_asks_for_exactly_its_three_permissions():
+    workflow = yaml.load(PAGES_WORKFLOW.read_text(encoding="utf-8"), yaml.BaseLoader)
+
+    assert workflow["permissions"] == {
+        "contents": "read",
+        "pages": "write",
+        "id-token": "write",
+    }
+    assert jobs_with_their_own_permissions(workflow) == []

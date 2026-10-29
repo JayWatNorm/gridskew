@@ -1,0 +1,133 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "median_absolute_pct": "number",
+        "p90_absolute_pct": "number",
+        "section": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q23_pn_accuracy_proxy.csv"
+  },
+  "encoding": {
+    "color": {
+      "field": "fuel_group",
+      "legend": {
+        "columns": 4,
+        "orient": "bottom",
+        "title": null
+      },
+      "scale": {
+        "range": [
+          "#4c78a8",
+          "#f58518",
+          "#e45756",
+          "#72b7b2",
+          "#54a24b",
+          "#eeca3b",
+          "#b279a2",
+          "#ff9da6",
+          "#9d755d",
+          "#bab0ac"
+        ]
+      },
+      "type": "nominal"
+    },
+    "strokeDash": {
+      "field": "measure",
+      "legend": {
+        "labelExpr": "datum.label == \"median_absolute_pct\" ? \"median\" : datum.label == \"p90_absolute_pct\" ? \"90th percentile\" : datum.label",
+        "orient": "bottom",
+        "title": null
+      },
+      "sort": [
+        "median_absolute_pct",
+        "p90_absolute_pct"
+      ],
+      "type": "nominal"
+    },
+    "tooltip": [
+      {
+        "field": "fuel_group",
+        "type": "nominal"
+      },
+      {
+        "field": "settlement_month",
+        "type": "nominal"
+      },
+      {
+        "field": "units",
+        "type": "nominal"
+      },
+      {
+        "field": "half_hours",
+        "type": "nominal"
+      },
+      {
+        "field": "measure",
+        "type": "nominal"
+      },
+      {
+        "field": "value",
+        "type": "quantitative"
+      }
+    ],
+    "x": {
+      "axis": {
+        "labelExpr": "slice(datum.label, 0, 7)"
+      },
+      "field": "settlement_month",
+      "title": null,
+      "type": "ordinal"
+    },
+    "y": {
+      "field": "value",
+      "title": "Absolute deviation from PN, % of capacity",
+      "type": "quantitative"
+    }
+  },
+  "mark": {
+    "type": "line"
+  },
+  "title": {
+    "anchor": "start",
+    "subtitle": [
+      "Median (solid) and 90th percentile (dashed) of the",
+      "absolute % across unit-months; a proxy, not NESO's",
+      "measure",
+      "Months 2025-08 to 2026-09; cutoff 2026-09-30 22:30 UTC;",
+      "units and half-hours per point in the CSV"
+    ],
+    "text": [
+      "Q23. Uninstructed deviation from PN as % of",
+      "capacity, by fuel group"
+    ]
+  },
+  "transform": [
+    {
+      "filter": {
+        "equal": 1,
+        "field": "section"
+      }
+    },
+    {
+      "as": [
+        "measure",
+        "value"
+      ],
+      "fold": [
+        "median_absolute_pct",
+        "p90_absolute_pct"
+      ]
+    }
+  ],
+  "width": "container"
+}

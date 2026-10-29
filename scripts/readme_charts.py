@@ -122,6 +122,8 @@ FIGURE_MARGIN_INCHES = 1.6
 DPI = 100
 PAD_INCHES = 0.2
 TITLE_LINE_CHARACTERS = 70
+SPEC_TITLE_CHARACTERS = 45
+SPEC_SUBTITLE_CHARACTERS = 55
 MINIMUM_FIGURE_HEIGHT_INCHES = 3.5
 INCHES_PER_BAR = 0.25
 LEGEND_ROW_INCHES = 0.22
@@ -319,8 +321,23 @@ def csv_data(csv_name, number_fields):
     )
 
 
-def chart_title(title, subtitle_lines):
-    return altair.TitleParams(text=title, subtitle=subtitle_lines, anchor="start")
+def wrapped(lines, width):
+    wrapped_lines = []
+    for line in lines:
+        wrapped_lines.extend(textwrap.wrap(line, width))
+    return wrapped_lines
+
+
+def page_layout(title, subtitle_lines):
+    """As wide as the page allows, with the title wrapped to fit a phone."""
+    return {
+        "width": "container",
+        "title": altair.TitleParams(
+            text=wrapped([title], SPEC_TITLE_CHARACTERS),
+            subtitle=wrapped(subtitle_lines, SPEC_SUBTITLE_CHARACTERS),
+            anchor="start",
+        ),
+    }
 
 
 def label_expression(labels):
@@ -418,10 +435,9 @@ def deviation_spec(rows, csv_name):
         .encode(x="median_deviation_mwh:Q", y=fuel_group, tooltip=tooltip)
     )
     return altair.layer(interquartile_range, median, data=data).properties(
-        width="container",
-        title=chart_title(
+        **page_layout(
             "Median and interquartile range by fuel group", [describe_read(rows)]
-        ),
+        )
     )
 
 
@@ -471,10 +487,9 @@ def instructed_share_spec(rows, csv_name):
             ],
         )
         .properties(
-            width="container",
-            title=chart_title(
+            **page_layout(
                 "Instructed share of the deviation by fuel group", [describe_read(rows)]
-            ),
+            )
         )
     )
 
@@ -577,7 +592,7 @@ def write_q5_chart(rows, output):
                 "share_of_positive_shortfall_pct:Q",
             ],
         )
-        .properties(width="container", title=chart_title(title, subtitle))
+        .properties(**page_layout(title, subtitle))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -634,7 +649,7 @@ def write_q6_chart(rows, output):
             "Lag from event start to first publication, minutes",
         )
         .encode(tooltip=["outage_class:N", "notices:N", "measure:N", "value:Q"])
-        .properties(width="container", title=chart_title(title, subtitle))
+        .properties(**page_layout(title, subtitle))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -742,7 +757,7 @@ def write_q23_chart(rows, output):
                 "value:Q",
             ],
         )
-        .properties(width="container", title=chart_title(title, subtitle))
+        .properties(**page_layout(title, subtitle))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -806,7 +821,7 @@ def write_q24_chart(rows, output):
                 "value:Q",
             ]
         )
-        .properties(width="container", title=chart_title(title, subtitle))
+        .properties(**page_layout(title, subtitle))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -879,7 +894,7 @@ def write_q25_chart(rows, output):
                 "median_minutes:N",
             ]
         )
-        .properties(width="container", title=chart_title(title, subtitle))
+        .properties(**page_layout(title, subtitle))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -910,7 +925,7 @@ def quintile_chart(csv_name, quintiles, title, subtitle):
             ),
             tooltip=["quintile:N", "result:N", "half_hours:N", "value:Q"],
         )
-        .properties(width="container", title=chart_title(title, subtitle))
+        .properties(**page_layout(title, subtitle))
     )
 
 
@@ -1033,7 +1048,7 @@ def write_q29_split_chart(rows, output, section, prefix, name, title):
                 "zero_error_share:N",
             ]
         )
-        .properties(width="container", title=chart_title(title, subtitle))
+        .properties(**page_layout(title, subtitle))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
