@@ -3,7 +3,7 @@ the helpers several test modules share."""
 
 import runpy
 import sys
-from datetime import timedelta
+from datetime import timedelta, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock
@@ -70,8 +70,9 @@ class FakeAirflowSkipException(Exception):
     """Stands in for Airflow's exception that marks a task skipped."""
 
 
-def replace_with_do_nothing(**settings):
-    """Stand in for @dag(...) and @task(...), so loading a DAG file runs no task.
+def replace_with_do_nothing(function=None, **settings):
+    """Stand in for @dag(...) and @task(...), and for a bare @task, so loading a
+    DAG file runs no task.
 
     The settings of each @dag(...) are kept in DAG_SETTINGS by dag_id, so a
     test can read a schedule without Airflow. Each decorated function is kept
@@ -82,11 +83,13 @@ def replace_with_do_nothing(**settings):
     if "dag_id" in settings:
         DAG_SETTINGS[settings["dag_id"]] = settings
 
-    def replace(function):
-        DECORATED_FUNCTIONS[function.__name__] = function
+    def replace(decorated):
+        DECORATED_FUNCTIONS[decorated.__name__] = decorated
         return do_nothing
 
-    return replace
+    if function is None:
+        return replace
+    return replace(function)
 
 
 def do_nothing():
@@ -99,6 +102,17 @@ class FakeCronDataIntervalTimetable:
     def __init__(self, cron, timezone):
         self.cron = cron
         self.timezone = timezone
+
+
+def stop_the_utc_clock_at(monkeypatch, function, moment):
+    """Make datetime.now(timezone.utc) in the DAG file return `moment` when
+    `function` runs. A reading in any other time zone fails the test."""
+
+    def now(tz=None):
+        assert tz is timezone.utc, f"datetime.now({tz!r}) is not a UTC reading"
+        return moment
+
+    monkeypatch.setitem(function.__globals__, "datetime", SimpleNamespace(now=now))
 
 
 def connection_returning(row):

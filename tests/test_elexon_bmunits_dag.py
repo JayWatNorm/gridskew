@@ -1,5 +1,6 @@
 """Guard the deployed BM-unit dbt target without requiring Airflow to run."""
 
+import os
 import re
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -7,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from tests.fakes import load_dag_file
+from tests.fakes import load_dag_file, stop_the_utc_clock_at
 
 RUN_CLOCK = datetime(2026, 10, 12, 0, 4, 31, tzinfo=timezone.utc)
 DBT_SETTINGS = (
@@ -19,14 +20,6 @@ DBT_SETTINGS = (
     "GRIDSKEW_DBT_USER",
     "GRIDSKEW_DBT_PASSWORD",
     "GRIDSKEW_DBT_NAME",
-)
-# Read only by the platform profile's prod target; this DAG runs the dev target.
-GRIDSKEW_DB_VARIABLES = (
-    "GRIDSKEW_DB_HOST",
-    "GRIDSKEW_DB_PORT",
-    "GRIDSKEW_DB_USER",
-    "GRIDSKEW_DB_PASSWORD",
-    "GRIDSKEW_DB_NAME",
 )
 
 
@@ -55,17 +48,6 @@ def connections():
 @pytest.fixture
 def dag_helpers(monkeypatch, connections):
     return load_dag_file(monkeypatch, "gridskew_elexon_bmunits_dag.py", connections)
-
-
-def stop_the_utc_clock_at(monkeypatch, function, moment):
-    """Make datetime.now(timezone.utc) in the DAG file return `moment` when
-    `function` runs. A reading in any other time zone fails the test."""
-
-    def now(tz=None):
-        assert tz is timezone.utc, f"datetime.now({tz!r}) is not a UTC reading"
-        return moment
-
-    monkeypatch.setitem(function.__globals__, "datetime", SimpleNamespace(now=now))
 
 
 def dbt_settings(env):
@@ -117,11 +99,12 @@ def test_dbt_runs_as_the_dbt_role_in_the_dev_target(dag_helpers, monkeypatch):
 
 
 def test_dbt_is_not_given_the_unused_gridskew_db_variables(dag_helpers, monkeypatch):
-    """No GRIDSKEW_DB_* variable is set. The rest of the task's environment,
-    which dbt inherits whole, is not checked here."""
+    """No GRIDSKEW_DB_* variable is set: only the platform profile's prod target
+    reads them, and this DAG runs the dev target. The rest of the task's
+    environment, which dbt inherits whole, is not checked here."""
 
-    for name in GRIDSKEW_DB_VARIABLES:
-        monkeypatch.delenv(name, raising=False)
+    for name in gridskew_db_variables(os.environ):
+        monkeypatch.delenv(name)
 
     env = dag_helpers["bmunits_dbt_environment"](
         "/tmp/bmunits", "scheduled__2026-10-12"
