@@ -36,7 +36,6 @@ def settlement_date_to_capture(data_interval_start, lag_days):
 def capture_at_lag(data_interval_start, lag_days):
     """Capture the settlement date lag_days before the run's data interval."""
 
-    from airflow.sdk import BaseHook
     from airflow.sdk.exceptions import AirflowFailException, AirflowSkipException
 
     if data_interval_start is None:
@@ -53,18 +52,10 @@ def capture_at_lag(data_interval_start, lag_days):
         )
 
     sys.path.insert(0, PROJECT_PATH)
-    from ingestion.database import connect
+    from ingestion.dag_tasks import poll_into_gridskew_prod
     from ingestion.elexon.qas_poller import run
-    from ingestion.routing import ContractRejected
 
-    conn = connect(BaseHook.get_connection("gridskew_prod"))
-    try:
-        run(conn, settlement_date)
-    except ContractRejected as rejected:
-        # A retry fetches the same rows.
-        raise AirflowFailException(str(rejected)) from rejected
-    finally:
-        conn.close()
+    poll_into_gridskew_prod(run, settlement_date)
 
 
 @dag(
