@@ -30,6 +30,7 @@ docs/
   schema-migrations.md        How the raw schema is versioned
   carbon-forecast-trajectory.md  How the forecast drift question is read
   research-questions.md       Each question's reading rule and status
+  results/                    Saved results behind the charts, with each chart's PNG and spec
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
   endpoint-validation.md      Contracts, routing, warning logs and quarantine
