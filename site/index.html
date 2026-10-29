@@ -87,14 +87,14 @@
 <section id="q3">
   <h2>Q3. How far is metered output from the notified position (PN), by fuel group?</h2>
   <p><strong>Rule</strong> (registered before its read): describe only, the median and interquartile range of the deviation from PN per fuel group, with coverage beside it. This is not NESO's PN-accuracy measure (see Q23). <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q3-how-far-is-metered-output-from-the-notified-position-pn-by-fuel-group">The rule</a></p>
-  <p class="pending">Draft: the result, n, dates and chart wait for the choice of saved delivery result. Read 11 October 2026 from <code>q3_metered_vs_notified.sql</code>.</p>
+  <p class="pending">To come: the result, n, dates and chart. Read 11 October 2026 from <code>q3_metered_vs_notified.sql</code>.</p>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
 </section>
 
 <section id="q12">
   <h2>Q12. How much of the deviation from PN was instructed (BOALF) rather than unexplained?</h2>
   <p><strong>Rule</strong> (restated 11 October 2026, before any Q12 read): per fuel group, over every determinable cohort period with a PN, the instructed part as a share of the absolute deviation from PN, Σ|instructed deviation| ÷ (Σ|instructed deviation| + Σ|unexplained shortfall|). The unexplained part includes balancing services settled outside the balancing mechanism (ABSVD). <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q12-how-much-of-the-deviation-from-pn-was-instructed-boalf-rather-than-unexplained">The rule</a></p>
-  <p class="pending">Draft: the result, n, dates and chart wait for the choice of saved delivery result. Read 11 October 2026 from <code>q12_instructed_vs_residual.sql</code>.</p>
+  <p class="pending">To come: the result, n, dates and chart. Read 11 October 2026 from <code>q12_instructed_vs_residual.sql</code>.</p>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
 </section>
 
@@ -102,10 +102,10 @@
   <h2>Q22. Do settlement revisions change the Q3 headline (first against latest run)?</h2>
   <p><strong>Rule</strong> (registered 10 October 2026): Q3's statistics on the first and the latest settlement run of 10 to 16 August 2026, side by side; the headline changes if the order of the fuel groups by median changes or any group's median changes sign. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q22-do-settlement-revisions-change-the-q3-headline-first-against-latest-run">The rule</a></p>
   <p><strong>Result:</strong> the headline does not change. The first run is II and the latest R1; the order of the fuel groups by median is the same, and no median changes sign.</p>
-  <p class="context">n: unit-periods per fuel group, in the table. Deviation from PN in MWh per unit-period. Read 11 October 2026; the query is not in this repository. Saved output: <a href="results/q22_first_against_latest_run.csv">q22_first_against_latest_run.csv</a>.</p>
+  <p class="context">n: unit-periods per fuel group, in the table. Deviation from PN in MWh per unit-period. "Latest" was R1 at the read; there is no re-read. Read 11 October 2026; the query is not in this repository. Saved output: <a href="results/q22_first_against_latest_run.csv">q22_first_against_latest_run.csv</a>.</p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Fuel group</th><th>Unit-periods</th><th>II median (Q1 to Q3)</th><th>R1 median (Q1 to Q3)</th></tr></thead>
+      <thead><tr><th>Fuel group</th><th>Unit-periods</th><th>II median (lower to upper quartile)</th><th>R1 median (lower to upper quartile)</th></tr></thead>
       <tbody>
         <tr><td>bioenergy</td><td>3,696</td><td>0.780 (0.000 to 3.328)</td><td>0.751 (0.000 to 3.327)</td></tr>
         <tr><td>coal</td><td>2,016</td><td>0.000 (0.000 to 0.000)</td><td>0.000 (0.000 to 0.000)</td></tr>
@@ -134,8 +134,8 @@
 <section id="q6">
   <h2>Q6. How late are unplanned outages published?</h2>
   <p><strong>Rule</strong> (population recorded 11 October 2026, before any lag was read): the median and 90th-percentile lag from an outage's event start to its first REMIT publication, by the class it was first published under. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-late-are-unplanned-outages-published">The rule</a></p>
-  <p><strong>Result:</strong> unplanned outages are first published a median 0.9 minutes after the event starts, with the 90th percentile at 29.9 minutes (11,811 notices). Planned outages are published before the event: median -1,362.9 minutes, 90th percentile -4.9 minutes (8,545 notices). REMIT's "without delay" duty is not judged here: the data cannot show when the participant knew.</p>
-  <p class="context">n: 20,368 notices first published from 1 November 2024; 12 notices with no class (median -6,090.5, 90th percentile 20.4 minutes) are not charted. Left out: 9,488 dismissed as of the read, 2,331 first published before the burn-in date, 514 other market information, 8 events that start before the history. Read 12 October 2026 from <code>q6_publication_lag.sql</code>. Saved output: <a href="results/q6_publication_lag.csv">q6_publication_lag.csv</a>.</p>
+  <p><strong>Result:</strong> unplanned outages are first published a median 0.9 minutes after the event starts, with the 90th percentile at 29.9 minutes (11,811 notices). Planned outages are published before the event: median -1,362.9 minutes, 90th percentile -4.9 minutes (8,545 notices). REMIT's "without delay" duty is not judged here: the data cannot show when the participant knew. ACER's one-hour guidance and Regulation 543/2013 Article 15 are context, not a compliance test.</p>
+  <p class="context">n: 20,368 notices first published from 1 November 2024; 12 notices with no class (median -6,090.5, 90th percentile 20.4 minutes) are not charted. Left out: 9,488 dismissed as of the read, 2,331 first published before the burn-in date, 514 other market information, 8 events that start before the history. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later. Read 12 October 2026 from <code>q6_publication_lag.sql</code>. Saved output: <a href="results/q6_publication_lag.csv">q6_publication_lag.csv</a>.</p>
   <div class="chart" id="q6-chart"></div>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
 </section>
@@ -152,7 +152,7 @@
 <section id="q24">
   <h2>Q24. What share of each fuel group's instructed energy is flagged as a system action rather than energy balancing?</h2>
   <p><strong>Rule</strong> (registered 12 October 2026, after an exploration had read level-energy shares, and amended the same day to acceptance volume, so not called pre-registered): per fuel group and month, the acceptance volume flagged as a system action, as a share of all acceptance volume, with the level-energy share beside it. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q24-what-share-of-each-fuel-groups-instructed-energy-is-flagged-as-a-system-action-rather-than-energy-balancing">The rule</a></p>
-  <p><strong>Result:</strong> over all months, 96.6% of wind's acceptance volume and 93.1% of hydro's is flagged as a system action; pumped storage 69.8%, gas 34.9%, other 31.0% and bioenergy 24.0%. The level-energy shares are 88.4%, 88.6%, 50.6%, 26.8%, 16.5% and 16.7%. The flag is NESO's real-time classification, not constraint volume.</p>
+  <p><strong>Result:</strong> over all months, 96.6% of wind's acceptance volume and 93.1% of hydro's is flagged as a system action; pumped storage 69.8%, gas 34.9%, other 31.0% and bioenergy 24.0%. The level-energy shares are 88.4%, 88.6%, 50.6%, 26.8%, 16.5% and 16.7%. The flag is NESO's real-time classification, not constraint volume, and later corrections to it are not re-read.</p>
   <p class="context">22 August 2025 to 30 September 2026; cutoff 30 September 2026 22:30 UTC. Acceptances and stretches per fuel group are in the saved output; coal and nuclear have no acceptances. Read 15 October 2026 from <code>q24_system_action_share.sql</code>. Saved output: <a href="results/q24_system_action_share.csv">q24_system_action_share.csv</a>.</p>
   <div class="chart" id="q24-chart"></div>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
@@ -161,8 +161,8 @@
 <section id="q25">
   <h2>Q25. How fragmented are instructions to storage compared with thermal plant?</h2>
   <p><strong>Rule</strong> (registered 12 October 2026; the continuous-duration measure, added before any read of it, is the registered result; the own-span measure had been explored): per fuel group and month, the share of acceptances whose continuous acceptance duration, as BSC Annex T-1 chains acceptances, is under 10 minutes, with each acceptance's own span beside it. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q25-how-fragmented-are-instructions-to-storage-compared-with-thermal-plant">The rule</a></p>
-  <p><strong>Result:</strong> 21.4% of acceptances in the other group (which includes batteries) and 16.4% of pumped-storage acceptances sit in continuous chains under 10 minutes, against 0.4% or less for hydro, gas, wind and bioenergy. On their own span, 77.6% and 59.0% last under 10 minutes, against 2.9% for gas. These are the figures as read; a correction on 25 October 2026 for acceptances that cross midnight moves them slightly and does not change the reading.</p>
-  <p class="context">22 August 2025 to 30 September 2026; cutoff 30 September 2026 22:30 UTC. Acceptances per fuel group are in the saved output. Read 15 October 2026 from <code>q25_instruction_fragmentation.sql</code>. Saved output: <a href="results/q25_instruction_fragmentation.csv">q25_instruction_fragmentation.csv</a>.</p>
+  <p><strong>Result:</strong> 21.4% of acceptances in the other group (which includes batteries) and 16.4% of pumped-storage acceptances sit in continuous chains under 10 minutes, against 0.4% or less for hydro, gas, wind and bioenergy. On their own span, 77.6% and 59.0% last under 10 minutes, against 2.9% for gas. These are the figures as read. A correction on 25 October 2026, run once on the same data, joins the two halves of acceptances that cross midnight; it moves the figures slightly and does not change the reading (<a href="results/q25_instruction_fragmentation_corrected.csv">the corrected output</a>).</p>
+  <p class="context">22 August 2025 to 30 September 2026; cutoff 30 September 2026 22:30 UTC. Acceptances per fuel group are in the saved output. Before the read, the continuous duration agreed with Elexon's cadlFlag on 20,636 of 20,680 sampled acceptances (21 to 27 September 2026); on the corrected query, 20,680 of 20,680. Read 15 October 2026 from <code>q25_instruction_fragmentation.sql</code>. Saved output: <a href="results/q25_instruction_fragmentation.csv">q25_instruction_fragmentation.csv</a>.</p>
   <div class="chart" id="q25-chart"></div>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
 </section>
@@ -170,7 +170,7 @@
 <section id="q8">
   <h2>Q8. Does demand forecast error explain carbon forecast error better than shortfall does?</h2>
   <p><strong>Rule</strong> (registered before its read and completed 25 October 2026, before any demand value was held): the rank correlation of the absolute carbon forecast error with the absolute demand forecast error, and with the unexplained shortfall, over the same half-hours; one is called stronger only at a gap of 0.1 or more. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q8-does-demand-forecast-error-explain-carbon-forecast-error-better-than-shortfall-does">The rule</a></p>
-  <p><strong>Result:</strong> no clear difference. The gap is -0.012159 (90% interval -0.042422 to 0.017249).</p>
+  <p><strong>Result:</strong> no clear difference. The gap is -0.012159 (90% interval -0.042422 to 0.017249; the interval is descriptive and does not move the verdict).</p>
   <p class="context">n: 17,278 half-hours on 360 matched days, 22 August 2025 to 16 August 2026. The carbon forecast is the API's own final forecast, made minutes ahead. Read 26 October 2026 from <code>q8_q28_history.sql</code>, shared with Q28. Saved output: <a href="results/q8_q28_history.csv">q8_q28_history.csv</a>.</p>
   <div class="table-wrap">
     <table>
@@ -190,8 +190,8 @@
 <section id="q28">
   <h2>Q28. Are half-hours with a larger error in the API's final carbon forecast associated with more unexplained shortfall, on 2025 history?</h2>
   <p><strong>Rule</strong> (registered 25 October 2026 and amended 26 October 2026, before any read): supported if the fifth of half-hours with the largest absolute error in the API's final carbon forecast carries a mean positive unexplained shortfall at least 25% above the fifth with the smallest. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q28-are-half-hours-with-a-larger-error-in-the-apis-final-carbon-forecast-associated-with-more-unexplained-shortfall-on-2025-history">The rule</a></p>
-  <p><strong>Result:</strong> not supported. The ratio is 1.051428 (90% interval 1.027775 to 1.075448): 800.953575 MWh per half-hour in the top fifth against 761.776637 MWh in the bottom fifth.</p>
-  <p class="context">n: 17,278 half-hours on 360 days, 22 August 2025 to 16 August 2026 (Q8's population). The final forecast is made minutes ahead, so this concerns the nowcast, not the day-ahead forecast. Read 26 October 2026 from <code>q8_q28_history.sql</code>. Saved output: <a href="results/q8_q28_history.csv">q8_q28_history.csv</a>.</p>
+  <p><strong>Result:</strong> not supported. The ratio is 1.051428 (90% interval 1.027775 to 1.075448, descriptive): 800.953575 MWh per half-hour in the top fifth against 761.776637 MWh in the bottom fifth.</p>
+  <p class="context">n: 17,278 half-hours on 360 days, 22 August 2025 to 16 August 2026 (Q8's population). The final forecast is made minutes ahead, so this concerns the nowcast, not the day-ahead forecast; the overall error of that forecast had already been seen in a September 2026 exploration; settlement runs differ by date (R3 to R1). Read 26 October 2026 from <code>q8_q28_history.sql</code>. Saved output: <a href="results/q8_q28_history.csv">q8_q28_history.csv</a>.</p>
   <div class="chart" id="q28-chart"></div>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
 </section>
@@ -200,7 +200,7 @@
   <h2>Q29. How does the error of the API's own final carbon forecast vary by month and by time of day, over a year of history?</h2>
   <p><strong>Rule</strong> (registered 27 October 2026, before any figure of it was read): describe the error of the API's own final forecast (actual minus forecast) by settlement month and by UTC block of the day, each on its own: n, mean absolute error, mean error and median error, with no test. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q29-how-does-the-error-of-the-apis-own-final-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history">The rule</a></p>
   <p><strong>Result:</strong> over 17,280 half-hours the mean absolute error is 9.327 gCO2/kWh, the mean error -0.615 and the median -1.000. The mean error is negative from August 2025 to March 2026 and positive from April to August 2026; by UTC block it is 0.598 (00:00-05:59), -2.422 (06:00-11:59), 5.305 (12:00-17:59) and -5.940 (18:00-23:59).</p>
-  <p class="context">Settlement dates 22 August 2025 to 16 August 2026; every half-hour has an error. The overall mean and median were seen in a September 2026 exploration, measured with the opposite sign. The final forecast is made minutes ahead, and the outturn is NESO's estimate. Read 27 October 2026 from <code>q29_final_forecast_error_by_month_and_block.sql</code>. Saved output: <a href="results/q29_final_forecast_error_by_month_and_block.csv">q29_final_forecast_error_by_month_and_block.csv</a>.</p>
+  <p class="context">Settlement dates 22 August 2025 to 16 August 2026; every half-hour has an error. The overall mean and median were seen in a September 2026 exploration, measured with the opposite sign. The final forecast is made minutes ahead, so this describes the nowcast; the outturn is NESO's estimate; it is one year, with each month seen once; it is not a judgement of NESO's method. Read 27 October 2026 from <code>q29_final_forecast_error_by_month_and_block.sql</code>. Saved output: <a href="results/q29_final_forecast_error_by_month_and_block.csv">q29_final_forecast_error_by_month_and_block.csv</a>.</p>
   <div class="chart" id="q29-month-chart"></div>
   <div class="chart" id="q29-block-chart"></div>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
@@ -208,9 +208,9 @@
 
 <section id="q30">
   <h2>Q30. Is the size of the miss between wind outturn and NESO's latest wind forecast associated with the size of the error in the API's final carbon forecast, on 2025 history?</h2>
-  <p><strong>Rule</strong> (registered 27 October 2026, before any wind data was held): describe the rank correlation between the absolute miss of NESO's latest wind forecast against outturn (with the cohort's curtailment added back) and the absolute error of the API's final carbon forecast, with quintiles of the wind miss; no test. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">The rules</a></p>
-  <p><strong>Result:</strong> the rank correlation is 0.007930 (90% interval -0.012829 to 0.028041), near zero. The mean absolute carbon forecast error by quintile of the wind miss runs from 9.085648 to 9.536458 gCO2/kWh.</p>
-  <p class="context">n: 17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Read 27 October 2026, database cutoff 14:03 UTC, from <code>q30_wind_vs_carbon_error.sql</code>. Saved output: <a href="results/q30_wind_vs_carbon_error.csv">q30_wind_vs_carbon_error.csv</a>.</p>
+  <p><strong>Rule</strong> (registered 27 October 2026, before any wind data was held): describe the rank correlation between the absolute miss of NESO's latest wind forecast against outturn (with the cohort's curtailment added back) and the absolute error of the API's final carbon forecast, with quintiles of the wind miss; no test, threshold or verdict. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">The rules</a></p>
+  <p><strong>Result:</strong> the rank correlation is 0.007930 (90% interval -0.012829 to 0.028041). The mean absolute carbon forecast error by quintile of the wind miss runs from 9.085648 to 9.536458 gCO2/kWh.</p>
+  <p class="context">n: 17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. The carbon forecast is a nowcast made minutes ahead, against a wind forecast up to hours old; the wind is metered wind only, with no embedded wind; an association, not a cause. Read 27 October 2026, database cutoff 14:03 UTC, from <code>q30_wind_vs_carbon_error.sql</code>. Saved output: <a href="results/q30_wind_vs_carbon_error.csv">q30_wind_vs_carbon_error.csv</a>.</p>
   <div class="chart" id="q30-chart"></div>
   <p><a href="https://github.com/JayWatNorm/gridskew/blob/main/README.md">Full statement in the README</a></p>
 </section>
