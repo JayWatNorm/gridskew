@@ -7,55 +7,175 @@
 <meta name="description" content="Results of the GridSkew research questions on GB generation shortfalls and carbon-intensity forecast error, each read once under a rule recorded in advance.">
 <style>
   :root {
+    color-scheme: light;
+    --surface: #ffffff;
     --text: #1b1f24;
-    --muted: #57606a;
-    --rule: #d0d7de;
+    --text-secondary: #3d444d;
+    --muted: #59636e;
+    --rule: #d8dee4;
     --tint: #f6f8fa;
     --link: #0b5cad;
+    --chart-grid: #e8ebee;
+    --chart-axis: #8c959f;
+    --shadow: rgba(31, 35, 40, 0.16);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
-  html { color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface: #0f1318;
+      --text: #e6edf3;
+      --text-secondary: #c9d1d9;
+      --muted: #9198a1;
+      --rule: #30363d;
+      --tint: #161b22;
+      --link: #58a6ff;
+      --chart-grid: #252b33;
+      --chart-axis: #6e7681;
+      --shadow: rgba(201, 209, 217, 0.22);
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
-    background: #ffffff;
+    background: var(--surface);
     color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font);
     font-size: 1rem;
-    line-height: 1.55;
+    line-height: 1.6;
   }
-  header, main, footer {
-    max-width: 46rem;
+  header, nav, main, footer {
+    max-width: 48rem;
     margin: 0 auto;
     padding: 0 1rem;
   }
-  header { padding-top: 1.5rem; }
-  h1 { font-size: 1.75rem; margin: 0 0 0.5rem; }
+  header { padding-top: 3rem; }
+  header p, main p, main li { max-width: 40rem; }
+  h1 {
+    font-size: 2.1rem;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 1rem;
+  }
+  header > p:first-of-type { font-size: 1.1rem; color: var(--text-secondary); }
   h2 {
-    font-size: 1.15rem;
-    margin: 2.5rem 0 0.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--rule);
+    font-size: 1.25rem;
+    line-height: 1.35;
+    margin: 0 0 1rem;
   }
-  a { color: var(--link); }
-  code { font-size: 0.9em; overflow-wrap: anywhere; }
-  .stamp, .context, .pending { color: var(--muted); font-size: 0.92rem; }
-  .pending { border-left: 3px solid var(--rule); padding-left: 0.75rem; }
-  .chart { width: 100%; min-height: 12rem; margin: 1rem 0; }
-  .table-wrap { overflow-x: auto; margin: 1rem 0; }
-  table { border-collapse: collapse; font-size: 0.9rem; }
-  th, td {
-    border-bottom: 1px solid var(--rule);
-    padding: 0.3rem 0.6rem;
-    text-align: right;
-    white-space: nowrap;
+  a { color: var(--link); text-underline-offset: 0.15em; }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 0.85em; overflow-wrap: anywhere; }
+  .stamp, .context, .pending { color: var(--muted); font-size: 0.875rem; line-height: 1.55; }
+  .pending {
+    border-left: 3px solid var(--rule);
+    padding: 0.25rem 0 0.25rem 0.85rem;
   }
-  th:first-child, td:first-child { text-align: left; }
-  thead th { background: var(--tint); }
-  footer {
+
+  nav {
+    margin-top: 2rem;
+  }
+  nav > div {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--tint);
+    padding: 1rem 1.25rem 1.1rem;
+  }
+  nav h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.5rem;
+  }
+  nav ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  nav li { margin: 0.45rem 0; }
+  nav a { text-decoration: none; }
+  nav a:hover, nav a:focus-visible { text-decoration: underline; }
+
+  main section {
     margin-top: 3rem;
-    padding-bottom: 2rem;
+    padding-top: 2.25rem;
+    border-top: 1px solid var(--rule);
+    scroll-margin-top: 1rem;
+  }
+  main section > p:last-child { font-size: 0.875rem; margin-bottom: 0; }
+
+  div.chart {
+    display: block;
+    width: 100%;
+    min-height: 12rem;
+    margin: 1.5rem 0;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    /* A shadow at an edge while more of the table lies past it. */
+    background:
+      linear-gradient(to right, var(--surface) 40%, transparent) left / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--surface) 40%, transparent) right / 2.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, var(--shadow), transparent) left / 0.75rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, var(--shadow), transparent) right / 0.75rem 100% no-repeat scroll;
+    background-color: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    min-width: 100%;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+  }
+  th, td {
+    padding: 0.5rem 0.75rem;
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    vertical-align: bottom;
+    white-space: normal;
+    min-width: 5.5rem;
+    background: var(--tint);
+    color: var(--text-secondary);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  th:first-child, td:first-child { text-align: left; }
+  #q8 td:first-child { white-space: normal; min-width: 13rem; }
+
+  footer {
+    width: calc(100% - 2rem);
+    max-width: 46rem;
+    margin-top: 4rem;
+    padding: 1.5rem 0 3rem;
     border-top: 1px solid var(--rule);
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+  }
+  footer p { margin: 0.4rem 0; }
+
+  @media (max-width: 40rem) {
+    header { padding-top: 2rem; }
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.15rem; }
+    main section { margin-top: 2.5rem; padding-top: 1.75rem; }
+    th, td { padding: 0.45rem 0.6rem; }
   }
 </style>
 </head>
@@ -65,6 +185,13 @@
   <p>Where do GB generating units deliver less than they notified, and is that associated with error in the national carbon-intensity forecast? GridSkew answers with public Elexon and NESO data, under reading rules recorded before each result is read.</p>
   <p class="stamp">Results as of 27 October 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>; each figure comes from the query named beside it, read on the date given.</p>
 </header>
+
+<nav aria-labelledby="contents-title" hidden>
+  <div>
+    <h2 id="contents-title">Contents</h2>
+    <ol id="contents-list"></ol>
+  </div>
+</nav>
 
 <main>
 <section id="q2">
@@ -238,6 +365,21 @@
 <script src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.1/build/vega-lite.min.js" integrity="sha384-QtG7pnWvq1Tk0Rcvl53B1TEVw7U1PUqfciCz3XMUqSmi1fNpJwiv5ml+m5NeOOzH" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-embed@7.3.0/build/vega-embed.min.js" integrity="sha384-Muy1QRxYFeNrA1zShc1KtN4OfipkR/61gt+HWqN57c1Zxu3Oe16TsilsruVVjfKL" crossorigin="anonymous"></script>
 <script>
+  function listContents() {
+    const list = document.getElementById("contents-list");
+    for (const section of document.querySelectorAll("main section[id]")) {
+      const link = document.createElement("a");
+      link.href = "#" + section.id;
+      link.textContent = section.querySelector("h2").textContent;
+      const item = document.createElement("li");
+      item.append(link);
+      list.append(item);
+    }
+    list.closest("nav").hidden = false;
+  }
+
+  listContents();
+
   // Every results CSV starts with its attribution line; a chart reads the
   // rows after it.
   const fileLoader = vega.loader();
@@ -250,10 +392,64 @@
     return text.slice(text.indexOf("\n") + 1);
   }
 
+  // The charts take the page's font and its text, axis and gridline
+  // colours, light or dark; each spec sets its own data colours.
+  const pageStyle = getComputedStyle(document.documentElement);
+
+  function pageColour(name) {
+    return pageStyle.getPropertyValue(name).trim();
+  }
+
+  function chartTheme() {
+    return {
+      background: "transparent",
+      font: pageColour("--font"),
+      padding: { top: 14, right: 16, bottom: 12, left: 12 },
+      view: { stroke: null },
+      title: {
+        anchor: "start",
+        frame: "bounds",
+        color: pageColour("--muted"),
+        fontSize: 12.5,
+        fontWeight: "normal",
+        lineHeight: 18,
+        offset: 16,
+      },
+      axis: {
+        labelColor: pageColour("--muted"),
+        labelFontSize: 11.5,
+        labelPadding: 6,
+        titleColor: pageColour("--text-secondary"),
+        titleFontSize: 12,
+        titleFontWeight: "normal",
+        titlePadding: 10,
+        gridColor: pageColour("--chart-grid"),
+        domainColor: pageColour("--chart-axis"),
+        tickColor: pageColour("--chart-axis"),
+      },
+      axisBand: { domain: false, ticks: false, grid: false },
+      axisQuantitative: { domain: false, ticks: false, tickCount: 6, labelOverlap: true },
+      legend: {
+        labelColor: pageColour("--text-secondary"),
+        labelFontSize: 12,
+        labelLimit: 360,
+        columnPadding: 18,
+        rowPadding: 6,
+        offset: 18,
+      },
+      text: { color: pageColour("--muted"), fontSize: 11 },
+      bar: { stroke: pageColour("--surface"), strokeWidth: 1 },
+    };
+  }
+
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
   const chartOptions = {
     actions: false,
     renderer: "svg",
     loader: { ...fileLoader, load: loadWithoutAttribution },
+    config: chartTheme(),
+    tooltip: { theme: prefersDark ? "dark" : "light" },
   };
 
   vegaEmbed("#q5-chart", "results/q5_shortfall_by_outage_class.vl.json", chartOptions);
