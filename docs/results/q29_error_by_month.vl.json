@@ -1,5 +1,9 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
   "config": {
     "view": {
       "continuousHeight": 300,
@@ -17,94 +21,152 @@
     },
     "url": "results/q29_final_forecast_error_by_month_and_block.csv"
   },
-  "encoding": {
-    "color": {
-      "field": "measure",
-      "legend": {
-        "labelExpr": "datum.label == \"mean_error\" ? \"mean error\" : datum.label == \"mean_absolute_error\" ? \"mean absolute error\" : datum.label",
-        "orient": "bottom",
-        "title": null
-      },
-      "scale": {
-        "domain": [
-          "mean_error",
-          "mean_absolute_error"
+  "height": 546,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "measure_name",
+          "legend": {
+            "columns": 1,
+            "orient": "bottom",
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean error",
+              "Mean absolute error"
+            ],
+            "range": [
+              "#2a78d6",
+              "#eb6834"
+            ]
+          },
+          "sort": [
+            "Mean error",
+            "Mean absolute error"
+          ],
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "period",
+            "title": "Settlement month",
+            "type": "nominal"
+          },
+          {
+            "field": "half_hours",
+            "title": "Half-hours",
+            "type": "nominal"
+          },
+          {
+            "field": "measure_name",
+            "title": "Measure",
+            "type": "nominal"
+          },
+          {
+            "field": "value",
+            "format": ".3f",
+            "title": "gCO2/kWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "median_error",
+            "title": "Median error",
+            "type": "nominal"
+          },
+          {
+            "field": "zero_error_share",
+            "title": "Share with no error",
+            "type": "nominal"
+          }
         ],
-        "range": [
-          "#4c72b0",
-          "#dd8452"
-        ]
+        "x": {
+          "field": "value",
+          "scale": {
+            "padding": 56
+          },
+          "title": "gCO2/kWh",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "period",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        },
+        "yOffset": {
+          "field": "measure_name",
+          "scale": {
+            "paddingInner": 0.15
+          },
+          "sort": [
+            "Mean error",
+            "Mean absolute error"
+          ],
+          "type": "nominal"
+        }
       },
-      "sort": [
-        "mean_error",
-        "mean_absolute_error"
-      ],
-      "type": "nominal"
-    },
-    "tooltip": [
-      {
-        "field": "item",
-        "type": "nominal"
-      },
-      {
-        "field": "half_hours",
-        "type": "nominal"
-      },
-      {
-        "field": "measure",
-        "type": "nominal"
-      },
-      {
-        "field": "value",
-        "type": "quantitative"
-      },
-      {
-        "field": "median_error",
-        "type": "nominal"
-      },
-      {
-        "field": "zero_error_share",
-        "type": "nominal"
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "type": "bar"
       }
-    ],
-    "x": {
-      "field": "value",
-      "title": "gCO2/kWh",
-      "type": "quantitative"
     },
-    "y": {
-      "axis": {
-        "labelExpr": "replace(datum.label, \"settlement month \", '')"
+    {
+      "encoding": {
+        "text": {
+          "field": "value",
+          "format": ".3f",
+          "type": "quantitative"
+        },
+        "x": {
+          "field": "value",
+          "scale": {
+            "padding": 56
+          },
+          "title": "gCO2/kWh",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "period",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        },
+        "yOffset": {
+          "field": "measure_name",
+          "scale": {
+            "paddingInner": 0.15
+          },
+          "sort": [
+            "Mean error",
+            "Mean absolute error"
+          ],
+          "type": "nominal"
+        }
       },
-      "field": "item",
-      "sort": null,
-      "title": null,
-      "type": "nominal"
-    },
-    "yOffset": {
-      "field": "measure",
-      "sort": [
-        "mean_error",
-        "mean_absolute_error"
-      ],
-      "type": "nominal"
+      "mark": {
+        "align": {
+          "expr": "datum.value < 0 ? 'right' : 'left'"
+        },
+        "dx": {
+          "expr": "datum.value < 0 ? -4 : 4"
+        },
+        "type": "text"
+      }
     }
-  },
-  "mark": {
-    "type": "bar"
-  },
+  ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "gCO2/kWh, actual minus forecast: positive means dirtier",
-      "than forecast",
-      "n=17280 half-hours, settlement dates 2025-08-22 to",
-      "2026-08-16; read 2026-10-27 06:15 UTC"
-    ],
-    "text": [
-      "Q29. Error of the API's final carbon forecast",
-      "by settlement month"
-    ]
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"gCO2/kWh, actual minus forecast:\", \"positive means dirtier than forecast\", \"n=17280 half-hours, settlement\", \"dates 2025-08-22 to 2026-08-16;\", \"read 2026-10-27 06:15 UTC\"] : [\"gCO2/kWh, actual minus forecast: positive means dirtier than forecast\", \"n=17280 half-hours, settlement dates 2025-08-22 to 2026-08-16; read 2026-10-27 06:15 UTC\"]"
+    }
   },
   "transform": [
     {
@@ -122,6 +184,14 @@
         "mean_error",
         "mean_absolute_error"
       ]
+    },
+    {
+      "as": "period",
+      "calculate": "replace(datum.item, \"settlement month \", '')"
+    },
+    {
+      "as": "measure_name",
+      "calculate": "datum.measure == \"mean_error\" ? \"Mean error\" : datum.measure == \"mean_absolute_error\" ? \"Mean absolute error\" : datum.measure"
     }
   ],
   "width": "container"

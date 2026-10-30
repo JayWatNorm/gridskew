@@ -1,5 +1,9 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
   "config": {
     "view": {
       "continuousHeight": 300,
@@ -17,91 +21,176 @@
     },
     "url": "results/q24_system_action_share.csv"
   },
-  "encoding": {
-    "color": {
-      "field": "measure",
-      "legend": {
-        "labelExpr": "datum.label == \"so_flagged_volume_pct\" ? \"acceptance volume\" : datum.label == \"so_flagged_level_energy_pct\" ? \"level energy\" : datum.label",
-        "orient": "bottom",
-        "title": null
-      },
-      "scale": {
-        "domain": [
-          "so_flagged_volume_pct",
-          "so_flagged_level_energy_pct"
+  "height": 252,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "measure_name",
+          "legend": {
+            "columns": 2,
+            "orient": "bottom",
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Acceptance volume",
+              "Level energy"
+            ],
+            "range": [
+              "#2a78d6",
+              "#eb6834"
+            ]
+          },
+          "sort": [
+            "Acceptance volume",
+            "Level energy"
+          ],
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "acceptances",
+            "title": "Acceptances",
+            "type": "nominal"
+          },
+          {
+            "field": "stretches",
+            "title": "Stretches",
+            "type": "nominal"
+          },
+          {
+            "field": "acceptance_volume_mwh",
+            "title": "Acceptance volume, MWh",
+            "type": "nominal"
+          },
+          {
+            "field": "measure_name",
+            "title": "Measure",
+            "type": "nominal"
+          },
+          {
+            "field": "value",
+            "format": ".1f",
+            "title": "Flagged as a system action, %",
+            "type": "quantitative"
+          }
         ],
-        "range": [
-          "#4c72b0",
-          "#dd8452"
-        ]
+        "x": {
+          "axis": {
+            "values": [
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "field": "value",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          },
+          "title": "Flagged as a system action, %",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        },
+        "yOffset": {
+          "field": "measure_name",
+          "scale": {
+            "paddingInner": 0.15
+          },
+          "sort": [
+            "Acceptance volume",
+            "Level energy"
+          ],
+          "type": "nominal"
+        }
       },
-      "sort": [
-        "so_flagged_volume_pct",
-        "so_flagged_level_energy_pct"
-      ],
-      "type": "nominal"
-    },
-    "tooltip": [
-      {
-        "field": "fuel_group",
-        "type": "nominal"
-      },
-      {
-        "field": "acceptances",
-        "type": "nominal"
-      },
-      {
-        "field": "stretches",
-        "type": "nominal"
-      },
-      {
-        "field": "acceptance_volume_mwh",
-        "type": "nominal"
-      },
-      {
-        "field": "measure",
-        "type": "nominal"
-      },
-      {
-        "field": "value",
-        "type": "quantitative"
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "type": "bar"
       }
-    ],
-    "x": {
-      "field": "value",
-      "title": "Flagged as a system action, %",
-      "type": "quantitative"
     },
-    "y": {
-      "field": "fuel_group",
-      "sort": null,
-      "title": null,
-      "type": "nominal"
-    },
-    "yOffset": {
-      "field": "measure",
-      "sort": [
-        "so_flagged_volume_pct",
-        "so_flagged_level_energy_pct"
-      ],
-      "type": "nominal"
+    {
+      "encoding": {
+        "text": {
+          "field": "value",
+          "format": ".1f",
+          "type": "quantitative"
+        },
+        "x": {
+          "axis": {
+            "values": [
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "field": "value",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          },
+          "title": "Flagged as a system action, %",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        },
+        "yOffset": {
+          "field": "measure_name",
+          "scale": {
+            "paddingInner": 0.15
+          },
+          "sort": [
+            "Acceptance volume",
+            "Level energy"
+          ],
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": {
+          "expr": "datum.value < 0 ? 'right' : 'left'"
+        },
+        "dx": {
+          "expr": "datum.value < 0 ? -4 : 4"
+        },
+        "type": "text"
+      }
     }
-  },
-  "mark": {
-    "type": "bar"
-  },
+  ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Share of acceptance volume, with the level-energy share",
-      "beside it; all months",
-      "Months 2025-08 to 2026-09; cutoff 2026-09-30 22:30 UTC;",
-      "acceptances and stretches per group in the CSV"
-    ],
-    "text": [
-      "Q24. Share flagged as a system action, by",
-      "fuel group"
-    ]
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Share of acceptance volume, with the\", \"level-energy share beside it; all months\", \"Months 2025-08 to 2026-09; cutoff\", \"2026-09-30 22:30 UTC; acceptances\", \"and stretches per group in the CSV\"] : [\"Share of acceptance volume, with the level-energy share beside it; all months\", \"Months 2025-08 to 2026-09; cutoff 2026-09-30 22:30\", \"UTC; acceptances and stretches per group in the CSV\"]"
+    }
   },
   "transform": [
     {
@@ -119,6 +208,14 @@
         "so_flagged_volume_pct",
         "so_flagged_level_energy_pct"
       ]
+    },
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas turbine\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    },
+    {
+      "as": "measure_name",
+      "calculate": "datum.measure == \"so_flagged_volume_pct\" ? \"Acceptance volume\" : datum.measure == \"so_flagged_level_energy_pct\" ? \"Level energy\" : datum.measure"
     }
   ],
   "width": "container"

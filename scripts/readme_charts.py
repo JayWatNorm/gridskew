@@ -12,8 +12,12 @@ Q3 and Q12 come from the delivery result, whose chart CSVs hold the values
 each chart shows; they are written only when the folder holds
 ``delivery_by_fuel_group.csv``, and every other file is written without it.
 A saved output that lacks a row a chart reads is refused. Nothing is
-queried and nothing is recomputed. A rerun on the same input writes
-identical files.
+queried and nothing is recomputed: fuel groups, outage classes and measures
+are shown under readable names, and the CSVs keep the saved codes. A rerun
+on the same input writes identical files.
+
+The page that shows the specs sets their font and the colours of text,
+axes and gridlines; each spec sets its data colours.
 
     python scripts/readme_charts.py <folder of saved outputs> <output folder>
 """
@@ -87,26 +91,65 @@ Q12_COLUMNS = [
     "instructed_share_of_abs_deviation",
     "analysis_read_until",
 ]
-OUTAGE_CLASSES = ["planned", "unplanned", "both", "none"]
-ALL_FUEL_GROUPS = "all fuel groups"
+# The fuel groups of the registry seed (dbt/seeds), as the charts show them;
+# an empty fuel group is a row for all of them.
+FUEL_GROUP_NAMES = {
+    "": "All fuel groups",
+    "bioenergy": "Bioenergy",
+    "coal": "Coal",
+    "gas_turbine": "Gas turbine",
+    "hydro": "Hydro",
+    "interconnector": "Interconnector",
+    "nuclear": "Nuclear",
+    "oil": "Oil",
+    "other": "Other",
+    "pumped_storage": "Pumped storage",
+    "unclassified": "Unclassified",
+    "wind": "Wind",
+}
+OUTAGE_CLASS_NAMES = {
+    "planned": "Planned",
+    "unplanned": "Unplanned",
+    "both": "Both",
+    "none": "None",
+}
+OUTAGE_CLASSES = list(OUTAGE_CLASS_NAMES)
 OUTAGE_CLASSES_DRAWN = ["Planned", "Unplanned"]
+Q6_MEASURES = {"median_lag_minutes": "Median", "p90_lag_minutes": "90th percentile"}
+Q23_MEASURES = {"median_absolute_pct": "Median", "p90_absolute_pct": "90th percentile"}
+Q24_MEASURES = {
+    "so_flagged_volume_pct": "Acceptance volume",
+    "so_flagged_level_energy_pct": "Level energy",
+}
 Q25_CHAIN_MEASURE = "2 continuous acceptance duration, BSC (acceptances)"
 Q25_SPAN_MEASURE = "1 dispatch granularity (acceptances)"
+Q25_MEASURES = {
+    Q25_CHAIN_MEASURE: "Continuous acceptance duration (BSC)",
+    Q25_SPAN_MEASURE: "Own span of each acceptance",
+}
+Q29_MEASURES = {
+    "mean_error": "Mean error",
+    "mean_absolute_error": "Mean absolute error",
+}
 Q28_POPULATION_ITEM = (
     "population: matched days (all three values in at least 46 half-hours), "
     "every half-hour on them with all three"
 )
 Q28_QUINTILES = {
+    "chart": "q28_shortfall_by_error_quintile",
     "item": "quintile of abs(error_api_final): mean positive shortfall, MWh",
     "range_prefix": "abs(error_api_final) ",
     "range_title": "Quintile of the final forecast's absolute error, gCO2/kWh",
     "value_title": "Mean positive unexplained shortfall per half-hour, MWh",
+    "value_format": ".6f",
+    "range_on_two_lines": False,
 }
 Q30_POPULATION_ITEM = (
     "population: window half-hours with error_api_final, a forecast, "
     "a first outturn and a known add-back"
 )
 Q30_QUINTILES = {
+    "chart": "q30_carbon_error_by_wind_miss_quintile",
     "item": (
         "quintile of abs(wind error, outturn with cohort curtailment add-back): "
         "mean abs(error_api_final)"
@@ -114,7 +157,15 @@ Q30_QUINTILES = {
     "range_prefix": "abs(wind error) ",
     "range_title": "Quintile of the absolute wind forecast miss",
     "value_title": "Mean absolute error of the final carbon forecast, gCO2/kWh",
+    "value_format": ".6f",
+    "range_on_two_lines": True,
 }
+# A quintile's range on two lines, broken after "to", where the ranges are
+# too long for a phone.
+RANGE_ON_TWO_LINES = (
+    "[slice(datum.label, 0, indexof(datum.label, ' to ') + 3), "
+    "slice(datum.label, indexof(datum.label, ' to ') + 4)]"
+)
 Q30_RHO_ITEM = (
     "rho_abs (primary): abs(wind error, outturn with cohort curtailment add-back) "
     "with abs(error_api_final)"
@@ -126,30 +177,49 @@ FIGURE_MARGIN_INCHES = 1.6
 DPI = 100
 PAD_INCHES = 0.2
 TITLE_LINE_CHARACTERS = 70
-SPEC_TITLE_CHARACTERS = 45
-SPEC_SUBTITLE_CHARACTERS = 55
 MINIMUM_FIGURE_HEIGHT_INCHES = 3.5
 INCHES_PER_BAR = 0.25
 LEGEND_ROW_INCHES = 0.22
-BAR_COLOUR = "#4c72b0"
-MARKER_COLOUR = "#1b2a4a"
-ZERO_LINE_COLOUR = "#999999"
-SERIES_COLOURS = ["#4c72b0", "#dd8452"]
-LINE_STYLES = ["-", "--"]
-OUTAGE_CLASS_COLOURS = ["#4c72b0", "#c44e52", "#8172b3", "#c8c8c8"]
-# Vega's default category colours, so the PNG and the page agree.
-FUEL_GROUP_COLOURS = [
-    "#4c78a8",
-    "#f58518",
-    "#e45756",
-    "#72b7b2",
-    "#54a24b",
-    "#eeca3b",
-    "#b279a2",
-    "#ff9da6",
-    "#9d755d",
-    "#bab0ac",
+
+# The page wraps each chart's caption for a phone, and more widely in a
+# chart box at least this wide; the wide lines fit the narrowest such box.
+NARROW_CAPTION_CHARACTERS = 46
+WIDE_CAPTION_CHARACTERS = 100
+WIDE_BOX_PIXELS = 700
+AXIS_TITLE_CHARACTERS = 32
+BAR_STEP_PIXELS = 34
+GROUPED_BAR_STEP_PIXELS = 42
+STACKED_BAR_STEP_PIXELS = 28
+LINE_CHART_HEIGHT_PIXELS = 320
+BAR_CORNER_RADIUS = 3
+LABEL_GAP_PIXELS = 4
+# Room beside a negative bar for its value label, on charts whose values
+# fall either side of zero.
+SIGNED_SCALE_PADDING_PIXELS = 56
+SHARE_TICKS = [0, 25, 50, 75, 100]
+FRACTION_TICKS = [0, 0.25, 0.5, 0.75, 1]
+
+# The categorical palette in its fixed order, checked for colour-vision
+# deficiency adjacent pair by adjacent pair; series take it in order. Grey
+# is for "none" and "other".
+CATEGORY_COLOURS = [
+    "#2a78d6",
+    "#eb6834",
+    "#1baf7a",
+    "#eda100",
+    "#e87ba4",
+    "#008300",
+    "#6250d6",
+    "#e34948",
 ]
+NEUTRAL_COLOUR = "#a3a19a"
+BAR_COLOUR = CATEGORY_COLOURS[0]
+MARKER_COLOUR = "#1b2a4a"
+ZERO_LINE_COLOUR = "#8c959f"
+GRID_COLOUR = "#e6e8eb"
+SERIES_COLOURS = CATEGORY_COLOURS[:2]
+LINE_STYLES = ["-", "--"]
+OUTAGE_CLASS_COLOURS = [*CATEGORY_COLOURS[:3], NEUTRAL_COLOUR]
 
 
 def read_delivery(path):
@@ -227,10 +297,14 @@ def describe_read(rows):
     return f"{min(first_dates)} to {max(last_dates)}; cutoff {cutoff}"
 
 
+def fuel_group_name(fuel_group):
+    return FUEL_GROUP_NAMES[fuel_group]
+
+
 def group_labels(rows):
     labels = []
     for row in rows:
-        labels.append(f"{row['fuel_group']} (n={row['unit_periods']})")
+        labels.append(f"{fuel_group_name(row['fuel_group'])} (n={row['unit_periods']})")
     return labels
 
 
@@ -238,14 +312,29 @@ def new_figure(row_count, inches_per_row=INCHES_PER_GROUP):
     height = max(
         MINIMUM_FIGURE_HEIGHT_INCHES, FIGURE_MARGIN_INCHES + inches_per_row * row_count
     )
-    return pyplot.subplots(figsize=(FIGURE_WIDTH_INCHES, height))
+    figure, axes = pyplot.subplots(figsize=(FIGURE_WIDTH_INCHES, height))
+    quiet_frame(axes)
+    return figure, axes
+
+
+def quiet_frame(axes):
+    """Only the axes that carry values, over a light grid behind the marks."""
+    axes.spines["top"].set_visible(False)
+    axes.spines["right"].set_visible(False)
+    axes.set_axisbelow(True)
+    axes.grid(axis="x", color=GRID_COLOUR, linewidth=0.8)
+
+
+def share_axis(axes):
+    axes.set_xlim(0, 100)
+    axes.set_xticks(SHARE_TICKS)
 
 
 def png_title(axes, title, subtitle_lines):
     lines = []
     for line in [title, *subtitle_lines]:
-        lines.extend(textwrap.wrap(line, TITLE_LINE_CHARACTERS))
-    axes.set_title("\n".join(lines), fontsize=10)
+        lines.extend(textwrap.wrap(line, TITLE_LINE_CHARACTERS, break_on_hyphens=False))
+    axes.set_title("\n".join(lines), fontsize=10, loc="left")
 
 
 def save_figure(figure, path):
@@ -272,9 +361,12 @@ def legend_handles(axes):
     return handles
 
 
-def draw_grouped_bars(path, categories, series, x_label, title, subtitle_lines):
+def draw_grouped_bars(
+    path, categories, series, x_label, title, subtitle_lines, shares=False
+):
     """Horizontal bars, one group per category, one bar per series; each
-    series is a label and its values as text, in category order."""
+    series is a label and its values as text, in category order. Shares run
+    from 0 to 100."""
     figure, axes = new_figure(len(categories) * len(series), INCHES_PER_BAR)
     bar_height = 0.8 / len(series)
     for series_index, (label, values) in enumerate(series):
@@ -287,7 +379,7 @@ def draw_grouped_bars(path, categories, series, x_label, title, subtitle_lines):
         bars = axes.barh(
             positions,
             widths,
-            height=bar_height,
+            height=bar_height * 0.9,
             color=SERIES_COLOURS[series_index],
             label=label,
         )
@@ -295,7 +387,10 @@ def draw_grouped_bars(path, categories, series, x_label, title, subtitle_lines):
     axes.axvline(0, color=ZERO_LINE_COLOUR, linewidth=0.8)
     axes.set_yticks(range(len(categories)), categories)
     axes.invert_yaxis()
-    axes.margins(x=0.15)
+    if shares:
+        share_axis(axes)
+    else:
+        axes.margins(x=0.15)
     axes.set_xlabel(x_label)
     png_title(axes, title, subtitle_lines)
     save_figure_with_legend(figure, legend_handles(axes), len(series), path)
@@ -307,7 +402,7 @@ def draw_bars(path, categories, values, x_label, y_label, title, subtitle_lines)
     widths = []
     for value in values:
         widths.append(float(value))
-    bars = axes.barh(positions, widths, color=BAR_COLOUR)
+    bars = axes.barh(positions, widths, height=0.6, color=BAR_COLOUR)
     axes.bar_label(bars, labels=values, padding=3, fontsize=8)
     axes.set_yticks(positions, categories)
     axes.invert_yaxis()
@@ -329,60 +424,140 @@ def csv_data(csv_name, number_fields):
     )
 
 
+def evenly_wrapped(line, width):
+    """The line in as few lines of at most width characters as it needs,
+    of about equal length, so no line is left with a word or two."""
+    fewest = textwrap.wrap(line, width, break_on_hyphens=False)
+    for even_width in range(math.ceil(len(line) / len(fewest)), width):
+        lines = textwrap.wrap(line, even_width, break_on_hyphens=False)
+        if len(lines) == len(fewest):
+            return lines
+    return fewest
+
+
 def wrapped(lines, width):
     wrapped_lines = []
     for line in lines:
-        wrapped_lines.extend(textwrap.wrap(line, width))
+        wrapped_lines.extend(evenly_wrapped(line, width))
     return wrapped_lines
 
 
-def page_layout(title, subtitle_lines):
-    """As wide as the page allows, with the title wrapped to fit a phone."""
+def caption(lines):
+    """The chart's caption above the plot, with its lines wrapped for a
+    phone and, in a wider chart box, for a wider screen. The box is measured
+    again whenever the plot width changes, that is whenever the page is
+    resized."""
+    narrow = json.dumps(wrapped(lines, NARROW_CAPTION_CHARACTERS), ensure_ascii=False)
+    wide = json.dumps(wrapped(lines, WIDE_CAPTION_CHARACTERS), ensure_ascii=False)
+    box_width = "containerSize()[0] + 0 * width"
+    return altair.TitleParams(
+        text=altair.ExprRef(
+            expr=f"{box_width} < {WIDE_BOX_PIXELS} ? {narrow} : {wide}"
+        ),
+        anchor="start",
+    )
+
+
+def page_layout(caption_lines, height):
+    """As wide as the page allows, at a height in pixels."""
     return {
         "width": "container",
-        "title": altair.TitleParams(
-            text=wrapped([title], SPEC_TITLE_CHARACTERS),
-            subtitle=wrapped(subtitle_lines, SPEC_SUBTITLE_CHARACTERS),
-            anchor="start",
-        ),
+        "height": height,
+        "autosize": altair.AutoSizeParams(type="fit-x", contains="padding"),
+        "title": caption(caption_lines),
     }
 
 
-def label_expression(labels):
-    """A Vega expression that shows each value under its label."""
-    expression = "datum.label"
-    for value, label in reversed(list(labels.items())):
+def display_name(field, names):
+    """A Vega expression that shows each value of the field under its
+    name; a value without one is shown as it is."""
+    expression = f"datum.{field}"
+    for value, name in reversed(list(names.items())):
         expression = (
-            f"datum.label == {json.dumps(value)} ? {json.dumps(label)} : {expression}"
+            f"datum.{field} == {json.dumps(value)} ? {json.dumps(name)} : {expression}"
         )
     return expression
 
 
-def prefix_removed(prefix):
-    return f"replace(datum.label, {json.dumps(prefix)}, '')"
+def prefix_removed(field, prefix):
+    return f"replace(datum.{field}, {json.dumps(prefix)}, '')"
 
 
-def series_colour(series_field, series_labels, colours):
-    return altair.Color(
-        f"{series_field}:N",
-        sort=list(series_labels),
-        scale=altair.Scale(domain=list(series_labels), range=colours),
-        legend=altair.Legend(
-            title=None, orient="bottom", labelExpr=label_expression(series_labels)
-        ),
+def legend(columns):
+    return altair.Legend(title=None, orient="bottom", columns=columns)
+
+
+def line_legend(columns):
+    """A legend whose line symbols are thick enough to match by colour."""
+    return altair.Legend(
+        title=None, orient="bottom", columns=columns, symbolStrokeWidth=3
     )
 
 
-def grouped_bars(
-    chart, category, series_field, series_labels, value_field, value_title
-):
-    """Horizontal bars per category, one bar per series value beside the
-    next, in the order of series_labels."""
-    return chart.mark_bar().encode(
-        x=altair.X(f"{value_field}:Q", title=value_title),
-        y=category,
-        yOffset=altair.YOffset(f"{series_field}:N", sort=list(series_labels)),
-        color=series_colour(series_field, series_labels, SERIES_COLOURS),
+def series_colour(name_field, names, colours, columns):
+    return altair.Color(
+        f"{name_field}:N",
+        sort=list(names),
+        scale=altair.Scale(domain=list(names), range=colours),
+        legend=legend(columns),
+    )
+
+
+def share_scale():
+    return altair.Scale(domain=[0, 100])
+
+
+def share_ticks():
+    return altair.Axis(values=SHARE_TICKS)
+
+
+def value_labels(position, value_field, value_format):
+    """Each bar's value beside its end: right of a positive bar, left of a
+    negative one."""
+    negative = f"datum.{value_field} < 0"
+    return (
+        altair.Chart()
+        .mark_text(
+            align=altair.ExprRef(expr=f"{negative} ? 'right' : 'left'"),
+            dx=altair.ExprRef(
+                expr=f"{negative} ? -{LABEL_GAP_PIXELS} : {LABEL_GAP_PIXELS}"
+            ),
+        )
+        .encode(text=altair.Text(f"{value_field}:Q", format=value_format), **position)
+    )
+
+
+def labelled_bars(position, colour, tooltip, value_field, value_format):
+    """Bars at the position channels, each with its value at its end."""
+    bars = (
+        altair.Chart()
+        .mark_bar(cornerRadiusEnd=BAR_CORNER_RADIUS)
+        .encode(color=colour, tooltip=tooltip, **position)
+    )
+    return [bars, value_labels(position, value_field, value_format)]
+
+
+def grouped_position(category, x, series_field, names):
+    """One row per category, one bar per series beside the next, in the
+    order of the series names."""
+    return {
+        "x": x,
+        "y": category,
+        "yOffset": altair.YOffset(
+            f"{series_field}:N",
+            sort=list(names.values()),
+            scale=altair.Scale(paddingInner=0.15),
+        ),
+    }
+
+
+def category_axis(field, title=None, axis=altair.Undefined):
+    return altair.Y(
+        f"{field}:N",
+        sort=None,
+        title=title,
+        axis=axis,
+        scale=altair.Scale(paddingInner=0.3),
     )
 
 
@@ -408,6 +583,7 @@ def draw_deviation(rows, path):
     axes.set_title(
         "Median and interquartile range by fuel group\n" + describe_read(rows),
         fontsize=10,
+        loc="left",
     )
     save_figure(figure, path)
 
@@ -416,13 +592,13 @@ def deviation_spec(rows, csv_name):
     data = csv_data(
         csv_name, ["p25_deviation_mwh", "median_deviation_mwh", "p75_deviation_mwh"]
     )
-    fuel_group = altair.Y("fuel_group:N", sort=None, title=None)
+    fuel_group = category_axis("fuel_group_name")
     tooltip = [
-        "fuel_group:N",
-        "unit_periods:N",
-        "p25_deviation_mwh:Q",
-        "median_deviation_mwh:Q",
-        "p75_deviation_mwh:Q",
+        altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+        altair.Tooltip("unit_periods:N", title="Unit-periods"),
+        altair.Tooltip("p25_deviation_mwh:Q", title="Lower quartile, MWh"),
+        altair.Tooltip("median_deviation_mwh:Q", title="Median, MWh"),
+        altair.Tooltip("p75_deviation_mwh:Q", title="Upper quartile, MWh"),
     ]
     interquartile_range = (
         altair.Chart()
@@ -439,12 +615,19 @@ def deviation_spec(rows, csv_name):
     )
     median = (
         altair.Chart()
-        .mark_point(filled=True, color=MARKER_COLOUR)
+        .mark_point(filled=True, color=MARKER_COLOUR, size=60, opacity=1)
         .encode(x="median_deviation_mwh:Q", y=fuel_group, tooltip=tooltip)
     )
-    return altair.layer(interquartile_range, median, data=data).properties(
-        **page_layout(
-            "Median and interquartile range by fuel group", [describe_read(rows)]
+    return (
+        altair.layer(interquartile_range, median, data=data)
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
+        )
+        .properties(
+            **page_layout(
+                ["Median and interquartile range by fuel group", describe_read(rows)],
+                len(rows) * BAR_STEP_PIXELS,
+            ),
         )
     )
 
@@ -460,15 +643,16 @@ def draw_instructed_share(rows, path):
                 1, position, "undefined: no deviation", va="center", color="#555555"
             )
             continue
-        axes.barh(position, 100 * float(share), color=BAR_COLOUR)
+        axes.barh(position, 100 * float(share), height=0.6, color=BAR_COLOUR)
     axes.set_yticks(positions, group_labels(rows))
     # Top to bottom, with room for a group that has no bar.
     axes.set_ylim(len(rows) - 0.5, -0.5)
-    axes.set_xlim(0, 100)
+    share_axis(axes)
     axes.set_xlabel("Share of the deviation from PN that was instructed, %")
     axes.set_title(
         "Instructed share of the deviation by fuel group\n" + describe_read(rows),
         fontsize=10,
+        loc="left",
     )
     save_figure(figure, path)
 
@@ -477,27 +661,41 @@ def instructed_share_spec(rows, csv_name):
     data = csv_data(csv_name, ["instructed_share_of_abs_deviation"])
     return (
         altair.Chart(data)
-        .mark_bar(color=BAR_COLOUR)
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
+        )
+        .mark_bar(color=BAR_COLOUR, cornerRadiusEnd=BAR_CORNER_RADIUS)
         .encode(
             x=altair.X(
                 "instructed_share_of_abs_deviation:Q",
                 title="Share of the deviation from PN that was instructed",
-                axis=altair.Axis(format="%"),
+                axis=altair.Axis(format="%", values=FRACTION_TICKS),
                 scale=altair.Scale(domain=[0, 1]),
             ),
-            y=altair.Y("fuel_group:N", sort=None, title=None),
+            y=category_axis("fuel_group_name"),
             tooltip=[
-                "fuel_group:N",
-                "unit_periods:N",
-                "abs_instructed_deviation_mwh:N",
-                "abs_unexplained_shortfall_mwh:N",
-                "instructed_share_of_abs_deviation:Q",
+                altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+                altair.Tooltip("unit_periods:N", title="Unit-periods"),
+                altair.Tooltip(
+                    "abs_instructed_deviation_mwh:N", title="Instructed deviation, MWh"
+                ),
+                altair.Tooltip(
+                    "abs_unexplained_shortfall_mwh:N",
+                    title="Unexplained shortfall, MWh",
+                ),
+                altair.Tooltip(
+                    "instructed_share_of_abs_deviation:Q", title="Instructed share"
+                ),
             ],
         )
         .properties(
             **page_layout(
-                "Instructed share of the deviation by fuel group", [describe_read(rows)]
-            )
+                [
+                    "Instructed share of the deviation by fuel group",
+                    describe_read(rows),
+                ],
+                len(rows) * BAR_STEP_PIXELS,
+            ),
         )
     )
 
@@ -530,7 +728,7 @@ def shares_by_group(rows):
     for row in rows:
         if row["item"] not in OUTAGE_CLASSES:
             continue
-        group = row["fuel_group"] or ALL_FUEL_GROUPS
+        group = fuel_group_name(row["fuel_group"])
         if group not in groups:
             groups[group] = {}
         groups[group][row["item"]] = row["share_of_positive_shortfall_pct"]
@@ -546,13 +744,23 @@ def draw_stacked_shares(path, groups, title, subtitle_lines):
         widths = []
         for name in names:
             widths.append(float(groups[name].get(outage_class, "0")))
-        axes.barh(positions, widths, left=lefts, color=colour, label=outage_class)
+        axes.barh(
+            positions,
+            widths,
+            left=lefts,
+            height=0.6,
+            color=colour,
+            edgecolor="white",
+            linewidth=1,
+            label=OUTAGE_CLASS_NAMES[outage_class],
+        )
         next_lefts = []
         for left, width in zip(lefts, widths, strict=True):
             next_lefts.append(left + width)
         lefts = next_lefts
     axes.set_yticks(positions, names)
     axes.invert_yaxis()
+    share_axis(axes)
     axes.set_xlabel("Share of positive unexplained shortfall, %")
     png_title(axes, title, subtitle_lines)
     save_figure_with_legend(figure, legend_handles(axes), len(OUTAGE_CLASSES), path)
@@ -568,39 +776,51 @@ def write_q5_chart(rows, output):
         f"{total['first_date']} to {total['last_date']}; {Q5_CUTOFF}",
     ]
     name = "q5_shortfall_by_outage_class"
-    draw_stacked_shares(output / f"{name}.png", shares_by_group(rows), title, subtitle)
+    groups = shares_by_group(rows)
+    draw_stacked_shares(output / f"{name}.png", groups, title, subtitle)
 
     data = csv_data(Q5_RESULT, ["share_of_positive_shortfall_pct"])
-    class_labels = {}
-    for outage_class in OUTAGE_CLASSES:
-        class_labels[outage_class] = outage_class
     chart = (
         altair.Chart(data)
         .transform_filter(
             altair.FieldOneOfPredicate(field="item", oneOf=OUTAGE_CLASSES)
+        )
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES),
+            outage_class_name=display_name("item", OUTAGE_CLASS_NAMES),
+            stack_order=f"indexof({json.dumps(OUTAGE_CLASSES)}, datum.item)",
         )
         .mark_bar()
         .encode(
             x=altair.X(
                 "share_of_positive_shortfall_pct:Q",
                 title="Share of positive unexplained shortfall, %",
+                scale=share_scale(),
+                axis=share_ticks(),
             ),
-            y=altair.Y(
-                "fuel_group:N",
-                sort=None,
-                title=None,
-                axis=altair.Axis(labelExpr=label_expression({"": ALL_FUEL_GROUPS})),
+            y=category_axis("fuel_group_name"),
+            color=series_colour(
+                "outage_class_name",
+                OUTAGE_CLASS_NAMES.values(),
+                OUTAGE_CLASS_COLOURS,
+                2,
             ),
-            color=series_colour("item", class_labels, OUTAGE_CLASS_COLOURS),
+            order=altair.Order("stack_order:Q"),
             tooltip=[
-                "fuel_group:N",
-                "item:N",
-                "unit_periods:N",
-                "positive_shortfall_mwh:N",
-                "share_of_positive_shortfall_pct:Q",
+                altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+                altair.Tooltip("outage_class_name:N", title="Outage class"),
+                altair.Tooltip("unit_periods:N", title="Unit-periods"),
+                altair.Tooltip(
+                    "positive_shortfall_mwh:N", title="Positive shortfall, MWh"
+                ),
+                altair.Tooltip(
+                    "share_of_positive_shortfall_pct:Q",
+                    title="Share of positive shortfall, %",
+                    format=".1f",
+                ),
             ],
         )
-        .properties(**page_layout(title, subtitle))
+        .properties(**page_layout(subtitle, len(groups) * STACKED_BAR_STEP_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -621,45 +841,67 @@ def write_q6_chart(rows, output):
         f"{unclassified['notices']} notices with no class are not drawn",
     ]
     categories = []
-    medians = []
-    ninetieths = []
+    series = []
     for row in drawn:
         categories.append(f"{row['outage_class']} (n={row['notices']})")
-        medians.append(row["median_lag_minutes"])
-        ninetieths.append(row["p90_lag_minutes"])
+    for measure, label in Q6_MEASURES.items():
+        values = []
+        for row in drawn:
+            values.append(row[measure])
+        series.append((label, values))
     name = "q6_publication_lag_by_class"
+    x_title = "Lag from event start to first publication, minutes"
     draw_grouped_bars(
-        output / f"{name}.png",
-        categories,
-        [("median", medians), ("90th percentile", ninetieths)],
-        "Lag from event start to first publication, minutes",
-        title,
-        subtitle,
+        output / f"{name}.png", categories, series, x_title, title, subtitle
     )
 
-    measures = {"median_lag_minutes": "median", "p90_lag_minutes": "90th percentile"}
-    data = csv_data(Q6_RESULT, ["section", *measures])
+    data = csv_data(Q6_RESULT, ["section", *Q6_MEASURES])
+    position = grouped_position(
+        category_axis("outage_class"),
+        altair.X(
+            "value:Q",
+            title=x_title,
+            scale=altair.Scale(padding=SIGNED_SCALE_PADDING_PIXELS),
+        ),
+        "measure_name",
+        Q6_MEASURES,
+    )
+    tooltip = [
+        altair.Tooltip("outage_class:N", title="Outage class"),
+        altair.Tooltip("notices:N", title="Notices"),
+        altair.Tooltip("measure_name:N", title="Measure"),
+        altair.Tooltip("value:Q", title="Minutes", format=",.1f"),
+    ]
+    colour = series_colour(
+        "measure_name", Q6_MEASURES.values(), SERIES_COLOURS, len(Q6_MEASURES)
+    )
     chart = (
-        altair.Chart(data)
+        altair.layer(
+            *labelled_bars(position, colour, tooltip, "value", ",.1f"), data=data
+        )
         .transform_filter(altair.FieldEqualPredicate(field="section", equal=1))
         .transform_filter(
             altair.FieldOneOfPredicate(field="outage_class", oneOf=OUTAGE_CLASSES_DRAWN)
         )
-        .transform_fold(list(measures), as_=["measure", "value"])
-    )
-    chart = (
-        grouped_bars(
-            chart,
-            altair.Y("outage_class:N", sort=None, title=None),
-            "measure",
-            measures,
-            "value",
-            "Lag from event start to first publication, minutes",
-        )
-        .encode(tooltip=["outage_class:N", "notices:N", "measure:N", "value:Q"])
-        .properties(**page_layout(title, subtitle))
+        .transform_fold(list(Q6_MEASURES), as_=["measure", "value"])
+        .transform_calculate(measure_name=display_name("measure", Q6_MEASURES))
+        .properties(**page_layout(subtitle, len(drawn) * GROUPED_BAR_STEP_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
+
+
+def fuel_group_colours(groups):
+    """Each fuel group's line colour: the palette in order, grey for other."""
+    colours = {}
+    coloured = []
+    for group in groups:
+        if group == "other":
+            colours[group] = NEUTRAL_COLOUR
+            continue
+        coloured.append(group)
+    for group, colour in zip(coloured, CATEGORY_COLOURS[: len(coloured)], strict=True):
+        colours[group] = colour
+    return colours
 
 
 def draw_lines_by_group(path, rows, measures, y_label, title, subtitle_lines):
@@ -667,11 +909,14 @@ def draw_lines_by_group(path, rows, measures, y_label, title, subtitle_lines):
     dashed for the second."""
     months = sorted(monthly(rows))
     groups = sorted(fuel_groups(rows))
+    colours = fuel_group_colours(groups)
     figure, axes = pyplot.subplots(figsize=(FIGURE_WIDTH_INCHES, 7))
+    quiet_frame(axes)
+    axes.grid(axis="y", color=GRID_COLOUR, linewidth=0.8)
     handles = []
-    colours = FUEL_GROUP_COLOURS[: len(groups)]
-    for group, colour in zip(groups, colours, strict=True):
-        handles.append(Line2D([], [], color=colour, label=group))
+    for group in groups:
+        colour = colours[group]
+        handles.append(Line2D([], [], color=colour, label=fuel_group_name(group)))
         for measure, line_style in zip(measures, LINE_STYLES, strict=True):
             positions = []
             values = []
@@ -680,7 +925,7 @@ def draw_lines_by_group(path, rows, measures, y_label, title, subtitle_lines):
                     continue
                 positions.append(months.index(row["settlement_month"]))
                 values.append(float(row[measure]))
-            axes.plot(positions, values, line_style, color=colour)
+            axes.plot(positions, values, line_style, color=colour, linewidth=1.6)
     for label, line_style in zip(measures.values(), LINE_STYLES, strict=True):
         handles.append(
             Line2D([], [], color=MARKER_COLOUR, linestyle=line_style, label=label)
@@ -689,6 +934,7 @@ def draw_lines_by_group(path, rows, measures, y_label, title, subtitle_lines):
     for month in months:
         month_labels.append(month[:7])
     axes.set_xticks(range(len(months)), month_labels, rotation=90)
+    axes.set_ylim(bottom=0)
     axes.set_ylabel(y_label)
     png_title(axes, title, subtitle_lines)
     save_figure_with_legend(figure, handles, 5, path)
@@ -718,55 +964,69 @@ def write_q23_chart(rows, output):
         f"Months {first_month[:7]} to {last_month[:7]}; {Q23_TO_Q25_CUTOFF}; "
         "units and half-hours per point in the CSV",
     ]
-    measures = {
-        "median_absolute_pct": "median",
-        "p90_absolute_pct": "90th percentile",
-    }
     name = "q23_absolute_deviation_by_month"
+    y_title = "Absolute deviation from PN, % of capacity"
     draw_lines_by_group(
-        output / f"{name}.png",
-        unit_months,
-        measures,
-        "Absolute deviation from PN, % of capacity",
-        title,
-        subtitle,
+        output / f"{name}.png", unit_months, Q23_MEASURES, y_title, title, subtitle
     )
 
-    data = csv_data(Q23_RESULT, ["section", *measures])
+    groups = sorted(fuel_groups(unit_months))
+    colours = fuel_group_colours(groups)
+    group_names = []
+    group_colours = []
+    for group in groups:
+        group_names.append(fuel_group_name(group))
+        group_colours.append(colours[group])
+    picked = altair.selection_point(
+        name="picked_fuel_group", fields=["fuel_group_name"], bind="legend"
+    )
+    data = csv_data(Q23_RESULT, ["section", *Q23_MEASURES])
     chart = (
         altair.Chart(data)
         .transform_filter(altair.FieldEqualPredicate(field="section", equal=1))
-        .transform_fold(list(measures), as_=["measure", "value"])
-        .mark_line()
+        .transform_fold(list(Q23_MEASURES), as_=["measure", "value"])
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES),
+            measure_name=display_name("measure", Q23_MEASURES),
+        )
+        .mark_line(strokeWidth=2, strokeCap="round", strokeJoin="round")
         .encode(
             x=altair.X(
                 "settlement_month:O",
                 title=None,
-                axis=altair.Axis(labelExpr="slice(datum.label, 0, 7)"),
-            ),
-            y=altair.Y("value:Q", title="Absolute deviation from PN, % of capacity"),
-            color=altair.Color(
-                "fuel_group:N",
-                scale=altair.Scale(range=FUEL_GROUP_COLOURS),
-                legend=altair.Legend(title=None, orient="bottom", columns=4),
-            ),
-            strokeDash=altair.StrokeDash(
-                "measure:N",
-                sort=list(measures),
-                legend=altair.Legend(
-                    title=None, orient="bottom", labelExpr=label_expression(measures)
+                axis=altair.Axis(
+                    labelExpr="slice(datum.label, 0, 7)",
+                    labelAngle=0,
+                    labelOverlap="parity",
                 ),
             ),
+            y=altair.Y("value:Q", title=y_title),
+            color=altair.Color(
+                "fuel_group_name:N",
+                sort=group_names,
+                scale=altair.Scale(domain=group_names, range=group_colours),
+                legend=line_legend(3),
+            ),
+            detail="measure_name:N",
+            strokeDash=altair.StrokeDash(
+                "measure_name:N",
+                sort=list(Q23_MEASURES.values()),
+                legend=None,
+            ),
+            opacity=altair.when(picked)
+            .then(altair.value(1))
+            .otherwise(altair.value(0.15)),
             tooltip=[
-                "fuel_group:N",
-                "settlement_month:N",
-                "units:N",
-                "half_hours:N",
-                "measure:N",
-                "value:Q",
+                altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+                altair.Tooltip("settlement_month:N", title="Month"),
+                altair.Tooltip("units:N", title="Units"),
+                altair.Tooltip("half_hours:N", title="Half-hours"),
+                altair.Tooltip("measure_name:N", title="Measure"),
+                altair.Tooltip("value:Q", title="Absolute % of capacity", format=".3f"),
             ],
         )
-        .properties(**page_layout(title, subtitle))
+        .add_params(picked)
+        .properties(**page_layout(subtitle, LINE_CHART_HEIGHT_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -782,55 +1042,60 @@ def write_q24_chart(rows, output):
         f"Months {first_month[:7]} to {last_month[:7]}; {Q23_TO_Q25_CUTOFF}; "
         "acceptances and stretches per group in the CSV",
     ]
-    measures = {
-        "so_flagged_volume_pct": "acceptance volume",
-        "so_flagged_level_energy_pct": "level energy",
-    }
     categories = []
     for row in by_fuel_group:
-        categories.append(f"{row['fuel_group']} (n={row['acceptances']})")
+        categories.append(
+            f"{fuel_group_name(row['fuel_group'])} (n={row['acceptances']})"
+        )
     series = []
-    for measure, label in measures.items():
+    for measure, label in Q24_MEASURES.items():
         values = []
         for row in by_fuel_group:
             values.append(row[measure])
         series.append((label, values))
     name = "q24_system_action_share_by_fuel_group"
+    x_title = "Flagged as a system action, %"
     draw_grouped_bars(
         output / f"{name}.png",
         categories,
         series,
-        "Flagged as a system action, %",
+        x_title,
         title,
         subtitle,
+        shares=True,
     )
 
-    data = csv_data(Q24_RESULT, ["section", *measures])
-    chart = (
-        altair.Chart(data)
-        .transform_filter(altair.FieldEqualPredicate(field="section", equal=2))
-        .transform_fold(list(measures), as_=["measure", "value"])
+    data = csv_data(Q24_RESULT, ["section", *Q24_MEASURES])
+    position = grouped_position(
+        category_axis("fuel_group_name"),
+        altair.X("value:Q", title=x_title, scale=share_scale(), axis=share_ticks()),
+        "measure_name",
+        Q24_MEASURES,
+    )
+    tooltip = [
+        altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+        altair.Tooltip("acceptances:N", title="Acceptances"),
+        altair.Tooltip("stretches:N", title="Stretches"),
+        altair.Tooltip("acceptance_volume_mwh:N", title="Acceptance volume, MWh"),
+        altair.Tooltip("measure_name:N", title="Measure"),
+        altair.Tooltip("value:Q", title=x_title, format=".1f"),
+    ]
+    colour = series_colour(
+        "measure_name", Q24_MEASURES.values(), SERIES_COLOURS, len(Q24_MEASURES)
     )
     chart = (
-        grouped_bars(
-            chart,
-            altair.Y("fuel_group:N", sort=None, title=None),
-            "measure",
-            measures,
-            "value",
-            "Flagged as a system action, %",
+        altair.layer(
+            *labelled_bars(position, colour, tooltip, "value", ".1f"), data=data
         )
-        .encode(
-            tooltip=[
-                "fuel_group:N",
-                "acceptances:N",
-                "stretches:N",
-                "acceptance_volume_mwh:N",
-                "measure:N",
-                "value:Q",
-            ]
+        .transform_filter(altair.FieldEqualPredicate(field="section", equal=2))
+        .transform_fold(list(Q24_MEASURES), as_=["measure", "value"])
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES),
+            measure_name=display_name("measure", Q24_MEASURES),
         )
-        .properties(**page_layout(title, subtitle))
+        .properties(
+            **page_layout(subtitle, len(by_fuel_group) * GROUPED_BAR_STEP_PIXELS)
+        )
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -839,10 +1104,6 @@ def write_q25_chart(rows, output):
     first_month, last_month = first_and_last(
         matching_rows(rows, "section", "1"), "settlement_month"
     )
-    measures = {
-        Q25_CHAIN_MEASURE: "continuous acceptance duration (BSC)",
-        Q25_SPAN_MEASURE: "own span of each acceptance",
-    }
     title = "Q25. Share of acceptances under 10 minutes, by fuel group"
     subtitle = [
         "Continuous acceptance duration as the BSC chains acceptances, with "
@@ -852,85 +1113,119 @@ def write_q25_chart(rows, output):
     ]
     shares = {}
     for row in matching_rows(rows, "section", "2"):
-        if row["measure"] not in measures:
+        if row["measure"] not in Q25_MEASURES:
             continue
         if row["fuel_group"] not in shares:
             shares[row["fuel_group"]] = {}
         shares[row["fuel_group"]][row["measure"]] = row
     categories = []
     for fuel_group, by_measure in shares.items():
-        categories.append(f"{fuel_group} (n={by_measure[Q25_CHAIN_MEASURE]['n']})")
+        categories.append(
+            f"{fuel_group_name(fuel_group)} (n={by_measure[Q25_CHAIN_MEASURE]['n']})"
+        )
     series = []
-    for measure, label in measures.items():
+    for measure, label in Q25_MEASURES.items():
         values = []
         for by_measure in shares.values():
             values.append(by_measure[measure]["under_10_minutes_pct"])
         series.append((label, values))
     name = "q25_short_acceptances_by_fuel_group"
+    x_title = "Under 10 minutes, % of acceptances"
     draw_grouped_bars(
         output / f"{name}.png",
         categories,
         series,
-        "Under 10 minutes, % of acceptances",
+        x_title,
         title,
         subtitle,
+        shares=True,
     )
 
     data = csv_data(Q25_RESULT, ["section", "under_10_minutes_pct"])
+    position = grouped_position(
+        category_axis("fuel_group_name"),
+        altair.X(
+            "under_10_minutes_pct:Q",
+            title=x_title,
+            scale=share_scale(),
+            axis=share_ticks(),
+        ),
+        "measure_name",
+        Q25_MEASURES,
+    )
+    tooltip = [
+        altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+        altair.Tooltip("measure_name:N", title="Measure"),
+        altair.Tooltip("n:N", title="Acceptances"),
+        altair.Tooltip("under_10_minutes:N", title="Under 10 minutes"),
+        altair.Tooltip("under_10_minutes_pct:Q", title=x_title, format=".1f"),
+        altair.Tooltip("median_minutes:N", title="Median minutes"),
+    ]
+    colour = series_colour("measure_name", Q25_MEASURES.values(), SERIES_COLOURS, 1)
     chart = (
-        altair.Chart(data)
+        altair.layer(
+            *labelled_bars(position, colour, tooltip, "under_10_minutes_pct", ".1f"),
+            data=data,
+        )
         .transform_filter(altair.FieldEqualPredicate(field="section", equal=2))
         .transform_filter(
-            altair.FieldOneOfPredicate(field="measure", oneOf=list(measures))
+            altair.FieldOneOfPredicate(field="measure", oneOf=list(Q25_MEASURES))
         )
-    )
-    chart = (
-        grouped_bars(
-            chart,
-            altair.Y("fuel_group:N", sort=None, title=None),
-            "measure",
-            measures,
-            "under_10_minutes_pct",
-            "Under 10 minutes, % of acceptances",
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES),
+            measure_name=display_name("measure", Q25_MEASURES),
         )
-        .encode(
-            tooltip=[
-                "fuel_group:N",
-                "measure:N",
-                "n:N",
-                "under_10_minutes:N",
-                "under_10_minutes_pct:Q",
-                "median_minutes:N",
-            ]
-        )
-        .properties(**page_layout(title, subtitle))
+        .properties(**page_layout(subtitle, len(shares) * GROUPED_BAR_STEP_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
 
-def quintile_chart(csv_name, quintiles, title, subtitle):
+def quintile_chart(csv_name, quintiles, subtitle, quintile_count):
     data = csv_data(csv_name, ["value"])
+    range_labels = altair.Undefined
+    if quintiles["range_on_two_lines"]:
+        range_labels = altair.Axis(labelExpr=RANGE_ON_TWO_LINES)
+    position = {
+        "x": altair.X(
+            "value:Q",
+            title=wrapped([quintiles["value_title"]], AXIS_TITLE_CHARACTERS),
+        ),
+        "y": category_axis(
+            "range",
+            wrapped([quintiles["range_title"]], AXIS_TITLE_CHARACTERS),
+            range_labels,
+        ),
+    }
+    tooltip = [
+        altair.Tooltip("quintile:N", title="Quintile"),
+        altair.Tooltip("range:N", title=quintiles["range_title"]),
+        altair.Tooltip("half_hours:N", title="Half-hours"),
+        altair.Tooltip(
+            "value:Q", title=quintiles["value_title"], format=quintiles["value_format"]
+        ),
+    ]
     return (
-        altair.Chart(data)
+        altair.layer(
+            *labelled_bars(
+                position,
+                altair.value(BAR_COLOUR),
+                tooltip,
+                "value",
+                quintiles["value_format"],
+            ),
+            data=data,
+        )
         .transform_filter(
             altair.FieldEqualPredicate(field="item", equal=quintiles["item"])
         )
-        .mark_bar(color=BAR_COLOUR)
-        .encode(
-            x=altair.X("value:Q", title=quintiles["value_title"]),
-            y=altair.Y(
-                "result:N",
-                sort=None,
-                title=quintiles["range_title"],
-                axis=altair.Axis(labelExpr=prefix_removed(quintiles["range_prefix"])),
-            ),
-            tooltip=["quintile:N", "result:N", "half_hours:N", "value:Q"],
-        )
-        .properties(**page_layout(title, subtitle))
+        .transform_calculate(range=prefix_removed("result", quintiles["range_prefix"]))
+        .properties(**page_layout(subtitle, quintile_count * BAR_STEP_PIXELS))
     )
 
 
-def write_quintile_chart(rows, output, name, quintiles, title, subtitle):
+def write_quintile_chart(rows, output, csv_name, quintiles, title, subtitle):
+    """The PNG and the spec of one chart of quintiles, named by the output."""
+    name = quintiles["chart"]
     range_prefix = quintiles["range_prefix"]
     quintile_values = matching_rows(rows, "item", quintiles["item"])
     categories = []
@@ -949,6 +1244,8 @@ def write_quintile_chart(rows, output, name, quintiles, title, subtitle):
         title,
         subtitle,
     )
+    chart = quintile_chart(csv_name, quintiles, subtitle, len(quintile_values))
+    write_spec(chart, output / f"{name}.vl.json")
 
 
 def write_q28_chart(rows, output):
@@ -967,10 +1264,7 @@ def write_q28_chart(rows, output):
         f"n={population['half_hours']} half-hours on {population['days']} days, "
         f"{population['first_date']} to {population['last_date']}; {Q8_Q28_READ}",
     ]
-    name = "q28_shortfall_by_error_quintile"
-    write_quintile_chart(rows, output, name, Q28_QUINTILES, title, subtitle)
-    chart = quintile_chart(Q8_Q28_RESULT, Q28_QUINTILES, title, subtitle)
-    write_spec(chart, output / f"{name}.vl.json")
+    write_quintile_chart(rows, output, Q8_Q28_RESULT, Q28_QUINTILES, title, subtitle)
 
 
 def write_q30_chart(rows, output):
@@ -987,88 +1281,89 @@ def write_q30_chart(rows, output):
         f"n={population['half_hours']} half-hours on {population['days']} days, "
         f"{population['first_date']} to {population['last_date']}; {Q30_READ}",
     ]
-    name = "q30_carbon_error_by_wind_miss_quintile"
-    write_quintile_chart(rows, output, name, Q30_QUINTILES, title, subtitle)
-    chart = quintile_chart(Q30_RESULT, Q30_QUINTILES, title, subtitle)
-    write_spec(chart, output / f"{name}.vl.json")
+    write_quintile_chart(rows, output, Q30_RESULT, Q30_QUINTILES, title, subtitle)
 
 
-def write_q29_split_chart(rows, output, section, prefix, name, title):
+def write_q29_split_chart(rows, output, split, title):
     (overall,) = matching_rows(rows, "section", "1")
-    split = matching_rows(rows, "section", section)
+    split_rows = matching_rows(rows, "section", split["section"])
     subtitle = [
         "gCO2/kWh, actual minus forecast: positive means dirtier than forecast",
         f"n={overall['half_hours']} half-hours, {Q29_WINDOW}; {Q29_READ}",
     ]
-    measures = {
-        "mean_error": "mean error",
-        "mean_absolute_error": "mean absolute error",
-    }
     categories = []
-    for row in split:
-        categories.append(f"{row['item'].removeprefix(prefix)} (n={row['half_hours']})")
+    for row in split_rows:
+        categories.append(
+            f"{row['item'].removeprefix(split['prefix'])} (n={row['half_hours']})"
+        )
     series = []
-    for measure, label in measures.items():
+    for measure, label in Q29_MEASURES.items():
         values = []
-        for row in split:
+        for row in split_rows:
             values.append(row[measure])
         series.append((label, values))
     draw_grouped_bars(
-        output / f"{name}.png", categories, series, "gCO2/kWh", title, subtitle
+        output / f"{split['name']}.png", categories, series, "gCO2/kWh", title, subtitle
     )
 
-    data = csv_data(Q29_RESULT, ["section", *measures])
+    data = csv_data(Q29_RESULT, ["section", *Q29_MEASURES])
+    position = grouped_position(
+        category_axis("period"),
+        altair.X(
+            "value:Q",
+            title="gCO2/kWh",
+            scale=altair.Scale(padding=SIGNED_SCALE_PADDING_PIXELS),
+        ),
+        "measure_name",
+        Q29_MEASURES,
+    )
+    tooltip = [
+        altair.Tooltip("period:N", title=split["period_title"]),
+        altair.Tooltip("half_hours:N", title="Half-hours"),
+        altair.Tooltip("measure_name:N", title="Measure"),
+        altair.Tooltip("value:Q", title="gCO2/kWh", format=".3f"),
+        altair.Tooltip("median_error:N", title="Median error"),
+        altair.Tooltip("zero_error_share:N", title="Share with no error"),
+    ]
+    colour = series_colour("measure_name", Q29_MEASURES.values(), SERIES_COLOURS, 1)
     chart = (
-        altair.Chart(data)
+        altair.layer(
+            *labelled_bars(position, colour, tooltip, "value", ".3f"), data=data
+        )
         .transform_filter(
-            altair.FieldEqualPredicate(field="section", equal=int(section))
+            altair.FieldEqualPredicate(field="section", equal=int(split["section"]))
         )
-        .transform_fold(list(measures), as_=["measure", "value"])
+        .transform_fold(list(Q29_MEASURES), as_=["measure", "value"])
+        .transform_calculate(
+            period=prefix_removed("item", split["prefix"]),
+            measure_name=display_name("measure", Q29_MEASURES),
+        )
+        .properties(**page_layout(subtitle, len(split_rows) * GROUPED_BAR_STEP_PIXELS))
     )
-    chart = (
-        grouped_bars(
-            chart,
-            altair.Y(
-                "item:N",
-                sort=None,
-                title=None,
-                axis=altair.Axis(labelExpr=prefix_removed(prefix)),
-            ),
-            "measure",
-            measures,
-            "value",
-            "gCO2/kWh",
-        )
-        .encode(
-            tooltip=[
-                "item:N",
-                "half_hours:N",
-                "measure:N",
-                "value:Q",
-                "median_error:N",
-                "zero_error_share:N",
-            ]
-        )
-        .properties(**page_layout(title, subtitle))
-    )
-    write_spec(chart, output / f"{name}.vl.json")
+    write_spec(chart, output / f"{split['name']}.vl.json")
 
 
 def write_q29_charts(rows, output):
     write_q29_split_chart(
         rows,
         output,
-        "2",
-        "settlement month ",
-        "q29_error_by_month",
+        {
+            "section": "2",
+            "prefix": "settlement month ",
+            "name": "q29_error_by_month",
+            "period_title": "Settlement month",
+        },
         "Q29. Error of the API's final carbon forecast by settlement month",
     )
     write_q29_split_chart(
         rows,
         output,
-        "3",
-        "UTC block ",
-        "q29_error_by_utc_block",
+        {
+            "section": "3",
+            "prefix": "UTC block ",
+            "name": "q29_error_by_utc_block",
+            "period_title": "UTC block",
+        },
         "Q29. Error of the API's final carbon forecast by UTC block of the day",
     )
 

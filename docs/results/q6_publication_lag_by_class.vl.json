@@ -1,5 +1,9 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
   "config": {
     "view": {
       "continuousHeight": 300,
@@ -17,84 +21,142 @@
     },
     "url": "results/q6_publication_lag.csv"
   },
-  "encoding": {
-    "color": {
-      "field": "measure",
-      "legend": {
-        "labelExpr": "datum.label == \"median_lag_minutes\" ? \"median\" : datum.label == \"p90_lag_minutes\" ? \"90th percentile\" : datum.label",
-        "orient": "bottom",
-        "title": null
-      },
-      "scale": {
-        "domain": [
-          "median_lag_minutes",
-          "p90_lag_minutes"
+  "height": 84,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "measure_name",
+          "legend": {
+            "columns": 2,
+            "orient": "bottom",
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Median",
+              "90th percentile"
+            ],
+            "range": [
+              "#2a78d6",
+              "#eb6834"
+            ]
+          },
+          "sort": [
+            "Median",
+            "90th percentile"
+          ],
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "outage_class",
+            "title": "Outage class",
+            "type": "nominal"
+          },
+          {
+            "field": "notices",
+            "title": "Notices",
+            "type": "nominal"
+          },
+          {
+            "field": "measure_name",
+            "title": "Measure",
+            "type": "nominal"
+          },
+          {
+            "field": "value",
+            "format": ",.1f",
+            "title": "Minutes",
+            "type": "quantitative"
+          }
         ],
-        "range": [
-          "#4c72b0",
-          "#dd8452"
-        ]
+        "x": {
+          "field": "value",
+          "scale": {
+            "padding": 56
+          },
+          "title": "Lag from event start to first publication, minutes",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "outage_class",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        },
+        "yOffset": {
+          "field": "measure_name",
+          "scale": {
+            "paddingInner": 0.15
+          },
+          "sort": [
+            "Median",
+            "90th percentile"
+          ],
+          "type": "nominal"
+        }
       },
-      "sort": [
-        "median_lag_minutes",
-        "p90_lag_minutes"
-      ],
-      "type": "nominal"
-    },
-    "tooltip": [
-      {
-        "field": "outage_class",
-        "type": "nominal"
-      },
-      {
-        "field": "notices",
-        "type": "nominal"
-      },
-      {
-        "field": "measure",
-        "type": "nominal"
-      },
-      {
-        "field": "value",
-        "type": "quantitative"
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "type": "bar"
       }
-    ],
-    "x": {
-      "field": "value",
-      "title": "Lag from event start to first publication, minutes",
-      "type": "quantitative"
     },
-    "y": {
-      "field": "outage_class",
-      "sort": null,
-      "title": null,
-      "type": "nominal"
-    },
-    "yOffset": {
-      "field": "measure",
-      "sort": [
-        "median_lag_minutes",
-        "p90_lag_minutes"
-      ],
-      "type": "nominal"
+    {
+      "encoding": {
+        "text": {
+          "field": "value",
+          "format": ",.1f",
+          "type": "quantitative"
+        },
+        "x": {
+          "field": "value",
+          "scale": {
+            "padding": 56
+          },
+          "title": "Lag from event start to first publication, minutes",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "outage_class",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        },
+        "yOffset": {
+          "field": "measure_name",
+          "scale": {
+            "paddingInner": 0.15
+          },
+          "sort": [
+            "Median",
+            "90th percentile"
+          ],
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": {
+          "expr": "datum.value < 0 ? 'right' : 'left'"
+        },
+        "dx": {
+          "expr": "datum.value < 0 ? -4 : 4"
+        },
+        "type": "text"
+      }
     }
-  },
-  "mark": {
-    "type": "bar"
-  },
+  ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Minutes; negative means published before the event",
-      "starts",
-      "n=20368 notices, first publications from 2024-11-01 to",
-      "the read on 2026-10-12; 12 notices with no class are",
-      "not drawn"
-    ],
-    "text": [
-      "Q6. Lag from event start to first REMIT",
-      "publication, by outage class"
-    ]
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Minutes; negative means published\", \"before the event starts\", \"n=20368 notices, first publications from\", \"2024-11-01 to the read on 2026-10-12; 12\", \"notices with no class are not drawn\"] : [\"Minutes; negative means published before the event starts\", \"n=20368 notices, first publications from 2024-11-01 to the\", \"read on 2026-10-12; 12 notices with no class are not drawn\"]"
+    }
   },
   "transform": [
     {
@@ -121,6 +183,10 @@
         "median_lag_minutes",
         "p90_lag_minutes"
       ]
+    },
+    {
+      "as": "measure_name",
+      "calculate": "datum.measure == \"median_lag_minutes\" ? \"Median\" : datum.measure == \"p90_lag_minutes\" ? \"90th percentile\" : datum.measure"
     }
   ],
   "width": "container"

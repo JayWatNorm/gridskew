@@ -1,5 +1,9 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
   "config": {
     "view": {
       "continuousHeight": 300,
@@ -15,56 +19,112 @@
     },
     "url": "results/q30_wind_vs_carbon_error.csv"
   },
-  "encoding": {
-    "tooltip": [
-      {
-        "field": "quintile",
-        "type": "nominal"
+  "height": 170,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "value": "#2a78d6"
+        },
+        "tooltip": [
+          {
+            "field": "quintile",
+            "title": "Quintile",
+            "type": "nominal"
+          },
+          {
+            "field": "range",
+            "title": "Quintile of the absolute wind forecast miss",
+            "type": "nominal"
+          },
+          {
+            "field": "half_hours",
+            "title": "Half-hours",
+            "type": "nominal"
+          },
+          {
+            "field": "value",
+            "format": ".6f",
+            "title": "Mean absolute error of the final carbon forecast, gCO2/kWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "field": "value",
+          "title": [
+            "Mean absolute error of the",
+            "final carbon forecast, gCO2/kWh"
+          ],
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "[slice(datum.label, 0, indexof(datum.label, ' to ') + 3), slice(datum.label, indexof(datum.label, ' to ') + 4)]"
+          },
+          "field": "range",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": [
+            "Quintile of the absolute",
+            "wind forecast miss"
+          ],
+          "type": "nominal"
+        }
       },
-      {
-        "field": "result",
-        "type": "nominal"
-      },
-      {
-        "field": "half_hours",
-        "type": "nominal"
-      },
-      {
-        "field": "value",
-        "type": "quantitative"
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "type": "bar"
       }
-    ],
-    "x": {
-      "field": "value",
-      "title": "Mean absolute error of the final carbon forecast, gCO2/kWh",
-      "type": "quantitative"
     },
-    "y": {
-      "axis": {
-        "labelExpr": "replace(datum.label, \"abs(wind error) \", '')"
+    {
+      "encoding": {
+        "text": {
+          "field": "value",
+          "format": ".6f",
+          "type": "quantitative"
+        },
+        "x": {
+          "field": "value",
+          "title": [
+            "Mean absolute error of the",
+            "final carbon forecast, gCO2/kWh"
+          ],
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "[slice(datum.label, 0, indexof(datum.label, ' to ') + 3), slice(datum.label, indexof(datum.label, ' to ') + 4)]"
+          },
+          "field": "range",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": [
+            "Quintile of the absolute",
+            "wind forecast miss"
+          ],
+          "type": "nominal"
+        }
       },
-      "field": "result",
-      "sort": null,
-      "title": "Quintile of the absolute wind forecast miss",
-      "type": "nominal"
+      "mark": {
+        "align": {
+          "expr": "datum.value < 0 ? 'right' : 'left'"
+        },
+        "dx": {
+          "expr": "datum.value < 0 ? -4 : 4"
+        },
+        "type": "text"
+      }
     }
-  },
-  "mark": {
-    "color": "#4c72b0",
-    "type": "bar"
-  },
+  ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Rank correlation of the two misses 0.007930 (90%",
-      "interval -0.012829 to 0.028041)",
-      "n=17280 half-hours on 360 days, 2025-08-22 to",
-      "2026-08-16; read 2026-10-27, database cutoff 14:03 UTC"
-    ],
-    "text": [
-      "Q30. Mean absolute carbon forecast error by",
-      "quintile of the wind forecast miss"
-    ]
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Rank correlation of the two misses 0.007930\", \"(90% interval -0.012829 to 0.028041)\", \"n=17280 half-hours on 360 days,\", \"2025-08-22 to 2026-08-16; read\", \"2026-10-27, database cutoff 14:03 UTC\"] : [\"Rank correlation of the two misses 0.007930 (90% interval -0.012829 to 0.028041)\", \"n=17280 half-hours on 360 days, 2025-08-22 to 2026-08-16; read 2026-10-27, database cutoff 14:03 UTC\"]"
+    }
   },
   "transform": [
     {
@@ -72,6 +132,10 @@
         "equal": "quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",
         "field": "item"
       }
+    },
+    {
+      "as": "range",
+      "calculate": "replace(datum.result, \"abs(wind error) \", '')"
     }
   ],
   "width": "container"

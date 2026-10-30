@@ -16,6 +16,23 @@ PINNED_JSDELIVR_FILE = re.compile(
     r"https://cdn\.jsdelivr\.net/npm/(?P<package>[a-z][a-z-]*)@\d+\.\d+\.\d+/\S+"
 )
 VEGA_EMBED_CALL = re.compile(r'vegaEmbed\(\s*"[^"]+",\s*"(?P<spec>[^"]+)"')
+DISPLAYED_FUEL_GROUP = re.compile(
+    r'datum\.fuel_group == \\"(?P<code>[^"\\]*)\\" \? \\"(?P<label>[^"\\]*)\\"'
+)
+FUEL_GROUP_DISPLAY_NAMES = {
+    "": "All fuel groups",
+    "bioenergy": "Bioenergy",
+    "coal": "Coal",
+    "gas_turbine": "Gas turbine",
+    "hydro": "Hydro",
+    "interconnector": "Interconnector",
+    "nuclear": "Nuclear",
+    "oil": "Oil",
+    "other": "Other",
+    "pumped_storage": "Pumped storage",
+    "unclassified": "Unclassified",
+    "wind": "Wind",
+}
 
 DELIVERY_HEADER = (
     "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
@@ -182,6 +199,8 @@ def collect_fields(node, used, derived):
             used.update(value)
         elif key == "parse":
             used.update(value)
+        elif key == "as" and isinstance(value, str):
+            derived.add(value)
         elif key == "as":
             derived.update(value)
         else:
@@ -209,6 +228,77 @@ def fields_missing_from_their_csv(folder):
         if missing:
             missing_fields[spec_path.name] = missing
     return missing_fields
+
+
+def written_specs(folder):
+    specs = {}
+    for spec_path in sorted(folder.glob("*.vl.json")):
+        specs[spec_path.name] = json.loads(spec_path.read_text(encoding="utf-8"))
+    return specs
+
+
+def x_domains(node, domains):
+    """Each distinct domain set on an x scale anywhere in a spec."""
+    if isinstance(node, list):
+        for item in node:
+            x_domains(item, domains)
+        return
+    if not isinstance(node, dict):
+        return
+    for key, value in node.items():
+        x_domains(value, domains)
+        if key != "x" or not isinstance(value, dict):
+            continue
+        domain = value.get("scale", {}).get("domain")
+        if domain is not None and domain not in domains:
+            domains.append(domain)
+
+
+def encoded_fields(node, fields):
+    """Every field a spec's encodings read, in any layer."""
+    if isinstance(node, list):
+        for item in node:
+            encoded_fields(item, fields)
+        return
+    if not isinstance(node, dict):
+        return
+    for key, value in node.items():
+        if key == "encoding":
+            collect_fields(value, fields, set())
+        else:
+            encoded_fields(value, fields)
+
+
+def x_domains_by_spec(folder):
+    """Per spec that sets one, each domain of its x scales."""
+    domains = {}
+    for name, spec in written_specs(folder).items():
+        spec_domains = []
+        x_domains(spec, spec_domains)
+        if spec_domains:
+            domains[name] = spec_domains
+    return domains
+
+
+def specs_encoding_raw_fuel_groups(folder):
+    """The specs whose encodings read the fuel group code itself."""
+    names = []
+    for name, spec in written_specs(folder).items():
+        fields = set()
+        encoded_fields(spec, fields)
+        if "fuel_group" in fields:
+            names.append(name)
+    return names
+
+
+def fuel_group_names_by_spec(folder):
+    """Per spec that names fuel groups, each group with the name it shows."""
+    names_shown = {}
+    for name, spec in written_specs(folder).items():
+        shown = dict(DISPLAYED_FUEL_GROUP.findall(json.dumps(spec)))
+        if shown:
+            names_shown[name] = shown
+    return names_shown
 
 
 def specs_not_written_sorted(folder):
@@ -337,6 +427,27 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
 
 def test_every_spec_is_written_with_sorted_keys_and_two_space_indents(written):
     assert specs_not_written_sorted(written) == []
+
+
+def test_every_share_axis_runs_from_nothing_to_the_whole(written):
+    assert x_domains_by_spec(written) == {
+        "q12_instructed_share_by_fuel_group.vl.json": [[0, 1]],
+        "q24_system_action_share_by_fuel_group.vl.json": [[0, 100]],
+        "q25_short_acceptances_by_fuel_group.vl.json": [[0, 100]],
+        "q5_shortfall_by_outage_class.vl.json": [[0, 100]],
+    }
+
+
+def test_every_chart_shows_fuel_groups_by_their_display_names_only(written):
+    assert specs_encoding_raw_fuel_groups(written) == []
+    assert fuel_group_names_by_spec(written) == {
+        "q12_instructed_share_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
+        "q23_absolute_deviation_by_month.vl.json": FUEL_GROUP_DISPLAY_NAMES,
+        "q24_system_action_share_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
+        "q25_short_acceptances_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
+        "q3_deviation_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
+        "q5_shortfall_by_outage_class.vl.json": FUEL_GROUP_DISPLAY_NAMES,
+    }
 
 
 class PageTags(HTMLParser):
