@@ -1139,6 +1139,41 @@ existed.
   than forecast. Labelled as in Q31.
 - **One look.** Read once, at least 8 days after the cutoff.
 
+### Q36. When NESO's wind forecast comes in short, how much dirtier than forecast does carbon intensity turn out, compared with when wind comes in over?
+
+**Data:** the forecast archive and outturn, NESO's wind forecast issues
+(WINDFOR), metered wind outturn (FUELHH) and the active cohort wind units'
+instructions.
+**Analysis:** not yet written.
+
+**Status:** registered 31 October 2026, before any data in its window
+existed.
+
+**Rule:**
+
+- **Window.** As Q31.
+- **Matched lead times.** For each half-hour, NESO's latest wind forecast
+  published at least 24 hours before it, and the carbon forecast from the
+  first archive poll after that wind forecast's publication, within the
+  hour; the same at 4 hours.
+- **Wind miss.** The wind the metered wind farms had available (their
+  output plus the wind NESO instructed off) minus the wind forecast, in
+  GW; delivered output alone beside it. Outturns first published more than
+  an hour late, or exactly zero, are left out.
+- **Carbon error.** The outturn minus the paired carbon forecast; positive
+  means dirtier than forecast.
+- **Measure.** Within each quarter of the day (UTC) and month, the change
+  in the carbon error for each GW that wind came in short, and for each GW
+  it came in over, with 90% day-block bootstrap intervals. The 24-hour lead
+  leads; the 4-hour lead is beside it.
+- **Expected before reading.** Wind coming in short goes with outturn
+  dirtier than forecast. A link is called positive at 1.00 g/kWh per GW or
+  more with an interval above zero; weak with an interval above zero below
+  that; no clear link when the interval includes zero. Also described:
+  whether a GW short moves the error more than a GW over, compared only
+  when short goes with dirtier and over with cleaner.
+- **One look.** Read once, at least 8 days after the cutoff.
+
 ## Candidates
 
 Each candidate needs a reading rule recorded before it is designed in.
