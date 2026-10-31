@@ -43,7 +43,7 @@
           {
             "field": "middle_month_pct",
             "format": ".1f",
-            "title": "Middle month, %",
+            "title": "Middle of the 12 months, %",
             "type": "quantitative"
           },
           {
@@ -61,7 +61,7 @@
           {
             "field": "middle_month_p90_pct",
             "format": ".1f",
-            "title": "90th percentile, middle month, %",
+            "title": "Middle of the 12 monthly 90th percentiles, %",
             "type": "quantitative"
           }
         ],
@@ -117,7 +117,7 @@
           {
             "field": "middle_month_pct",
             "format": ".1f",
-            "title": "Middle month, %",
+            "title": "Middle of the 12 months, %",
             "type": "quantitative"
           },
           {
@@ -135,7 +135,7 @@
           {
             "field": "middle_month_p90_pct",
             "format": ".1f",
-            "title": "90th percentile, middle month, %",
+            "title": "Middle of the 12 monthly 90th percentiles, %",
             "type": "quantitative"
           }
         ],
@@ -185,7 +185,7 @@
           {
             "field": "middle_month_pct",
             "format": ".1f",
-            "title": "Middle month, %",
+            "title": "Middle of the 12 months, %",
             "type": "quantitative"
           },
           {
@@ -203,7 +203,7 @@
           {
             "field": "middle_month_p90_pct",
             "format": ".1f",
-            "title": "90th percentile, middle month, %",
+            "title": "Middle of the 12 monthly 90th percentiles, %",
             "type": "quantitative"
           }
         ],
@@ -249,7 +249,7 @@
           {
             "field": "middle_month_pct",
             "format": ".1f",
-            "title": "Middle month, %",
+            "title": "Middle of the 12 months, %",
             "type": "quantitative"
           },
           {
@@ -267,7 +267,7 @@
           {
             "field": "middle_month_p90_pct",
             "format": ".1f",
-            "title": "90th percentile, middle month, %",
+            "title": "Middle of the 12 monthly 90th percentiles, %",
             "type": "quantitative"
           }
         ],

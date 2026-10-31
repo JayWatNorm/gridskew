@@ -77,10 +77,10 @@ contextual explanations.
 - **`error_final`:** the error of the final forecast in GridSkew's own
   archive of every forecast (Q1's final forecast), at any horizon.
 - **`error_api_final`:** the error of the stored forecast, the one value
-  NESO's API keeps for each past half-hour; where GridSkew's archive can
-  check it (from 17 August 2026), it matches the forecast as it stood at
-  about the end of the half-hour. The archive starts on 17 August 2026, so
-  the year before it has only this value.
+  NESO's API keeps for each past half-hour; where GridSkew's archive could
+  check it (17 August to 10 September 2026), it matched the forecast as it
+  stood at about the end of the half-hour. The archive starts on 17 August
+  2026, so the year before it has only this value.
 
 ### Forecast read controls
 

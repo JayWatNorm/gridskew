@@ -1137,7 +1137,8 @@ def fewest_units(rows):
 
 
 def typical_percentile(rows):
-    """The middle month's 90th percentile, for groups thick enough for one."""
+    """The middle of the monthly 90th percentiles, for groups thick enough for
+    one."""
     if fewest_units(rows) < Q23_UNITS_FOR_A_PERCENTILE:
         return ""
     return fixed(statistics.median(column_values(rows, "p90_absolute_pct")), 4)
@@ -1214,8 +1215,8 @@ def draw_uninstructed_gaps(rows, path):
         [
             "Bar: range over the 12 whole months, September 2025 to August 2026; "
             "dot: the middle of those months; ring: September 2026, early meter "
-            "data; tick: the middle month's 90th percentile, groups of 20 units "
-            "or more"
+            "data; tick: the middle of the 12 monthly 90th percentiles, groups "
+            "of 20 units or more"
         ],
     )
     save_figure(figure, path)
@@ -1242,7 +1243,9 @@ def write_q23_chart(rows, output):
         altair.Tooltip(
             "lowest_month_pct:Q", title="Lowest whole month, %", format=".1f"
         ),
-        altair.Tooltip("middle_month_pct:Q", title="Middle month, %", format=".1f"),
+        altair.Tooltip(
+            "middle_month_pct:Q", title="Middle of the 12 months, %", format=".1f"
+        ),
         altair.Tooltip(
             "highest_month_pct:Q", title="Highest whole month, %", format=".1f"
         ),
@@ -1251,7 +1254,7 @@ def write_q23_chart(rows, output):
         ),
         altair.Tooltip(
             "middle_month_p90_pct:Q",
-            title="90th percentile, middle month, %",
+            title="Middle of the 12 monthly 90th percentiles, %",
             format=".1f",
         ),
     ]
