@@ -133,6 +133,10 @@ Q23_PROVISIONAL_MONTH = "2026-09-01"
 # A 90th percentile across fewer units than this is too thin to draw.
 Q23_UNITS_FOR_A_PERCENTILE = 20
 
+# Q3: the one week read on two settlement runs.
+Q3_ONE_WEEK_DATA = "10–16 Aug 2026, one-week data"
+Q3_TWO_MONTH_DATA = "10–16 Aug 2026, two-month data"
+
 Q12_PARTS = {"instructed_mwh": "Instructed by NESO", "rest_mwh": "Not instructed"}
 Q24_PARTS = {"flagged_pct": "Flagged", "not_flagged_pct": "Not flagged"}
 Q24_AXIS_TITLE = "Share of the energy instructions moved, %"
@@ -144,6 +148,8 @@ Q28_QUINTILE_ITEM = "quintile of abs(error_api_final): mean positive shortfall, 
 Q28_RANGE_PREFIX = "abs(error_api_final) "
 # The rule: supported at a ratio of 1.25 or more, so 125 on the index.
 Q28_NEEDED_INDEX = 125
+# Only the largest fifth's index has an interval.
+Q28_RANGE_KEY = "90% range (largest fifth)"
 
 Q29_BLOCKS = {
     "UTC block 00:00-05:59": "Night|00:00–05:59",
@@ -202,8 +208,10 @@ Q30_CORRELATIONS = [
         "high": "rho_signed (sensitivity): bootstrap 90% interval, high",
     },
 ]
-# The size stated before the read, not a test.
+# The size stated before the read, not a test; it applies to the rows that
+# compare the size of the two misses, not their direction.
 Q30_EXPECTED_SIZE = 0.2
+Q30_SIZE_LABEL_START = "Size of misses"
 
 Q2_TITLE = "Where the {gigawatt_hours} GWh that moved came from"
 Q3_TITLE = "Most fuel types produce slightly less than planned, with wide spreads"
@@ -237,9 +245,9 @@ Q2_READING = (
     "the three-week and two-month runs."
 )
 Q3_READING = (
-    "Each row is a type of power station. The dot shows its typical gap "
-    "between plan and meter; right of zero means it produced less than "
-    "planned. The bar shows where the middle half of its half-hours fell."
+    "Each row is a fuel group. The dot shows its typical gap between plan "
+    "and meter; right of zero means it produced less than planned. The bar "
+    "shows where the middle half of its half-hours fell."
 )
 Q12_READING = (
     "Each bar is a fuel group's whole gap between plan and meter: blue is "
@@ -283,7 +291,8 @@ Q29_MONTH_READING = (
 Q30_READING = (
     "Each row is one way of comparing the two misses. The dot is the rank "
     "correlation, from −1 to 1, where 0 means no link; the line is its 90% "
-    "range. Dots in the shaded band are as small as expected."
+    "range. In the size rows, a dot in the shaded band is as small as "
+    "expected; the direction rows were expected to be negative."
 )
 
 # Each chart's key: every mark it draws, as the key draws it.
@@ -866,14 +875,12 @@ def draw_gap_from_plan(rows, path):
         axes.plot(
             [lower, upper], [position, position], color=SPREAD_COLOUR, linewidth=6
         )
-        axes.plot(
-            float(row["median_deviation_mwh"]), position, "o", color=RESULT_COLOUR
-        )
         if row["week_first_run_median_mwh"]:
             axes.plot(
                 float(row["week_first_run_median_mwh"]),
                 position,
                 "o",
+                markersize=11,
                 markerfacecolor="none",
                 markeredgecolor=COMPARISON_COLOUR,
             )
@@ -881,9 +888,13 @@ def draw_gap_from_plan(rows, path):
                 float(row["week_latest_run_median_mwh"]),
                 position,
                 "s",
+                markersize=7.5,
                 markerfacecolor="none",
                 markeredgecolor=COMPARISON_COLOUR,
             )
+        axes.plot(
+            float(row["median_deviation_mwh"]), position, "o", color=RESULT_COLOUR
+        )
     axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
     labels = []
     for row in rows:
@@ -910,18 +921,20 @@ def draw_gap_from_plan(rows, path):
             [],
             color=COMPARISON_COLOUR,
             marker="o",
+            markersize=11,
             markerfacecolor="none",
             linestyle="",
-            label="One week, first run",
+            label=Q3_ONE_WEEK_DATA,
         ),
         Line2D(
             [],
             [],
             color=COMPARISON_COLOUR,
             marker="s",
+            markersize=7.5,
             markerfacecolor="none",
             linestyle="",
-            label="One week, two-month run",
+            label=Q3_TWO_MONTH_DATA,
         ),
     ]
     save_figure(figure, path, handles)
@@ -953,8 +966,8 @@ def write_q3_chart(q3_rows, q22_rows, output):
     keys = {
         "Middle half of half-hours": key_mark(SPREAD_COLOUR, SPREAD_COLOUR, BAR_SYMBOL),
         "Typical (median)": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
-        "Same week, one-week data": key_mark(COMPARISON_COLOUR, NO_FILL, "circle"),
-        "Same week, two-month data": key_mark(COMPARISON_COLOUR, NO_FILL, "square"),
+        Q3_ONE_WEEK_DATA: key_mark(COMPARISON_COLOUR, NO_FILL, "circle"),
+        Q3_TWO_MONTH_DATA: key_mark(COMPARISON_COLOUR, NO_FILL, "square"),
     }
     tooltip = [
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
@@ -998,8 +1011,8 @@ def write_q3_chart(q3_rows, q22_rows, output):
     week_first = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.week_first_run_median_mwh)")
-        .mark_point(filled=False, size=70, strokeWidth=2, opacity=1),
-        "Same week, one-week data",
+        .mark_point(filled=False, size=260, strokeWidth=2, opacity=1),
+        Q3_ONE_WEEK_DATA,
     ).encode(
         x="week_first_run_median_mwh:Q",
         y=fuel_group,
@@ -1009,8 +1022,8 @@ def write_q3_chart(q3_rows, q22_rows, output):
     week_latest = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.week_latest_run_median_mwh)")
-        .mark_point(filled=False, size=50, strokeWidth=2, opacity=1),
-        "Same week, two-month data",
+        .mark_point(filled=False, size=110, strokeWidth=2, opacity=1),
+        Q3_TWO_MONTH_DATA,
     ).encode(
         x="week_latest_run_median_mwh:Q",
         y=fuel_group,
@@ -1018,7 +1031,7 @@ def write_q3_chart(q3_rows, q22_rows, output):
         **keyed_points(keys),
     )
     chart = (
-        altair.layer(zero_line(), spread, middle, week_first, week_latest, data=data)
+        altair.layer(zero_line(), spread, week_first, week_latest, middle, data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
@@ -1877,7 +1890,7 @@ def write_q28_chart(rows, output):
         "Average under-delivery (index)": key_mark(
             RESULT_COLOUR, RESULT_COLOUR, "circle"
         ),
-        "90% range": key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
+        Q28_RANGE_KEY: key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
         f"Needed for yes ({Q28_NEEDED_INDEX})": key_mark(
             COMPARISON_COLOUR, NO_FILL, DASH_SYMBOL
         ),
@@ -1911,7 +1924,7 @@ def write_q28_chart(rows, output):
         altair.Chart()
         .transform_filter("isValid(datum.index_low)")
         .mark_rule(strokeWidth=2),
-        "90% range",
+        Q28_RANGE_KEY,
     ).encode(
         x=altair.X("index_low:Q", scale=index_scale),
         x2="index_high:Q",
@@ -2181,12 +2194,18 @@ def correlation_rows(rows):
 
 def draw_correlations(rows, path):
     figure, axes = new_figure(len(rows))
-    axes.axvspan(
-        -Q30_EXPECTED_SIZE, Q30_EXPECTED_SIZE, color=COMPARISON_COLOUR, alpha=0.15
-    )
     axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
     labels = []
     for position, row in enumerate(rows):
+        if row["label"].startswith(Q30_SIZE_LABEL_START):
+            axes.fill_between(
+                [-Q30_EXPECTED_SIZE, Q30_EXPECTED_SIZE],
+                position - 0.35,
+                position + 0.35,
+                color=COMPARISON_COLOUR,
+                alpha=0.15,
+                linewidth=0,
+            )
         rho = float(row["rho"])
         axes.plot(
             [float(row["low"]), float(row["high"])],
@@ -2211,7 +2230,11 @@ def draw_correlations(rows, path):
     png_title(
         axes,
         Q30_TITLE,
-        ["With 90% ranges; shaded: within ±0.2, the size expected before reading"],
+        [
+            "With 90% ranges; shaded in the size rows: within ±0.2, the size "
+            "expected before reading; the direction rows were expected to be "
+            "negative"
+        ],
     )
     save_figure(figure, path)
 
@@ -2245,15 +2268,19 @@ def write_q30_chart(rows, output):
         altair.Tooltip("low:Q", title="90% range from", format="+.2f"),
         altair.Tooltip("high:Q", title="90% range to", format="+.2f"),
     ]
-    expected_label = f"Expected before reading: ±{Q30_EXPECTED_SIZE}"
+    expected_label = f"Size expected before reading (±{Q30_EXPECTED_SIZE})"
     keys = {
         "Rank correlation": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
         "90% range": key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
         expected_label: key_mark(COMPARISON_COLOUR, BAND_FILL, BAR_SYMBOL),
     }
-    expected = keyed(drawn_once().mark_rect(), expected_label).encode(
+    is_size_row = f"indexof(datum.label, {json.dumps(Q30_SIZE_LABEL_START)}) == 0"
+    expected = keyed(
+        altair.Chart().transform_filter(is_size_row).mark_rect(), expected_label
+    ).encode(
         x=altair.XDatum(-Q30_EXPECTED_SIZE, scale=rho_scale),
         x2=altair.datum(Q30_EXPECTED_SIZE),
+        y=measure,
         fill=key_fill(keys),
     )
     zero = (

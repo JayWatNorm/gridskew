@@ -262,7 +262,7 @@ dates holding both runs (about mid-December 2026).
 ### Q2-R2RF. How much does metered output change from R2 to RF?
 
 **Data:** B1610 second reconciliation (R2) and final (RF) runs.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any RF value for these
 dates was compared. Waiting for 30 settlement dates holding both (about
@@ -278,7 +278,7 @@ May 2027).
 ### Q2-R1RF. How much does metered output change from R1 to RF?
 
 **Data:** B1610 first reconciliation (R1) and final (RF) runs.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any RF value for these
 dates was compared. Waiting for 30 settlement dates holding both (about
@@ -638,7 +638,7 @@ units; Q22-RF compares sums.
 
 **Data:** B1610 interim (II), initial (SF), first reconciliation (R1) and
 final (RF) runs for 10 to 16 August 2026; PN and instructions.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any RF value for these
 dates existed. Waiting for RF (about November 2027).
@@ -652,8 +652,12 @@ dates existed. Waiting for RF (about November 2027).
 - **Verdict.** The picture changes from II to RF if any group's summed
   deviation changes sign, its summed absolute deviation moves by 2% or
   more, its instructed share moves by a percentage point or more, or the
-  order of groups by summed absolute deviation changes. Groups equal to
-  the MWh are tied and have no order; a sum of exactly zero has no sign.
+  order of groups by summed absolute deviation changes. Groups are
+  compared on exact values; two whose summed absolute deviations are equal
+  when rounded to whole MWh are tied: tied groups have no order between
+  them, and a tie that forms or breaks is not a change of order. A summed
+  deviation of exactly zero has no sign; a move to or from zero is
+  reported, not counted as a change of sign.
   A group whose summed absolute deviation is zero in II changes if it is
   not zero in RF. An instructed share that cannot be computed in either
   run (no deviation at all) is shown as not defined and does not count.
@@ -998,7 +1002,7 @@ once on 27 October 2026, on data captured up to 14:03:55 UTC.
 
 **Data:** the forecast archive and outturn, the active cohort's
 unexplained shortfall, and national demand outturn.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.
@@ -1035,7 +1039,7 @@ existed.
 
 **Data:** the forecast archive and outturn, and the active cohort's
 unexplained shortfall by fuel group.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.
@@ -1057,7 +1061,7 @@ existed.
 ### Q33. Does the stored final forecast line up better with the half-hour before its label, and does its error follow the local clock?
 
 **Data:** the carbon outturn with the API's stored final forecast.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.
@@ -1078,15 +1082,16 @@ existed.
 - **Expected before reading.** The stored forecast lines up best with the
   half-hour before; winter mornings come out dirtier than forecast and
   summer mornings cleaner; winter evenings clearly cleaner. It "lines up
-  better with the half-hour before" if the difference is at least 0.5
-  g/kWh with an interval above zero.
+  better with the half-hour before" if the same half-hour's mean absolute
+  difference exceeds the half-hour before's by at least 0.5 g/kWh, with an
+  interval above zero; the half-hour two before is described only.
 - **One look.** Read once, at least 8 days after the cutoff.
 
 ### Q34. When units under-delivered against their plan, how much had already been signalled in public?
 
 **Data:** export limits (MEL), REMIT notices, PN and the active cohort's
 unexplained shortfall.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any export-limit data was
 held.
@@ -1115,7 +1120,7 @@ held.
 
 **Data:** the forecast archive and outturn, the cohort wind units'
 instructions, and NESO's carbon intensity of balancing actions.
-**Analysis:** to be written before the read.
+**Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.

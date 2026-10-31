@@ -465,12 +465,25 @@ def drawn_layers(node, layers):
             drawn_layers(value, layers)
 
 
+def own_key_label(layer):
+    """The entry in its chart's key that the layer names itself by, if any."""
+    for step in layer.get("transform", []):
+        if step.get("as") == "key":
+            return json.loads(step["calculate"])
+    return None
+
+
 def has_key_entry(layer):
-    """Whether a channel of the layer is drawn from a field with a legend."""
+    """Whether a channel of the layer is drawn from a field with a legend
+    (none, or false, draws no legend) and, for a layer that names its key
+    entry, whether that channel's key holds the entry."""
     encoding = layer.get("encoding", {})
     for channel in KEY_CHANNELS:
         definition = encoding.get(channel, {})
-        if "field" in definition and definition.get("legend", {}) is not None:
+        if "field" not in definition or definition.get("legend", {}) in (None, False):
+            continue
+        label = own_key_label(layer)
+        if label is None or label in definition.get("scale", {}).get("domain", []):
             return True
     return False
 

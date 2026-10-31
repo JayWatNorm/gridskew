@@ -41,7 +41,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Expected before reading: \u00b10.2"
+              "Size expected before reading (\u00b10.2)"
             ],
             "range": [
               "#2a78d6",
@@ -63,6 +63,23 @@
         },
         "x2": {
           "datum": 0.2
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|curtailment added back",
+            "Direction|curtailment added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
         }
       },
       "mark": {
@@ -70,16 +87,11 @@
       },
       "transform": [
         {
-          "aggregate": [
-            {
-              "as": "rows",
-              "op": "count"
-            }
-          ]
+          "filter": "indexof(datum.label, \"Size of misses\") == 0"
         },
         {
           "as": "key",
-          "calculate": "\"Expected before reading: \\u00b10.2\""
+          "calculate": "\"Size expected before reading (\\u00b10.2)\""
         }
       ]
     },
@@ -129,7 +141,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Expected before reading: \u00b10.2"
+              "Size expected before reading (\u00b10.2)"
             ],
             "range": [
               "#2a78d6",
@@ -199,7 +211,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Expected before reading: \u00b10.2"
+              "Size expected before reading (\u00b10.2)"
             ],
             "range": [
               "#2a78d6",
@@ -224,7 +236,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Expected before reading: \u00b10.2"
+              "Size expected before reading (\u00b10.2)"
             ],
             "range": [
               "circle",
@@ -249,7 +261,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Expected before reading: \u00b10.2"
+              "Size expected before reading (\u00b10.2)"
             ],
             "range": [
               "#2a78d6",
@@ -372,10 +384,12 @@
   "title": {
     "anchor": "start",
     "subtitle": [
-      "Each row is one way of comparing the two misses.",
-      "The dot is the rank correlation, from \u22121 to 1,",
-      "where 0 means no link; the line is its 90% range.",
-      "Dots in the shaded band are as small as expected."
+      "Each row is one way of comparing the two",
+      "misses. The dot is the rank correlation, from",
+      "\u22121 to 1, where 0 means no link; the line is",
+      "its 90% range. In the size rows, a dot in the",
+      "shaded band is as small as expected; the",
+      "direction rows were expected to be negative."
     ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Wind and carbon forecast\", \"misses barely move together\"] : [\"Wind and carbon forecast misses barely move together\"]"

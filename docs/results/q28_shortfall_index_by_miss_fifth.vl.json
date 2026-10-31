@@ -41,7 +41,7 @@
           "scale": {
             "domain": [
               "Average under-delivery (index)",
-              "90% range",
+              "90% range (largest fifth)",
               "Needed for yes (125)"
             ],
             "range": [
@@ -138,7 +138,7 @@
           "scale": {
             "domain": [
               "Average under-delivery (index)",
-              "90% range",
+              "90% range (largest fifth)",
               "Needed for yes (125)"
             ],
             "range": [
@@ -192,7 +192,7 @@
         },
         {
           "as": "key",
-          "calculate": "\"90% range\""
+          "calculate": "\"90% range (largest fifth)\""
         }
       ]
     },
@@ -212,7 +212,7 @@
           "scale": {
             "domain": [
               "Average under-delivery (index)",
-              "90% range",
+              "90% range (largest fifth)",
               "Needed for yes (125)"
             ],
             "range": [
@@ -237,7 +237,7 @@
           "scale": {
             "domain": [
               "Average under-delivery (index)",
-              "90% range",
+              "90% range (largest fifth)",
               "Needed for yes (125)"
             ],
             "range": [
@@ -262,7 +262,7 @@
           "scale": {
             "domain": [
               "Average under-delivery (index)",
-              "90% range",
+              "90% range (largest fifth)",
               "Needed for yes (125)"
             ],
             "range": [
