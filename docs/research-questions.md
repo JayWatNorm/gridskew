@@ -24,46 +24,80 @@ as a finding. This page holds the rules and their status, not the results.
   earlier `created_time`, then the lower `revision_number`. Revision numbers
   are the participant's own counter: they repeat and can fall.
   [Design decisions](design-decisions.md#modelling)
-- **Instructions.** A later acceptance replaces an earlier one only for the
-  minutes they share, and the PN applies where no acceptance does. Each
-  ramp point is read from its latest capture. Instructed energy is never
-  added up across the acceptances of one unit.
+- **Instructions.** A later acceptance (higher acceptance number) replaces
+  an earlier one only for the minutes they share, and the PN applies where
+  no acceptance does. Each ramp point is read from its latest capture.
+  Instructed energy is never added up across the acceptances of one unit.
   [Design decisions](design-decisions.md#modelling)
 
-**The thesis.** Carbon-intensity forecasts miss partly because generators do
-not deliver what they notified. Q1 and Q10 describe the forecast's error;
-Q3, Q4, Q5, Q12, Q23 and Q26 test the delivery channel; Q8 and Q9 test
-competing or contextual explanations.
+**The thesis.** We test whether half-hours in which power stations miss
+their own plans are also half-hours in which NESO's carbon forecast misses
+by more. NESO builds its forecast from its own demand, wind and solar
+forecasts, not from those plans, so any link is indirect. Q1 describes how
+the forecast is revised, Q10 and Q29 how far it misses, and Q27 how often it
+freezes. Q3, Q5, Q12, Q23 and Q26 describe delivery against plan; Q4 and
+Q28 test its link to the forecast's miss; Q8, Q9 and Q30 test competing or
+contextual explanations.
 
 ### Terms
 
+- **BM unit:** a unit registered in the Balancing Mechanism: a generator,
+  battery, pumped-storage station, interconnector link or supplier
+  account.
+- **PN (Physical Notification):** the output a BM unit tells NESO it plans
+  to produce, half-hour by half-hour; the latest capture is used.
+- **B1610:** Elexon's metered output per BM unit and settlement period,
+  recalculated in settlement runs as later meter data arrive.
+- **BOALF (Bid Offer Acceptance Level Flagged):** Elexon's record of each
+  bid or offer NESO accepts (an acceptance), with its levels and flags.
 - **Cohort:** every registry BM unit with a published fuel type, grouped
   into fuel groups.
-- **Determinable:** a unit-period whose shortfall can be judged. The others
-  keep their row with the reason.
+  <!-- TODO-AMEND(D12) -->
+- **Determinable:** a unit-period whose shortfall can be judged: it has one
+  metered value and an expected energy, which needs a usable PN unless an
+  acceptance covers the whole half-hour. The others keep their row with the
+  reason.
 - **Unexplained shortfall** (`unexplained_shortfall_mwh`): expected energy
-  minus the latest settlement run's metered energy. Expected energy is the
-  PN, with the instructed level in its place for the minutes an acceptance
-  is in force. Its positive part is under-delivery.
-- **Deviation from PN** (`deviation_from_pn_mwh`): the instructed deviation
-  (`instructed_deviation_mwh`) plus the unexplained shortfall.
+  minus the latest settlement run's metered energy; in plain words, the
+  shortfall NESO did not instruct. Expected energy is the PN, with the
+  instructed level in its place for the minutes an acceptance is in force.
+  Its positive part is under-delivery.
+- **Deviation from PN** (`deviation_from_pn_mwh`): PN energy minus metered
+  energy, which is the instructed deviation (`instructed_deviation_mwh`, PN
+  energy minus expected energy) plus the unexplained shortfall. Positive
+  means the unit produced less than its PN.
+- **ABSVD:** balancing services settled outside the balancing mechanism.
+  `unexplained_after_absvd_mwh` is the unexplained shortfall with ABSVD
+  added to the expected energy, as settlement adds it.
 - **Slot poll:** the earliest forecast poll in a half-hour slot of its
   retrieval time.
 - **Carbon forecast error:** actual minus forecast, in gCO2/kWh, so a
-  positive error is a half-hour dirtier than forecast.
+  positive error is a half-hour dirtier than forecast. The actual is NESO's
+  own estimate.
+- **`error_final`:** the error of the final forecast in GridSkew's own
+  archive of every forecast (Q1's final forecast), at any horizon.
+- **`error_api_final`:** the error of the stored forecast, the one value
+  NESO's API keeps for each past half-hour; where GridSkew's archive can
+  check it (from 17 August 2026), it matches the forecast as it stood at
+  about the end of the half-hour. The archive starts on 17 August 2026, so
+  the year before it has only this value.
 
 ### Forecast read controls
 
-Recorded on 25 October 2026 for Q1, Q4 and Q10, before any of them was read:
+We read a forecast result only after the forecast feed has run past the
+cutoff and the outturn has had eight days to settle. We save the query,
+output and read time; limiting a rerun to the data held then is done by
+hand. Recorded on 25 October 2026 for Q1, Q4 and Q10, before any of them was
+read:
 
 - read only when at least three slot polls are stored after
   `analysis_read_until` (one fewer than the run of four that marks a frozen
   feed, so a stall running past the cutoff is settled);
 - read at least 8 days after the cutoff, so outturn has settled;
 - the cutoff carries an explicit UTC offset;
-- the read records its time and saves the compiled query and output; any
-  rerun limits outturn and forecast captures to `retrieved_at` up to that
-  time.
+- the read records its time and saves the compiled query and output; a
+  rerun is limited by hand to outturn and forecast captures with
+  `retrieved_at` up to that time.
 
 ## Questions designed in
 
@@ -90,6 +124,7 @@ Amended before any drift value was read:
 - 25 October 2026: the forecast read controls are added.
 
 Waiting for 2,880 complete half-hours.
+<!-- TODO-AMEND(D6) -->
 
 **Rule:**
 
@@ -117,10 +152,10 @@ Waiting for 2,880 complete half-hours.
   contradicted when the median is at most −2 and the positive share at most
   45%; otherwise there is no directional drift. The share test uses the
   exact share; the reported share is rounded to six decimals.
-- **Sensitivity check.** The same verdict as published: one poll per slot,
-  no poll excluded, the same thresholds and no population minimum of its
-  own. If the two verdicts differ, the result is "not robust to frozen
-  polls" and no direction is reported.
+- **Sensitivity check.** The same verdict rule, recomputed with one poll
+  per slot, no poll excluded, the same thresholds and no population minimum
+  of its own. If the two verdicts differ, the result is "not robust to
+  frozen polls" and no direction is reported.
 - **Beside the verdict.** The date range, the complete half-hours per
   weekday and per half-hour of the day (UTC), and the half-hours removed by
   each exclusion, counted in order: partial polls first, then no-change
@@ -132,10 +167,12 @@ Waiting for 2,880 complete half-hours.
   `intensity_index` band (`very low`, `low`, `moderate`, `high`,
   `very high`) on the poll that gave the first forecast; a poll with no
   band is counted as unclassified, never replaced by a later band.
-- **One look.** The verdict is read once, on the first day the population
-  reaches 2,880, under the
+- **One look.** The verdict is read once, with `analysis_read_until` on
+  the first day the population reaches 2,880, under the
   [forecast read controls](#forecast-read-controls). Before then the query
   returns the count and no result.
+- The verdict shows the usual direction of revision, not whether the
+  forecast is efficient.
 
 ### Q2. How much does metered output change between settlement runs?
 
@@ -172,12 +209,13 @@ read. Read once on 11 October 2026.
 
 **Status:** registered 12 October 2026, before any RF value was compared.
 Waiting for 30 settlement dates holding both runs (about mid-December 2026).
+<!-- TODO-AMEND(D11) -->
 
 **Rule:**
 
 - **Population.** The first 30 settlement dates whose RF is stored that
   also hold R3.
-- **Measures, as Q2.** Gross unit-level change Σ|RF − R3| ÷ Σ|R3| over
+- **Measures, as Q2's moved share; no labels.** Gross unit-level change Σ|RF − R3| ÷ Σ|R3| over
   unit-periods holding both, by fuel group and overall, with the net change
   beside it; n, dates and coverage.
 - **Edge.** If Σ|R3| is zero for a group or overall, the numerator,
@@ -187,7 +225,7 @@ Waiting for 30 settlement dates holding both runs (about mid-December 2026).
   comparison of storage methods uses dates outside these first 30 dates
   with RF and R3.
 
-### Q3. How far is metered output from the notified position (PN), by fuel group?
+### Q3. Is metered output usually above or below the notified position (PN), by fuel group?
 
 **Data:** PN and B1610.
 **Analysis:**
@@ -198,8 +236,9 @@ with coverage in [q3_coverage.sql](../dbt/analyses/q3_coverage.sql).
 
 **Rule:** describe only: the median and interquartile range of
 `deviation_from_pn_mwh` per fuel group, with coverage beside it. The
-analysis reads determinable cohort periods with a PN. This is not NESO's
-PN-accuracy measure (see Q23).
+analysis reads determinable cohort periods with a PN. The median is signed,
+so it shows direction, not distance. This is not NESO's PN-accuracy measure
+(see Q23).
 
 ### Q4. Are periods with a larger carbon forecast error associated with more unexplained shortfall?
 
@@ -221,11 +260,14 @@ days. Amended before any read:
   number instead of by date. No count of ties was taken before this change.
 
 Waiting for 90 matched days.
+<!-- TODO-AMEND(D5) -->
 
 **Rule:**
 
 - **Population.** Half-hours on matched days. A matched day is a settlement
-  date with both `error_final` and the cohort's unexplained shortfall for
+  date with both `error_final` (outturn minus the archive's final forecast,
+  at any horizon; not the API's stored forecast) and the cohort's
+  unexplained shortfall for
   at least 46 half-hours; at least 90 matched days, up to a fixed
   `analysis_read_until` recorded before the read.
 - **Fresh final forecast.** The quintiles and the bootstrap use only
@@ -251,10 +293,11 @@ Waiting for 90 matched days.
   bottom mean is not positive forms no ratio; if fewer than 900 draws
   remain, the interval is reported as unavailable.
 - **One look.** n, date range and coverage beside every number. Read once,
-  on the first day the population reaches 90 matched days, under the
+  with `analysis_read_until` on the first day the population reaches 90
+  matched days, under the
   [forecast read controls](#forecast-read-controls).
 
-### Q5. Should the forecast have known? How much shortfall coincides with outages already published in REMIT at the period start?
+### Q5. How much positive unexplained shortfall coincides with outages published in REMIT at the period start?
 
 **Data:** REMIT publications and the cohort's unexplained shortfall.
 **Analysis:**
@@ -279,14 +322,15 @@ Waiting for 90 matched days.
 - **Classes.** `planned`, `unplanned`, `both` (both in force) and `none`,
   which add to 100%.
 - **Population.** Every determinable cohort unit-period, with or without a
-  PN; coverage of what is left out reported beside it.
+  usable PN (one without is determinable only when an acceptance covers the
+  whole half-hour); coverage of what is left out reported beside it.
 - **Read.** Once, with `analysis_read_until` = 2026-09-27 22:30 UTC (the
   last complete II settlement date), after a counts-only check that the
   REMIT views answer in time on a quiet server; the unedited output saved.
 - "Known" means published in REMIT at the half-hour's start, not that the
   generator knew. An association, not a cause.
 
-### Q6. How late are unplanned outages published?
+### Q6. How long after its written start is an outage notice first published?
 
 **Data:** REMIT `publish_time` against `event_start_time`.
 **Analysis:**
@@ -299,7 +343,9 @@ before any lag was read. Read once on 12 October 2026.
 
 - **Measure.** The median and 90th-percentile lag by outage class.
 - **Lag.** The first publication's `publish_time` minus its event start.
-  The class is the first publication's.
+  The class is the first publication's. The event start is the one the
+  participant wrote, so the lag is not the time from failure to
+  publication. Who stamps `publish_time` is not documented.
 - **Population.** Notices whose current status is not `Dismissed`; first
   stored publication on or after 1 November 2024 and event start on or
   after 22 August 2024. All four unavailability event types are in the
@@ -311,11 +357,11 @@ before any lag was read. Read once on 12 October 2026.
 - "Dismissed" means dismissed as of the read, so the result cannot be
   regenerated exactly later.
 
-### Q8. Does demand forecast error explain carbon forecast error better than shortfall does?
+### Q8. Is demand forecast error more strongly associated with carbon forecast error than shortfall is?
 
-**Data:** national demand forecast (NDF) and outturn (INDO) issues for a
-year of history, the carbon outturn with the API's own final forecast, and
-the cohort's unexplained shortfall.
+**Data:** national demand forecast (NDF) and Initial National Demand
+Outturn (INDO) issues for a year of history, the carbon outturn with the
+API's stored forecast, and the cohort's unexplained shortfall.
 **Analysis:** [q8_q28_history.sql](../dbt/analyses/q8_q28_history.sql),
 shared with Q28.
 
@@ -323,8 +369,8 @@ shared with Q28.
 `abs(error_final)` with `abs(demand_error_final_mw)` and with unexplained
 shortfall over the same periods, report both with n,
 and call one "stronger" only if the gap is at least 0.1. Completed
-25 October 2026, before any demand value was held: the shortfall's
-aggregation and sign, the two final-forecast cutoffs, the shared period set
+25 October 2026, before any demand value was held: the carbon error
+(`error_api_final`), the shortfall's aggregation and sign, the two final-forecast cutoffs, the shared period set
 and an interval beside the gap. A counts-only coverage check of the demand
 data was recorded on 26 October 2026, before the read. Read once on
 26 October 2026, 11:21 UTC.
@@ -333,9 +379,8 @@ data was recorded on 26 October 2026, before the read. Read once on
 
 - **Window.** Settlement dates 22 August 2025 to 16 August 2026, read with
   Q28 on one shared population.
-- **Carbon error.** `error_api_final`: the error of the API's own final
-  forecast, made minutes ahead; the only carbon forecast held for that
-  year.
+- **Carbon error.** `error_api_final`: the error of the stored forecast
+  (see [Terms](#terms)); the only carbon forecast held for that year.
 - **Demand error.** The first INDO outturn issued for the half-hour minus
   the last NDF issued before the half-hour starts, national boundary.
 - **Shortfall.** Per half-hour, the cohort sum of the positive part of
@@ -362,6 +407,7 @@ data was recorded on 26 October 2026, before the read. Read once on
 
 **Status:** registered; waiting for the system-price data, a later
 extension.
+<!-- TODO-AMEND(D4) -->
 
 **Rule:** describe the mean `niv_percentile` in the top
 unexplained-shortfall decile against all periods, over a fixed window. Net
@@ -379,6 +425,7 @@ at 24 hours, 4 hours and final. Amended 12 October 2026, before any read:
 one common sample, the name "accuracy by lead time", and the calendar
 split. Forecast read controls added 25 October 2026, before any read.
 Waiting for Q1's one look.
+<!-- TODO-AMEND(D2) -->
 
 **Rule:**
 
@@ -411,22 +458,24 @@ periods. Read once on 11 October 2026.
 **Rule:**
 
 - **Measure.** Describe, per fuel group, over every determinable cohort
-  period with a PN, the instructed part as a share of the absolute
-  deviation: Σ|`instructed_deviation_mwh`| ÷ (Σ|`instructed_deviation_mwh`|
-  + Σ|`unexplained_shortfall_mwh`|), with n, instructed periods and the
-  three absolute sums beside it.
+  period with a PN, the instructed part as a share of the components'
+  sizes, not of each period's own deviation: Σ|`instructed_deviation_mwh`|
+  ÷ (Σ|`instructed_deviation_mwh`| + Σ|`unexplained_shortfall_mwh`|), with
+  n, instructed periods and the three absolute sums beside it.
 - ABSVD is not counted (see Q26).
 - **At the read.** Overlapping acceptances were ordered by acceptance time,
   then acceptance number. The model orders them by acceptance number, the
-  balancing mechanism's own order, so a rebuild gives different values.
+  balancing mechanism's own order, so a rebuild gives different values; the
+  two orders differ for 32 of 3,620,900 acceptances.
 
-### Q22. Do settlement revisions change the Q3 headline (first against latest run)?
+### Q22. Did later meter data change one week's fuel-group picture?
 
 **Data:** B1610 runs and the Q3 facts for Q2's settlement dates.
 **Analysis:** not in this repository.
 
-**Status:** registered 10 October 2026, before any Q3 or Q22 query. Read
+**Status:** registered 9 October 2026, before any Q3 or Q22 query. Read
 once on 11 October 2026.
+<!-- TODO-AMEND(D9) -->
 
 **Rule:**
 
@@ -470,9 +519,9 @@ any read: interconnector units are excluded. Read once on 15 October 2026,
 - **Sensitivity.** With ABSVD captured, an ABSVD-inclusive version (ABSVD
   added to the PN, as NESO's September 2026 guidance) is reported beside
   it, labelled a sensitivity analysis, its method fixed before it is run.
-  It is informed by an exploration that had already shown ABSVD moving the
-  battery residual on some days, so it is not called pre-registered; the
-  base result above is.
+  It is informed by an exploration that had already shown ABSVD moving
+  batteries' unexplained shortfall on some days, so it is not called
+  pre-registered; the base result above is.
 
 ### Q24. What share of each fuel group's instructed energy is flagged as a system action rather than energy balancing?
 
@@ -492,13 +541,14 @@ amended result is not called pre-registered. Read once on 15 October 2026,
   a system action, as a share of all acceptance volume. Acceptance volume
   is the absolute difference between the instructed level and the PN over
   the minutes each acceptance is in force, as settlement measures it.
-- **Beside it.** The level-energy share (the exploration's measure and the
-  rule first registered) is reported for continuity.
+- **Beside it.** The level-energy share (the same share on the energy at
+  the instructed level, not its difference from PN; the exploration's
+  measure and the rule first registered) is reported for continuity.
 - **Wording.** "Flagged as system actions", not "constraint volume": the
   flag is NESO's real-time classification, and later corrections are not
   re-read.
 
-### Q25. How fragmented are instructions to storage compared with thermal plant?
+### Q25. How fragmented are instructions to units typed other (mostly batteries) and pumped storage compared with thermal plant?
 
 **Data:** BOALF.
 **Analysis:**
@@ -509,6 +559,7 @@ exploration had already read on 11 October, so measure (1) is not called
 pre-registered. Amended 12 October 2026, before any read of it, to add
 measure (2), the registered result. Read once on 15 October 2026, 22:01
 UTC, with `analysis_read_until` = 2026-09-30 22:30 UTC.
+<!-- TODO-AMEND(D8) -->
 
 **Rule:** per fuel group and month, two measures with n:
 
@@ -530,6 +581,7 @@ the agreement rate is reported.
 
 **Status:** registered 12 October 2026, before any ABSVD capture. Not yet
 read.
+<!-- TODO-AMEND(D3) -->
 
 **Rule:**
 
@@ -561,6 +613,7 @@ error.
 existed. Amended 25 October 2026, before the window opened: the read waits
 for three slot polls after the cutoff. Waiting for 90 days of polls (about
 30 January 2027).
+<!-- TODO-AMEND(D1) -->
 
 **Rule:**
 
@@ -585,11 +638,12 @@ for three slot polls after the cutoff. Waiting for 90 days of polls (about
   `analysis_read_until`, so a stall running past the cutoff is settled
   whatever slots are missing.
 
-### Q28. Are half-hours with a larger error in the API's final carbon forecast associated with more unexplained shortfall, on 2025 history?
+### Q28. Are half-hours with a larger error in the API's stored carbon forecast associated with more unexplained shortfall, from August 2025 to August 2026?
 
-Q4's test on a year that ends before Q4's window starts.
+Q4's test on the year before Q4's window, with the stored forecast in place
+of the archive's final forecast.
 
-**Data:** the carbon outturn with the API's final forecast, and the
+**Data:** the carbon outturn with the API's stored forecast, and the
 cohort's unexplained shortfall.
 **Analysis:** [q8_q28_history.sql](../dbt/analyses/q8_q28_history.sql),
 shared with Q8.
@@ -613,15 +667,17 @@ ordered by the same fixed pseudo-random number. Read once with Q8 on
   difference are reported and the test is not applicable.
 - **Interval.** A 90% day-block bootstrap interval for the ratio (1,000
   draws; fewer than 900 usable: unavailable) is descriptive.
-- **Limitations stated with the result.** The final forecast is made
-  minutes ahead, so this concerns the nowcast, not the day-ahead forecast;
-  the overall error of that forecast had already been seen in a September
-  2026 exploration; settlement runs differ by date (R3 to R1).
+- **Limitations stated with the result.** The forecast is the stored
+  forecast (see [Terms](#terms)), not a day-ahead forecast; the overall
+  error of that forecast had already been seen in a September 2026
+  exploration; settlement runs differ by date (R3 to SF, as held at the
+  read).
 
-### Q29. How does the error of the API's own final carbon forecast vary by month and by time of day, over a year of history?
+### Q29. How does the error of the API's stored carbon forecast vary by month and by time of day, over a year of history?
 
-**Data:** the carbon outturn with the API's final forecast.
-**Analysis:** `q29_final_forecast_error_by_month_and_block.sql`.
+**Data:** the carbon outturn with the API's stored forecast.
+**Analysis:**
+[q29_final_forecast_error_by_month_and_block.sql](../dbt/analyses/q29_final_forecast_error_by_month_and_block.sql)
 
 **Status:** registered 27 October 2026, before any figure of it was read.
 Read once on 27 October 2026, 06:15 UTC.
@@ -630,7 +686,7 @@ Read once on 27 October 2026, 06:15 UTC.
 
 - **Window.** Settlement dates 22 August 2025 to 16 August 2026, both
   included; half-hours from the settlement calendar.
-- **Error.** The outturn minus the API's final forecast, from the latest
+- **Error.** The outturn minus the API's stored forecast, from the latest
   capture holding an observed value; positive means the half-hour was
   dirtier than forecast.
 - **Population.** Every half-hour in the window with an error.
@@ -646,25 +702,22 @@ Read once on 27 October 2026, 06:15 UTC.
   forecast minus actual, the opposite sign) and are labelled as such.
 - **Read once,** after the analysis and its checks on worked rows are
   accepted.
-- **Limitations stated with the result.** The final forecast is made
-  minutes ahead, so this describes the nowcast; the outturn is NESO's
-  estimate; each month is seen once; it is not a judgement of NESO's
-  method.
+- **Limitations stated with the result.** The forecast is the stored
+  forecast (see [Terms](#terms)); the outturn is NESO's estimate; each
+  month is seen once; it is not a judgement of NESO's method.
 
-### Q30. Is the size of the miss between wind outturn and NESO's latest wind forecast associated with the size of the error in the API's final carbon forecast, on 2025 history?
+### Q30. Is the size of the miss between wind outturn and NESO's latest wind forecast associated with the size of the error in the API's stored carbon forecast, from August 2025 to August 2026?
 
 **Data:** WINDFOR wind forecast issues and FUELHH wind outturn, back-filled
 for a year of history; the cohort wind units' instructed curtailment from
-the shortfall table; the carbon outturn with the API's final forecast.
+the shortfall table; the carbon outturn with the API's stored forecast.
 **Analysis:**
 [q30_wind_vs_carbon_error.sql](../dbt/analyses/q30_wind_vs_carbon_error.sql)
 
 **Status:** registered 27 October 2026, before any wind data was held.
 Amended the same day, before any read: the carbon error is the one Q28 and
-Q29 read (the registration named a model that holds no half-hour in this
-window), and, before any wind data was held, the issue times are read as
-under Forecast. A counts-only coverage check was recorded before the read.
-Read once on 27 October 2026, with the database cutoff at 14:03:55 UTC.
+Q29 read. A counts-only coverage check was recorded before the read. Read
+once on 27 October 2026, on data captured up to 14:03:55 UTC.
 
 **Rule:**
 
@@ -673,18 +726,21 @@ Read once on 27 October 2026, with the database cutoff at 14:03:55 UTC.
 - **Forecast.** The latest WINDFOR issue with publish time strictly before
   the half-hour's start, and its hourly point containing the half-hour: no
   interpolation, no fall-back. As a working inference (not documented),
-  issues come at fixed UTC times, with summer publish times shown in BST but
-  labelled Z and the forecast points' times true UTC. The pairing takes the
-  latest source-stamped issue: under the inference it never uses an issue
-  before it existed, and in summer it may use one up to an hour older than
-  the newest available. Forecast ages are reported from the source stamp.
+  recorded before any wind data was held, issues come at fixed UTC times,
+  with summer publish times shown in BST but labelled Z and the forecast
+  points' times true UTC. The pairing takes the latest source-stamped
+  issue: under the inference it never uses an issue before it existed, and
+  in summer it may use one up to an hour older than the newest available.
+  Forecast ages are reported from the source stamp, by month; in summer
+  they may be an hour short, a limitation stated with the result.
 - **Outturn.** The first FUELHH wind publication.
 - **Wind error.** Primary: outturn plus the cohort wind units' summed
   `instructed_deviation_mwh` × 2, minus forecast, labelled "outturn with
   cohort curtailment add-back" (WINDFOR's constraint basis is not
   documented). Sensitivity: delivered outturn minus forecast. A half-hour
-  with a wind unit accepted but a null deviation leaves both, counted.
-- **Carbon error.** `error_api_final`: the outturn minus the API's final
+  with a wind unit accepted but a null deviation is left out of both
+  versions and counted.
+- **Carbon error.** `error_api_final`: the outturn minus the API's stored
   forecast, as Q28 and Q29.
 - **Population.** Half-hours with `error_api_final`, a forecast and an
   outturn; no matched-day threshold. Coverage by reason, by forecast-age
@@ -701,13 +757,16 @@ Read once on 27 October 2026, with the database cutoff at 14:03:55 UTC.
   endpoint checks.
 - **One look.** Read once, after the build review and the counts-only
   coverage check.
-- **Limitations stated with the result.** The carbon final forecast is a
-  nowcast made minutes ahead, against a wind forecast up to hours old;
-  metered wind only, with no embedded wind; an association, not a cause.
+- **Limitations stated with the result.** The carbon forecast is the
+  stored forecast (see [Terms](#terms)), against a wind forecast up to
+  hours old; metered wind only, with no embedded wind; an association, not
+  a cause.
 
 ## Candidates
 
 Each candidate needs a reading rule recorded before it is designed in.
+
+<!-- TODO-AMEND(D13) -->
 
 | ID | Question | Status |
 |---|---|---|
@@ -724,9 +783,9 @@ Dropped questions stay listed, with the reason.
 | Q7 | Do wind shortfalls follow weather-forecast misses? | NESO expects wind units' PNs to use data near gate closure, so a day-ahead regional weather miss is a weak explanation; a limitation, not a settled exclusion. |
 | Q11 | Are system prices revised after the first calculation? | Elexon's public system-prices endpoint serves only the first calculation, so revisions cannot be observed; this is not a finding that prices are never revised. |
 | Q13 | Does interconnector flow explain forecast error? | No flow forecast is held; a question on outturn flows would be new, with its own source and rule. |
-| Q14 | Is the forecast worse on weekends, holidays or in high wind? | Its calendar part is answered inside Q10, and wind is out of scope. |
+| Q14 | Is the forecast worse on weekends, holidays or in high wind? | Its calendar part is answered inside Q10; Q30 reads the wind forecast's miss, not high wind. |
 | Q17 | Capture timeliness per source and day | An operations measure, not research, covered by the health read at the start of each working session. Retired 12 October 2026. |
-| Q18 | Storage delivery fidelity against thermal units | Q23, Q25 and Q26 cover related storage performance, though none reproduces a storage-against-thermal comparison. |
+| Q18 | Storage delivery fidelity against thermal units | Q23 reports how closely each fuel group, storage and thermal plant included, follows its PN; Q25 and Q26 cover instructions and services settled outside the balancing mechanism. A test of storage against thermal plant would be its own registered question. |
 | Q19 | Instructed wind reductions per day | Q24 describes wind's system-action share; a daily chart would be its own registered question. |
 | Q20 | GridSkew-observed replay at a fixed cutoff | It answers no thesis question, and the time GridSkew first held each record is an inferred bound, not a measured time. Dropped 9 October 2026. |
 | Q21 | Registry churn | Low analytical value. Dropped before 9 October 2026. |
