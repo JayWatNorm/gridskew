@@ -1781,14 +1781,26 @@ Q25_EXPECTED = {
 # one stall of 4 polls (120 minutes either way; 1.000000 of its 4 slot polls),
 # none partial; the stall starts at the window's start and ends at its end, so
 # it is not cut.
+#
+# Every poll here ran on the half-hour schedule, 1.5 seconds after its slot: a
+# full poll holds 97 half-hours and a partial one 50, and every poll of a stall
+# repeats the one before, so the runs of unchanged polls are the stalls. B,
+# with its partial poll inside the window, is the one confirmed freeze. By the
+# polls inside the window, A's run is in the 3-poll band (cut at the start), B's
+# in 4-5 and C's in 2 (cut at the end), all on the half-hour schedule.
 Q27_FIXTURES = """
 create temporary table synthetic_revisions (
     poll_slot timestamptz,
     is_first_poll_in_slot boolean,
     is_partial_poll boolean,
-    is_no_change_poll boolean
+    is_no_change_poll boolean,
+    retrieved_at timestamptz,
+    poll_row_count integer,
+    is_unchanged_from_previous_slot boolean
 ) on commit drop;
-insert into synthetic_revisions values
+insert into synthetic_revisions (
+    poll_slot, is_first_poll_in_slot, is_partial_poll, is_no_change_poll
+) values
     ('2026-08-25 05:00+00', true, false, true),
     ('2026-08-25 05:30+00', true, false, true),
     ('2026-08-25 06:00+00', true, false, true),
@@ -1811,6 +1823,10 @@ insert into synthetic_revisions values
     ('2026-09-05 00:00+00', true, false, true),
     ('2026-09-05 00:30+00', true, false, true)
     {after_cutoff_rows};
+update synthetic_revisions set
+    retrieved_at = poll_slot + interval '1.5 seconds',
+    poll_row_count = case when is_partial_poll then 50 else 97 end,
+    is_unchanged_from_previous_slot = is_no_change_poll;
 """
 # After the cutoff: 00:30 above, then 01:00 and the changed 02:00 poll make
 # three slot polls, enough to settle stall C. Without 01:00 the last poll is
@@ -1821,8 +1837,78 @@ Q27_SETTLED_ROWS = (
 )
 Q27_GAP_ROWS = ",\n    ('2026-09-05 02:00+00', true, false, false)"
 Q27_TABLES = {"int_carbon_forecast__revisions": "pg_temp.synthetic_revisions"}
-EXPLORATORY = "exploratory, seen before registration: "
-BLOCK = "stalls starting {} UTC (split informed by the exploratory stalls)"
+EXPLORATORY = "exploratory and not part of the result: "
+BLOCK = (
+    "stalls starting {} UTC (split informed by the long freezes of August and "
+    "September 2026 and the stalls of 1 to 24 October 2026)"
+)
+ON_THE_HALF_HOUR = "on the half-hour"
+FIVE_AND_THIRTY_FIVE = ":05 and :35"
+ON_THE_HALF_HOUR_BASIS = "decision 016, note of 25 October 2026"
+FIVE_AND_THIRTY_FIVE_BASIS = "the reading rule"
+CONFIRMED_FREEZES = "confirmed freezes: stalls holding a partial poll inside the window"
+CONFIRMED_MEDIAN_POLLS = "confirmed freezes: median duration, poll-equivalent minutes"
+CONFIRMED_LONGEST_POLLS = "confirmed freezes: longest duration, poll-equivalent minutes"
+CONFIRMED_MEDIAN_ELAPSED = "confirmed freezes: median duration, elapsed minutes"
+CONFIRMED_LONGEST_ELAPSED = "confirmed freezes: longest duration, elapsed minutes"
+RUN_BANDS = (
+    "1 poll",
+    "2 polls",
+    "3 polls",
+    "4-5 polls",
+    "6-11 polls",
+    "12 or more polls",
+)
+
+
+def minutes_past_slot_key(minutes):
+    return (1, f"slot polls made {minutes} minutes past their slot (UTC)", None)
+
+
+def partial_by_schedule_key(section, prefix, schedule, full_poll_rows):
+    return (
+        section,
+        f"{prefix}partial polls, schedule {schedule} "
+        f"(fewer than {full_poll_rows} half-hours)",
+        None,
+    )
+
+
+def capture_schedule_key(section, prefix, schedule):
+    return (section, f"{prefix}capture schedule {schedule}", None)
+
+
+def capture_schedule_detail(first_poll, last_poll, full_poll_rows, basis):
+    return (
+        f"first slot poll {first_poll} UTC; last slot poll {last_poll} UTC; "
+        f"full poll {full_poll_rows} half-hours; basis: {basis}"
+    )
+
+
+def run_band_cells(schedule, band, runs, cut_at_start=0, cut_at_end=0):
+    key = (
+        6,
+        f"runs of unchanged slot polls, schedule {schedule}: {band} in the window",
+        None,
+    )
+    detail = (
+        f"cut at the window start: {cut_at_start}; cut at the window end: {cut_at_end}"
+    )
+    return {key: dict(value=str(runs), detail=detail)}
+
+
+def run_bands_expected(runs_by_schedule_and_band):
+    """Every schedule's every band; a band not named has no run."""
+
+    expected = {}
+    for schedule in (ON_THE_HALF_HOUR, FIVE_AND_THIRTY_FIVE):
+        for band in RUN_BANDS:
+            cells = runs_by_schedule_and_band.get((schedule, band), (0, 0, 0))
+            runs, cut_at_start, cut_at_end = cells
+            expected.update(
+                run_band_cells(schedule, band, runs, cut_at_start, cut_at_end)
+            )
+    return expected
 
 
 def q27_fixtures(after_cutoff_rows=Q27_SETTLED_ROWS):
@@ -1856,6 +1942,23 @@ Q27_EXPLORATORY_EXPECTED = {
         value="0.000000"
     ),
     (5, f"{EXPLORATORY}partial polls inside a stall", None): dict(value="0"),
+    (5, f"{EXPLORATORY}slot polls", None): dict(value="4"),
+    (5, f"{EXPLORATORY}{CONFIRMED_FREEZES}", None): dict(value="0"),
+    (5, f"{EXPLORATORY}{CONFIRMED_MEDIAN_POLLS}", None): dict(value=None),
+    (5, f"{EXPLORATORY}{CONFIRMED_LONGEST_POLLS}", None): dict(value=None),
+    (5, f"{EXPLORATORY}{CONFIRMED_MEDIAN_ELAPSED}", None): dict(value=None),
+    (5, f"{EXPLORATORY}{CONFIRMED_LONGEST_ELAPSED}", None): dict(value=None),
+    partial_by_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR, 97): dict(value="0"),
+    partial_by_schedule_key(5, EXPLORATORY, FIVE_AND_THIRTY_FIVE, 96): dict(value="0"),
+    capture_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR): dict(
+        value="4",
+        detail=capture_schedule_detail(
+            "2026-08-25 05:00:01.500",
+            "2026-08-25 06:30:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
 }
 Q27_EXPECTED = {
     **Q27_WINDOW_EXPECTED,
@@ -1864,6 +1967,7 @@ Q27_EXPECTED = {
         detail="yes"
     ),
     (1, "read possible", None): dict(detail="yes"),
+    minutes_past_slot_key(0): dict(value="12"),
     (2, "stalls", None): dict(value="3"),
     (2, "median duration, poll-equivalent minutes", None): dict(value="90"),
     (2, "longest duration, poll-equivalent minutes", None): dict(value="120"),
@@ -1872,23 +1976,289 @@ Q27_EXPECTED = {
     (2, "share of slot polls inside a stall", None): dict(value="0.750000"),
     (2, "stalls cut at the window start", None): dict(value="1"),
     (2, "stalls cut at the window end", None): dict(value="1"),
+    (2, CONFIRMED_FREEZES, None): dict(value="1"),
+    (2, CONFIRMED_MEDIAN_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_LONGEST_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_MEDIAN_ELAPSED, None): dict(value="150"),
+    (2, CONFIRMED_LONGEST_ELAPSED, None): dict(value="150"),
     (3, "partial polls", None): dict(value="2"),
     (3, "share of slot polls that are partial", None): dict(value="0.166667"),
     (3, "partial polls inside a stall", None): dict(value="1"),
+    partial_by_schedule_key(3, "", ON_THE_HALF_HOUR, 97): dict(value="2"),
+    partial_by_schedule_key(3, "", FIVE_AND_THIRTY_FIVE, 96): dict(value="0"),
     (4, BLOCK.format("00:00-05:59"), None): dict(value="0"),
     (4, BLOCK.format("06:00-11:59"), None): dict(value="0"),
     (4, BLOCK.format("12:00-17:59"), None): dict(value="1"),
     (4, BLOCK.format("18:00-23:59"), None): dict(value="2"),
     **Q27_EXPLORATORY_EXPECTED,
+    **run_bands_expected(
+        {
+            (ON_THE_HALF_HOUR, "2 polls"): (1, 0, 1),
+            (ON_THE_HALF_HOUR, "3 polls"): (1, 1, 0),
+            (ON_THE_HALF_HOUR, "4-5 polls"): (1, 0, 0),
+        }
+    ),
+    capture_schedule_key(7, "", ON_THE_HALF_HOUR): dict(
+        value="12",
+        detail=capture_schedule_detail(
+            "2026-09-01 00:00:01.500",
+            "2026-09-05 00:00:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
 }
-Q27_GATED = ({2, 3, 4}, ("value",))
+Q27_GATED = ({2, 3, 4, 5, 6, 7}, ("value", "detail"))
 # Not reached on days (5 needed), and, with the look-ahead row removed, not
-# reached on the look-ahead: either way only sections 1 and 5 have values.
+# reached on the look-ahead: either way only section 1 has values; the
+# record before the window waits for the gate too.
 Q27_NOT_REACHED_EXPECTED = {
     **Q27_WINDOW_EXPECTED,
     (1, "days covered (5 needed)", None): dict(value="4"),
     (1, "read possible", None): dict(detail="no"),
-    **Q27_EXPLORATORY_EXPECTED,
+    minutes_past_slot_key(0): dict(value="12"),
+}
+
+# The schedule change inside a window, on the project's schedules: window
+# from 9 September 2026 00:00 to a cutoff at 12 September 00:00 UTC, the
+# record before it 8 September 00:00 to 21:30. Slot polls ran 1.5 seconds
+# after their slot until the 10:30 slot on 10 September (polled at
+# 10:30:00.7), and at :05 and :35 from 11:05 that day. Each segment is a first
+# slot and one letter per consecutive slot: c a changed poll, u an unchanged
+# one; four or more unchanged in a row are a stall.
+Q27_SCHEDULE_VARS = {
+    "analysis_read_until": "2026-09-12 00:00:00+00",
+    "forecast_stalls_from": "2026-09-09 00:00:00+00",
+    "forecast_stalls_days_needed": 1,
+    "forecast_stalls_exploratory_from": "2026-09-08 00:00:00+00",
+    "forecast_stalls_exploratory_until": "2026-09-08 21:30:00+00",
+}
+Q27_SCHEDULE_SEGMENTS = (
+    # The record: two changed polls.
+    ("2026-09-08 20:00", "cc"),
+    # A run of 6 from 23:00 on the 8th, 2 of its polls before the window; then
+    # runs of 1, 2, 3, 4, 5, 6, 11 and 12 polls, each after a changed poll.
+    (
+        "2026-09-08 22:30",
+        "c"
+        + "u" * 6
+        + "c"
+        + "u"
+        + "c"
+        + "u" * 2
+        + "c"
+        + "u" * 3
+        + "c"
+        + "u" * 4
+        + "c"
+        + "u" * 5
+        + "c"
+        + "u" * 6
+        + "c"
+        + "u" * 11
+        + "c"
+        + "u" * 12
+        + "c",
+    ),
+    # A run of 4 across the schedule change: 09:30, 10:00, 10:30:00.7 and 11:05.
+    ("2026-09-10 09:00", "c" + "u" * 4 + "c"),
+    # A run of 5 from 23:05 on the 11th, 2 of its polls after the cutoff.
+    ("2026-09-11 22:30", "c" + "u" * 5 + "c"),
+)
+SCHEDULE_SWITCH_SLOT = datetime(2026, 9, 10, 11, 0, tzinfo=timezone.utc)
+LAST_HALF_HOUR_SCHEDULE_SLOT = datetime(2026, 9, 10, 10, 30, tzinfo=timezone.utc)
+# Row counts other than a full poll's (97 on the half-hour, 96 at :05 and
+# :35): the run of 6's partial poll, before the window; and 96-row polls on
+# 9 September and at 10:30:00.7 on 10 September, partial on the half-hour
+# schedule though the model's flag (fewer than 96 rows) is false.
+Q27_SCHEDULE_ROW_COUNTS = {
+    datetime(2026, 9, 8, 23, 0, tzinfo=timezone.utc): 60,
+    datetime(2026, 9, 9, 3, 0, tzinfo=timezone.utc): 96,
+    LAST_HALF_HOUR_SCHEDULE_SLOT: 96,
+}
+
+
+def unchanged_run_lengths(letters):
+    """For each slot, the length of the run of unchanged polls it is in (0 if changed)."""
+
+    lengths = [0] * len(letters)
+    run_start = None
+    for index, letter in enumerate(letters + "c"):
+        if letter == "u":
+            if run_start is None:
+                run_start = index
+            continue
+        if run_start is None:
+            continue
+        for position in range(run_start, index):
+            lengths[position] = index - run_start
+        run_start = None
+    return lengths
+
+
+def schedule_window_retrieved_at(slot):
+    if slot >= SCHEDULE_SWITCH_SLOT:
+        return slot + timedelta(minutes=5)
+    if slot == LAST_HALF_HOUR_SCHEDULE_SLOT:
+        return slot + timedelta(seconds=0.7)
+    return slot + timedelta(seconds=1.5)
+
+
+def q27_schedule_window_rows():
+    rows = []
+    for first_slot, letters in Q27_SCHEDULE_SEGMENTS:
+        start = datetime.fromisoformat(f"{first_slot}+00:00")
+        run_lengths = unchanged_run_lengths(letters)
+        for offset, letter in enumerate(letters):
+            slot = start + timedelta(minutes=30 * offset)
+            full_poll_rows = 96 if slot >= SCHEDULE_SWITCH_SLOT else 97
+            row_count = Q27_SCHEDULE_ROW_COUNTS.get(slot, full_poll_rows)
+            is_unchanged = letter == "u"
+            is_no_change = run_lengths[offset] >= 4
+            rows.append(
+                f"('{slot.isoformat()}', true, {str(row_count < 96).lower()}, "
+                f"{str(is_no_change).lower()}, "
+                f"'{schedule_window_retrieved_at(slot).isoformat()}', {row_count}, "
+                f"{str(is_unchanged).lower()})"
+            )
+    return ",\n    ".join(rows)
+
+
+Q27_FULL_FIXTURES = """
+create temporary table synthetic_revisions (
+    poll_slot timestamptz,
+    is_first_poll_in_slot boolean,
+    is_partial_poll boolean,
+    is_no_change_poll boolean,
+    retrieved_at timestamptz,
+    poll_row_count integer,
+    is_unchanged_from_previous_slot boolean
+) on commit drop;
+insert into synthetic_revisions values
+    {rows};
+"""
+
+# In the window: 48 slot polls on the 9th, 15 on the 10th, 3 on the 11th and
+# the one at the cutoff, 67, in 145 slots. Stalls (polls in the window): the
+# run of 6 (4, cut at the start), 4, 5, 6, 11, 12, the run across the change
+# (4) and the run of 5 (3, cut at the end): poll-equivalent and elapsed
+# minutes 120, 120, 150, 180, 330, 360, 120, 90, median 135. 49 stall polls
+# of 67. Partial by schedule: the 96-row polls of 9 and 10 September; only the
+# second is in a stall, the run across the change, which is the one confirmed
+# freeze (the run of 6's partial poll is before the window). Runs by their
+# first poll's schedule: on the half-hour 1, 2, 3, then 4-5 four times (the
+# run of 6 cut at the start, 4, 5 and the run across the change), 6-11 twice
+# and 12 once; at :05 and :35 the run of 5, in the 3-poll band, cut at the end.
+Q27_SCHEDULE_EXPECTED = {
+    (1, "slot polls", None): dict(value="67"),
+    (1, "slots with no poll", None): dict(value="78"),
+    (1, "days covered (1 needed)", None): dict(value="3"),
+    (1, "read possible", None): dict(detail="yes"),
+    minutes_past_slot_key(0): dict(value="61"),
+    minutes_past_slot_key(5): dict(value="6"),
+    (2, "stalls", None): dict(value="8"),
+    (2, "median duration, poll-equivalent minutes", None): dict(value="135"),
+    (2, "longest duration, poll-equivalent minutes", None): dict(value="360"),
+    (2, "median duration, elapsed minutes", None): dict(value="135"),
+    (2, "longest duration, elapsed minutes", None): dict(value="360"),
+    (2, "share of slot polls inside a stall", None): dict(value="0.731343"),
+    (2, "stalls cut at the window start", None): dict(value="1"),
+    (2, "stalls cut at the window end", None): dict(value="1"),
+    (2, CONFIRMED_FREEZES, None): dict(value="1"),
+    (2, CONFIRMED_MEDIAN_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_LONGEST_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_MEDIAN_ELAPSED, None): dict(value="120"),
+    (2, CONFIRMED_LONGEST_ELAPSED, None): dict(value="120"),
+    (3, "partial polls", None): dict(value="2"),
+    (3, "share of slot polls that are partial", None): dict(value="0.029851"),
+    (3, "partial polls inside a stall", None): dict(value="1"),
+    partial_by_schedule_key(3, "", ON_THE_HALF_HOUR, 97): dict(value="2"),
+    partial_by_schedule_key(3, "", FIVE_AND_THIRTY_FIVE, 96): dict(value="0"),
+    (4, BLOCK.format("00:00-05:59"), None): dict(value="0"),
+    (4, BLOCK.format("06:00-11:59"), None): dict(value="3"),
+    (4, BLOCK.format("12:00-17:59"), None): dict(value="2"),
+    (4, BLOCK.format("18:00-23:59"), None): dict(value="3"),
+    **run_bands_expected(
+        {
+            (ON_THE_HALF_HOUR, "1 poll"): (1, 0, 0),
+            (ON_THE_HALF_HOUR, "2 polls"): (1, 0, 0),
+            (ON_THE_HALF_HOUR, "3 polls"): (1, 0, 0),
+            (ON_THE_HALF_HOUR, "4-5 polls"): (4, 1, 0),
+            (ON_THE_HALF_HOUR, "6-11 polls"): (2, 0, 0),
+            (ON_THE_HALF_HOUR, "12 or more polls"): (1, 0, 0),
+            (FIVE_AND_THIRTY_FIVE, "3 polls"): (1, 0, 1),
+        }
+    ),
+    capture_schedule_key(7, "", ON_THE_HALF_HOUR): dict(
+        value="61",
+        detail=capture_schedule_detail(
+            "2026-09-09 00:00:01.500",
+            "2026-09-10 10:30:00.700",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
+    capture_schedule_key(7, "", FIVE_AND_THIRTY_FIVE): dict(
+        value="6",
+        detail=capture_schedule_detail(
+            "2026-09-10 11:05:00.000",
+            "2026-09-12 00:05:00.000",
+            96,
+            FIVE_AND_THIRTY_FIVE_BASIS,
+        ),
+    ),
+    (5, f"{EXPLORATORY}slot polls", None): dict(value="2"),
+    (5, f"{EXPLORATORY}stalls", None): dict(value="0"),
+    capture_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR): dict(
+        value="2",
+        detail=capture_schedule_detail(
+            "2026-09-08 20:00:01.500",
+            "2026-09-08 20:30:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
+}
+
+# The record's ends and the window's start on the project's values: slot
+# polls at 23:30 on 16 August (not in the record), 00:00 on 17 August and
+# 23:35 on 31 October (slot 23:30, in it), 00:05 on 1 November (in the window,
+# not the record), then 23:35 that day and 00:05 on 2 November (the cutoff's
+# slot), and three after the cutoff.
+Q27_PROJECT_VALUES_ROWS = """
+    ('2026-08-16 23:30+00', true, false, false, '2026-08-16 23:30:01.5+00', 97, false),
+    ('2026-08-17 00:00+00', true, false, false, '2026-08-17 00:00:01.5+00', 97, false),
+    ('2026-10-31 23:30+00', true, false, false, '2026-10-31 23:35+00', 96, false),
+    ('2026-11-01 00:00+00', true, false, false, '2026-11-01 00:05+00', 96, false),
+    ('2026-11-01 23:30+00', true, false, false, '2026-11-01 23:35+00', 96, false),
+    ('2026-11-02 00:00+00', true, false, false, '2026-11-02 00:05+00', 96, false),
+    ('2026-11-02 00:30+00', true, false, false, '2026-11-02 00:35+00', 96, false),
+    ('2026-11-02 01:00+00', true, false, false, '2026-11-02 01:05+00', 96, false),
+    ('2026-11-02 01:30+00', true, false, false, '2026-11-02 01:35+00', 96, false)"""
+Q27_PROJECT_VALUES_EXPECTED = {
+    (1, "window start", None): dict(detail="2026-11-01 00:00:00+00"),
+    (1, "slot polls", None): dict(value="3"),
+    (1, "days covered (1 needed)", None): dict(value="1"),
+    (1, "read possible", None): dict(detail="yes"),
+    (5, f"{EXPLORATORY}slot polls", None): dict(value="2"),
+    capture_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR): dict(
+        value="1",
+        detail=capture_schedule_detail(
+            "2026-08-17 00:00:01.500",
+            "2026-08-17 00:00:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
+    capture_schedule_key(5, EXPLORATORY, FIVE_AND_THIRTY_FIVE): dict(
+        value="1",
+        detail=capture_schedule_detail(
+            "2026-10-31 23:35:00.000",
+            "2026-10-31 23:35:00.000",
+            96,
+            FIVE_AND_THIRTY_FIVE_BASIS,
+        ),
+    ),
 }
 Q27_NO_LOOK_AHEAD_EXPECTED = {
     (1, "slot polls stored after analysis_read_until (3 needed)", None): dict(
@@ -3455,6 +3825,26 @@ def q27_mismatches(conn, reached, not_reached, time_zone):
     return found
 
 
+def q27_schedule_change_mismatches(conn, schedule_window, time_zone):
+    title = f"[{time_zone}] Q27 schedule change"
+    fixtures = Q27_FULL_FIXTURES.format(rows=q27_schedule_window_rows())
+    run = run_analysis(conn, fixtures, schedule_window, Q27, Q27_TABLES, time_zone)
+    found = mismatches(title, run, Q27_SCHEDULE_EXPECTED)
+    second_run = run_analysis(
+        conn, fixtures, schedule_window, Q27, Q27_TABLES, time_zone
+    )
+    if second_run != run:
+        found.append(f"{title}: a second run gives different rows")
+    return found
+
+
+def q27_project_values_mismatches(conn, project_values, time_zone):
+    title = f"[{time_zone}] Q27 project values"
+    fixtures = Q27_FULL_FIXTURES.format(rows=Q27_PROJECT_VALUES_ROWS)
+    run = run_analysis(conn, fixtures, project_values, Q27, Q27_TABLES, time_zone)
+    return mismatches(title, run, Q27_PROJECT_VALUES_EXPECTED)
+
+
 def q8_q28_mismatches(conn, reached, boundary, time_zone):
     title = f"[{time_zone}] Q8 and Q28"
     main_run = run_analysis(
@@ -3639,13 +4029,13 @@ def q30_mismatches(conn, reached, boundary, time_zone):
     return found
 
 
-def check_all(reached, not_reached, boundary, project_values):
+def check_all(reached, not_reached, boundary, project_values, schedule_window):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
-    reached, not_reached, boundary and project_values are manifests compiled
-    with REACHED_VARS, NOT_REACHED_VARS, boundary_vars() and
-    PROJECT_VALUES_VARS. Each case runs in a UTC session and in a
-    Europe/London one.
+    reached, not_reached, boundary, project_values and schedule_window are
+    manifests compiled with REACHED_VARS, NOT_REACHED_VARS, boundary_vars(),
+    PROJECT_VALUES_VARS and Q27_SCHEDULE_VARS. Each case runs in a UTC
+    session and in a Europe/London one.
     """
 
     conn = disposable_connection()
@@ -3660,6 +4050,8 @@ def check_all(reached, not_reached, boundary, project_values):
             found += q2rf_mismatches(conn, reached, not_reached, time_zone)
             found += q25_mismatches(conn, reached, time_zone)
             found += q27_mismatches(conn, reached, not_reached, time_zone)
+            found += q27_schedule_change_mismatches(conn, schedule_window, time_zone)
+            found += q27_project_values_mismatches(conn, project_values, time_zone)
             found += q8_q28_mismatches(conn, reached, boundary, time_zone)
             found += q29_mismatches(conn, reached, time_zone)
             found += q30_mismatches(conn, reached, boundary, time_zone)
@@ -3695,6 +4087,7 @@ def main():
         compile_analyses(NOT_REACHED_VARS),
         compile_analyses(boundary_vars()),
         compile_analyses(PROJECT_VALUES_VARS),
+        compile_analyses(Q27_SCHEDULE_VARS),
     )
     for mismatch in found:
         print(mismatch)
