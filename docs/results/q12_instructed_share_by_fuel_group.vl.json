@@ -81,7 +81,8 @@
         "x": {
           "axis": {
             "title": [
-              "Size of each part of the gap, TWh"
+              "Size of each part of the gap,",
+              "terawatt-hours (TWh)"
             ]
           },
           "field": "scaled",
@@ -172,6 +173,12 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each bar is a fuel group's whole gap between",
+      "plan and meter: blue is the part NESO",
+      "instructed, grey the part it did not. The",
+      "figure at the end is the instructed share."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Instructions are most of the gap for gas,\", \"hydro and pumped storage, under half for wind\"] : [\"Instructions are most of the gap for gas, hydro and pumped storage, under half for wind\"]"
     }

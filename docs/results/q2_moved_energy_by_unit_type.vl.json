@@ -25,6 +25,27 @@
   "layer": [
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Share of the energy moved"
+            ],
+            "range": [
+              "#2a78d6"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "unit_type",
@@ -80,10 +101,15 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
         "cornerRadiusEnd": 3,
         "type": "bar"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Share of the energy moved\""
+        }
+      ]
     },
     {
       "encoding": {
@@ -135,6 +161,10 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each bar is one type of unit's share of the energy",
+      "that moved between the three-week and two-month runs."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Where the 221 GWh that moved came from\"] : [\"Where the 221 GWh that moved came from\"]"
     }

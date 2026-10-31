@@ -28,6 +28,33 @@
   "layer": [
     {
       "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -68,7 +95,8 @@
         "x": {
           "axis": {
             "title": [
-              "Gap between plan and meter, % of capacity"
+              "Gap between plan and meter, % of capacity",
+              "further right: further from plan"
             ]
           },
           "field": "lowest_month_pct",
@@ -94,14 +122,46 @@
         }
       },
       "mark": {
-        "color": "#9ec5f4",
         "strokeCap": "round",
         "strokeWidth": 8,
         "type": "rule"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Range over the 12 whole months\""
+        }
+      ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "transparent",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -157,7 +217,6 @@
         }
       },
       "mark": {
-        "color": "#8c959f",
         "size": 18,
         "thickness": 2,
         "type": "tick"
@@ -165,11 +224,96 @@
       "transform": [
         {
           "filter": "isValid(datum.middle_month_p90_pct)"
+        },
+        {
+          "as": "key",
+          "calculate": "\"1 unit in 10 misses by more\""
         }
       ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "transparent",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "M-1,-0.45H1V0.45H-1Z",
+              "circle",
+              "circle",
+              "M-0.18,-1H0.18V1H-0.18Z"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -225,15 +369,102 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
-        "filled": true,
+        "filled": false,
         "opacity": 1,
         "size": 80,
+        "strokeWidth": 2,
         "type": "point"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Middle of the 12 months\""
+        }
+      ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "transparent",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "M-1,-0.45H1V0.45H-1Z",
+              "circle",
+              "circle",
+              "M-0.18,-1H0.18V1H-0.18Z"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Range over the 12 whole months",
+              "Middle of the 12 months",
+              "September 2026, early meter data",
+              "1 unit in 10 misses by more"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -289,7 +520,6 @@
         }
       },
       "mark": {
-        "color": "#8c959f",
         "filled": false,
         "opacity": 1,
         "size": 70,
@@ -299,12 +529,23 @@
       "transform": [
         {
           "filter": "isValid(datum.provisional_month_pct)"
+        },
+        {
+          "as": "key",
+          "calculate": "\"September 2026, early meter data\""
         }
       ]
     }
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each row is a fuel group, in half-hours",
+      "with no instruction. The dot is its typical",
+      "unit's gap from plan in a typical month;",
+      "the bar spans its best and worst whole",
+      "months. Further right is further from plan."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Wind farms stray furthest from their own plans\", \"when NESO has not asked them to change output\"] : [\"Wind farms stray furthest from their own plans when NESO has not asked them to change output\"]"
     }

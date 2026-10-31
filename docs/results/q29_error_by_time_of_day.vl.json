@@ -34,6 +34,7 @@
         "color": "#8c959f",
         "type": "rule"
       },
+      "name": "zero line",
       "transform": [
         {
           "aggregate": [
@@ -47,9 +48,17 @@
     },
     {
       "encoding": {
-        "color": {
-          "field": "direction",
-          "legend": null,
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
           "scale": {
             "domain": [
               "Dirtier than forecast",
@@ -89,7 +98,7 @@
         "x": {
           "axis": {
             "title": [
-              "Average miss, gCO2/kWh",
+              "Average miss, grams of CO2 per kWh",
               "left: cleaner than forecast \u00b7 right: dirtier"
             ]
           },
@@ -127,7 +136,7 @@
         "x": {
           "axis": {
             "title": [
-              "Average miss, gCO2/kWh",
+              "Average miss, grams of CO2 per kWh",
               "left: cleaner than forecast \u00b7 right: dirtier"
             ]
           },
@@ -163,6 +172,11 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each bar is the average miss for a six-hour",
+      "block of the day. Right of zero, the half-hours",
+      "came out dirtier than forecast; left, cleaner."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Afternoons came out dirtier\", \"than forecast, evenings cleaner\"] : [\"Afternoons came out dirtier than forecast, evenings cleaner\"]"
     }
@@ -179,7 +193,7 @@
       "calculate": "datum.item == \"UTC block 00:00-05:59\" ? \"Night|00:00\\u201305:59\" : datum.item == \"UTC block 06:00-11:59\" ? \"Morning|06:00\\u201311:59\" : datum.item == \"UTC block 12:00-17:59\" ? \"Afternoon|12:00\\u201317:59\" : datum.item == \"UTC block 18:00-23:59\" ? \"Evening|18:00\\u201323:59\" : datum.item"
     },
     {
-      "as": "direction",
+      "as": "key",
       "calculate": "datum.mean_error > 0 ? \"Dirtier than forecast\" : \"Cleaner than forecast\""
     },
     {

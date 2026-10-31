@@ -26,6 +26,31 @@
   "layer": [
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Expected before reading: \u00b10.2"
+            ],
+            "range": [
+              "#2a78d6",
+              "transparent",
+              "rgba(140, 149, 159, 0.2)"
+            ]
+          },
+          "type": "nominal"
+        },
         "x": {
           "datum": -0.2,
           "scale": {
@@ -41,8 +66,6 @@
         }
       },
       "mark": {
-        "color": "#8c959f",
-        "opacity": 0.15,
         "type": "rect"
       },
       "transform": [
@@ -53,6 +76,10 @@
               "op": "count"
             }
           ]
+        },
+        {
+          "as": "key",
+          "calculate": "\"Expected before reading: \\u00b10.2\""
         }
       ]
     },
@@ -73,6 +100,7 @@
         "color": "#8c959f",
         "type": "rule"
       },
+      "name": "zero line",
       "transform": [
         {
           "aggregate": [
@@ -86,6 +114,31 @@
     },
     {
       "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Expected before reading: \u00b10.2"
+            ],
+            "range": [
+              "#2a78d6",
+              "#2a78d6",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "x": {
           "field": "low",
           "scale": {
@@ -119,13 +172,93 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
         "strokeWidth": 2,
         "type": "rule"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"90% range\""
+        }
+      ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Expected before reading: \u00b10.2"
+            ],
+            "range": [
+              "#2a78d6",
+              "transparent",
+              "rgba(140, 149, 159, 0.2)"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Expected before reading: \u00b10.2"
+            ],
+            "range": [
+              "circle",
+              "M-1,0H1",
+              "M-1,-0.45H1V0.45H-1Z"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Expected before reading: \u00b10.2"
+            ],
+            "range": [
+              "#2a78d6",
+              "#2a78d6",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "measure",
@@ -155,7 +288,8 @@
           "axis": {
             "title": [
               "Rank correlation with",
-              "the carbon forecast's miss"
+              "the carbon forecast's miss",
+              "0: no link \u00b7 further from 0: stronger"
             ]
           },
           "field": "rho",
@@ -187,12 +321,18 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
-        "filled": true,
+        "filled": false,
         "opacity": 1,
         "size": 80,
+        "strokeWidth": 2,
         "type": "point"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Rank correlation\""
+        }
+      ]
     },
     {
       "encoding": {
@@ -231,6 +371,12 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each row is one way of comparing the two misses.",
+      "The dot is the rank correlation, from \u22121 to 1,",
+      "where 0 means no link; the line is its 90% range.",
+      "Dots in the shaded band are as small as expected."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Wind and carbon forecast\", \"misses barely move together\"] : [\"Wind and carbon forecast misses barely move together\"]"
     }

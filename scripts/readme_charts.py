@@ -153,6 +153,7 @@ Q29_BLOCKS = {
 }
 DIRTIER = "Dirtier than forecast"
 CLEANER = "Cleaner than forecast"
+PART_MONTH = "Part month (fewer days)"
 
 # Q30: each rank correlation with the rows that hold it and its interval.
 Q30_CORRELATIONS = [
@@ -230,6 +231,71 @@ Q29_MONTH_TITLE = (
 )
 Q30_TITLE = "Wind and carbon forecast misses barely move together"
 
+# "How to read this", under each chart's title.
+Q2_READING = (
+    "Each bar is one type of unit's share of the energy that moved between "
+    "the three-week and two-month runs."
+)
+Q3_READING = (
+    "Each row is a type of power station. The dot shows its typical gap "
+    "between plan and meter; right of zero means it produced less than "
+    "planned. The bar shows where the middle half of its half-hours fell."
+)
+Q12_READING = (
+    "Each bar is a fuel group's whole gap between plan and meter: blue is "
+    "the part NESO instructed, grey the part it did not. The figure at the "
+    "end is the instructed share."
+)
+Q5_READING = (
+    "Each bar is a fuel group's under-delivery, split by whether an outage "
+    "notice for the unit was live when the half-hour began. The figure at "
+    "the end is the share with a notice."
+)
+Q23_READING = (
+    "Each row is a fuel group, in half-hours with no instruction. The dot is "
+    "its typical unit's gap from plan in a typical month; the bar spans its "
+    "best and worst whole months. Further right is further from plan."
+)
+Q24_READING = (
+    "Each bar is one fuel group's instructed energy as 100%: blue is the "
+    "share NESO flagged as managing the network. Under each name is that "
+    "energy in TWh."
+)
+Q25_READING = (
+    "Each row is a fuel group. The dot is the share of its instructions "
+    "under 10 minutes once follow-on instructions are joined, Elexon's test; "
+    "the ring counts each on its own. Each step on the scale is ten times "
+    "the last."
+)
+Q28_READING = (
+    "Each row is a fifth of the half-hours, from the smallest carbon misses "
+    "to the largest. The dot is their average under-delivery, with the "
+    "smallest-miss fifth set to 100; a dot at 125 or beyond would mean yes."
+)
+Q29_TIME_READING = (
+    "Each bar is the average miss for a six-hour block of the day. Right of "
+    "zero, the half-hours came out dirtier than forecast; left, cleaner."
+)
+Q29_MONTH_READING = (
+    "Each point is one month's average miss. Above zero, the month came out "
+    "dirtier than forecast; below, cleaner."
+)
+Q30_READING = (
+    "Each row is one way of comparing the two misses. The dot is the rank "
+    "correlation, from −1 to 1, where 0 means no link; the line is its 90% "
+    "range. Dots in the shaded band are as small as expected."
+)
+
+# Each chart's key: every mark it draws, as the key draws it.
+KEY_FIELD = "key"
+# Layers drawn without a key entry: the axes' titles explain them.
+UNKEYED_LAYERS = {"zero line", "connector"}
+BAR_SYMBOL = "M-1,-0.45H1V0.45H-1Z"
+TICK_SYMBOL = "M-0.18,-1H0.18V1H-0.18Z"
+LINE_SYMBOL = "M-1,0H1"
+DASH_SYMBOL = "M-1,0H-0.55M-0.2,0H0.2M0.55,0H1"
+BAND_FILL = "rgba(140, 149, 159, 0.2)"
+NO_FILL = "transparent"
 FIGURE_WIDTH_INCHES = 8
 INCHES_PER_ROW = 0.5
 FIGURE_MARGIN_INCHES = 1.6
@@ -244,6 +310,8 @@ LEGEND_ROW_INCHES = 0.22
 NARROW_CAPTION_CHARACTERS = 46
 WIDE_CAPTION_CHARACTERS = 100
 WIDE_BOX_PIXELS = 700
+# "How to read this" is wrapped once, to fit a phone.
+READING_CHARACTERS = 54
 ROW_STEP_PIXELS = 34
 TWO_LINE_ROW_STEP_PIXELS = 44
 LINE_CHART_HEIGHT_PIXELS = 220
@@ -468,10 +536,11 @@ def evenly_wrapped(line, width):
     return fewest
 
 
-def caption(title):
+def caption(title, reading):
     """The chart's title above the plot, wrapped for a phone and, in a wider
-    chart box, for a wider screen. The box is measured again whenever the
-    plot width changes, that is whenever the page is resized."""
+    chart box, for a wider screen, with how to read the chart under it. The
+    box is measured again whenever the plot width changes, that is whenever
+    the page is resized."""
     narrow = json.dumps(
         evenly_wrapped(title, NARROW_CAPTION_CHARACTERS), ensure_ascii=False
     )
@@ -483,18 +552,78 @@ def caption(title):
         text=altair.ExprRef(
             expr=f"{box_width} < {WIDE_BOX_PIXELS} ? {narrow} : {wide}"
         ),
+        subtitle=evenly_wrapped(reading, READING_CHARACTERS),
         anchor="start",
     )
 
 
-def page_layout(title, height):
+def page_layout(title, reading, height):
     """As wide as the page allows, at a height in pixels."""
     return {
         "width": "container",
         "height": height,
         "autosize": altair.AutoSizeParams(type="fit-x", contains="padding"),
-        "title": caption(title),
+        "title": caption(title, reading),
         "description": title,
+    }
+
+
+def key_mark(stroke, fill, shape):
+    """How one mark looks in a chart's key: its line colour, its fill and
+    its symbol (a shape name or an SVG path)."""
+    return {"stroke": stroke, "fill": fill, "shape": shape}
+
+
+def key_legend():
+    return altair.Legend(
+        title=None,
+        orient="bottom",
+        direction="vertical",
+        symbolSize=110,
+        symbolStrokeWidth=2,
+        symbolOpacity=1,
+        labelLimit=0,
+    )
+
+
+def key_scale(keys, look):
+    looks = []
+    for mark in keys.values():
+        looks.append(mark[look])
+    return altair.Scale(domain=list(keys), range=looks)
+
+
+def key_stroke(keys):
+    """A line's colour from the chart's key."""
+    return altair.Stroke(
+        f"{KEY_FIELD}:N", scale=key_scale(keys, "stroke"), legend=key_legend()
+    )
+
+
+def key_fill(keys):
+    """A filled mark's colour (a bar, tick or band) from the chart's key."""
+    return altair.Fill(
+        f"{KEY_FIELD}:N", scale=key_scale(keys, "fill"), legend=key_legend()
+    )
+
+
+def key_shape(keys):
+    return altair.Shape(
+        f"{KEY_FIELD}:N", scale=key_scale(keys, "shape"), legend=key_legend()
+    )
+
+
+def keyed(chart, label):
+    """The layer's rows named by their entry in the chart's key."""
+    return chart.transform_calculate(**{KEY_FIELD: json.dumps(label)})
+
+
+def keyed_points(keys):
+    """A point layer's outline, fill and symbol, all from the chart's key."""
+    return {
+        "stroke": key_stroke(keys),
+        "fill": key_fill(keys),
+        "shape": key_shape(keys),
     }
 
 
@@ -539,7 +668,12 @@ def drawn_once():
 
 
 def zero_line():
-    return drawn_once().mark_rule(color=COMPARISON_COLOUR).encode(x=altair.datum(0))
+    return (
+        drawn_once()
+        .mark_rule(color=COMPARISON_COLOUR)
+        .encode(x=altair.datum(0))
+        .properties(name="zero line")
+    )
 
 
 def fill_by_name(name_field, names, colours, columns):
@@ -673,11 +807,13 @@ def write_q2_chart(rows, output):
         altair.Tooltip("moved_mwh:Q", title="Moved, MWh", format=",.0f"),
         altair.Tooltip("share_of_moved_pct:Q", title="Share, %", format=".1f"),
     ]
-    bars = (
-        altair.Chart()
-        .mark_bar(color=RESULT_COLOUR, cornerRadiusEnd=BAR_CORNER_RADIUS)
-        .encode(tooltip=tooltip, **position)
-    )
+    keys = {
+        "Share of the energy moved": key_mark(RESULT_COLOUR, RESULT_COLOUR, BAR_SYMBOL)
+    }
+    bars = keyed(
+        altair.Chart().mark_bar(cornerRadiusEnd=BAR_CORNER_RADIUS),
+        "Share of the energy moved",
+    ).encode(fill=key_fill(keys), tooltip=tooltip, **position)
     shares = (
         altair.Chart()
         .mark_text(align="left", dx=LABEL_GAP_PIXELS)
@@ -688,7 +824,9 @@ def write_q2_chart(rows, output):
         .transform_calculate(
             share_label="format(datum.share_of_moved_pct, '.0f') + '%'"
         )
-        .properties(**page_layout(title, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS))
+        .properties(
+            **page_layout(title, Q2_READING, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS)
+        )
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -807,10 +945,17 @@ def write_q3_chart(q3_rows, q22_rows, output):
     fuel_group = row_axis("fuel_group_name")
     x_axis = axis_title(
         [
-            "Plan minus meter, MWh per unit per half-hour",
+            "Plan minus meter, megawatt-hours (MWh)",
+            "per unit per half-hour",
             "left: produced more than planned · right: less",
         ]
     )
+    keys = {
+        "Middle half of half-hours": key_mark(SPREAD_COLOUR, SPREAD_COLOUR, BAR_SYMBOL),
+        "Typical (median)": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
+        "Same week, one-week data": key_mark(COMPARISON_COLOUR, NO_FILL, "circle"),
+        "Same week, two-month data": key_mark(COMPARISON_COLOUR, NO_FILL, "square"),
+    }
     tooltip = [
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
         altair.Tooltip("unit_periods:Q", title="Half-hours, all units", format=","),
@@ -834,48 +979,52 @@ def write_q3_chart(q3_rows, q22_rows, output):
             format=".2f",
         ),
     ]
-    spread = (
-        altair.Chart()
-        .mark_rule(color=SPREAD_COLOUR, strokeWidth=8, strokeCap="round")
-        .encode(
-            x=altair.X("q1_deviation_mwh:Q", axis=x_axis),
-            x2="q3_deviation_mwh:Q",
-            y=fuel_group,
-            tooltip=tooltip,
-        )
+    spread = keyed(
+        altair.Chart().mark_rule(strokeWidth=8, strokeCap="round"),
+        "Middle half of half-hours",
+    ).encode(
+        x=altair.X("q1_deviation_mwh:Q", axis=x_axis),
+        x2="q3_deviation_mwh:Q",
+        y=fuel_group,
+        stroke=key_stroke(keys),
+        tooltip=tooltip,
     )
-    middle = (
-        altair.Chart()
-        .mark_point(filled=True, color=RESULT_COLOUR, size=80, opacity=1)
-        .encode(x="median_deviation_mwh:Q", y=fuel_group, tooltip=tooltip)
+    middle = keyed(
+        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
+        "Typical (median)",
+    ).encode(
+        x="median_deviation_mwh:Q", y=fuel_group, tooltip=tooltip, **keyed_points(keys)
     )
-    week_first = (
+    week_first = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.week_first_run_median_mwh)")
-        .mark_point(
-            filled=False, color=COMPARISON_COLOUR, size=70, strokeWidth=2, opacity=1
-        )
-        .encode(x="week_first_run_median_mwh:Q", y=fuel_group, tooltip=tooltip)
+        .mark_point(filled=False, size=70, strokeWidth=2, opacity=1),
+        "Same week, one-week data",
+    ).encode(
+        x="week_first_run_median_mwh:Q",
+        y=fuel_group,
+        tooltip=tooltip,
+        **keyed_points(keys),
     )
-    week_latest = (
+    week_latest = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.week_latest_run_median_mwh)")
-        .mark_point(
-            filled=False,
-            shape="square",
-            color=COMPARISON_COLOUR,
-            size=50,
-            strokeWidth=2,
-            opacity=1,
-        )
-        .encode(x="week_latest_run_median_mwh:Q", y=fuel_group, tooltip=tooltip)
+        .mark_point(filled=False, size=50, strokeWidth=2, opacity=1),
+        "Same week, two-month data",
+    ).encode(
+        x="week_latest_run_median_mwh:Q",
+        y=fuel_group,
+        tooltip=tooltip,
+        **keyed_points(keys),
     )
     chart = (
         altair.layer(zero_line(), spread, middle, week_first, week_latest, data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(**page_layout(Q3_TITLE, len(chart_rows) * ROW_STEP_PIXELS))
+        .properties(
+            **page_layout(Q3_TITLE, Q3_READING, len(chart_rows) * ROW_STEP_PIXELS)
+        )
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -953,7 +1102,7 @@ def write_q12_chart(rows, output):
         "fuel_group_name",
         Q12_PARTS,
         [RESULT_COLOUR, REST_COLOUR],
-        ["Size of each part of the gap, TWh"],
+        ["Size of each part of the gap,", "terawatt-hours (TWh)"],
         tooltip,
         1_000_000,
     )
@@ -975,7 +1124,9 @@ def write_q12_chart(rows, output):
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(**page_layout(Q12_TITLE, len(chart_rows) * ROW_STEP_PIXELS))
+        .properties(
+            **page_layout(Q12_TITLE, Q12_READING, len(chart_rows) * ROW_STEP_PIXELS)
+        )
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -1076,7 +1227,7 @@ def write_q5_chart(rows, output):
         "fuel_group_name",
         Q5_SEGMENTS,
         colours,
-        ["Under-delivery, TWh"],
+        ["Under-delivery, terawatt-hours (TWh)"],
         tooltip,
         1_000_000,
     )
@@ -1094,7 +1245,7 @@ def write_q5_chart(rows, output):
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(**page_layout(title, len(chart_rows) * ROW_STEP_PIXELS))
+        .properties(**page_layout(title, Q5_READING, len(chart_rows) * ROW_STEP_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -1258,45 +1409,73 @@ def write_q23_chart(rows, output):
             format=".1f",
         ),
     ]
-    month_range = (
-        altair.Chart()
-        .mark_rule(color=SPREAD_COLOUR, strokeWidth=8, strokeCap="round")
-        .encode(
-            x=altair.X(
-                "lowest_month_pct:Q",
-                scale=altair.Scale(zero=True),
-                axis=axis_title(["Gap between plan and meter, % of capacity"]),
+    keys = {
+        "Range over the 12 whole months": key_mark(
+            SPREAD_COLOUR, SPREAD_COLOUR, BAR_SYMBOL
+        ),
+        "Middle of the 12 months": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
+        "September 2026, early meter data": key_mark(
+            COMPARISON_COLOUR, NO_FILL, "circle"
+        ),
+        "1 unit in 10 misses by more": key_mark(
+            COMPARISON_COLOUR, COMPARISON_COLOUR, TICK_SYMBOL
+        ),
+    }
+    month_range = keyed(
+        altair.Chart().mark_rule(strokeWidth=8, strokeCap="round"),
+        "Range over the 12 whole months",
+    ).encode(
+        x=altair.X(
+            "lowest_month_pct:Q",
+            scale=altair.Scale(zero=True),
+            axis=axis_title(
+                [
+                    "Gap between plan and meter, % of capacity",
+                    "further right: further from plan",
+                ]
             ),
-            x2="highest_month_pct:Q",
-            y=fuel_group,
-            tooltip=tooltip,
-        )
+        ),
+        x2="highest_month_pct:Q",
+        y=fuel_group,
+        stroke=key_stroke(keys),
+        tooltip=tooltip,
     )
-    percentile = (
+    percentile = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.middle_month_p90_pct)")
-        .mark_tick(color=COMPARISON_COLOUR, thickness=2, size=18)
-        .encode(x="middle_month_p90_pct:Q", y=fuel_group, tooltip=tooltip)
+        .mark_tick(thickness=2, size=18),
+        "1 unit in 10 misses by more",
+    ).encode(
+        x="middle_month_p90_pct:Q",
+        y=fuel_group,
+        fill=key_fill(keys),
+        tooltip=tooltip,
     )
-    middle = (
-        altair.Chart()
-        .mark_point(filled=True, color=RESULT_COLOUR, size=80, opacity=1)
-        .encode(x="middle_month_pct:Q", y=fuel_group, tooltip=tooltip)
+    middle = keyed(
+        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
+        "Middle of the 12 months",
+    ).encode(
+        x="middle_month_pct:Q", y=fuel_group, tooltip=tooltip, **keyed_points(keys)
     )
-    provisional = (
+    provisional = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.provisional_month_pct)")
-        .mark_point(
-            filled=False, color=COMPARISON_COLOUR, size=70, strokeWidth=2, opacity=1
-        )
-        .encode(x="provisional_month_pct:Q", y=fuel_group, tooltip=tooltip)
+        .mark_point(filled=False, size=70, strokeWidth=2, opacity=1),
+        "September 2026, early meter data",
+    ).encode(
+        x="provisional_month_pct:Q",
+        y=fuel_group,
+        tooltip=tooltip,
+        **keyed_points(keys),
     )
     chart = (
         altair.layer(month_range, percentile, middle, provisional, data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(**page_layout(Q23_TITLE, len(chart_rows) * ROW_STEP_PIXELS))
+        .properties(
+            **page_layout(Q23_TITLE, Q23_READING, len(chart_rows) * ROW_STEP_PIXELS)
+        )
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -1393,7 +1572,9 @@ def write_q24_chart(rows, output):
             label="datum.fuel_group_name + '|' + format(datum.volume_twh, '.1f') + ' TWh'"
         )
         .properties(
-            **page_layout(Q24_TITLE, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS)
+            **page_layout(
+                Q24_TITLE, Q24_READING, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
+            )
         )
     )
     write_spec(chart, output / f"{name}.vl.json")
@@ -1519,22 +1700,32 @@ def write_q25_chart(corrected_rows, first_read_rows, output):
             title=["Instructions under 10 minutes, % (log scale)"],
         ),
     )
+    keys = {
+        "Joined with follow-ons (Elexon's test)": key_mark(
+            RESULT_COLOUR, RESULT_COLOUR, "circle"
+        ),
+        "Each instruction on its own": key_mark(COMPARISON_COLOUR, NO_FILL, "circle"),
+    }
     link = (
         altair.Chart()
         .mark_rule(color=COMPARISON_COLOUR, strokeWidth=1.5)
         .encode(x=log_axis, x2="short_on_its_own_pct:Q", y=fuel_group)
+        .properties(name="connector")
     )
-    on_its_own = (
-        altair.Chart()
-        .mark_point(
-            filled=False, color=COMPARISON_COLOUR, size=70, strokeWidth=2, opacity=1
-        )
-        .encode(x="short_on_its_own_pct:Q", y=fuel_group, tooltip=tooltip)
+    on_its_own = keyed(
+        altair.Chart().mark_point(filled=False, size=70, strokeWidth=2, opacity=1),
+        "Each instruction on its own",
+    ).encode(
+        x="short_on_its_own_pct:Q",
+        y=fuel_group,
+        tooltip=tooltip,
+        **keyed_points(keys),
     )
-    joined = (
-        altair.Chart()
-        .mark_point(filled=True, color=RESULT_COLOUR, size=80, opacity=1)
-        .encode(x="short_joined_pct:Q", y=fuel_group, tooltip=tooltip)
+    joined = keyed(
+        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
+        "Joined with follow-ons (Elexon's test)",
+    ).encode(
+        x="short_joined_pct:Q", y=fuel_group, tooltip=tooltip, **keyed_points(keys)
     )
     joined_label = label_above("short_joined_pct:Q", fuel_group, "joined_label")
     chart = (
@@ -1544,7 +1735,9 @@ def write_q25_chart(corrected_rows, first_read_rows, output):
             joined_label="format(datum.short_joined_pct, '.2r') + '%'",
         )
         .properties(
-            **page_layout(Q25_TITLE, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS)
+            **page_layout(
+                Q25_TITLE, Q25_READING, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
+            )
         )
     )
     write_spec(chart, output / f"{name}.vl.json")
@@ -1672,10 +1865,23 @@ def write_q28_chart(rows, output):
         "index:Q",
         scale=index_scale,
         axis=axis_title(
-            ["Under-delivery not instructed,", "smallest-miss fifth = 100"]
+            [
+                "Under-delivery not instructed,",
+                "smallest-miss fifth = 100",
+                "further right: more under-delivery",
+            ]
         ),
     )
     needed_index = altair.XDatum(Q28_NEEDED_INDEX, scale=index_scale)
+    keys = {
+        "Average under-delivery (index)": key_mark(
+            RESULT_COLOUR, RESULT_COLOUR, "circle"
+        ),
+        "90% range": key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
+        f"Needed for yes ({Q28_NEEDED_INDEX})": key_mark(
+            COMPARISON_COLOUR, NO_FILL, DASH_SYMBOL
+        ),
+    }
     tooltip = [
         altair.Tooltip("misses:N", title="Carbon miss"),
         altair.Tooltip("half_hours:Q", title="Half-hours", format=","),
@@ -1688,11 +1894,10 @@ def write_q28_chart(rows, output):
         altair.Tooltip("index_low:Q", title="90% range from", format=".1f"),
         altair.Tooltip("index_high:Q", title="90% range to", format=".1f"),
     ]
-    needed = (
-        drawn_once()
-        .mark_rule(color=COMPARISON_COLOUR, strokeDash=[5, 4])
-        .encode(x=needed_index)
-    )
+    needed = keyed(
+        drawn_once().mark_rule(strokeDash=[5, 4]),
+        f"Needed for yes ({Q28_NEEDED_INDEX})",
+    ).encode(x=needed_index, stroke=key_stroke(keys))
     needed_label = (
         drawn_once()
         .mark_text(align="right", baseline="top", dx=-LABEL_GAP_PIXELS, dy=2)
@@ -1702,24 +1907,26 @@ def write_q28_chart(rows, output):
             text=altair.value("needed for yes"),
         )
     )
-    interval = (
+    interval = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.index_low)")
-        .mark_rule(color=RESULT_COLOUR, strokeWidth=2)
-        .encode(
-            x=altair.X("index_low:Q", scale=index_scale), x2="index_high:Q", y=fifth
-        )
+        .mark_rule(strokeWidth=2),
+        "90% range",
+    ).encode(
+        x=altair.X("index_low:Q", scale=index_scale),
+        x2="index_high:Q",
+        y=fifth,
+        stroke=key_stroke(keys),
     )
-    dots = (
-        altair.Chart()
-        .mark_point(filled=True, color=RESULT_COLOUR, size=80, opacity=1)
-        .encode(x=index_axis, y=fifth, tooltip=tooltip)
-    )
+    dots = keyed(
+        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
+        "Average under-delivery (index)",
+    ).encode(x=index_axis, y=fifth, tooltip=tooltip, **keyed_points(keys))
     dot_labels = label_above("index:Q", fifth, "index_label")
     chart = (
         altair.layer(needed, needed_label, interval, dots, dot_labels, data=data)
         .transform_calculate(index_label="format(datum.index, '.1f')")
-        .properties(**page_layout(Q28_TITLE, height))
+        .properties(**page_layout(Q28_TITLE, Q28_READING, height))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -1731,14 +1938,11 @@ def q29_direction():
     return f"datum.mean_error > 0 ? {json.dumps(DIRTIER)} : {json.dumps(CLEANER)}"
 
 
-def direction_colour(channel=altair.Color):
-    return channel(
-        "direction:N",
-        scale=altair.Scale(
-            domain=[DIRTIER, CLEANER], range=[DIRTIER_COLOUR, CLEANER_COLOUR]
-        ),
-        legend=None,
-    )
+def direction_keys(symbol):
+    return {
+        DIRTIER: key_mark(DIRTIER_COLOUR, DIRTIER_COLOUR, symbol),
+        CLEANER: key_mark(CLEANER_COLOUR, CLEANER_COLOUR, symbol),
+    }
 
 
 def sign_colour(value):
@@ -1801,13 +2005,14 @@ def write_q29_time_chart(rows, output):
             scale=altair.Scale(padding=SIGNED_SCALE_PADDING_PIXELS),
             axis=axis_title(
                 [
-                    "Average miss, gCO2/kWh",
+                    "Average miss, grams of CO2 per kWh",
                     "left: cleaner than forecast · right: dirtier",
                 ]
             ),
         ),
         "y": row_axis("block"),
     }
+    keys = direction_keys(BAR_SYMBOL)
     tooltip = [
         altair.Tooltip("block_name:N", title="Time of day, UTC"),
         altair.Tooltip("half_hours:N", title="Half-hours"),
@@ -1821,7 +2026,7 @@ def write_q29_time_chart(rows, output):
     bars = (
         altair.Chart()
         .mark_bar(cornerRadiusEnd=BAR_CORNER_RADIUS)
-        .encode(color=direction_colour(), tooltip=tooltip, **position)
+        .encode(fill=key_fill(keys), tooltip=tooltip, **position)
     )
     chart = (
         altair.layer(
@@ -1830,11 +2035,15 @@ def write_q29_time_chart(rows, output):
         .transform_filter(altair.FieldEqualPredicate(field="section", equal=3))
         .transform_calculate(
             block=display_name("item", Q29_BLOCKS),
-            direction=q29_direction(),
+            **{KEY_FIELD: q29_direction()},
         )
         .transform_calculate(block_name="replace(datum.block, '|', ', ')")
         .properties(
-            **page_layout(Q29_TIME_TITLE, len(blocks) * TWO_LINE_ROW_STEP_PIXELS)
+            **page_layout(
+                Q29_TIME_TITLE,
+                Q29_TIME_READING,
+                len(blocks) * TWO_LINE_ROW_STEP_PIXELS,
+            )
         )
     )
     write_spec(chart, output / f"{name}.vl.json")
@@ -1899,8 +2108,12 @@ def write_q29_month_chart(rows, output):
     )
     error = altair.Y(
         "mean_error:Q",
-        axis=axis_title(["Average miss, gCO2/kWh", "positive: dirtier than forecast"]),
+        axis=axis_title(
+            ["Average miss, grams of CO2 per kWh", "above zero: dirtier than forecast"]
+        ),
     )
+    keys = direction_keys("circle")
+    keys[PART_MONTH] = key_mark(COMPARISON_COLOUR, NO_FILL, "circle")
     tooltip = [
         altair.Tooltip("month:N", title="Month"),
         altair.Tooltip("half_hours:N", title="Half-hours"),
@@ -1911,34 +2124,38 @@ def write_q29_month_chart(rows, output):
             format=".1f",
         ),
     ]
-    zero = drawn_once().mark_rule(color=COMPARISON_COLOUR).encode(y=altair.datum(0))
+    zero = (
+        drawn_once()
+        .mark_rule(color=COMPARISON_COLOUR)
+        .encode(y=altair.datum(0))
+        .properties(name="zero line")
+    )
     line = (
         altair.Chart()
         .mark_line(color=COMPARISON_COLOUR, strokeWidth=2)
         .encode(x=month, y=error)
+        .properties(name="connector")
     )
     points = (
         altair.Chart()
         .mark_point(filled=False, size=70, strokeWidth=2, opacity=1)
-        .encode(
-            x=month,
-            y=error,
-            color=direction_colour(),
-            fill=altair.when("datum.part_month")
-            .then(altair.value("transparent"))
-            .otherwise(direction_colour(altair.Fill)),
-            tooltip=tooltip,
-        )
+        .encode(x=month, y=error, tooltip=tooltip, **keyed_points(keys))
     )
+    part_month = "indexof(datum.item, 'partial') >= 0"
     chart = (
         altair.layer(zero, line, points, data=data)
         .transform_filter(altair.FieldEqualPredicate(field="section", equal=2))
         .transform_calculate(
             month="slice(datum.item, 17, 24)",
-            part_month="indexof(datum.item, 'partial') >= 0",
-            direction=q29_direction(),
+            **{
+                KEY_FIELD: (
+                    f"{part_month} ? {json.dumps(PART_MONTH)} : ({q29_direction()})"
+                )
+            },
         )
-        .properties(**page_layout(Q29_MONTH_TITLE, LINE_CHART_HEIGHT_PIXELS))
+        .properties(
+            **page_layout(Q29_MONTH_TITLE, Q29_MONTH_READING, LINE_CHART_HEIGHT_PIXELS)
+        )
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -2014,7 +2231,13 @@ def write_q30_chart(rows, output):
     rho_axis = altair.X(
         "rho:Q",
         scale=rho_scale,
-        axis=axis_title(["Rank correlation with", "the carbon forecast's miss"]),
+        axis=axis_title(
+            [
+                "Rank correlation with",
+                "the carbon forecast's miss",
+                "0: no link · further from 0: stronger",
+            ]
+        ),
     )
     tooltip = [
         altair.Tooltip("measure:N", title="Measure"),
@@ -2022,35 +2245,41 @@ def write_q30_chart(rows, output):
         altair.Tooltip("low:Q", title="90% range from", format="+.2f"),
         altair.Tooltip("high:Q", title="90% range to", format="+.2f"),
     ]
-    expected = (
-        drawn_once()
-        .mark_rect(color=COMPARISON_COLOUR, opacity=0.15)
-        .encode(
-            x=altair.XDatum(-Q30_EXPECTED_SIZE, scale=rho_scale),
-            x2=altair.datum(Q30_EXPECTED_SIZE),
-        )
+    expected_label = f"Expected before reading: ±{Q30_EXPECTED_SIZE}"
+    keys = {
+        "Rank correlation": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
+        "90% range": key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
+        expected_label: key_mark(COMPARISON_COLOUR, BAND_FILL, BAR_SYMBOL),
+    }
+    expected = keyed(drawn_once().mark_rect(), expected_label).encode(
+        x=altair.XDatum(-Q30_EXPECTED_SIZE, scale=rho_scale),
+        x2=altair.datum(Q30_EXPECTED_SIZE),
+        fill=key_fill(keys),
     )
     zero = (
         drawn_once()
         .mark_rule(color=COMPARISON_COLOUR)
         .encode(x=altair.XDatum(0, scale=rho_scale))
+        .properties(name="zero line")
     )
-    interval = (
-        altair.Chart()
-        .mark_rule(color=RESULT_COLOUR, strokeWidth=2)
-        .encode(x=altair.X("low:Q", scale=rho_scale), x2="high:Q", y=measure)
+    interval = keyed(altair.Chart().mark_rule(strokeWidth=2), "90% range").encode(
+        x=altair.X("low:Q", scale=rho_scale),
+        x2="high:Q",
+        y=measure,
+        stroke=key_stroke(keys),
     )
-    dots = (
-        altair.Chart()
-        .mark_point(filled=True, color=RESULT_COLOUR, size=80, opacity=1)
-        .encode(x=rho_axis, y=measure, tooltip=tooltip)
-    )
+    dots = keyed(
+        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
+        "Rank correlation",
+    ).encode(x=rho_axis, y=measure, tooltip=tooltip, **keyed_points(keys))
     dot_labels = label_above("rho:Q", measure, "rho_label")
     chart = (
         altair.layer(expected, zero, interval, dots, dot_labels, data=data)
         .transform_calculate(rho_label="format(datum.rho, '+.2f')")
         .properties(
-            **page_layout(Q30_TITLE, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS)
+            **page_layout(
+                Q30_TITLE, Q30_READING, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
+            )
         )
     )
     write_spec(chart, output / f"{name}.vl.json")

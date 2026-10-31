@@ -34,6 +34,7 @@
         "color": "#8c959f",
         "type": "rule"
       },
+      "name": "zero line",
       "transform": [
         {
           "aggregate": [
@@ -60,8 +61,8 @@
         "y": {
           "axis": {
             "title": [
-              "Average miss, gCO2/kWh",
-              "positive: dirtier than forecast"
+              "Average miss, grams of CO2 per kWh",
+              "above zero: dirtier than forecast"
             ]
           },
           "field": "mean_error",
@@ -72,40 +73,82 @@
         "color": "#8c959f",
         "strokeWidth": 2,
         "type": "line"
-      }
+      },
+      "name": "connector"
     },
     {
       "encoding": {
-        "color": {
-          "field": "direction",
-          "legend": null,
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
           "scale": {
             "domain": [
               "Dirtier than forecast",
-              "Cleaner than forecast"
+              "Cleaner than forecast",
+              "Part month (fewer days)"
             ],
             "range": [
               "#eb6834",
-              "#1baf7a"
+              "#1baf7a",
+              "transparent"
             ]
           },
           "type": "nominal"
         },
-        "fill": {
-          "condition": {
-            "test": "datum.part_month",
-            "value": "transparent"
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
           },
-          "field": "direction",
-          "legend": null,
           "scale": {
             "domain": [
               "Dirtier than forecast",
-              "Cleaner than forecast"
+              "Cleaner than forecast",
+              "Part month (fewer days)"
+            ],
+            "range": [
+              "circle",
+              "circle",
+              "circle"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Dirtier than forecast",
+              "Cleaner than forecast",
+              "Part month (fewer days)"
             ],
             "range": [
               "#eb6834",
-              "#1baf7a"
+              "#1baf7a",
+              "#8c959f"
             ]
           },
           "type": "nominal"
@@ -147,8 +190,8 @@
         "y": {
           "axis": {
             "title": [
-              "Average miss, gCO2/kWh",
-              "positive: dirtier than forecast"
+              "Average miss, grams of CO2 per kWh",
+              "above zero: dirtier than forecast"
             ]
           },
           "field": "mean_error",
@@ -166,6 +209,11 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each point is one month's average",
+      "miss. Above zero, the month came out",
+      "dirtier than forecast; below, cleaner."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Winter months came out cleaner than\", \"forecast, April to July slightly dirtier\"] : [\"Winter months came out cleaner than forecast, April to July slightly dirtier\"]"
     }
@@ -182,12 +230,8 @@
       "calculate": "slice(datum.item, 17, 24)"
     },
     {
-      "as": "part_month",
-      "calculate": "indexof(datum.item, 'partial') >= 0"
-    },
-    {
-      "as": "direction",
-      "calculate": "datum.mean_error > 0 ? \"Dirtier than forecast\" : \"Cleaner than forecast\""
+      "as": "key",
+      "calculate": "indexof(datum.item, 'partial') >= 0 ? \"Part month (fewer days)\" : (datum.mean_error > 0 ? \"Dirtier than forecast\" : \"Cleaner than forecast\")"
     }
   ],
   "width": "container"

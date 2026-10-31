@@ -27,6 +27,31 @@
   "layer": [
     {
       "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Average under-delivery (index)",
+              "90% range",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#2a78d6",
+              "#2a78d6",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "x": {
           "datum": 125,
           "scale": {
@@ -39,7 +64,6 @@
         }
       },
       "mark": {
-        "color": "#8c959f",
         "strokeDash": [
           5,
           4
@@ -54,6 +78,10 @@
               "op": "count"
             }
           ]
+        },
+        {
+          "as": "key",
+          "calculate": "\"Needed for yes (125)\""
         }
       ]
     },
@@ -96,6 +124,31 @@
     },
     {
       "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Average under-delivery (index)",
+              "90% range",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#2a78d6",
+              "#2a78d6",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "x": {
           "field": "index_low",
           "scale": {
@@ -130,18 +183,96 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
         "strokeWidth": 2,
         "type": "rule"
       },
       "transform": [
         {
           "filter": "isValid(datum.index_low)"
+        },
+        {
+          "as": "key",
+          "calculate": "\"90% range\""
         }
       ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Average under-delivery (index)",
+              "90% range",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#2a78d6",
+              "transparent",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Average under-delivery (index)",
+              "90% range",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "circle",
+              "M-1,0H1",
+              "M-1,0H-0.55M-0.2,0H0.2M0.55,0H1"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Average under-delivery (index)",
+              "90% range",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#2a78d6",
+              "#2a78d6",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "misses",
@@ -183,7 +314,8 @@
           "axis": {
             "title": [
               "Under-delivery not instructed,",
-              "smallest-miss fifth = 100"
+              "smallest-miss fifth = 100",
+              "further right: more under-delivery"
             ]
           },
           "field": "index",
@@ -216,12 +348,18 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
-        "filled": true,
+        "filled": false,
         "opacity": 1,
         "size": 80,
+        "strokeWidth": 2,
         "type": "point"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Average under-delivery (index)\""
+        }
+      ]
     },
     {
       "encoding": {
@@ -261,6 +399,13 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each row is a fifth of the half-hours, from",
+      "the smallest carbon misses to the largest.",
+      "The dot is their average under-delivery,",
+      "with the smallest-miss fifth set to 100; a",
+      "dot at 125 or beyond would mean yes."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Bigger carbon misses came with slightly\", \"more under-delivery, not 25% more\"] : [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"]"
     }

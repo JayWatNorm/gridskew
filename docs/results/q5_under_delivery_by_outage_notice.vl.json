@@ -85,7 +85,7 @@
         "x": {
           "axis": {
             "title": [
-              "Under-delivery, TWh"
+              "Under-delivery, terawatt-hours (TWh)"
             ]
           },
           "field": "scaled",
@@ -177,6 +177,12 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each bar is a fuel group's under-delivery,",
+      "split by whether an outage notice for the",
+      "unit was live when the half-hour began. The",
+      "figure at the end is the share with a notice."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"All units: 24% of under-delivery\", \"came with a published outage\"] : [\"All units: 24% of under-delivery came with a published outage\"]"
     }

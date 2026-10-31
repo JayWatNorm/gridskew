@@ -36,6 +36,7 @@
         "color": "#8c959f",
         "type": "rule"
       },
+      "name": "zero line",
       "transform": [
         {
           "aggregate": [
@@ -49,6 +50,33 @@
     },
     {
       "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -95,7 +123,8 @@
         "x": {
           "axis": {
             "title": [
-              "Plan minus meter, MWh per unit per half-hour",
+              "Plan minus meter, megawatt-hours (MWh)",
+              "per unit per half-hour",
               "left: produced more than planned \u00b7 right: less"
             ]
           },
@@ -119,14 +148,100 @@
         }
       },
       "mark": {
-        "color": "#9ec5f4",
         "strokeCap": "round",
         "strokeWidth": 8,
         "type": "rule"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Middle half of half-hours\""
+        }
+      ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "transparent",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "M-1,-0.45H1V0.45H-1Z",
+              "circle",
+              "circle",
+              "square"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -188,15 +303,102 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
-        "filled": true,
+        "filled": false,
         "opacity": 1,
         "size": 80,
+        "strokeWidth": 2,
         "type": "point"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Typical (median)\""
+        }
+      ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "transparent",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "M-1,-0.45H1V0.45H-1Z",
+              "circle",
+              "circle",
+              "square"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -258,7 +460,6 @@
         }
       },
       "mark": {
-        "color": "#8c959f",
         "filled": false,
         "opacity": 1,
         "size": 70,
@@ -268,11 +469,96 @@
       "transform": [
         {
           "filter": "isValid(datum.week_first_run_median_mwh)"
+        },
+        {
+          "as": "key",
+          "calculate": "\"Same week, one-week data\""
         }
       ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "transparent",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "M-1,-0.45H1V0.45H-1Z",
+              "circle",
+              "circle",
+              "square"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Middle half of half-hours",
+              "Typical (median)",
+              "Same week, one-week data",
+              "Same week, two-month data"
+            ],
+            "range": [
+              "#9ec5f4",
+              "#2a78d6",
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -334,10 +620,8 @@
         }
       },
       "mark": {
-        "color": "#8c959f",
         "filled": false,
         "opacity": 1,
-        "shape": "square",
         "size": 50,
         "strokeWidth": 2,
         "type": "point"
@@ -345,12 +629,22 @@
       "transform": [
         {
           "filter": "isValid(datum.week_latest_run_median_mwh)"
+        },
+        {
+          "as": "key",
+          "calculate": "\"Same week, two-month data\""
         }
       ]
     }
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each row is a type of power station. The dot shows",
+      "its typical gap between plan and meter; right of",
+      "zero means it produced less than planned. The bar",
+      "shows where the middle half of its half-hours fell."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Most fuel types produce slightly\", \"less than planned, with wide spreads\"] : [\"Most fuel types produce slightly less than planned, with wide spreads\"]"
     }

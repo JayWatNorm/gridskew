@@ -71,10 +71,80 @@
         "color": "#8c959f",
         "strokeWidth": 1.5,
         "type": "rule"
-      }
+      },
+      "name": "connector"
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "#2a78d6",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "circle",
+              "circle"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "#2a78d6",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -118,16 +188,90 @@
         }
       },
       "mark": {
-        "color": "#8c959f",
         "filled": false,
         "opacity": 1,
         "size": 70,
         "strokeWidth": 2,
         "type": "point"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Each instruction on its own\""
+        }
+      ]
     },
     {
       "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "#2a78d6",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "circle",
+              "circle"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "#2a78d6",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
         "tooltip": [
           {
             "field": "fuel_group_name",
@@ -171,12 +315,18 @@
         }
       },
       "mark": {
-        "color": "#2a78d6",
-        "filled": true,
+        "filled": false,
         "opacity": 1,
         "size": 80,
+        "strokeWidth": 2,
         "type": "point"
-      }
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Joined with follow-ons (Elexon's test)\""
+        }
+      ]
     },
     {
       "encoding": {
@@ -210,6 +360,13 @@
   ],
   "title": {
     "anchor": "start",
+    "subtitle": [
+      "Each row is a fuel group. The dot is the share",
+      "of its instructions under 10 minutes once",
+      "follow-on instructions are joined, Elexon's",
+      "test; the ring counts each on its own. Each",
+      "step on the scale is ten times the last."
+    ],
     "text": {
       "expr": "containerSize()[0] + 0 * width < 700 ? [\"Batteries (the other group) and\", \"pumped storage get far more short\", \"instructions than power stations\"] : [\"Batteries (the other group) and pumped storage get far more short instructions than power stations\"]"
     }

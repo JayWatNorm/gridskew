@@ -438,6 +438,71 @@ def specs_not_written_sorted(folder):
     return unsorted
 
 
+KEY_CHANNELS = ("color", "fill", "stroke", "shape")
+# Layers drawn without a key entry, whose meaning the axis titles give.
+UNKEYED_LAYER_NAMES = ("zero line", "connector")
+
+
+def mark_type(layer):
+    mark = layer["mark"]
+    if isinstance(mark, str):
+        return mark
+    return mark["type"]
+
+
+def drawn_layers(node, layers):
+    """Every layer that draws a mark, at any depth of a spec."""
+    if isinstance(node, list):
+        for item in node:
+            drawn_layers(item, layers)
+        return
+    if not isinstance(node, dict):
+        return
+    if "mark" in node:
+        layers.append(node)
+    for key, value in node.items():
+        if key != "mark":
+            drawn_layers(value, layers)
+
+
+def has_key_entry(layer):
+    """Whether a channel of the layer is drawn from a field with a legend."""
+    encoding = layer.get("encoding", {})
+    for channel in KEY_CHANNELS:
+        definition = encoding.get(channel, {})
+        if "field" in definition and definition.get("legend", {}) is not None:
+            return True
+    return False
+
+
+def marks_without_a_key(folder):
+    """Per spec, the mark types it draws that its key does not show; text
+    labels and the named zero lines and connectors need none."""
+    unkeyed = {}
+    for name, spec in written_specs(folder).items():
+        layers = []
+        drawn_layers(spec, layers)
+        missing = []
+        for layer in layers:
+            if mark_type(layer) == "text":
+                continue
+            if layer.get("name") in UNKEYED_LAYER_NAMES:
+                continue
+            if not has_key_entry(layer):
+                missing.append(mark_type(layer))
+        if missing:
+            unkeyed[name] = missing
+    return unkeyed
+
+
+def specs_without_a_reading_line(folder):
+    names = []
+    for name, spec in written_specs(folder).items():
+        if not spec["title"].get("subtitle"):
+            names.append(name)
+    return names
+
+
 def spec_descriptions(folder, names):
     descriptions = {}
     for name in names:
@@ -594,6 +659,14 @@ def test_reference_lines_sit_where_the_rules_put_them(written):
         "q28_shortfall_index_by_miss_fifth.vl.json": [125, 125],
         "q30_rank_correlations.vl.json": [-0.2, 0.2],
     }
+
+
+def test_every_mark_on_every_chart_has_an_entry_in_its_key(written):
+    assert marks_without_a_key(written) == {}
+
+
+def test_every_chart_says_how_to_read_it_under_its_title(written):
+    assert specs_without_a_reading_line(written) == []
 
 
 def test_every_chart_shows_fuel_groups_by_their_display_names_only(written):
