@@ -116,7 +116,8 @@
               "Nuclear",
               "Hydro",
               "Gas",
-              "Pumped storage"
+              "Pumped storage",
+              "Interconnector"
             ],
             "scheme": {
               "expr": "\"gridskew-fuel-groups\""
@@ -298,7 +299,8 @@
               "Nuclear",
               "Hydro",
               "Gas",
-              "Pumped storage"
+              "Pumped storage",
+              "Interconnector"
             ],
             "scheme": {
               "expr": "\"gridskew-fuel-groups\""
@@ -369,7 +371,8 @@
               "Nuclear",
               "Hydro",
               "Gas",
-              "Pumped storage"
+              "Pumped storage",
+              "Interconnector"
             ],
             "scheme": {
               "expr": "\"gridskew-fuel-groups\""
@@ -439,7 +442,8 @@
               "Nuclear",
               "Hydro",
               "Gas",
-              "Pumped storage"
+              "Pumped storage",
+              "Interconnector"
             ],
             "scheme": {
               "expr": "\"gridskew-fuel-groups\""
@@ -554,7 +558,8 @@
               "Nuclear",
               "Hydro",
               "Gas",
-              "Pumped storage"
+              "Pumped storage",
+              "Interconnector"
             ],
             "scheme": {
               "expr": "\"gridskew-fuel-groups\""

@@ -29,7 +29,7 @@
         "color": {
           "field": "part_name",
           "legend": {
-            "columns": 2,
+            "columns": 1,
             "orient": "bottom",
             "title": null
           },
@@ -102,9 +102,10 @@
         },
         "y": {
           "axis": {
-            "labelExpr": "split(datum.label, '|')"
+            "labelExpr": "datum.label == \"Wind\" ? [\"Wind\", \"13.4 TWh\"] : datum.label == \"Hydro\" ? [\"Hydro\", \"0.9 TWh\"] : datum.label == \"Pumped storage\" ? [\"Pumped storage\", \"2.2 TWh\"] : datum.label == \"Gas\" ? [\"Gas\", \"20.4 TWh\"] : datum.label == \"Other\" ? [\"Other\", \"1.8 TWh\"] : datum.label == \"Bioenergy\" ? [\"Bioenergy\", \"0.7 TWh\"] : datum.label",
+            "labelPadding": 20
           },
-          "field": "label",
+          "field": "fuel_group_name",
           "scale": {
             "paddingInner": 0.3
           },
@@ -154,9 +155,10 @@
         },
         "y": {
           "axis": {
-            "labelExpr": "split(datum.label, '|')"
+            "labelExpr": "datum.label == \"Wind\" ? [\"Wind\", \"13.4 TWh\"] : datum.label == \"Hydro\" ? [\"Hydro\", \"0.9 TWh\"] : datum.label == \"Pumped storage\" ? [\"Pumped storage\", \"2.2 TWh\"] : datum.label == \"Gas\" ? [\"Gas\", \"20.4 TWh\"] : datum.label == \"Other\" ? [\"Other\", \"1.8 TWh\"] : datum.label == \"Bioenergy\" ? [\"Bioenergy\", \"0.7 TWh\"] : datum.label",
+            "labelPadding": 20
           },
-          "field": "label",
+          "field": "fuel_group_name",
           "scale": {
             "paddingInner": 0.3
           },
@@ -177,6 +179,53 @@
           "calculate": "format(datum.flagged_pct, '.0f') + '%'"
         }
       ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "value": -10
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "datum.label == \"Wind\" ? [\"Wind\", \"13.4 TWh\"] : datum.label == \"Hydro\" ? [\"Hydro\", \"0.9 TWh\"] : datum.label == \"Pumped storage\" ? [\"Pumped storage\", \"2.2 TWh\"] : datum.label == \"Gas\" ? [\"Gas\", \"20.4 TWh\"] : datum.label == \"Other\" ? [\"Other\", \"1.8 TWh\"] : datum.label == \"Bioenergy\" ? [\"Bioenergy\", \"0.7 TWh\"] : datum.label",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": true,
+        "opacity": 1,
+        "shape": "square",
+        "size": 90,
+        "type": "point"
+      }
     }
   ],
   "title": {
@@ -196,10 +245,6 @@
     {
       "as": "volume_twh",
       "calculate": "datum.acceptance_volume_mwh / 1000000"
-    },
-    {
-      "as": "label",
-      "calculate": "datum.fuel_group_name + '|' + format(datum.volume_twh, '.1f') + ' TWh'"
     }
   ],
   "width": "container"

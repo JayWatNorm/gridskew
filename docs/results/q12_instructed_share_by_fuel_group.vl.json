@@ -30,7 +30,7 @@
         "color": {
           "field": "part_name",
           "legend": {
-            "columns": 2,
+            "columns": 1,
             "orient": "bottom",
             "title": null
           },
@@ -91,7 +91,8 @@
         },
         "y": {
           "axis": {
-            "labelExpr": "split(datum.label, '|')"
+            "labelExpr": "split(datum.label, '|')",
+            "labelPadding": 20
           },
           "field": "fuel_group_name",
           "scale": {
@@ -143,7 +144,8 @@
         },
         "y": {
           "axis": {
-            "labelExpr": "split(datum.label, '|')"
+            "labelExpr": "split(datum.label, '|')",
+            "labelPadding": 20
           },
           "field": "fuel_group_name",
           "scale": {
@@ -169,6 +171,53 @@
           "calculate": "format(datum.instructed_share_pct, '.0f') + '% instructed'"
         }
       ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "value": -10
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": true,
+        "opacity": 1,
+        "shape": "square",
+        "size": 90,
+        "type": "point"
+      }
     }
   ],
   "title": {

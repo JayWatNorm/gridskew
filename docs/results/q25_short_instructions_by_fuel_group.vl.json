@@ -76,72 +76,23 @@
     },
     {
       "encoding": {
-        "fill": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
+        "color": {
+          "field": "fuel_group_name",
+          "legend": null,
           "scale": {
             "domain": [
-              "Joined with follow-ons (Elexon's test)",
-              "Each instruction on its own"
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
             ],
-            "range": [
-              "#2a78d6",
-              "transparent"
-            ]
-          },
-          "type": "nominal"
-        },
-        "shape": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Joined with follow-ons (Elexon's test)",
-              "Each instruction on its own"
-            ],
-            "range": [
-              "circle",
-              "circle"
-            ]
-          },
-          "type": "nominal"
-        },
-        "stroke": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Joined with follow-ons (Elexon's test)",
-              "Each instruction on its own"
-            ],
-            "range": [
-              "#2a78d6",
-              "#8c959f"
-            ]
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
           },
           "type": "nominal"
         },
@@ -203,72 +154,23 @@
     },
     {
       "encoding": {
-        "fill": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
+        "color": {
+          "field": "fuel_group_name",
+          "legend": null,
           "scale": {
             "domain": [
-              "Joined with follow-ons (Elexon's test)",
-              "Each instruction on its own"
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
             ],
-            "range": [
-              "#2a78d6",
-              "transparent"
-            ]
-          },
-          "type": "nominal"
-        },
-        "shape": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Joined with follow-ons (Elexon's test)",
-              "Each instruction on its own"
-            ],
-            "range": [
-              "circle",
-              "circle"
-            ]
-          },
-          "type": "nominal"
-        },
-        "stroke": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Joined with follow-ons (Elexon's test)",
-              "Each instruction on its own"
-            ],
-            "range": [
-              "#2a78d6",
-              "#8c959f"
-            ]
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
           },
           "type": "nominal"
         },
@@ -315,10 +217,9 @@
         }
       },
       "mark": {
-        "filled": false,
+        "filled": true,
         "opacity": 1,
         "size": 80,
-        "strokeWidth": 2,
         "type": "point"
       },
       "transform": [
@@ -356,6 +257,98 @@
         "dy": -7,
         "type": "text"
       }
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "#8c959f",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "circle",
+              "circle"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Joined with follow-ons (Elexon's test)",
+              "Each instruction on its own"
+            ],
+            "range": [
+              "#8c959f",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "opacity": 0,
+        "type": "point"
+      },
+      "name": "key",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        },
+        {
+          "as": "key",
+          "calculate": "\"Joined with follow-ons (Elexon's test)\""
+        }
+      ]
     }
   ],
   "title": {

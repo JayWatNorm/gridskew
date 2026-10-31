@@ -180,6 +180,8 @@ FUEL_GROUP_COLOURS = {
     "hydro": ("#2a78d6", "#3987e5"),
     "gas_turbine": ("#e87ba4", "#d55181"),
     "pumped_storage": ("#008300", "#008300"),
+    # Links, not a fuel: a neutral grey, and left out of the palette checks.
+    "interconnector": ("#8c959f", "#8c959f"),
 }
 
 # Q3's key.
@@ -190,6 +192,8 @@ Q12_PARTS = {"instructed_mwh": "Instructed by NESO", "rest_mwh": "Not instructed
 Q24_PARTS = {"flagged_pct": "Flagged", "not_flagged_pct": "Not flagged"}
 Q24_AXIS_TITLE = "Share of the energy instructions moved, %"
 
+Q25_KEY_JOINED = "Joined with follow-ons (Elexon's test)"
+Q25_KEY_ON_ITS_OWN = "Each instruction on its own"
 Q25_JOINED_MEASURE = "2 continuous acceptance duration, BSC (acceptances)"
 Q25_OWN_SPAN_MEASURE = "1 dispatch granularity (acceptances)"
 
@@ -392,20 +396,34 @@ SIGNED_SCALE_PADDING_PIXELS = 56
 SHARE_TICKS = [0, 25, 50, 75, 100]
 LOG_SHARE_TICKS = [0.01, 0.1, 1, 10, 100]
 
-# One meaning per colour, on every chart: blue is the measured result, its
-# light tint the result's spread, grey the rest, mid grey a comparison mark
-# or a line a verdict needed. Orange and aqua are dirtier and cleaner than
-# forecast. From the validated categorical palette and its blue ramp.
+# One meaning per colour, on every chart. A fuel group's marks take its
+# colour (FUEL_GROUP_COLOURS). Where colour encodes something else on a
+# fuel-group chart, blue is the part NESO instructed or flagged and the outage
+# blues the published outages, grey the rest. Charts not about fuel groups
+# draw their result in a neutral, so no fuel colour means anything else
+# there; mid grey is a comparison mark or a line a verdict needed. Crimson and
+# deep teal are dirtier and cleaner than forecast: no red or teal is a fuel
+# colour, and the pair passes the palette validator on both page surfaces.
 RESULT_COLOUR = "#2a78d6"
 PLANNED_COLOUR = "#184f95"
 UNPLANNED_COLOUR = "#3987e5"
-SPREAD_COLOUR = "#9ec5f4"
 REST_COLOUR = "#a3a19a"
+NEUTRAL_MARK_COLOUR = "#6e7781"
 COMPARISON_COLOUR = "#8c959f"
-DIRTIER_COLOUR = "#eb6834"
-CLEANER_COLOUR = "#1baf7a"
+DIRTIER_COLOUR = "#c21725"
+CLEANER_COLOUR = "#036c92"
 INSIDE_LABEL_COLOUR = "#ffffff"
 GRID_COLOUR = "#e6e8eb"
+# A fuel-group chart's key shows its mark types in neutrals; the marks wear
+# the groups' colours.
+KEY_MARK_COLOUR = COMPARISON_COLOUR
+# How strongly a fuel group's spread shows beside its median.
+SPREAD_OPACITY = 0.45
+# A fuel-group colour chip beside each name on a chart whose colour encodes
+# something else: its offset left of the plot, and the room it needs.
+CHIP_OFFSET_PIXELS = -10
+CHIP_LABEL_PADDING_PIXELS = 20
+CHIP_SIZE = 90
 
 
 def copy_saved_output(results, output, name, attribution):
@@ -712,6 +730,17 @@ def keyed_points(keys):
     }
 
 
+def key_only(keys):
+    """The chart's key with no mark of its own showing, for a chart whose
+    marks wear the fuel groups' colours (on the colour channel): the key
+    draws each mark type in neutrals."""
+    return (
+        keyed(drawn_once().mark_point(opacity=0), next(iter(keys)))
+        .encode(**keyed_points(keys))
+        .properties(name="key")
+    )
+
+
 def display_name(field, names):
     """A Vega expression that shows each value of the field under its
     name; a value without one is shown as it is."""
@@ -723,15 +752,32 @@ def display_name(field, names):
     return expression
 
 
-def row_axis(field, order=None):
+def row_axis(field, order=None, label_expr="split(datum.label, '|')", chips=False):
     """Rows in the given order, else the CSV's; a label holding '|' is shown
-    on two lines."""
+    on two lines. With chips, the labels stand clear of a colour chip."""
+    axis = altair.Axis(labelExpr=label_expr)
+    if chips:
+        axis = altair.Axis(labelExpr=label_expr, labelPadding=CHIP_LABEL_PADDING_PIXELS)
     return altair.Y(
         f"{field}:N",
         sort=order,
         title=None,
-        axis=altair.Axis(labelExpr="split(datum.label, '|')"),
+        axis=axis,
         scale=altair.Scale(paddingInner=0.3),
+    )
+
+
+def fuel_group_chips(rows_axis):
+    """A chip of each fuel group's colour beside its name, for a chart whose
+    colour encodes something else."""
+    return (
+        altair.Chart()
+        .mark_point(shape="square", filled=True, opacity=1, size=CHIP_SIZE)
+        .encode(
+            x=altair.value(CHIP_OFFSET_PIXELS),
+            y=rows_axis,
+            fill=fuel_group_colour(altair.Fill),
+        )
     )
 
 
@@ -794,9 +840,9 @@ def label_above(x, y, text_field):
     )
 
 
-def stacked_parts(row_field, parts, colours, x_title, tooltip, scale):
+def stacked_parts(rows_axis, parts, colours, x_title, tooltip, scale):
     """Bars stacked from the part columns, each part at its value divided by
-    the scale."""
+    the scale, on the given rows."""
     stack_order = f"indexof({json.dumps(list(parts))}, datum.part)"
     return (
         altair.Chart()
@@ -809,8 +855,9 @@ def stacked_parts(row_field, parts, colours, x_title, tooltip, scale):
         .mark_bar(stroke=None)
         .encode(
             x=altair.X("scaled:Q", stack="zero", axis=axis_title(x_title)),
-            y=row_axis(row_field),
-            color=fill_by_name("part_name", parts.values(), colours, 2),
+            y=rows_axis,
+            # One column: beside the chips' room it fits a phone.
+            color=fill_by_name("part_name", parts.values(), colours, 1),
             order=altair.Order("stack_order:Q"),
             tooltip=tooltip,
         )
@@ -859,7 +906,7 @@ def write_q2_chart(rows, output):
     labels = []
     for position, row in enumerate(chart_rows):
         share = float(row["share_of_moved_pct"])
-        axes.barh(position, share, height=0.6, color=RESULT_COLOUR)
+        axes.barh(position, share, height=0.6, color=NEUTRAL_MARK_COLOUR)
         bar_label(axes, position, share, f"{share:.0f}%")
         labels.append(row["label"])
     row_labels(axes, labels)
@@ -893,7 +940,7 @@ def write_q2_chart(rows, output):
     # One series: the title and axis name it, so it needs no key.
     bars = (
         altair.Chart()
-        .mark_bar(cornerRadiusEnd=BAR_CORNER_RADIUS, fill=RESULT_COLOUR)
+        .mark_bar(cornerRadiusEnd=BAR_CORNER_RADIUS, fill=NEUTRAL_MARK_COLOUR)
         .encode(tooltip=tooltip, **position)
     )
     shares = (
@@ -941,12 +988,15 @@ def draw_gap_from_plan(rows, path):
     for position, row in enumerate(rows):
         lower = float(row["q1_deviation_mwh"])
         upper = float(row["q3_deviation_mwh"])
+        colour = light_colour(row["fuel_group"])
         axes.plot(
-            [lower, upper], [position, position], color=SPREAD_COLOUR, linewidth=6
+            [lower, upper],
+            [position, position],
+            color=colour,
+            alpha=SPREAD_OPACITY,
+            linewidth=6,
         )
-        axes.plot(
-            float(row["median_deviation_mwh"]), position, "o", color=RESULT_COLOUR
-        )
+        axes.plot(float(row["median_deviation_mwh"]), position, "o", color=colour)
     axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
     labels = []
     for row in rows:
@@ -966,9 +1016,16 @@ def draw_gap_from_plan(rows, path):
         ],
     )
     handles = [
-        Line2D([], [], color=SPREAD_COLOUR, linewidth=6, label=Q3_KEY_SPREAD),
         Line2D(
-            [], [], color=RESULT_COLOUR, marker="o", linestyle="", label=Q3_KEY_MEDIAN
+            [],
+            [],
+            color=KEY_MARK_COLOUR,
+            alpha=SPREAD_OPACITY,
+            linewidth=6,
+            label=Q3_KEY_SPREAD,
+        ),
+        Line2D(
+            [], [], color=KEY_MARK_COLOUR, marker="o", linestyle="", label=Q3_KEY_MEDIAN
         ),
     ]
     save_figure(figure, path, handles)
@@ -992,8 +1049,8 @@ def write_q3_chart(q3_rows, output):
         ]
     )
     keys = {
-        Q3_KEY_SPREAD: key_mark(SPREAD_COLOUR, SPREAD_COLOUR, BAR_SYMBOL),
-        Q3_KEY_MEDIAN: key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
+        Q3_KEY_SPREAD: key_mark(PALE_KEY_COLOUR, PALE_KEY_COLOUR, BAR_SYMBOL),
+        Q3_KEY_MEDIAN: key_mark(KEY_MARK_COLOUR, KEY_MARK_COLOUR, "circle"),
     }
     tooltip = [
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
@@ -1007,22 +1064,27 @@ def write_q3_chart(q3_rows, output):
         ),
     ]
     spread = keyed(
-        altair.Chart().mark_rule(strokeWidth=8, strokeCap="round"), Q3_KEY_SPREAD
+        altair.Chart().mark_rule(
+            strokeWidth=8, strokeCap="round", opacity=SPREAD_OPACITY
+        ),
+        Q3_KEY_SPREAD,
     ).encode(
         x=altair.X("q1_deviation_mwh:Q", axis=x_axis),
         x2="q3_deviation_mwh:Q",
         y=fuel_group,
-        stroke=key_stroke(keys),
+        color=fuel_group_colour(altair.Color),
         tooltip=tooltip,
     )
     middle = keyed(
-        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
-        Q3_KEY_MEDIAN,
+        altair.Chart().mark_point(filled=True, size=80, opacity=1), Q3_KEY_MEDIAN
     ).encode(
-        x="median_deviation_mwh:Q", y=fuel_group, tooltip=tooltip, **keyed_points(keys)
+        x="median_deviation_mwh:Q",
+        y=fuel_group,
+        color=fuel_group_colour(altair.Color),
+        tooltip=tooltip,
     )
     chart = (
-        altair.layer(zero_line(), spread, middle, data=data)
+        altair.layer(zero_line(), spread, middle, key_only(keys), data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
@@ -1102,8 +1164,9 @@ def write_q12_chart(rows, output):
             "instructed_share_pct:Q", title="Instructed share, %", format=".0f"
         ),
     ]
+    rows_axis = row_axis("fuel_group_name", chips=True)
     bars = stacked_parts(
-        "fuel_group_name",
+        rows_axis,
         Q12_PARTS,
         [RESULT_COLOUR, REST_COLOUR],
         ["Size of each part of the gap,", "terawatt-hours (TWh)"],
@@ -1117,14 +1180,10 @@ def write_q12_chart(rows, output):
             share_label=("format(datum.instructed_share_pct, '.0f') + '% instructed'"),
         )
         .mark_text(align="left", dx=LABEL_GAP_PIXELS)
-        .encode(
-            x="parts_twh:Q",
-            y=row_axis("fuel_group_name"),
-            text="share_label:N",
-        )
+        .encode(x="parts_twh:Q", y=rows_axis, text="share_label:N")
     )
     chart = (
-        altair.layer(bars, shares, data=data)
+        altair.layer(bars, shares, fuel_group_chips(rows_axis), data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
@@ -1227,8 +1286,9 @@ def write_q5_chart(rows, output):
         altair.Tooltip("scaled:Q", title="TWh", format=".2f"),
         altair.Tooltip("with_notice_pct:Q", title="With a notice, %", format=".0f"),
     ]
+    rows_axis = row_axis("fuel_group_name", chips=True)
     bars = stacked_parts(
-        "fuel_group_name",
+        rows_axis,
         Q5_SEGMENTS,
         colours,
         ["Under-delivery, terawatt-hours (TWh)"],
@@ -1242,10 +1302,10 @@ def write_q5_chart(rows, output):
             share_label=("format(datum.with_notice_pct, '.0f') + '% with notice'"),
         )
         .mark_text(align="left", dx=LABEL_GAP_PIXELS)
-        .encode(x="total_twh:Q", y=row_axis("fuel_group_name"), text="share_label:N")
+        .encode(x="total_twh:Q", y=rows_axis, text="share_label:N")
     )
     chart = (
-        altair.layer(bars, shares, data=data)
+        altair.layer(bars, shares, fuel_group_chips(rows_axis), data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
@@ -1582,7 +1642,7 @@ def write_q23_typical_chart(rows, output):
         x=gap_axis,
         x2="one_in_ten_pct:Q",
         y=fuel_group,
-        fill=fuel_group_colour(altair.Fill),
+        color=fuel_group_colour(altair.Color),
         tooltip=tooltip,
     )
     bars = keyed(
@@ -1590,7 +1650,7 @@ def write_q23_typical_chart(rows, output):
     ).encode(
         x=gap_axis,
         y=fuel_group,
-        fill=fuel_group_colour(altair.Fill),
+        color=fuel_group_colour(altair.Color),
         tooltip=tooltip,
     )
     # The bar's value sits above a pale line that runs on from its end.
@@ -1610,14 +1670,7 @@ def write_q23_typical_chart(rows, output):
         .mark_text(align="left", dx=LABEL_GAP_PIXELS)
         .encode(x="one_in_ten_pct:Q", y=fuel_group, text="one_in_ten_label:N")
     )
-    key = keyed(
-        drawn_once().mark_point(opacity=0, filled=True), Q23_KEY_TYPICAL
-    ).encode(
-        color=altair.Color(
-            f"{KEY_FIELD}:N", scale=key_scale(keys, "fill"), legend=key_legend()
-        ),
-        shape=key_shape(keys),
-    )
+    key = key_only(keys)
     chart = (
         altair.layer(
             pale_line,
@@ -1884,6 +1937,24 @@ def most_flagged_first(row):
     return (-Decimal(row["flagged_pct"]), row["fuel_group"])
 
 
+def energy_line(row):
+    """The energy NESO's instructions moved for the group, in TWh to one
+    place."""
+    terawatt_hours = Decimal(row["acceptance_volume_mwh"]) / Decimal(1_000_000)
+    return f"{fixed(terawatt_hours, 1)} TWh"
+
+
+def names_with_energy(chart_rows):
+    """A Vega expression that shows each fuel group's name over its energy in
+    TWh, from the chart's rows."""
+    expression = "datum.label"
+    for row in reversed(chart_rows):
+        name = fuel_group_name(row["fuel_group"])
+        lines = json.dumps([name, energy_line(row)])
+        expression = f"datum.label == {json.dumps(name)} ? {lines} : {expression}"
+    return expression
+
+
 def write_q24_chart(rows, output):
     name = "q24_flagged_share_by_fuel_group"
     chart_rows = flagged_share_rows(rows)
@@ -1905,8 +1976,7 @@ def write_q24_chart(rows, output):
             fontsize=8,
             color=INSIDE_LABEL_COLOUR,
         )
-        volume = float(row["acceptance_volume_mwh"]) / 1_000_000
-        labels.append(f"{fuel_group_name(row['fuel_group'])}|{volume:.1f} TWh")
+        labels.append(f"{fuel_group_name(row['fuel_group'])}|{energy_line(row)}")
     row_labels(axes, labels)
     axes.set_xlim(0, 100)
     axes.set_xticks(SHARE_TICKS)
@@ -1923,8 +1993,11 @@ def write_q24_chart(rows, output):
         altair.Tooltip("scaled:Q", title="Share, %", format=".1f"),
         altair.Tooltip("volume_twh:Q", title="Energy moved, TWh", format=".1f"),
     ]
+    rows_axis = row_axis(
+        "fuel_group_name", label_expr=names_with_energy(chart_rows), chips=True
+    )
     bars = stacked_parts(
-        "label",
+        rows_axis,
         Q24_PARTS,
         [RESULT_COLOUR, REST_COLOUR],
         [Q24_AXIS_TITLE],
@@ -1942,17 +2015,14 @@ def write_q24_chart(rows, output):
         altair.Chart()
         .transform_calculate(share_label="format(datum.flagged_pct, '.0f') + '%'")
         .mark_text(align="right", dx=-LABEL_GAP_PIXELS, color=INSIDE_LABEL_COLOUR)
-        .encode(x="flagged_pct:Q", y=row_axis("label"), text="share_label:N")
+        .encode(x="flagged_pct:Q", y=rows_axis, text="share_label:N")
     )
     chart = (
-        altair.layer(bars, shares, data=data)
+        altair.layer(bars, shares, fuel_group_chips(rows_axis), data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
         .transform_calculate(volume_twh="datum.acceptance_volume_mwh / 1000000")
-        .transform_calculate(
-            label="datum.fuel_group_name + '|' + format(datum.volume_twh, '.1f') + ' TWh'"
-        )
         .properties(
             **page_layout(
                 Q24_TITLE, Q24_READING, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
@@ -2017,6 +2087,7 @@ def write_q25_chart(corrected_rows, first_read_rows, output):
     for position, row in enumerate(chart_rows):
         joined = float(row["short_joined_pct"])
         own = float(row["short_on_its_own_pct"])
+        colour = light_colour(row["fuel_group"])
         axes.plot(
             [joined, own], [position, position], color=COMPARISON_COLOUR, linewidth=1.5
         )
@@ -2025,9 +2096,9 @@ def write_q25_chart(corrected_rows, first_read_rows, output):
             position,
             "o",
             markerfacecolor="none",
-            markeredgecolor=COMPARISON_COLOUR,
+            markeredgecolor=colour,
         )
-        axes.plot(joined, position, "o", color=RESULT_COLOUR)
+        axes.plot(joined, position, "o", color=colour)
         axes.annotate(
             f"{joined:.2g}%",
             (joined, position),
@@ -2083,10 +2154,8 @@ def write_q25_chart(corrected_rows, first_read_rows, output):
         ),
     )
     keys = {
-        "Joined with follow-ons (Elexon's test)": key_mark(
-            RESULT_COLOUR, RESULT_COLOUR, "circle"
-        ),
-        "Each instruction on its own": key_mark(COMPARISON_COLOUR, NO_FILL, "circle"),
+        Q25_KEY_JOINED: key_mark(KEY_MARK_COLOUR, KEY_MARK_COLOUR, "circle"),
+        Q25_KEY_ON_ITS_OWN: key_mark(KEY_MARK_COLOUR, NO_FILL, "circle"),
     }
     link = (
         altair.Chart()
@@ -2096,22 +2165,24 @@ def write_q25_chart(corrected_rows, first_read_rows, output):
     )
     on_its_own = keyed(
         altair.Chart().mark_point(filled=False, size=70, strokeWidth=2, opacity=1),
-        "Each instruction on its own",
+        Q25_KEY_ON_ITS_OWN,
     ).encode(
         x="short_on_its_own_pct:Q",
         y=fuel_group,
+        color=fuel_group_colour(altair.Color),
         tooltip=tooltip,
-        **keyed_points(keys),
     )
     joined = keyed(
-        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
-        "Joined with follow-ons (Elexon's test)",
+        altair.Chart().mark_point(filled=True, size=80, opacity=1), Q25_KEY_JOINED
     ).encode(
-        x="short_joined_pct:Q", y=fuel_group, tooltip=tooltip, **keyed_points(keys)
+        x="short_joined_pct:Q",
+        y=fuel_group,
+        color=fuel_group_colour(altair.Color),
+        tooltip=tooltip,
     )
     joined_label = label_above("short_joined_pct:Q", fuel_group, "joined_label")
     chart = (
-        altair.layer(link, on_its_own, joined, joined_label, data=data)
+        altair.layer(link, on_its_own, joined, joined_label, key_only(keys), data=data)
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES),
             joined_label="format(datum.short_joined_pct, '.2r') + '%'",
@@ -2200,10 +2271,10 @@ def draw_shortfall_index(rows, path):
             axes.plot(
                 [float(row["index_low"]), float(row["index_high"])],
                 [position, position],
-                color=RESULT_COLOUR,
+                color=NEUTRAL_MARK_COLOUR,
                 linewidth=1.5,
             )
-        axes.plot(index, position, "o", color=RESULT_COLOUR)
+        axes.plot(index, position, "o", color=NEUTRAL_MARK_COLOUR)
         axes.annotate(
             f"{index:.1f}",
             (index, position),
@@ -2256,8 +2327,10 @@ def write_q28_chart(rows, output):
     )
     needed_index = altair.XDatum(Q28_NEEDED_INDEX, scale=index_scale)
     keys = {
-        "Mean under-delivery (index)": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
-        Q28_RANGE_KEY: key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
+        "Mean under-delivery (index)": key_mark(
+            NEUTRAL_MARK_COLOUR, NEUTRAL_MARK_COLOUR, "circle"
+        ),
+        Q28_RANGE_KEY: key_mark(NEUTRAL_MARK_COLOUR, NO_FILL, LINE_SYMBOL),
         f"Needed for yes ({Q28_NEEDED_INDEX})": key_mark(
             COMPARISON_COLOUR, NO_FILL, DASH_SYMBOL
         ),
@@ -2575,10 +2648,10 @@ def draw_correlations(rows, path):
         axes.plot(
             [float(row["low"]), float(row["high"])],
             [position, position],
-            color=RESULT_COLOUR,
+            color=NEUTRAL_MARK_COLOUR,
             linewidth=1.5,
         )
-        axes.plot(rho, position, "o", color=RESULT_COLOUR)
+        axes.plot(rho, position, "o", color=NEUTRAL_MARK_COLOUR)
         axes.annotate(
             f"{rho:+.2f}",
             (rho, position),
@@ -2629,8 +2702,10 @@ def write_q30_chart(rows, output):
     ]
     expected_label = f"Size expected: ±{Q30_EXPECTED_SIZE}"
     keys = {
-        "Rank correlation": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
-        "90% range": key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
+        "Rank correlation": key_mark(
+            NEUTRAL_MARK_COLOUR, NEUTRAL_MARK_COLOUR, "circle"
+        ),
+        "90% range": key_mark(NEUTRAL_MARK_COLOUR, NO_FILL, LINE_SYMBOL),
         expected_label: key_mark(COMPARISON_COLOUR, BAND_FILL, BAR_SYMBOL),
     }
     is_size_row = f"indexof(datum.label, {json.dumps(Q30_SIZE_LABEL_START)}) == 0"

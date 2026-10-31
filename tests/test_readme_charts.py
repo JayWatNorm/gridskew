@@ -11,11 +11,39 @@ import pytest
 import yaml
 
 from scripts.readme_charts import (
+    BAND_FILL,
+    CLEANER_COLOUR,
+    COMPARISON_COLOUR,
+    DIRTIER_COLOUR,
     FUEL_GROUP_COLOURS,
     FUEL_GROUP_SCHEME,
+    INSIDE_LABEL_COLOUR,
+    KEY_MARK_COLOUR,
+    NEUTRAL_MARK_COLOUR,
+    PALE_KEY_COLOUR,
+    PLANNED_COLOUR,
+    REST_COLOUR,
+    RESULT_COLOUR,
+    UNPLANNED_COLOUR,
     end_name_heights,
     write_charts,
 )
+
+# The colours a spec may write out; fuel-group colours are not among them.
+SHARED_COLOURS = [
+    BAND_FILL,
+    CLEANER_COLOUR,
+    COMPARISON_COLOUR,
+    DIRTIER_COLOUR,
+    INSIDE_LABEL_COLOUR,
+    KEY_MARK_COLOUR,
+    NEUTRAL_MARK_COLOUR,
+    PALE_KEY_COLOUR,
+    PLANNED_COLOUR,
+    REST_COLOUR,
+    RESULT_COLOUR,
+    UNPLANNED_COLOUR,
+]
 
 FIXTURES = Path(__file__).parent / "fixtures" / "results"
 REPOSITORY = Path(__file__).parent.parent
@@ -31,6 +59,7 @@ DISPLAYED_FUEL_GROUP = re.compile(
 FOUR_OR_MORE_DECIMALS = re.compile(r"\d\.\d{4,}")
 WRAPPED_LINES = re.compile(r'\[(?:"(?:[^"\\]|\\.)*"(?:, )?)+\]')
 FUEL_GROUP_COLOUR_PAIR = re.compile(r'\["(#[0-9a-f]{6})", "(#[0-9a-f]{6})"\]')
+WRITTEN_COLOUR = re.compile(r"#[0-9a-fA-F]{6}\b|rgba\([^)]*\)")
 FUEL_GROUP_DISPLAY_NAMES = {
     "": "All fuel groups",
     "bioenergy": "Bioenergy",
@@ -727,15 +756,98 @@ def titles_with_figures(folder, names):
 
 def marks_by_x_field(folder, spec_name):
     """Each drawn layer's mark and the field that places it along x, the
-    named zero line left out."""
+    named zero line and key left out."""
     layers = []
     drawn_layers(written_specs(folder)[spec_name], layers)
     marks = []
     for layer in layers:
-        if layer.get("name") == "zero line":
+        if layer.get("name") in ("zero line", "key"):
             continue
         marks.append((mark_type(layer), layer["encoding"]["x"]["field"]))
     return marks
+
+
+def colours_not_shared(folder):
+    """Per spec, any colour it writes out that is not one of the chart
+    script's shared colour constants; fuel-group colours come from the
+    page's scheme, never written out."""
+    shared = set(SHARED_COLOURS)
+    not_shared = {}
+    for name, spec in written_specs(folder).items():
+        found = set(WRITTEN_COLOUR.findall(json.dumps(spec))) - shared
+        if found:
+            not_shared[name] = sorted(found)
+    return not_shared
+
+
+def colour_channels(layer):
+    channels = []
+    for channel in ("color", "fill", "stroke"):
+        definition = layer.get("encoding", {}).get(channel)
+        if isinstance(definition, dict):
+            channels.append(definition)
+    return channels
+
+
+def colours_on_fuel_group_rows(folder):
+    """Per spec with fuel groups as rows, each drawn layer on those rows (not
+    text, not a connector) and the field its colour comes from."""
+    by_spec = {}
+    for name, spec in written_specs(folder).items():
+        layers = []
+        drawn_layers(spec, layers)
+        found = []
+        for layer in layers:
+            rows = layer.get("encoding", {}).get("y", {})
+            if rows.get("field") != "fuel_group_name" or mark_type(layer) == "text":
+                continue
+            if layer.get("name") in UNKEYED_LAYER_NAMES:
+                continue
+            fields = []
+            for definition in colour_channels(layer):
+                fields.append(definition.get("field"))
+            found.append((mark_type(layer), fields))
+        if found:
+            by_spec[name] = found
+    return by_spec
+
+
+def fuel_colours_not_from_the_scheme(folder):
+    """Every colour drawn by fuel group whose scale is not the page's
+    fuel-group scheme over every group in its fixed order."""
+    scheme = {"expr": json.dumps(FUEL_GROUP_SCHEME)}
+    names = []
+    for fuel_group in FUEL_GROUP_COLOURS:
+        names.append(FUEL_GROUP_DISPLAY_NAMES[fuel_group])
+    wrong = []
+    for name, spec in written_specs(folder).items():
+        layers = []
+        drawn_layers(spec, layers)
+        for layer in layers:
+            for definition in colour_channels(layer):
+                if definition.get("field") != "fuel_group_name":
+                    continue
+                scale = definition.get("scale", {})
+                if scale.get("scheme") != scheme or scale.get("domain") != names:
+                    wrong.append(name)
+    return sorted(set(wrong))
+
+
+def diverging_colours(folder, spec_name):
+    """The colours a Q29 chart's key gives dirtier and cleaner."""
+    layers = []
+    drawn_layers(written_specs(folder)[spec_name], layers)
+    for layer in layers:
+        for definition in colour_channels(layer):
+            scale = definition.get("scale", {})
+            domain = scale.get("domain", [])
+            if "Dirtier than forecast" in domain:
+                ranges = dict(zip(domain, scale["range"], strict=True))
+                return (
+                    ranges["Dirtier than forecast"],
+                    ranges["Cleaner than forecast"],
+                )
+    return None
 
 
 def unlabelled_values(folder, name):
@@ -1077,6 +1189,39 @@ def test_q23_typical_chart_takes_the_middle_of_the_12_whole_months(written):
     }
 
 
+def test_every_chart_colour_comes_from_the_shared_constants(written):
+    assert colours_not_shared(written) == {}
+
+
+def test_fuel_group_charts_colour_each_group_from_the_shared_scheme(written):
+    # Colour by fuel group where it encodes nothing else; where it encodes
+    # something else, the bars keep it and a chip beside each name shows the
+    # group's colour.
+    group = ["fuel_group_name"]
+    part = ["part_name"]
+    assert colours_on_fuel_group_rows(written) == {
+        "q12_instructed_share_by_fuel_group.vl.json": [("bar", part), ("point", group)],
+        "q23_typical_gap_by_fuel_group.vl.json": [("bar", group), ("bar", group)],
+        "q24_flagged_share_by_fuel_group.vl.json": [("bar", part), ("point", group)],
+        "q25_short_instructions_by_fuel_group.vl.json": [
+            ("point", group),
+            ("point", group),
+        ],
+        "q3_gap_from_plan_by_fuel_group.vl.json": [("rule", group), ("point", group)],
+        "q5_under_delivery_by_outage_notice.vl.json": [("bar", part), ("point", group)],
+    }
+    assert fuel_colours_not_from_the_scheme(written) == []
+
+
+def test_both_q29_charts_share_one_diverging_pair_no_fuel_group_wears(written):
+    pair = (DIRTIER_COLOUR, CLEANER_COLOUR)
+    assert diverging_colours(written, "q29_error_by_time_of_day.vl.json") == pair
+    assert diverging_colours(written, "q29_error_by_month.vl.json") == pair
+    for light, dark in FUEL_GROUP_COLOURS.values():
+        assert light not in pair
+        assert dark not in pair
+
+
 def test_q23_titles_state_no_figures(written):
     # The figures are the answer's, stated once; a title states the point.
     names = [
@@ -1166,6 +1311,8 @@ def test_the_page_registers_the_fuel_group_colours_the_charts_name():
 
     assert f'vega.scheme("{FUEL_GROUP_SCHEME}", fuelGroupScheme())' in page
     assert FUEL_GROUP_COLOUR_PAIR.findall(page) == list(FUEL_GROUP_COLOURS.values())
+    # Each mode its own steps.
+    assert "scheme.push(prefersDark ? dark : light);" in page
 
 
 def test_every_chart_shows_fuel_groups_by_their_display_names_only(written):

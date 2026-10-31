@@ -25,7 +25,7 @@
   "layer": [
     {
       "encoding": {
-        "fill": {
+        "color": {
           "field": "fuel_group_name",
           "legend": null,
           "scale": {
@@ -36,7 +36,8 @@
               "Nuclear",
               "Hydro",
               "Gas",
-              "Pumped storage"
+              "Pumped storage",
+              "Interconnector"
             ],
             "scheme": {
               "expr": "\"gridskew-fuel-groups\""
@@ -125,7 +126,7 @@
     },
     {
       "encoding": {
-        "fill": {
+        "color": {
           "field": "fuel_group_name",
           "legend": null,
           "scale": {
@@ -136,7 +137,8 @@
               "Nuclear",
               "Hydro",
               "Gas",
-              "Pumped storage"
+              "Pumped storage",
+              "Interconnector"
             ],
             "scheme": {
               "expr": "\"gridskew-fuel-groups\""
@@ -303,7 +305,7 @@
     },
     {
       "encoding": {
-        "color": {
+        "fill": {
           "field": "key",
           "legend": {
             "direction": "vertical",
@@ -348,13 +350,36 @@
             ]
           },
           "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Median of 12 monthly medians",
+              "90th percentile"
+            ],
+            "range": [
+              "#8c959f",
+              "#c9ced4"
+            ]
+          },
+          "type": "nominal"
         }
       },
       "mark": {
-        "filled": true,
         "opacity": 0,
         "type": "point"
       },
+      "name": "key",
       "transform": [
         {
           "aggregate": [

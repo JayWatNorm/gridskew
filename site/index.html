@@ -822,9 +822,10 @@
 
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-  // One colour per fuel group on the Q23 charts, light and dark, in the
-  // specs' fuel-group order: wind, other, bioenergy, nuclear, hydro, gas,
-  // pumped storage. The specs name the scheme; the page picks the steps.
+  // One colour per fuel group on every chart, light and dark, in the specs'
+  // fuel-group order: wind, other, bioenergy, nuclear, hydro, gas, pumped
+  // storage, then interconnectors in a neutral grey. The specs name the
+  // scheme; the page picks the steps for its colour mode.
   const fuelGroupColours = [
     ["#eb6834", "#d95926"],
     ["#1baf7a", "#199e70"],
@@ -833,6 +834,7 @@
     ["#2a78d6", "#3987e5"],
     ["#e87ba4", "#d55181"],
     ["#008300", "#008300"],
+    ["#8c959f", "#8c959f"],
   ];
 
   function fuelGroupScheme() {
