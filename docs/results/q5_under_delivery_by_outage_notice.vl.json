@@ -170,7 +170,7 @@
         },
         {
           "as": "share_label",
-          "calculate": "format(datum.with_notice_pct, '.0f') + '%'"
+          "calculate": "format(datum.with_notice_pct, '.0f') + '% with notice'"
         }
       ]
     }

@@ -62,7 +62,7 @@ BMRS_AND_CARBON_LINE = (
 
 # Hand-made saved outputs for the reads the fixture folder does not hold.
 # Q3's groups come in an order the chart keeps; coal is a closed unit the
-# chart leaves out; gas has no Q22 row. Q12's order differs from the
+# chart leaves out. Q12's order differs from the
 # chart's (largest gap first); interconnectors are left out. Q2's unit types
 # sum to round figures, with E beside T and C beside V.
 NEW_SAVED_OUTPUTS = {
@@ -154,16 +154,16 @@ ROWS_ADDED_TO_FIXTURES = {
 EXPECTED_CHART_CSVS = {
     "q2_moved_energy_by_unit_type.csv": BMRS_LINE
     + "unit_type,label,moved_mwh,share_of_moved_pct\n"
-    "Supplier units,Supplier units,60000.000,60.000000\n"
+    "Suppliers' customer accounts,Suppliers' customer accounts,60000.000,60.000000\n"
     "Transmission-connected and embedded units,"
     "Transmission-connected|and embedded units,26000.000,26.000000\n"
     "Other unit types,Other unit types,14000.000,14.000000\n",
     "q3_gap_from_plan_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,unit_periods,q1_deviation_mwh,median_deviation_mwh,"
-    "q3_deviation_mwh,week_first_run_median_mwh,week_latest_run_median_mwh\n"
-    "wind,400,-1.000,0.300,2.900,0.200,0.250\n"
-    "nuclear,150,0.000,0.250,2.600,1.200,1.100\n"
-    "gas_turbine,300,0.000,0.170,1.100,,\n",
+    "q3_deviation_mwh\n"
+    "wind,400,-1.000,0.300,2.900\n"
+    "nuclear,150,0.000,0.250,2.600\n"
+    "gas_turbine,300,0.000,0.170,1.100\n",
     "q12_instructed_share_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,unit_periods,instructed_mwh,rest_mwh,parts_mwh,"
     "instructed_share_pct\n"
@@ -234,11 +234,11 @@ EXPECTED_CHART_CSVS = {
     '5,Largest misses|12 g and up,"Largest misses, 12 g and up",100,'
     "550.000000,110.0000,101.0000,120.0000\n",
     "q30_rank_correlations.csv": BMRS_AND_CARBON_LINE + "label,measure,rho,low,high\n"
-    "Size of misses|curtailment added back,"
-    '"Size of the two misses, wind with curtailment added back",'
+    "Size of misses|turned-down wind added back,"
+    '"Size of the two misses, with turned-down wind added back",'
     "0.010000,-0.020000,0.040000\n"
-    "Direction|curtailment added back,"
-    '"Direction of the two misses, wind with curtailment added back",'
+    "Direction|turned-down wind added back,"
+    '"Direction of the two misses, with turned-down wind added back",'
     "0.060000,0.030000,0.090000\n"
     "Size of misses|delivered wind,"
     '"Size of the two misses, delivered wind only",'
@@ -593,16 +593,20 @@ def has_key_entry(layer, entries, written_as_text):
     drawn from a field needs that field's key, holding the layer's own key
     entry if it names one, or the field named beside the marks instead. A
     layer that names its key entry and has no key of its own needs the
-    entry in the chart's key."""
+    entry in the chart's key. A layer whose colour and shape come from no
+    field and that names no key entry is one series, named by the title and
+    axes."""
     label = own_key_label(layer)
     encoding = layer.get("encoding", {})
     named = named_on_the_chart(layer, written_as_text)
     keyed = False
     labelled = False
+    from_a_field = False
     for channel in KEY_CHANNELS:
         definition = encoding.get(channel, {})
         if "field" not in definition:
             continue
+        from_a_field = True
         if not shows_a_legend(definition):
             if definition["field"] not in named:
                 return False
@@ -616,7 +620,7 @@ def has_key_entry(layer, entries, written_as_text):
         return True
     if label is not None:
         return label in entries
-    return labelled
+    return labelled or not from_a_field
 
 
 def marks_without_a_key(folder):
@@ -709,6 +713,29 @@ def chart_rows_by_group(folder, name):
         del values["fewest_units"]
         by_group[row["fuel_group"]] = values
     return by_group
+
+
+def titles_with_figures(folder, names):
+    """The titles, of the specs named, that hold a digit."""
+    with_figures = {}
+    for name in names:
+        description = written_specs(folder)[name]["description"]
+        if any(character.isdigit() for character in description):
+            with_figures[name] = description
+    return with_figures
+
+
+def marks_by_x_field(folder, spec_name):
+    """Each drawn layer's mark and the field that places it along x, the
+    named zero line left out."""
+    layers = []
+    drawn_layers(written_specs(folder)[spec_name], layers)
+    marks = []
+    for layer in layers:
+        if layer.get("name") == "zero line":
+            continue
+        marks.append((mark_type(layer), layer["encoding"]["x"]["field"]))
+    return marks
 
 
 def unlabelled_values(folder, name):
@@ -880,8 +907,8 @@ def test_each_chart_csv_holds_exactly_the_values_its_chart_draws(written):
 
 def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
     # Q5: planned 250, unplanned 140 and both 10 of 1,000 MWh. Q2: 100,000
-    # MWh moved. Q23: wind's median gap 7.25, its whole months 6.3 to 7.9;
-    # nuclear's median 1.125 and every whole month under 3.5.
+    # MWh revised. Q23's titles state no figure: wind's median of monthly
+    # medians (7.25) tops nuclear's (1.125), and wind tops every whole month.
     names = [
         "q5_under_delivery_by_outage_notice.vl.json",
         "q2_moved_energy_by_unit_type.vl.json",
@@ -893,15 +920,13 @@ def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
             "All units: 40% of under-delivery came with a published outage"
         ),
         "q2_moved_energy_by_unit_type.vl.json": (
-            "Where the 100 GWh that moved came from"
+            "Where the 100 GWh of revisions came from"
         ),
         "q23_typical_gap_by_fuel_group.vl.json": (
-            "With no NESO instruction, the median wind farm missed its plan by "
-            "7.3% of its capacity; no other type reached 3%"
+            "With no NESO instruction, wind farms stray furthest from their plans"
         ),
         "q23_monthly_gap_by_fuel_group.vl.json": (
-            "The median wind farm missed its plan by 6.3 to 7.9% of its capacity "
-            "in every whole month; every other type, by under 3.5%"
+            "Wind stayed furthest from plan in every whole month"
         ),
     }
 
@@ -1050,6 +1075,23 @@ def test_q23_typical_chart_takes_the_middle_of_the_12_whole_months(written):
             "one_in_ten_label": "",
         },
     }
+
+
+def test_q23_titles_state_no_figures(written):
+    # The figures are the answer's, stated once; a title states the point.
+    names = [
+        "q23_typical_gap_by_fuel_group.vl.json",
+        "q23_monthly_gap_by_fuel_group.vl.json",
+    ]
+    assert titles_with_figures(written, names) == {}
+
+
+def test_q3_chart_draws_only_the_years_spread_and_median(written):
+    # No other period's marks over the year's: Q22's week has its own table.
+    assert marks_by_x_field(written, "q3_gap_from_plan_by_fuel_group.vl.json") == [
+        ("rule", "q1_deviation_mwh"),
+        ("point", "median_deviation_mwh"),
+    ]
 
 
 def test_q23_typical_chart_prints_each_bars_values_at_its_end(written):

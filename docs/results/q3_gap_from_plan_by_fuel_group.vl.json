@@ -15,9 +15,7 @@
       "parse": {
         "median_deviation_mwh": "number",
         "q1_deviation_mwh": "number",
-        "q3_deviation_mwh": "number",
-        "week_first_run_median_mwh": "number",
-        "week_latest_run_median_mwh": "number"
+        "q3_deviation_mwh": "number"
       },
       "type": "csv"
     },
@@ -64,15 +62,11 @@
           "scale": {
             "domain": [
               "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
+              "Median"
             ],
             "range": [
               "#9ec5f4",
-              "#2a78d6",
-              "#8c959f",
-              "#8c959f"
+              "#2a78d6"
             ]
           },
           "type": "nominal"
@@ -105,18 +99,6 @@
             "field": "q3_deviation_mwh",
             "format": ".1f",
             "title": "75th percentile, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_first_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, first run, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_latest_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, two-month run, MWh",
             "type": "quantitative"
           }
         ],
@@ -175,15 +157,11 @@
           "scale": {
             "domain": [
               "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
+              "Median"
             ],
             "range": [
               "#9ec5f4",
-              "#2a78d6",
-              "transparent",
-              "transparent"
+              "#2a78d6"
             ]
           },
           "type": "nominal"
@@ -202,15 +180,11 @@
           "scale": {
             "domain": [
               "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
+              "Median"
             ],
             "range": [
               "M-1,-0.45H1V0.45H-1Z",
-              "circle",
-              "circle",
-              "square"
+              "circle"
             ]
           },
           "type": "nominal"
@@ -229,15 +203,11 @@
           "scale": {
             "domain": [
               "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
+              "Median"
             ],
             "range": [
               "#9ec5f4",
-              "#2a78d6",
-              "#8c959f",
-              "#8c959f"
+              "#2a78d6"
             ]
           },
           "type": "nominal"
@@ -270,338 +240,6 @@
             "field": "q3_deviation_mwh",
             "format": ".1f",
             "title": "75th percentile, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_first_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, first run, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_latest_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, two-month run, MWh",
-            "type": "quantitative"
-          }
-        ],
-        "x": {
-          "field": "week_first_run_median_mwh",
-          "type": "quantitative"
-        },
-        "y": {
-          "axis": {
-            "labelExpr": "split(datum.label, '|')"
-          },
-          "field": "fuel_group_name",
-          "scale": {
-            "paddingInner": 0.3
-          },
-          "sort": null,
-          "title": null,
-          "type": "nominal"
-        }
-      },
-      "mark": {
-        "filled": false,
-        "opacity": 1,
-        "size": 260,
-        "strokeWidth": 2,
-        "type": "point"
-      },
-      "transform": [
-        {
-          "filter": "isValid(datum.week_first_run_median_mwh)"
-        },
-        {
-          "as": "key",
-          "calculate": "\"10\\u201316 Aug 2026, one-week data\""
-        }
-      ]
-    },
-    {
-      "encoding": {
-        "fill": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
-            ],
-            "range": [
-              "#9ec5f4",
-              "#2a78d6",
-              "transparent",
-              "transparent"
-            ]
-          },
-          "type": "nominal"
-        },
-        "shape": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
-            ],
-            "range": [
-              "M-1,-0.45H1V0.45H-1Z",
-              "circle",
-              "circle",
-              "square"
-            ]
-          },
-          "type": "nominal"
-        },
-        "stroke": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
-            ],
-            "range": [
-              "#9ec5f4",
-              "#2a78d6",
-              "#8c959f",
-              "#8c959f"
-            ]
-          },
-          "type": "nominal"
-        },
-        "tooltip": [
-          {
-            "field": "fuel_group_name",
-            "title": "Fuel group",
-            "type": "nominal"
-          },
-          {
-            "field": "unit_periods",
-            "format": ",",
-            "title": "Half-hours, all units",
-            "type": "quantitative"
-          },
-          {
-            "field": "q1_deviation_mwh",
-            "format": ".1f",
-            "title": "25th percentile, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "median_deviation_mwh",
-            "format": ".1f",
-            "title": "Median, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "q3_deviation_mwh",
-            "format": ".1f",
-            "title": "75th percentile, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_first_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, first run, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_latest_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, two-month run, MWh",
-            "type": "quantitative"
-          }
-        ],
-        "x": {
-          "field": "week_latest_run_median_mwh",
-          "type": "quantitative"
-        },
-        "y": {
-          "axis": {
-            "labelExpr": "split(datum.label, '|')"
-          },
-          "field": "fuel_group_name",
-          "scale": {
-            "paddingInner": 0.3
-          },
-          "sort": null,
-          "title": null,
-          "type": "nominal"
-        }
-      },
-      "mark": {
-        "filled": false,
-        "opacity": 1,
-        "size": 110,
-        "strokeWidth": 2,
-        "type": "point"
-      },
-      "transform": [
-        {
-          "filter": "isValid(datum.week_latest_run_median_mwh)"
-        },
-        {
-          "as": "key",
-          "calculate": "\"10\\u201316 Aug 2026, two-month data\""
-        }
-      ]
-    },
-    {
-      "encoding": {
-        "fill": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
-            ],
-            "range": [
-              "#9ec5f4",
-              "#2a78d6",
-              "transparent",
-              "transparent"
-            ]
-          },
-          "type": "nominal"
-        },
-        "shape": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
-            ],
-            "range": [
-              "M-1,-0.45H1V0.45H-1Z",
-              "circle",
-              "circle",
-              "square"
-            ]
-          },
-          "type": "nominal"
-        },
-        "stroke": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Interquartile range (middle 50%)",
-              "Median",
-              "10\u201316 Aug 2026, one-week data",
-              "10\u201316 Aug 2026, two-month data"
-            ],
-            "range": [
-              "#9ec5f4",
-              "#2a78d6",
-              "#8c959f",
-              "#8c959f"
-            ]
-          },
-          "type": "nominal"
-        },
-        "tooltip": [
-          {
-            "field": "fuel_group_name",
-            "title": "Fuel group",
-            "type": "nominal"
-          },
-          {
-            "field": "unit_periods",
-            "format": ",",
-            "title": "Half-hours, all units",
-            "type": "quantitative"
-          },
-          {
-            "field": "q1_deviation_mwh",
-            "format": ".1f",
-            "title": "25th percentile, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "median_deviation_mwh",
-            "format": ".1f",
-            "title": "Median, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "q3_deviation_mwh",
-            "format": ".1f",
-            "title": "75th percentile, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_first_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, first run, MWh",
-            "type": "quantitative"
-          },
-          {
-            "field": "week_latest_run_median_mwh",
-            "format": ".2f",
-            "title": "One week, two-month run, MWh",
             "type": "quantitative"
           }
         ],

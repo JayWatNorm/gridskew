@@ -20,32 +20,11 @@
     },
     "url": "results/q2_moved_energy_by_unit_type.csv"
   },
-  "description": "Where the 221 GWh that moved came from",
+  "description": "Where the 221 GWh of revisions came from",
   "height": 132,
   "layer": [
     {
       "encoding": {
-        "fill": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Share of the energy moved"
-            ],
-            "range": [
-              "#2a78d6"
-            ]
-          },
-          "type": "nominal"
-        },
         "tooltip": [
           {
             "field": "unit_type",
@@ -55,7 +34,7 @@
           {
             "field": "moved_mwh",
             "format": ",.0f",
-            "title": "Moved, MWh",
+            "title": "Revised, MWh",
             "type": "quantitative"
           },
           {
@@ -68,7 +47,7 @@
         "x": {
           "axis": {
             "title": [
-              "Share of the energy moved, %"
+              "Share of the energy revised, %"
             ],
             "values": [
               0,
@@ -102,14 +81,9 @@
       },
       "mark": {
         "cornerRadiusEnd": 3,
+        "fill": "#2a78d6",
         "type": "bar"
-      },
-      "transform": [
-        {
-          "as": "key",
-          "calculate": "\"Share of the energy moved\""
-        }
-      ]
+      }
     },
     {
       "encoding": {
@@ -120,7 +94,7 @@
         "x": {
           "axis": {
             "title": [
-              "Share of the energy moved, %"
+              "Share of the energy revised, %"
             ],
             "values": [
               0,
@@ -162,10 +136,10 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is one type of unit's share of the energy\", \"that moved between the three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is one type of unit's share of the energy that moved\", \"between the three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is one type of unit's share of the energy that moved between the\", \"three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is one type of unit's share of the energy that moved between the three-week and\", \"two-month runs.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is one type of unit's share of the energy that moved between the three-week and two-month runs.\"] : ([\"Each bar is one type of unit's share of the energy that moved between the three-week and two-month runs.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is one type of unit's share of the energy\", \"revised between the three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is one type of unit's share of the energy revised\", \"between the three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is one type of unit's share of the energy revised between the\", \"three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is one type of unit's share of the energy revised between the three-week and\", \"two-month runs.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is one type of unit's share of the energy revised between the three-week and two-month runs.\"] : ([\"Each bar is one type of unit's share of the energy revised between the three-week and two-month runs.\"])))))"
     },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Where the 221 GWh that moved came from\"] : (containerSize()[0] + 0 * width < 480 ? [\"Where the 221 GWh that moved came from\"] : (containerSize()[0] + 0 * width < 560 ? [\"Where the 221 GWh that moved came from\"] : (containerSize()[0] + 0 * width < 640 ? [\"Where the 221 GWh that moved came from\"] : (containerSize()[0] + 0 * width < 720 ? [\"Where the 221 GWh that moved came from\"] : ([\"Where the 221 GWh that moved came from\"])))))"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 480 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 560 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 640 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 720 ? [\"Where the 221 GWh of revisions came from\"] : ([\"Where the 221 GWh of revisions came from\"])))))"
     }
   },
   "transform": [

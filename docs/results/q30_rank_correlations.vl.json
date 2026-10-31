@@ -41,7 +41,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Size expected before reading (\u00b10.2)"
+              "Size expected: \u00b10.2"
             ],
             "range": [
               "#2a78d6",
@@ -73,8 +73,8 @@
             "paddingInner": 0.3
           },
           "sort": [
-            "Size of misses|curtailment added back",
-            "Direction|curtailment added back",
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
             "Size of misses|delivered wind",
             "Direction|delivered wind"
           ],
@@ -91,7 +91,7 @@
         },
         {
           "as": "key",
-          "calculate": "\"Size expected before reading (\\u00b10.2)\""
+          "calculate": "\"Size expected: \\u00b10.2\""
         }
       ]
     },
@@ -141,7 +141,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Size expected before reading (\u00b10.2)"
+              "Size expected: \u00b10.2"
             ],
             "range": [
               "#2a78d6",
@@ -174,8 +174,8 @@
             "paddingInner": 0.3
           },
           "sort": [
-            "Size of misses|curtailment added back",
-            "Direction|curtailment added back",
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
             "Size of misses|delivered wind",
             "Direction|delivered wind"
           ],
@@ -211,7 +211,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Size expected before reading (\u00b10.2)"
+              "Size expected: \u00b10.2"
             ],
             "range": [
               "#2a78d6",
@@ -236,7 +236,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Size expected before reading (\u00b10.2)"
+              "Size expected: \u00b10.2"
             ],
             "range": [
               "circle",
@@ -261,7 +261,7 @@
             "domain": [
               "Rank correlation",
               "90% range",
-              "Size expected before reading (\u00b10.2)"
+              "Size expected: \u00b10.2"
             ],
             "range": [
               "#2a78d6",
@@ -300,8 +300,7 @@
           "axis": {
             "title": [
               "Rank correlation with",
-              "the carbon forecast's miss",
-              "0: no link \u00b7 further from 0: stronger"
+              "the carbon forecast's miss"
             ]
           },
           "field": "rho",
@@ -323,8 +322,8 @@
             "paddingInner": 0.3
           },
           "sort": [
-            "Size of misses|curtailment added back",
-            "Direction|curtailment added back",
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
             "Size of misses|delivered wind",
             "Direction|delivered wind"
           ],
@@ -365,8 +364,8 @@
             "paddingInner": 0.3
           },
           "sort": [
-            "Size of misses|curtailment added back",
-            "Direction|curtailment added back",
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
             "Size of misses|delivered wind",
             "Direction|delivered wind"
           ],
@@ -384,7 +383,7 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row compares the two misses one way: the dot is\", \"the rank correlation (\u22121 to 1; 0 means no link), the\", \"line its 90% range. In the size rows, a dot in the\", \"shaded band is as small as expected; the direction\", \"rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row compares the two misses one way: the dot is the rank\", \"correlation (\u22121 to 1; 0 means no link), the line its 90% range.\", \"In the size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row compares the two misses one way: the dot is the rank correlation (\u22121\", \"to 1; 0 means no link), the line its 90% range. In the size rows, a dot in the\", \"shaded band is as small as expected; the direction rows were expected to be\", \"negative.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row compares the two misses one way: the dot is the rank correlation (\u22121 to 1; 0 means\", \"no link), the line its 90% range. In the size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row compares the two misses one way: the dot is the rank correlation (\u22121 to 1; 0 means no link), the\", \"line its 90% range. In the size rows, a dot in the shaded band is as small as expected; the direction rows\", \"were expected to be negative.\"] : ([\"Each row compares the two misses one way: the dot is the rank correlation (\u22121 to 1; 0 means no link), the line its 90%\", \"range. In the size rows, a dot in the shaded band is as small as expected; the direction rows were expected to be\", \"negative.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row compares the two misses one way: the dot is\", \"the rank correlation, the line its 90% range. In the\", \"size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be\", \"negative.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row compares the two misses one way: the dot is the rank\", \"correlation, the line its 90% range. In the size rows, a dot in\", \"the shaded band is as small as expected; the direction rows were\", \"expected to be negative.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the\", \"line its 90% range. In the size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90%\", \"range. In the size rows, a dot in the shaded band is as small as expected; the direction rows\", \"were expected to be negative.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. In the\", \"size rows, a dot in the shaded band is as small as expected; the direction rows were expected to be\", \"negative.\"] : ([\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. In the size rows, a\", \"dot in the shaded band is as small as expected; the direction rows were expected to be negative.\"])))))"
     },
     "text": {
       "expr": "containerSize()[0] + 0 * width < 400 ? [\"Wind and carbon forecast misses barely move\", \"together\"] : (containerSize()[0] + 0 * width < 480 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 560 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 640 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 720 ? [\"Wind and carbon forecast misses barely move together\"] : ([\"Wind and carbon forecast misses barely move together\"])))))"

@@ -166,7 +166,7 @@
         },
         {
           "as": "share_label",
-          "calculate": "format(datum.instructed_share_pct, '.0f') + '%'"
+          "calculate": "format(datum.instructed_share_pct, '.0f') + '% instructed'"
         }
       ]
     }
