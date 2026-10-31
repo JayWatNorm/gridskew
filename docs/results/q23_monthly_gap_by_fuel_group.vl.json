@@ -21,7 +21,7 @@
     },
     "url": "results/q23_monthly_gap_by_fuel_group.csv"
   },
-  "description": "The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month; every other type, by under 3.5%",
+  "description": "The median wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month; every other type, by under 3.5%",
   "height": 300,
   "layer": [
     {
@@ -144,7 +144,7 @@
           },
           {
             "field": "gap_label",
-            "title": "Typical gap, %",
+            "title": "Median gap, %",
             "type": "nominal"
           },
           {
@@ -251,7 +251,7 @@
         "y": {
           "axis": {
             "title": [
-              "Typical gap, % of capacity",
+              "Median gap, % of capacity",
               "higher: further from plan"
             ],
             "values": [
@@ -320,7 +320,7 @@
         "y": {
           "axis": {
             "title": [
-              "Typical gap, % of capacity",
+              "Median gap, % of capacity",
               "higher: further from plan"
             ],
             "values": [
@@ -387,7 +387,7 @@
         "y": {
           "axis": {
             "title": [
-              "Typical gap, % of capacity",
+              "Median gap, % of capacity",
               "higher: further from plan"
             ],
             "values": [
@@ -460,7 +460,7 @@
           },
           {
             "field": "gap_label",
-            "title": "Typical gap, %",
+            "title": "Median gap, %",
             "type": "nominal"
           },
           {
@@ -476,7 +476,7 @@
         "y": {
           "axis": {
             "title": [
-              "Typical gap, % of capacity",
+              "Median gap, % of capacity",
               "higher: further from plan"
             ],
             "values": [
@@ -575,7 +575,7 @@
           },
           {
             "field": "gap_label",
-            "title": "Typical gap, %",
+            "title": "Median gap, %",
             "type": "nominal"
           },
           {
@@ -591,7 +591,7 @@
         "y": {
           "axis": {
             "title": [
-              "Typical gap, % of capacity",
+              "Median gap, % of capacity",
               "higher: further from plan"
             ],
             "values": [
@@ -625,10 +625,10 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each line is a fuel group's typical gap between plan\", \"and meter, month by month, in half-hours with no\", \"instruction. Higher is further from plan; the dashed\", \"end is September 2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each line is a fuel group's typical gap between plan and meter,\", \"month by month, in half-hours with no instruction. Higher is\", \"further from plan; the dashed end is September 2026, on early\", \"meter data.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each line is a fuel group's typical gap between plan and meter, month by month,\", \"in half-hours with no instruction. Higher is further from plan; the dashed end\", \"is September 2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each line is a fuel group's typical gap between plan and meter, month by month, in half-hours\", \"with no instruction. Higher is further from plan; the dashed end is September 2026, on early\", \"meter data.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each line is a fuel group's typical gap between plan and meter, month by month, in half-hours with no\", \"instruction. Higher is further from plan; the dashed end is September 2026, on early meter data.\"] : ([\"Each line is a fuel group's typical gap between plan and meter, month by month, in half-hours with no instruction. Higher\", \"is further from plan; the dashed end is September 2026, on early meter data.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each line is a fuel group's median gap from plan,\", \"month by month, in half-hours with no instruction; the\", \"dashed end is September 2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each line is a fuel group's median gap from plan, month by month,\", \"in half-hours with no instruction; the dashed end is September\", \"2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each line is a fuel group's median gap from plan, month by month, in half-hours\", \"with no instruction; the dashed end is September 2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each line is a fuel group's median gap from plan, month by month, in half-hours with no\", \"instruction; the dashed end is September 2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each line is a fuel group's median gap from plan, month by month, in half-hours with no instruction; the\", \"dashed end is September 2026, on early meter data.\"] : ([\"Each line is a fuel group's median gap from plan, month by month, in half-hours with no instruction; the dashed end is\", \"September 2026, on early meter data.\"])))))"
     },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 400 ? [\"The typical wind farm missed its plan by 6.3 to\", \"8.0% of its capacity in every whole month; every\", \"other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 480 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of\", \"its capacity in every whole month; every other type, by\", \"under 3.5%\"] : (containerSize()[0] + 0 * width < 560 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity\", \"in every whole month; every other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 640 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every\", \"whole month; every other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 720 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month;\", \"every other type, by under 3.5%\"] : ([\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month; every other\", \"type, by under 3.5%\"])))))"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"The median wind farm missed its plan by 6.3 to\", \"8.0% of its capacity in every whole month; every\", \"other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 480 ? [\"The median wind farm missed its plan by 6.3 to 8.0% of\", \"its capacity in every whole month; every other type, by\", \"under 3.5%\"] : (containerSize()[0] + 0 * width < 560 ? [\"The median wind farm missed its plan by 6.3 to 8.0% of its capacity\", \"in every whole month; every other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 640 ? [\"The median wind farm missed its plan by 6.3 to 8.0% of its capacity in every\", \"whole month; every other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 720 ? [\"The median wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month;\", \"every other type, by under 3.5%\"] : ([\"The median wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month; every other\", \"type, by under 3.5%\"])))))"
     }
   },
   "transform": [

@@ -745,7 +745,7 @@ def monthly_values(folder, picked):
 
 
 def typical_and_middle_of_months(folder):
-    """Per fuel group, the summary chart's typical gap beside the middle of
+    """Per fuel group, the summary chart's median gap beside the median of
     the whole months the month-by-month chart draws, both to 4 places."""
     whole_months = {}
     for row in chart_csv_rows(folder, "q23_monthly_gap_by_fuel_group.csv"):
@@ -880,8 +880,8 @@ def test_each_chart_csv_holds_exactly_the_values_its_chart_draws(written):
 
 def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
     # Q5: planned 250, unplanned 140 and both 10 of 1,000 MWh. Q2: 100,000
-    # MWh moved. Q23: wind's typical gap 7.25, its whole months 6.3 to 7.9;
-    # nuclear's typical 1.125 and every whole month under 3.5.
+    # MWh moved. Q23: wind's median gap 7.25, its whole months 6.3 to 7.9;
+    # nuclear's median 1.125 and every whole month under 3.5.
     names = [
         "q5_under_delivery_by_outage_notice.vl.json",
         "q2_moved_energy_by_unit_type.vl.json",
@@ -896,11 +896,11 @@ def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
             "Where the 100 GWh that moved came from"
         ),
         "q23_typical_gap_by_fuel_group.vl.json": (
-            "With no NESO instruction, the typical wind farm missed its plan by "
+            "With no NESO instruction, the median wind farm missed its plan by "
             "7.3% of its capacity; no other type reached 3%"
         ),
         "q23_monthly_gap_by_fuel_group.vl.json": (
-            "The typical wind farm missed its plan by 6.3 to 7.9% of its capacity "
+            "The median wind farm missed its plan by 6.3 to 7.9% of its capacity "
             "in every whole month; every other type, by under 3.5%"
         ),
     }

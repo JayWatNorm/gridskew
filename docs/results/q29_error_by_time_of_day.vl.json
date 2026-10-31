@@ -85,20 +85,20 @@
           {
             "field": "mean_error",
             "format": "+.1f",
-            "title": "Average miss, g/kWh",
+            "title": "Mean miss, g/kWh",
             "type": "quantitative"
           },
           {
             "field": "mean_absolute_error",
             "format": ".1f",
-            "title": "Average size of the miss, g/kWh",
+            "title": "Mean size of the miss, g/kWh",
             "type": "quantitative"
           }
         ],
         "x": {
           "axis": {
             "title": [
-              "Average miss, grams of CO2 per kWh",
+              "Mean miss, grams of CO2 per kWh",
               "left: cleaner than forecast \u00b7 right: dirtier"
             ]
           },
@@ -136,7 +136,7 @@
         "x": {
           "axis": {
             "title": [
-              "Average miss, grams of CO2 per kWh",
+              "Mean miss, grams of CO2 per kWh",
               "left: cleaner than forecast \u00b7 right: dirtier"
             ]
           },
@@ -173,7 +173,7 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is the average miss for a six-hour block of\", \"the day. Right of zero, the half-hours came out\", \"dirtier than forecast; left, cleaner.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is the average miss for a six-hour block of the day.\", \"Right of zero, the half-hours came out dirtier than forecast;\", \"left, cleaner.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is the average miss for a six-hour block of the day. Right of zero,\", \"the half-hours came out dirtier than forecast; left, cleaner.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is the average miss for a six-hour block of the day. Right of zero, the half-hours\", \"came out dirtier than forecast; left, cleaner.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is the average miss for a six-hour block of the day. Right of zero, the half-hours came out\", \"dirtier than forecast; left, cleaner.\"] : ([\"Each bar is the average miss for a six-hour block of the day. Right of zero, the half-hours came out dirtier than\", \"forecast; left, cleaner.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is the mean miss in a six-hour block of the\", \"day.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is the mean miss in a six-hour block of the day.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is the mean miss in a six-hour block of the day.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is the mean miss in a six-hour block of the day.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is the mean miss in a six-hour block of the day.\"] : ([\"Each bar is the mean miss in a six-hour block of the day.\"])))))"
     },
     "text": {
       "expr": "containerSize()[0] + 0 * width < 400 ? [\"Afternoons came out dirtier than forecast,\", \"evenings cleaner\"] : (containerSize()[0] + 0 * width < 480 ? [\"Afternoons came out dirtier than forecast, evenings\", \"cleaner\"] : (containerSize()[0] + 0 * width < 560 ? [\"Afternoons came out dirtier than forecast, evenings cleaner\"] : (containerSize()[0] + 0 * width < 640 ? [\"Afternoons came out dirtier than forecast, evenings cleaner\"] : (containerSize()[0] + 0 * width < 720 ? [\"Afternoons came out dirtier than forecast, evenings cleaner\"] : ([\"Afternoons came out dirtier than forecast, evenings cleaner\"])))))"

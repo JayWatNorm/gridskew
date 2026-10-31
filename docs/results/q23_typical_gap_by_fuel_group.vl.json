@@ -20,7 +20,7 @@
     },
     "url": "results/q23_typical_gap_by_fuel_group.csv"
   },
-  "description": "With no NESO instruction, the typical wind farm missed its plan by 7.5% of its capacity; no other type reached 3%",
+  "description": "With no NESO instruction, the median wind farm missed its plan by 7.5% of its capacity; no other type reached 3%",
   "height": 238,
   "layer": [
     {
@@ -52,12 +52,12 @@
           },
           {
             "field": "typical_label",
-            "title": "Typical gap",
+            "title": "Median gap",
             "type": "nominal"
           },
           {
             "field": "one_in_ten_label",
-            "title": "1 unit in 10 misses by more than",
+            "title": "90th percentile",
             "type": "nominal"
           },
           {
@@ -119,7 +119,7 @@
         },
         {
           "as": "key",
-          "calculate": "\"1 unit in 10 misses by more\""
+          "calculate": "\"90th percentile: 1 unit in 10 misses by more\""
         }
       ]
     },
@@ -152,12 +152,12 @@
           },
           {
             "field": "typical_label",
-            "title": "Typical gap",
+            "title": "Median gap",
             "type": "nominal"
           },
           {
             "field": "one_in_ten_label",
-            "title": "1 unit in 10 misses by more than",
+            "title": "90th percentile",
             "type": "nominal"
           },
           {
@@ -212,7 +212,7 @@
       "transform": [
         {
           "as": "key",
-          "calculate": "\"Typical gap, 12 whole months\""
+          "calculate": "\"Median gap, 12 whole months\""
         }
       ]
     },
@@ -316,8 +316,8 @@
           },
           "scale": {
             "domain": [
-              "Typical gap, 12 whole months",
-              "1 unit in 10 misses by more"
+              "Median gap, 12 whole months",
+              "90th percentile: 1 unit in 10 misses by more"
             ],
             "range": [
               "#8c959f",
@@ -339,8 +339,8 @@
           },
           "scale": {
             "domain": [
-              "Typical gap, 12 whole months",
-              "1 unit in 10 misses by more"
+              "Median gap, 12 whole months",
+              "90th percentile: 1 unit in 10 misses by more"
             ],
             "range": [
               "M-1,-0.45H1V0.45H-1Z",
@@ -366,7 +366,7 @@
         },
         {
           "as": "key",
-          "calculate": "\"Typical gap, 12 whole months\""
+          "calculate": "\"Median gap, 12 whole months\""
         }
       ]
     }
@@ -374,10 +374,10 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is a fuel group's typical gap between plan\", \"and meter in a typical whole month, in half-hours with\", \"no instruction; the pale line runs on to where 1 unit\", \"in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is a fuel group's typical gap between plan and meter in\", \"a typical whole month, in half-hours with no instruction; the\", \"pale line runs on to where 1 unit in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is a fuel group's typical gap between plan and meter in a typical\", \"whole month, in half-hours with no instruction; the pale line runs on to where\", \"1 unit in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is a fuel group's typical gap between plan and meter in a typical whole month, in\", \"half-hours with no instruction; the pale line runs on to where 1 unit in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is a fuel group's typical gap between plan and meter in a typical whole month, in half-hours with\", \"no instruction; the pale line runs on to where 1 unit in 10 misses by more.\"] : ([\"Each bar is a fuel group's typical gap between plan and meter in a typical whole month, in half-hours with no\", \"instruction; the pale line runs on to where 1 unit in 10 misses by more.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is a fuel group's median gap from plan over\", \"the 12 whole months, in half-hours with no\", \"instruction; the pale line runs on to its 90th\", \"percentile: 1 unit in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is a fuel group's median gap from plan over the 12 whole\", \"months, in half-hours with no instruction; the pale line runs on\", \"to its 90th percentile: 1 unit in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is a fuel group's median gap from plan over the 12 whole months, in\", \"half-hours with no instruction; the pale line runs on to its 90th percentile: 1\", \"unit in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is a fuel group's median gap from plan over the 12 whole months, in half-hours with\", \"no instruction; the pale line runs on to its 90th percentile: 1 unit in 10 misses by more.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is a fuel group's median gap from plan over the 12 whole months, in half-hours with no\", \"instruction; the pale line runs on to its 90th percentile: 1 unit in 10 misses by more.\"] : ([\"Each bar is a fuel group's median gap from plan over the 12 whole months, in half-hours with no instruction; the pale\", \"line runs on to its 90th percentile: 1 unit in 10 misses by more.\"])))))"
     },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 400 ? [\"With no NESO instruction, the typical wind farm\", \"missed its plan by 7.5% of its capacity; no\", \"other type reached 3%\"] : (containerSize()[0] + 0 * width < 480 ? [\"With no NESO instruction, the typical wind farm missed\", \"its plan by 7.5% of its capacity; no other type reached\", \"3%\"] : (containerSize()[0] + 0 * width < 560 ? [\"With no NESO instruction, the typical wind farm missed its plan by\", \"7.5% of its capacity; no other type reached 3%\"] : (containerSize()[0] + 0 * width < 640 ? [\"With no NESO instruction, the typical wind farm missed its plan by 7.5% of its\", \"capacity; no other type reached 3%\"] : (containerSize()[0] + 0 * width < 720 ? [\"With no NESO instruction, the typical wind farm missed its plan by 7.5% of its capacity; no\", \"other type reached 3%\"] : ([\"With no NESO instruction, the typical wind farm missed its plan by 7.5% of its capacity; no other type\", \"reached 3%\"])))))"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"With no NESO instruction, the median wind farm\", \"missed its plan by 7.5% of its capacity; no\", \"other type reached 3%\"] : (containerSize()[0] + 0 * width < 480 ? [\"With no NESO instruction, the median wind farm missed its\", \"plan by 7.5% of its capacity; no other type reached 3%\"] : (containerSize()[0] + 0 * width < 560 ? [\"With no NESO instruction, the median wind farm missed its plan by\", \"7.5% of its capacity; no other type reached 3%\"] : (containerSize()[0] + 0 * width < 640 ? [\"With no NESO instruction, the median wind farm missed its plan by 7.5% of its\", \"capacity; no other type reached 3%\"] : (containerSize()[0] + 0 * width < 720 ? [\"With no NESO instruction, the median wind farm missed its plan by 7.5% of its capacity; no\", \"other type reached 3%\"] : ([\"With no NESO instruction, the median wind farm missed its plan by 7.5% of its capacity; no other type\", \"reached 3%\"])))))"
     }
   },
   "transform": [

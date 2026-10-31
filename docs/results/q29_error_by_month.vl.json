@@ -61,7 +61,7 @@
         "y": {
           "axis": {
             "title": [
-              "Average miss, grams of CO2 per kWh",
+              "Mean miss, grams of CO2 per kWh",
               "above zero: dirtier than forecast"
             ]
           },
@@ -167,13 +167,13 @@
           {
             "field": "mean_error",
             "format": "+.1f",
-            "title": "Average miss, g/kWh",
+            "title": "Mean miss, g/kWh",
             "type": "quantitative"
           },
           {
             "field": "mean_absolute_error",
             "format": ".1f",
-            "title": "Average size of the miss, g/kWh",
+            "title": "Mean size of the miss, g/kWh",
             "type": "quantitative"
           }
         ],
@@ -190,7 +190,7 @@
         "y": {
           "axis": {
             "title": [
-              "Average miss, grams of CO2 per kWh",
+              "Mean miss, grams of CO2 per kWh",
               "above zero: dirtier than forecast"
             ]
           },
@@ -210,7 +210,7 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each point is one month's average miss. Above zero,\", \"the month came out dirtier than forecast; below,\", \"cleaner.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each point is one month's average miss. Above zero, the month\", \"came out dirtier than forecast; below, cleaner.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each point is one month's average miss. Above zero, the month came out dirtier\", \"than forecast; below, cleaner.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each point is one month's average miss. Above zero, the month came out dirtier than forecast;\", \"below, cleaner.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each point is one month's average miss. Above zero, the month came out dirtier than forecast; below,\", \"cleaner.\"] : ([\"Each point is one month's average miss. Above zero, the month came out dirtier than forecast; below, cleaner.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each point is one month's mean miss.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each point is one month's mean miss.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each point is one month's mean miss.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each point is one month's mean miss.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each point is one month's mean miss.\"] : ([\"Each point is one month's mean miss.\"])))))"
     },
     "text": {
       "expr": "containerSize()[0] + 0 * width < 400 ? [\"Winter months came out cleaner than forecast,\", \"April to July slightly dirtier\"] : (containerSize()[0] + 0 * width < 480 ? [\"Winter months came out cleaner than forecast, April to\", \"July slightly dirtier\"] : (containerSize()[0] + 0 * width < 560 ? [\"Winter months came out cleaner than forecast, April to July slightly\", \"dirtier\"] : (containerSize()[0] + 0 * width < 640 ? [\"Winter months came out cleaner than forecast, April to July slightly dirtier\"] : (containerSize()[0] + 0 * width < 720 ? [\"Winter months came out cleaner than forecast, April to July slightly dirtier\"] : ([\"Winter months came out cleaner than forecast, April to July slightly dirtier\"])))))"

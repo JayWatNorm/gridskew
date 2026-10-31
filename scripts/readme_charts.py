@@ -137,7 +137,7 @@ Q23_DASHED_FROM_MONTH = Q23_WHOLE_MONTHS[-1]
 # A 90th percentile across fewer units than this is too thin to draw.
 Q23_UNITS_FOR_A_PERCENTILE = 20
 # The titles' claims about the other groups, checked against the data: their
-# typical gap stays under the first, every whole month under the second.
+# median gap stays under the first, every whole month under the second.
 Q23_OTHERS_TYPICAL_UNDER = Decimal("3")
 Q23_OTHERS_MONTHLY_UNDER = Decimal("3.5")
 Q23_EMPHASISED_GROUP = "wind"
@@ -149,8 +149,8 @@ Q23_MONTHLY_HEIGHT_PIXELS = 300
 # plot), and this far above zero.
 Q23_END_NAME_GAP = Decimal("0.5")
 Q23_END_NAME_FLOOR = Decimal("0.2")
-Q23_KEY_TYPICAL = "Typical gap, 12 whole months"
-Q23_KEY_ONE_IN_TEN = "1 unit in 10 misses by more"
+Q23_KEY_TYPICAL = "Median gap, 12 whole months"
+Q23_KEY_ONE_IN_TEN = "90th percentile: 1 unit in 10 misses by more"
 # The band marks the provisional month on the month-by-month chart, and
 # ends the time axis just past its last month; the axis starts at the first
 # month, padded in pixels.
@@ -274,11 +274,11 @@ Q12_TITLE = (
 )
 Q5_TITLE = "All units: {share}% of under-delivery came with a published outage"
 Q23_TYPICAL_TITLE = (
-    "With no NESO instruction, the typical wind farm missed its plan by "
+    "With no NESO instruction, the median wind farm missed its plan by "
     "{typical}% of its capacity; no other type reached {others_under}%"
 )
 Q23_MONTHLY_TITLE = (
-    "The typical wind farm missed its plan by {lowest} to {highest}% of its "
+    "The median wind farm missed its plan by {lowest} to {highest}% of its "
     "capacity in every whole month; every other type, by under {others_under}%"
 )
 Q24_TITLE = (
@@ -302,29 +302,28 @@ Q2_READING = (
     "the three-week and two-month runs."
 )
 Q3_READING = (
-    "Each row is a fuel group. The dot shows its typical gap between plan "
-    "and meter; right of zero means it produced less than planned. The bar "
-    "shows where the middle half of its half-hours fell."
+    "Each row is a fuel group: the dot is its median gap between plan and "
+    "meter, the bar its interquartile range (the middle 50% of half-hours)."
 )
 Q12_READING = (
-    "Each bar is a fuel group's whole gap between plan and meter: blue is "
-    "the part NESO instructed, grey the part it did not. The figure at the "
-    "end is the instructed share."
+    "Each bar is a fuel group's whole gap between plan and meter, split into "
+    "the part NESO instructed and the rest; the figure is the instructed "
+    "share."
 )
 Q5_READING = (
     "Each bar is a fuel group's under-delivery, split by whether an outage "
-    "notice for the unit was live when the half-hour began. The figure at "
-    "the end is the share with a notice."
+    "notice was live when the half-hour began; the figure is the share with "
+    "a notice."
 )
 Q23_TYPICAL_READING = (
-    "Each bar is a fuel group's typical gap between plan and meter in a "
-    "typical whole month, in half-hours with no instruction; the pale line "
-    "runs on to where 1 unit in 10 misses by more."
+    "Each bar is a fuel group's median gap from plan over the 12 whole "
+    "months, in half-hours with no instruction; the pale line runs on to its "
+    "90th percentile: 1 unit in 10 misses by more."
 )
 Q23_MONTHLY_READING = (
-    "Each line is a fuel group's typical gap between plan and meter, month by "
-    "month, in half-hours with no instruction. Higher is further from plan; "
-    "the dashed end is September 2026, on early meter data."
+    "Each line is a fuel group's median gap from plan, month by month, in "
+    "half-hours with no instruction; the dashed end is September 2026, on "
+    "early meter data."
 )
 Q24_READING = (
     "Each bar is one fuel group's instructed energy as 100%: blue is the "
@@ -338,23 +337,17 @@ Q25_READING = (
     "the last."
 )
 Q28_READING = (
-    "Each row is a fifth of the half-hours, from the smallest carbon misses "
-    "to the largest. The dot is their average under-delivery, with the "
-    "smallest-miss fifth set to 100; a dot at 125 or beyond would mean yes."
+    "Each row is a fifth of the half-hours, smallest carbon misses first; the "
+    "dot is their mean under-delivery, with the smallest fifth set to 100. A "
+    "dot at 125 or beyond would mean yes."
 )
-Q29_TIME_READING = (
-    "Each bar is the average miss for a six-hour block of the day. Right of "
-    "zero, the half-hours came out dirtier than forecast; left, cleaner."
-)
-Q29_MONTH_READING = (
-    "Each point is one month's average miss. Above zero, the month came out "
-    "dirtier than forecast; below, cleaner."
-)
+Q29_TIME_READING = "Each bar is the mean miss in a six-hour block of the day."
+Q29_MONTH_READING = "Each point is one month's mean miss."
 Q30_READING = (
-    "Each row is one way of comparing the two misses. The dot is the rank "
-    "correlation, from −1 to 1, where 0 means no link; the line is its 90% "
-    "range. In the size rows, a dot in the shaded band is as small as "
-    "expected; the direction rows were expected to be negative."
+    "Each row compares the two misses one way: the dot is the rank "
+    "correlation (−1 to 1; 0 means no link), the line its 90% range. In the "
+    "size rows, a dot in the shaded band is as small as expected; the "
+    "direction rows were expected to be negative."
 )
 
 # Each chart's key: every mark it draws, as the key draws it.
@@ -988,14 +981,14 @@ def draw_gap_from_plan(rows, path):
         axes,
         Q3_TITLE,
         [
-            "Bar: middle half of all units' half-hours; dot: middle value, 22 August 2025 "
+            "Bar: interquartile range of all units' half-hours; dot: median, 22 August 2025 "
             "to 26 September 2026. Ring and square: one week, 10 to 16 August 2026, "
             "on one-week and two-month meter data."
         ],
     )
     handles = [
-        Line2D([], [], color=SPREAD_COLOUR, linewidth=6, label="Middle half"),
-        Line2D([], [], color=RESULT_COLOUR, marker="o", linestyle="", label="Middle"),
+        Line2D([], [], color=SPREAD_COLOUR, linewidth=6, label="Interquartile range"),
+        Line2D([], [], color=RESULT_COLOUR, marker="o", linestyle="", label="Median"),
         Line2D(
             [],
             [],
@@ -1044,8 +1037,10 @@ def write_q3_chart(q3_rows, q22_rows, output):
         ]
     )
     keys = {
-        "Middle half of half-hours": key_mark(SPREAD_COLOUR, SPREAD_COLOUR, BAR_SYMBOL),
-        "Typical (median)": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
+        "Interquartile range (middle 50%)": key_mark(
+            SPREAD_COLOUR, SPREAD_COLOUR, BAR_SYMBOL
+        ),
+        "Median": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
         Q3_ONE_WEEK_DATA: key_mark(COMPARISON_COLOUR, NO_FILL, "circle"),
         Q3_TWO_MONTH_DATA: key_mark(COMPARISON_COLOUR, NO_FILL, "square"),
     }
@@ -1055,9 +1050,7 @@ def write_q3_chart(q3_rows, q22_rows, output):
         altair.Tooltip(
             "q1_deviation_mwh:Q", title="25th percentile, MWh", format=".1f"
         ),
-        altair.Tooltip(
-            "median_deviation_mwh:Q", title="Middle value, MWh", format=".1f"
-        ),
+        altair.Tooltip("median_deviation_mwh:Q", title="Median, MWh", format=".1f"),
         altair.Tooltip(
             "q3_deviation_mwh:Q", title="75th percentile, MWh", format=".1f"
         ),
@@ -1074,7 +1067,7 @@ def write_q3_chart(q3_rows, q22_rows, output):
     ]
     spread = keyed(
         altair.Chart().mark_rule(strokeWidth=8, strokeCap="round"),
-        "Middle half of half-hours",
+        "Interquartile range (middle 50%)",
     ).encode(
         x=altair.X("q1_deviation_mwh:Q", axis=x_axis),
         x2="q3_deviation_mwh:Q",
@@ -1084,7 +1077,7 @@ def write_q3_chart(q3_rows, q22_rows, output):
     )
     middle = keyed(
         altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
-        "Typical (median)",
+        "Median",
     ).encode(
         x="median_deviation_mwh:Q", y=fuel_group, tooltip=tooltip, **keyed_points(keys)
     )
@@ -1385,7 +1378,7 @@ def fewest_units(rows):
 
 
 def typical_percentile(rows):
-    """The middle of the monthly 90th percentiles, for groups thick enough for
+    """The median of the monthly 90th percentiles, for groups thick enough for
     one."""
     if fewest_units(rows) < Q23_UNITS_FOR_A_PERCENTILE:
         return ""
@@ -1412,8 +1405,8 @@ def refused_past(value, top):
 
 
 def typical_gap_rows(rows):
-    """Per fuel group, largest typical gap first: the middle of its 12 whole
-    months' typical gaps and of their 90th percentiles, with their labels."""
+    """Per fuel group, largest first: the median of its 12 whole months'
+    median gaps and of their 90th percentiles, with their labels."""
     chart_rows = []
     for fuel_group, by_month in monthly_gaps(rows).items():
         whole = chart_month_rows(by_month, Q23_WHOLE_MONTHS)
@@ -1474,7 +1467,7 @@ def month_name(month):
 
 
 def monthly_gap_rows(rows):
-    """Per fuel group, in colour order, its typical gap in each chart month,
+    """Per fuel group, in colour order, its median gap in each chart month,
     the provisional month marked, and where its line's name sits."""
     by_group = monthly_gaps(rows)
     groups = groups_in_colour_order(by_group)
@@ -1533,7 +1526,7 @@ def typical_title(chart_rows):
     wind, others = wind_and_the_rest(chart_rows, "typical_pct")
     for value in others:
         if value >= Q23_OTHERS_TYPICAL_UNDER:
-            raise ValueError(f"A typical gap of {value} breaks the title's claim")
+            raise ValueError(f"A median gap of {value} breaks the title's claim")
     return Q23_TYPICAL_TITLE.format(
         typical=fixed(wind[0], 1), others_under=Q23_OTHERS_TYPICAL_UNDER
     )
@@ -1650,8 +1643,8 @@ def write_q23_typical_chart(rows, output):
     )
     tooltip = [
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
-        altair.Tooltip("typical_label:N", title="Typical gap"),
-        altair.Tooltip("one_in_ten_label:N", title="1 unit in 10 misses by more than"),
+        altair.Tooltip("typical_label:N", title="Median gap"),
+        altair.Tooltip("one_in_ten_label:N", title="90th percentile"),
         altair.Tooltip("fewest_units:N", title="Units, fewest in a month"),
     ]
     keys = {
@@ -1785,7 +1778,7 @@ def draw_monthly_gaps(rows, title, path):
     axes.set_xticks(range(len(Q23_CHART_MONTHS)), month_labels, fontsize=7)
     axes.set_xlim(-0.5, last + 2)
     axes.set_ylim(0, Q23_MONTHLY_AXIS_TOP)
-    axes.set_ylabel("Typical gap, % of capacity")
+    axes.set_ylabel("Median gap, % of capacity")
     png_title(axes, title, [Q23_MONTHLY_READING])
     save_figure(figure, path)
 
@@ -1841,7 +1834,7 @@ def write_q23_monthly_chart(rows, output):
         scale=altair.Scale(domain=[0, Q23_MONTHLY_AXIS_TOP], nice=False),
         axis=altair.Axis(
             values=list(range(0, Q23_MONTHLY_AXIS_TOP + 1, 2)),
-            title=["Typical gap, % of capacity", "higher: further from plan"],
+            title=["Median gap, % of capacity", "higher: further from plan"],
         ),
     )
     end_name = altair.Y("end_name_pct:Q")
@@ -1851,7 +1844,7 @@ def write_q23_monthly_chart(rows, output):
     tooltip = [
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
         altair.Tooltip("month_name:N", title="Month"),
-        altair.Tooltip("gap_label:N", title="Typical gap, %"),
+        altair.Tooltip("gap_label:N", title="Median gap, %"),
         altair.Tooltip("units:N", title="Units"),
     ]
     is_whole_month = "datum.provisional == 'no'"
@@ -2342,9 +2335,7 @@ def write_q28_chart(rows, output):
     )
     needed_index = altair.XDatum(Q28_NEEDED_INDEX, scale=index_scale)
     keys = {
-        "Average under-delivery (index)": key_mark(
-            RESULT_COLOUR, RESULT_COLOUR, "circle"
-        ),
+        "Mean under-delivery (index)": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
         Q28_RANGE_KEY: key_mark(RESULT_COLOUR, NO_FILL, LINE_SYMBOL),
         f"Needed for yes ({Q28_NEEDED_INDEX})": key_mark(
             COMPARISON_COLOUR, NO_FILL, DASH_SYMBOL
@@ -2355,7 +2346,7 @@ def write_q28_chart(rows, output):
         altair.Tooltip("half_hours:Q", title="Half-hours", format=","),
         altair.Tooltip(
             "mean_shortfall_mwh:Q",
-            title="Average under-delivery, MWh",
+            title="Mean under-delivery, MWh",
             format=",.0f",
         ),
         altair.Tooltip("index:Q", title="Index", format=".1f"),
@@ -2388,7 +2379,7 @@ def write_q28_chart(rows, output):
     )
     dots = keyed(
         altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
-        "Average under-delivery (index)",
+        "Mean under-delivery (index)",
     ).encode(x=index_axis, y=fifth, tooltip=tooltip, **keyed_points(keys))
     dot_labels = label_above("index:Q", fifth, "index_label")
     chart = (
@@ -2452,14 +2443,12 @@ def write_q29_time_chart(rows, output):
     row_labels(axes, labels)
     axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
     axes.margins(x=0.2)
-    axes.set_xlabel(
-        "Average miss, gCO2/kWh (left: cleaner than forecast; right: dirtier)"
-    )
+    axes.set_xlabel("Mean miss, gCO2/kWh (left: cleaner than forecast; right: dirtier)")
     png_title(
         axes,
         Q29_TIME_TITLE,
         [
-            f"Six-hour blocks, UTC; average size of the miss "
+            f"Six-hour blocks, UTC; mean size of the miss "
             f"{float(overall['mean_absolute_error']):.1f} g/kWh over "
             f"{int(overall['half_hours']):,} half-hours"
         ],
@@ -2473,7 +2462,7 @@ def write_q29_time_chart(rows, output):
             scale=altair.Scale(padding=SIGNED_SCALE_PADDING_PIXELS),
             axis=axis_title(
                 [
-                    "Average miss, grams of CO2 per kWh",
+                    "Mean miss, grams of CO2 per kWh",
                     "left: cleaner than forecast · right: dirtier",
                 ]
             ),
@@ -2484,10 +2473,10 @@ def write_q29_time_chart(rows, output):
     tooltip = [
         altair.Tooltip("block_name:N", title="Time of day, UTC"),
         altair.Tooltip("half_hours:N", title="Half-hours"),
-        altair.Tooltip("mean_error:Q", title="Average miss, g/kWh", format="+.1f"),
+        altair.Tooltip("mean_error:Q", title="Mean miss, g/kWh", format="+.1f"),
         altair.Tooltip(
             "mean_absolute_error:Q",
-            title="Average size of the miss, g/kWh",
+            title="Mean size of the miss, g/kWh",
             format=".1f",
         ),
     ]
@@ -2560,7 +2549,7 @@ def write_q29_month_chart(rows, output):
         )
         month_labels.append(month_of(row["item"]))
     axes.set_xticks(positions, month_labels, rotation=90)
-    axes.set_ylabel("Average miss, gCO2/kWh")
+    axes.set_ylabel("Mean miss, gCO2/kWh")
     png_title(
         axes,
         Q29_MONTH_TITLE,
@@ -2577,7 +2566,7 @@ def write_q29_month_chart(rows, output):
     error = altair.Y(
         "mean_error:Q",
         axis=axis_title(
-            ["Average miss, grams of CO2 per kWh", "above zero: dirtier than forecast"]
+            ["Mean miss, grams of CO2 per kWh", "above zero: dirtier than forecast"]
         ),
     )
     keys = direction_keys("circle")
@@ -2585,10 +2574,10 @@ def write_q29_month_chart(rows, output):
     tooltip = [
         altair.Tooltip("month:N", title="Month"),
         altair.Tooltip("half_hours:N", title="Half-hours"),
-        altair.Tooltip("mean_error:Q", title="Average miss, g/kWh", format="+.1f"),
+        altair.Tooltip("mean_error:Q", title="Mean miss, g/kWh", format="+.1f"),
         altair.Tooltip(
             "mean_absolute_error:Q",
-            title="Average size of the miss, g/kWh",
+            title="Mean size of the miss, g/kWh",
             format=".1f",
         ),
     ]

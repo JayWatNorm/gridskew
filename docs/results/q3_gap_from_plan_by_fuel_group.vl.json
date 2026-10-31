@@ -63,8 +63,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -98,7 +98,7 @@
           {
             "field": "median_deviation_mwh",
             "format": ".1f",
-            "title": "Middle value, MWh",
+            "title": "Median, MWh",
             "type": "quantitative"
           },
           {
@@ -155,7 +155,7 @@
       "transform": [
         {
           "as": "key",
-          "calculate": "\"Middle half of half-hours\""
+          "calculate": "\"Interquartile range (middle 50%)\""
         }
       ]
     },
@@ -174,8 +174,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -201,8 +201,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -228,8 +228,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -263,7 +263,7 @@
           {
             "field": "median_deviation_mwh",
             "format": ".1f",
-            "title": "Middle value, MWh",
+            "title": "Median, MWh",
             "type": "quantitative"
           },
           {
@@ -334,8 +334,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -361,8 +361,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -388,8 +388,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -423,7 +423,7 @@
           {
             "field": "median_deviation_mwh",
             "format": ".1f",
-            "title": "Middle value, MWh",
+            "title": "Median, MWh",
             "type": "quantitative"
           },
           {
@@ -494,8 +494,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -521,8 +521,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -548,8 +548,8 @@
           },
           "scale": {
             "domain": [
-              "Middle half of half-hours",
-              "Typical (median)",
+              "Interquartile range (middle 50%)",
+              "Median",
               "10\u201316 Aug 2026, one-week data",
               "10\u201316 Aug 2026, two-month data"
             ],
@@ -583,7 +583,7 @@
           {
             "field": "median_deviation_mwh",
             "format": ".1f",
-            "title": "Middle value, MWh",
+            "title": "Median, MWh",
             "type": "quantitative"
           },
           {
@@ -632,7 +632,7 @@
       "transform": [
         {
           "as": "key",
-          "calculate": "\"Typical (median)\""
+          "calculate": "\"Median\""
         }
       ]
     }
@@ -640,7 +640,7 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fuel group. The dot shows its typical\", \"gap between plan and meter; right of zero means it\", \"produced less than planned. The bar shows where the\", \"middle half of its half-hours fell.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fuel group. The dot shows its typical gap between\", \"plan and meter; right of zero means it produced less than\", \"planned. The bar shows where the middle half of its half-hours\", \"fell.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fuel group. The dot shows its typical gap between plan and meter;\", \"right of zero means it produced less than planned. The bar shows where the\", \"middle half of its half-hours fell.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fuel group. The dot shows its typical gap between plan and meter; right of zero\", \"means it produced less than planned. The bar shows where the middle half of its half-hours\", \"fell.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fuel group. The dot shows its typical gap between plan and meter; right of zero means it\", \"produced less than planned. The bar shows where the middle half of its half-hours fell.\"] : ([\"Each row is a fuel group. The dot shows its typical gap between plan and meter; right of zero means it produced less than\", \"planned. The bar shows where the middle half of its half-hours fell.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fuel group: the dot is its median gap\", \"between plan and meter, the bar its interquartile\", \"range (the middle 50% of half-hours).\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fuel group: the dot is its median gap between plan\", \"and meter, the bar its interquartile range (the middle 50% of\", \"half-hours).\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fuel group: the dot is its median gap between plan and meter, the\", \"bar its interquartile range (the middle 50% of half-hours).\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fuel group: the dot is its median gap between plan and meter, the bar its\", \"interquartile range (the middle 50% of half-hours).\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fuel group: the dot is its median gap between plan and meter, the bar its interquartile range\", \"(the middle 50% of half-hours).\"] : ([\"Each row is a fuel group: the dot is its median gap between plan and meter, the bar its interquartile range (the middle\", \"50% of half-hours).\"])))))"
     },
     "text": {
       "expr": "containerSize()[0] + 0 * width < 400 ? [\"Most fuel types produce slightly less than\", \"planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 480 ? [\"Most fuel types produce slightly less than planned, with\", \"wide spreads\"] : (containerSize()[0] + 0 * width < 560 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 640 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 720 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : ([\"Most fuel types produce slightly less than planned, with wide spreads\"])))))"
