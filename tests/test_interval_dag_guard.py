@@ -12,6 +12,10 @@ INTERVAL_DAGS = [
     ("gridskew_elexon_qas", "capture_14_days"),
     ("gridskew_elexon_qas", "capture_35_days"),
     ("gridskew_elexon_qas", "capture_450_days"),
+    ("gridskew_elexon_wind", "poll_windfor"),
+    ("gridskew_elexon_wind", "poll_windfor_look_back"),
+    ("gridskew_elexon_wind", "poll_fuelhh"),
+    ("gridskew_elexon_wind", "poll_fuelhh_look_back"),
 ]
 
 
