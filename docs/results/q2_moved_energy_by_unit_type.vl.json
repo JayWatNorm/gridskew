@@ -1,0 +1,152 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "moved_mwh": "number",
+        "share_of_moved_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q2_moved_energy_by_unit_type.csv"
+  },
+  "description": "Where the 221 GWh of revisions came from",
+  "height": 132,
+  "layer": [
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "unit_type",
+            "title": "Unit type",
+            "type": "nominal"
+          },
+          {
+            "field": "moved_mwh",
+            "format": ",.0f",
+            "title": "Revised, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "share_of_moved_pct",
+            "format": ".1f",
+            "title": "Share, %",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Share of the energy revised, %"
+            ],
+            "values": [
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "field": "share_of_moved_pct",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "fill": "#6e7781",
+        "type": "bar"
+      }
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "share_label",
+          "type": "nominal"
+        },
+        "x": {
+          "axis": {
+            "title": [
+              "Share of the energy revised, %"
+            ],
+            "values": [
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "field": "share_of_moved_pct",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "left",
+        "dx": 4,
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is one type of unit's share of the energy\", \"revised between the three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is one type of unit's share of the energy revised\", \"between the three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is one type of unit's share of the energy revised between the\", \"three-week and two-month runs.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is one type of unit's share of the energy revised between the three-week and\", \"two-month runs.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is one type of unit's share of the energy revised between the three-week and two-month runs.\"] : ([\"Each bar is one type of unit's share of the energy revised between the three-week and two-month runs.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 480 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 560 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 640 ? [\"Where the 221 GWh of revisions came from\"] : (containerSize()[0] + 0 * width < 720 ? [\"Where the 221 GWh of revisions came from\"] : ([\"Where the 221 GWh of revisions came from\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "share_label",
+      "calculate": "format(datum.share_of_moved_pct, '.0f') + '%'"
+    }
+  ],
+  "width": "container"
+}

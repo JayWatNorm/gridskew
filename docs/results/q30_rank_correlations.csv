@@ -1,0 +1,6 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026. Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+label,measure,rho,low,high
+Size of misses|turned-down wind added back,"Size of the two misses, with turned-down wind added back",0.007930,-0.012829,0.028041
+Direction|turned-down wind added back,"Direction of the two misses, with turned-down wind added back",0.072529,0.045608,0.098489
+Size of misses|delivered wind,"Size of the two misses, delivered wind only",-0.039356,-0.062479,-0.015853
+Direction|delivered wind,"Direction of the two misses, delivered wind only",-0.167233,-0.191369,-0.142235

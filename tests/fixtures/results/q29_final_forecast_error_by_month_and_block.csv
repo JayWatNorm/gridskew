@@ -1,0 +1,9 @@
+section,item,half_hours,half_hours_with_error,half_hours_without_error,mean_absolute_error,mean_error,median_error,zero_error_share
+1,"all half-hours (partly seen before the rule: mean +0.43, median 0)",3360,3360,0,9.500,-0.700,-1.000,0.040
+2,settlement month 2025-08 (partial: 22 to 31),480,480,0,9.800,-0.500,-1.000,0.050
+2,settlement month 2025-09,1440,1440,0,9.200,-0.600,0.000,0.040
+2,settlement month 2025-10,1440,1440,0,9.600,0.800,1.000,0.030
+3,UTC block 00:00-05:59,840,840,0,8.000,0.600,0.000,0.050
+3,UTC block 06:00-11:59,840,840,0,9.300,-2.400,-2.000,0.040
+3,UTC block 12:00-17:59,840,840,0,9.700,5.300,4.000,0.040
+3,UTC block 18:00-23:59,840,840,0,10.400,-5.900,-6.000,0.040

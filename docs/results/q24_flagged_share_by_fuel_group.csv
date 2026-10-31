@@ -1,0 +1,8 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+fuel_group,acceptance_volume_mwh,flagged_pct,not_flagged_pct
+wind,13421690.6,96.6,3.4
+hydro,880508.7,93.1,6.9
+pumped_storage,2226913.6,69.8,30.2
+gas_turbine,20390310.3,34.9,65.1
+other,1815131.3,31.0,69.0
+bioenergy,683648.9,24.0,76.0

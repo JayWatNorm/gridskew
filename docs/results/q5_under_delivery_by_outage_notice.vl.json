@@ -1,0 +1,241 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "no_notice_mwh": "number",
+        "planned_mwh": "number",
+        "total_mwh": "number",
+        "unplanned_mwh": "number",
+        "with_notice_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q5_under_delivery_by_outage_notice.csv"
+  },
+  "description": "All units: 24% of under-delivery came with a published outage",
+  "height": 238,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "part_name",
+          "legend": {
+            "columns": 1,
+            "orient": "bottom",
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Planned outage",
+              "Unplanned outage",
+              "No notice"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-split-three\""
+            }
+          },
+          "sort": [
+            "Planned outage",
+            "Unplanned outage",
+            "No notice"
+          ],
+          "type": "nominal"
+        },
+        "order": {
+          "field": "stack_order",
+          "type": "quantitative"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "part_name",
+            "title": "Outage notice",
+            "type": "nominal"
+          },
+          {
+            "field": "scaled",
+            "format": ".2f",
+            "title": "TWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "with_notice_pct",
+            "format": ".0f",
+            "title": "With a notice, %",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Under-delivery, terawatt-hours (TWh)"
+            ]
+          },
+          "field": "scaled",
+          "stack": "zero",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "strokeWidth": 2,
+        "type": "bar"
+      },
+      "transform": [
+        {
+          "as": [
+            "part",
+            "amount"
+          ],
+          "fold": [
+            "planned_mwh",
+            "unplanned_mwh",
+            "no_notice_mwh"
+          ]
+        },
+        {
+          "as": "part_name",
+          "calculate": "datum.part == \"planned_mwh\" ? \"Planned outage\" : datum.part == \"unplanned_mwh\" ? \"Unplanned outage\" : datum.part == \"no_notice_mwh\" ? \"No notice\" : datum.part"
+        },
+        {
+          "as": "stack_order",
+          "calculate": "indexof([\"planned_mwh\", \"unplanned_mwh\", \"no_notice_mwh\"], datum.part)"
+        },
+        {
+          "as": "scaled",
+          "calculate": "datum.amount / 1000000"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "share_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "total_twh",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "left",
+        "dx": 4,
+        "type": "text"
+      },
+      "transform": [
+        {
+          "as": "total_twh",
+          "calculate": "datum.total_mwh / 1000000"
+        },
+        {
+          "as": "share_label",
+          "calculate": "format(datum.with_notice_pct, '.0f') + '% with notice'"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "value": -10
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": true,
+        "opacity": 1,
+        "shape": "square",
+        "size": 90,
+        "type": "point"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is a fuel group's under-delivery, split by\", \"whether an outage notice was live when the half-hour\", \"began; the figure is the share with a notice.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is a fuel group's under-delivery, split by whether an\", \"outage notice was live when the half-hour began; the figure is\", \"the share with a notice.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is a fuel group's under-delivery, split by whether an outage notice\", \"was live when the half-hour began; the figure is the share with a notice.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is a fuel group's under-delivery, split by whether an outage notice was live when\", \"the half-hour began; the figure is the share with a notice.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is a fuel group's under-delivery, split by whether an outage notice was live when the half-hour\", \"began; the figure is the share with a notice.\"] : ([\"Each bar is a fuel group's under-delivery, split by whether an outage notice was live when the half-hour began; the\", \"figure is the share with a notice.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"All units: 24% of under-delivery came with a\", \"published outage\"] : (containerSize()[0] + 0 * width < 480 ? [\"All units: 24% of under-delivery came with a published\", \"outage\"] : (containerSize()[0] + 0 * width < 560 ? [\"All units: 24% of under-delivery came with a published outage\"] : (containerSize()[0] + 0 * width < 640 ? [\"All units: 24% of under-delivery came with a published outage\"] : (containerSize()[0] + 0 * width < 720 ? [\"All units: 24% of under-delivery came with a published outage\"] : ([\"All units: 24% of under-delivery came with a published outage\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    }
+  ],
+  "width": "container"
+}

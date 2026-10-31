@@ -1,0 +1,250 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "acceptance_volume_mwh": "number",
+        "flagged_pct": "number",
+        "not_flagged_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q24_flagged_share_by_fuel_group.csv"
+  },
+  "description": "NESO flags almost all the energy its instructions move at wind farms as managing the network",
+  "height": 264,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "part_name",
+          "legend": {
+            "columns": 1,
+            "orient": "bottom",
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Flagged",
+              "Not flagged"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-split-two\""
+            }
+          },
+          "sort": [
+            "Flagged",
+            "Not flagged"
+          ],
+          "type": "nominal"
+        },
+        "order": {
+          "field": "stack_order",
+          "type": "quantitative"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "part_name",
+            "title": "Part",
+            "type": "nominal"
+          },
+          {
+            "field": "scaled",
+            "format": ".1f",
+            "title": "Share, %",
+            "type": "quantitative"
+          },
+          {
+            "field": "volume_twh",
+            "format": ".1f",
+            "title": "Energy moved, TWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Share of the energy instructions moved, %"
+            ],
+            "values": [
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "field": "scaled",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          },
+          "stack": "zero",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "datum.label == \"Wind\" ? [\"Wind\", \"13.4 TWh\"] : datum.label == \"Hydro\" ? [\"Hydro\", \"0.9 TWh\"] : datum.label == \"Pumped storage\" ? [\"Pumped storage\", \"2.2 TWh\"] : datum.label == \"Gas\" ? [\"Gas\", \"20.4 TWh\"] : datum.label == \"Other\" ? [\"Other\", \"1.8 TWh\"] : datum.label == \"Bioenergy\" ? [\"Bioenergy\", \"0.7 TWh\"] : datum.label",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "strokeWidth": 2,
+        "type": "bar"
+      },
+      "transform": [
+        {
+          "as": [
+            "part",
+            "amount"
+          ],
+          "fold": [
+            "flagged_pct",
+            "not_flagged_pct"
+          ]
+        },
+        {
+          "as": "part_name",
+          "calculate": "datum.part == \"flagged_pct\" ? \"Flagged\" : datum.part == \"not_flagged_pct\" ? \"Not flagged\" : datum.part"
+        },
+        {
+          "as": "stack_order",
+          "calculate": "indexof([\"flagged_pct\", \"not_flagged_pct\"], datum.part)"
+        },
+        {
+          "as": "scaled",
+          "calculate": "datum.amount / 1"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "share_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "flagged_pct",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "datum.label == \"Wind\" ? [\"Wind\", \"13.4 TWh\"] : datum.label == \"Hydro\" ? [\"Hydro\", \"0.9 TWh\"] : datum.label == \"Pumped storage\" ? [\"Pumped storage\", \"2.2 TWh\"] : datum.label == \"Gas\" ? [\"Gas\", \"20.4 TWh\"] : datum.label == \"Other\" ? [\"Other\", \"1.8 TWh\"] : datum.label == \"Bioenergy\" ? [\"Bioenergy\", \"0.7 TWh\"] : datum.label",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "right",
+        "dx": -4,
+        "style": "inside-label",
+        "type": "text"
+      },
+      "transform": [
+        {
+          "as": "share_label",
+          "calculate": "format(datum.flagged_pct, '.0f') + '%'"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "value": -10
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "datum.label == \"Wind\" ? [\"Wind\", \"13.4 TWh\"] : datum.label == \"Hydro\" ? [\"Hydro\", \"0.9 TWh\"] : datum.label == \"Pumped storage\" ? [\"Pumped storage\", \"2.2 TWh\"] : datum.label == \"Gas\" ? [\"Gas\", \"20.4 TWh\"] : datum.label == \"Other\" ? [\"Other\", \"1.8 TWh\"] : datum.label == \"Bioenergy\" ? [\"Bioenergy\", \"0.7 TWh\"] : datum.label",
+            "labelPadding": 20
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": true,
+        "opacity": 1,
+        "shape": "square",
+        "size": 90,
+        "type": "point"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is one fuel group's instructed energy as\", \"100%, split into the share NESO flagged as managing\", \"the network and the rest. Under each name is that\", \"energy in TWh.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is one fuel group's instructed energy as 100%, split\", \"into the share NESO flagged as managing the network and the rest.\", \"Under each name is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is one fuel group's instructed energy as 100%, split into the share\", \"NESO flagged as managing the network and the rest. Under each name is that\", \"energy in TWh.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is one fuel group's instructed energy as 100%, split into the share NESO flagged as\", \"managing the network and the rest. Under each name is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is one fuel group's instructed energy as 100%, split into the share NESO flagged as managing the\", \"network and the rest. Under each name is that energy in TWh.\"] : ([\"Each bar is one fuel group's instructed energy as 100%, split into the share NESO flagged as managing the network and the\", \"rest. Under each name is that energy in TWh.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"NESO flags almost all the energy its\", \"instructions move at wind farms as managing the\", \"network\"] : (containerSize()[0] + 0 * width < 480 ? [\"NESO flags almost all the energy its instructions move at\", \"wind farms as managing the network\"] : (containerSize()[0] + 0 * width < 560 ? [\"NESO flags almost all the energy its instructions move at wind farms\", \"as managing the network\"] : (containerSize()[0] + 0 * width < 640 ? [\"NESO flags almost all the energy its instructions move at wind farms as managing\", \"the network\"] : (containerSize()[0] + 0 * width < 720 ? [\"NESO flags almost all the energy its instructions move at wind farms as managing the network\"] : ([\"NESO flags almost all the energy its instructions move at wind farms as managing the network\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    },
+    {
+      "as": "volume_twh",
+      "calculate": "datum.acceptance_volume_mwh / 1000000"
+    }
+  ],
+  "width": "container"
+}

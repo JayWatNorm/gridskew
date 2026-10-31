@@ -1,0 +1,10 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+fuel_group,unit_periods,q1_deviation_mwh,median_deviation_mwh,q3_deviation_mwh
+wind,4296432,-1.063,0.304,2.925
+gas_turbine,1501032,0.000,0.170,1.110
+nuclear,269416,0.000,0.288,2.640
+bioenergy,211684,0.000,0.516,2.243
+pumped_storage,307904,0.000,0.000,0.440
+other,1373817,-0.031,0.025,0.310
+hydro,423368,0.000,0.000,0.234
+interconnector,153929,-1.367,0.000,0.000

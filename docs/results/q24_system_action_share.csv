@@ -1,0 +1,98 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+section,fuel_group,settlement_month,item,acceptances,stretches,acceptance_volume_mwh,so_flagged_volume_mwh,so_flagged_volume_pct,level_energy_mwh,so_flagged_level_energy_pct
+1,bioenergy,2025-08-01,stretches with a volume,592,1941,28645.9,7042.8,24.6,74878.4,9.7
+1,bioenergy,2025-09-01,stretches with a volume,981,3367,56483.6,7843.2,13.9,141449.2,15.3
+1,bioenergy,2025-10-01,stretches with a volume,638,2292,55483.3,15878.0,28.6,85706.0,23.7
+1,bioenergy,2025-11-01,stretches with a volume,618,2182,41581.9,819.3,2.0,77366.0,6.2
+1,bioenergy,2025-12-01,stretches with a volume,891,3043,45852.0,1106.8,2.4,113084.6,1.1
+1,bioenergy,2026-01-01,stretches with a volume,461,1561,29233.9,0.0,0.0,66841.8,0.0
+1,bioenergy,2026-02-01,stretches with a volume,309,1066,21911.8,7164.0,32.7,44811.9,16.1
+1,bioenergy,2026-03-01,stretches with a volume,305,1003,33881.3,21956.2,64.8,41409.4,53.5
+1,bioenergy,2026-04-01,stretches with a volume,655,2203,37930.2,4868.0,12.8,70336.4,7.2
+1,bioenergy,2026-05-01,stretches with a volume,761,2619,46306.2,5412.2,11.7,81586.0,8.4
+1,bioenergy,2026-06-01,stretches with a volume,640,2142,55393.0,39002.5,70.4,74449.4,53.2
+1,bioenergy,2026-07-01,stretches with a volume,781,2703,66205.3,22846.1,34.5,99411.1,23.7
+1,bioenergy,2026-08-01,stretches with a volume,524,1719,33997.0,7730.1,22.7,64617.2,14.8
+1,bioenergy,2026-09-01,stretches with a volume,1467,4885,130743.5,22530.0,17.2,190254.0,19.0
+1,gas_turbine,2025-08-01,stretches with a volume,5122,17704,332722.2,140613.8,42.3,508096.2,28.3
+1,gas_turbine,2025-09-01,stretches with a volume,17490,63544,1404720.5,469635.0,33.4,1821279.5,26.3
+1,gas_turbine,2025-10-01,stretches with a volume,19680,71740,1599454.0,501068.2,31.3,2051349.0,24.3
+1,gas_turbine,2025-11-01,stretches with a volume,16358,58612,1410884.7,468624.1,33.2,1913872.0,24.8
+1,gas_turbine,2025-12-01,stretches with a volume,19426,69308,1624281.1,352324.9,21.7,2059503.3,12.8
+1,gas_turbine,2026-01-01,stretches with a volume,20328,73272,1849337.9,403117.8,21.8,2310735.2,12.9
+1,gas_turbine,2026-02-01,stretches with a volume,15179,52218,1458899.0,442521.9,30.3,1735931.6,19.4
+1,gas_turbine,2026-03-01,stretches with a volume,17118,61863,1783566.4,561887.1,31.5,2095753.6,25.8
+1,gas_turbine,2026-04-01,stretches with a volume,16461,59703,1547867.6,512923.8,33.1,1869159.5,30.6
+1,gas_turbine,2026-05-01,stretches with a volume,16943,59609,1317234.8,618216.9,46.9,1669140.8,36.2
+1,gas_turbine,2026-06-01,stretches with a volume,16797,60322,1485273.8,720008.8,48.5,1810631.6,36.6
+1,gas_turbine,2026-07-01,stretches with a volume,16561,58577,1478082.2,848106.0,57.4,1804030.1,49.0
+1,gas_turbine,2026-08-01,stretches with a volume,13476,46670,1245972.5,600359.6,48.2,1487106.4,36.1
+1,gas_turbine,2026-09-01,stretches with a volume,19283,69332,1852013.6,467318.2,25.2,2091459.5,22.4
+1,hydro,2025-08-01,stretches with a volume,632,2536,9331.5,7170.6,76.8,5508.0,82.2
+1,hydro,2025-09-01,stretches with a volume,3070,13509,56720.0,50672.4,89.3,26519.1,84.9
+1,hydro,2025-10-01,stretches with a volume,3947,16708,67933.0,59973.8,88.3,32058.2,87.8
+1,hydro,2025-11-01,stretches with a volume,4355,19055,71942.5,64580.5,89.8,25366.4,81.2
+1,hydro,2025-12-01,stretches with a volume,3851,16876,64585.9,55902.3,86.6,33402.2,76.7
+1,hydro,2026-01-01,stretches with a volume,3434,15057,60667.4,59677.0,98.4,22337.7,95.7
+1,hydro,2026-02-01,stretches with a volume,3736,15684,62998.6,57696.7,91.6,21012.7,82.1
+1,hydro,2026-03-01,stretches with a volume,6765,29289,118539.8,115134.2,97.1,42997.3,93.0
+1,hydro,2026-04-01,stretches with a volume,4759,20090,71088.7,66454.0,93.5,40928.2,91.0
+1,hydro,2026-05-01,stretches with a volume,2385,10078,32962.3,30171.5,91.5,20320.6,91.8
+1,hydro,2026-06-01,stretches with a volume,4870,21191,69970.6,67820.2,96.9,25504.6,92.4
+1,hydro,2026-07-01,stretches with a volume,3845,16418,56349.6,53403.0,94.8,23423.4,89.8
+1,hydro,2026-08-01,stretches with a volume,3094,12382,53470.0,48175.8,90.1,22803.2,84.7
+1,hydro,2026-09-01,stretches with a volume,4304,18059,83948.9,83053.6,98.9,33582.6,98.8
+1,other,2025-08-01,stretches with a volume,13519,33226,25915.2,9063.6,35.0,15635.5,18.6
+1,other,2025-09-01,stretches with a volume,40862,100940,82909.3,31881.8,38.5,50678.9,22.6
+1,other,2025-10-01,stretches with a volume,46714,117831,117205.6,46601.9,39.8,71841.8,23.9
+1,other,2025-11-01,stretches with a volume,45132,113867,103976.8,37177.4,35.8,66762.5,23.3
+1,other,2025-12-01,stretches with a volume,45638,115639,110492.2,38797.9,35.1,66650.4,23.3
+1,other,2026-01-01,stretches with a volume,43228,112179,137490.0,56739.8,41.3,74822.8,25.2
+1,other,2026-02-01,stretches with a volume,42551,107028,117091.4,41983.9,35.9,72591.6,18.3
+1,other,2026-03-01,stretches with a volume,63541,157095,184215.7,60625.9,32.9,105098.4,18.4
+1,other,2026-04-01,stretches with a volume,65906,162664,159444.0,43060.5,27.0,102884.7,13.6
+1,other,2026-05-01,stretches with a volume,61154,151147,130855.5,32950.0,25.2,92374.9,13.9
+1,other,2026-06-01,stretches with a volume,60056,149914,142975.8,40436.6,28.3,85028.4,14.1
+1,other,2026-07-01,stretches with a volume,61979,155644,147603.0,29243.4,19.8,91816.9,10.6
+1,other,2026-08-01,stretches with a volume,63712,157977,133869.7,25568.8,19.1,91302.1,7.9
+1,other,2026-09-01,stretches with a volume,74824,184870,221087.0,69462.7,31.4,112693.0,10.0
+1,pumped_storage,2025-08-01,stretches with a volume,669,1472,13006.9,2120.1,16.3,9735.0,3.8
+1,pumped_storage,2025-09-01,stretches with a volume,3913,10722,134960.7,91879.2,68.1,69455.7,49.2
+1,pumped_storage,2025-10-01,stretches with a volume,4846,13687,170326.6,124470.5,73.1,75212.9,51.9
+1,pumped_storage,2025-11-01,stretches with a volume,4986,13683,164873.7,110229.5,66.9,73312.6,44.4
+1,pumped_storage,2025-12-01,stretches with a volume,4168,12257,162996.6,124290.7,76.3,74823.4,55.8
+1,pumped_storage,2026-01-01,stretches with a volume,4318,12134,155562.9,110846.5,71.3,64593.8,48.2
+1,pumped_storage,2026-02-01,stretches with a volume,3703,11369,180878.3,143892.2,79.6,90485.2,62.4
+1,pumped_storage,2026-03-01,stretches with a volume,5533,16350,243418.1,177440.1,72.9,100880.7,54.5
+1,pumped_storage,2026-04-01,stretches with a volume,5074,14357,190321.1,132827.7,69.8,89888.9,47.1
+1,pumped_storage,2026-05-01,stretches with a volume,4653,12561,159951.9,104233.7,65.2,92740.6,47.8
+1,pumped_storage,2026-06-01,stretches with a volume,5622,15678,203849.6,139926.9,68.6,107019.7,50.7
+1,pumped_storage,2026-07-01,stretches with a volume,4953,13809,170694.8,113010.4,66.2,91982.6,49.5
+1,pumped_storage,2026-08-01,stretches with a volume,4889,12245,110713.9,52441.0,47.4,75509.6,31.0
+1,pumped_storage,2026-09-01,stretches with a volume,4610,12719,165358.5,126174.6,76.3,87394.7,66.4
+1,wind,2025-08-01,stretches with a volume,5227,16903,191239.7,179081.3,93.6,30506.1,79.7
+1,wind,2025-09-01,stretches with a volume,28190,95361,1088298.4,1029219.9,94.6,226058.9,90.4
+1,wind,2025-10-01,stretches with a volume,30190,102197,1303650.8,1268795.6,97.3,157948.3,86.9
+1,wind,2025-11-01,stretches with a volume,21506,74331,959195.9,939319.9,97.9,93427.1,93.0
+1,wind,2025-12-01,stretches with a volume,25282,85276,1007348.4,999546.1,99.2,93017.5,93.0
+1,wind,2026-01-01,stretches with a volume,23928,82320,1230239.0,1229161.5,99.9,85234.1,98.6
+1,wind,2026-02-01,stretches with a volume,19189,67953,863078.4,845214.0,97.9,92852.4,94.7
+1,wind,2026-03-01,stretches with a volume,34329,114924,1471005.8,1462043.7,99.4,107014.2,95.0
+1,wind,2026-04-01,stretches with a volume,27378,93556,1140720.8,1065692.5,93.4,78528.4,61.0
+1,wind,2026-05-01,stretches with a volume,13320,45859,589607.6,576436.5,97.8,71154.8,93.6
+1,wind,2026-06-01,stretches with a volume,19158,65425,708249.5,606957.2,85.7,67816.7,74.9
+1,wind,2026-07-01,stretches with a volume,15568,53498,612333.0,569636.9,93.0,61289.7,81.6
+1,wind,2026-08-01,stretches with a volume,9948,34127,413561.7,386414.5,93.4,55298.9,94.4
+1,wind,2026-09-01,stretches with a volume,43667,145376,1843161.5,1811072.4,98.3,137947.3,86.8
+2,bioenergy,,"stretches with a volume, all months",9619,32726,683648.9,164199.2,24.0,1226201.6,16.7
+2,gas_turbine,,"stretches with a volume, all months",230128,822474,20390310.3,7106725.9,34.9,25228048.2,26.8
+2,hydro,,"stretches with a volume, all months",53017,226932,880508.7,819885.7,93.1,375764.3,88.6
+2,other,,"stretches with a volume, all months",728740,1820021,1815131.3,563594.1,31.0,1100181.9,16.5
+2,pumped_storage,,"stretches with a volume, all months",61923,173043,2226913.6,1553783.1,69.8,1103035.4,50.6
+2,wind,,"stretches with a volume, all months",316597,1077106,13421690.6,12968592.1,96.6,1358094.4,88.4
+3,bioenergy,,stretches where instructed and PN cross (volume; absolute net beside it),,118,593.9,582.3,,,
+3,gas_turbine,,stretches where instructed and PN cross (volume; absolute net beside it),,1948,13560.3,13386.4,,,
+3,hydro,,stretches where instructed and PN cross (volume; absolute net beside it),,45,215.3,213.5,,,
+3,other,,stretches where instructed and PN cross (volume; absolute net beside it),,4489,1430.7,1234.7,,,
+3,pumped_storage,,stretches where instructed and PN cross (volume; absolute net beside it),,161,1452.0,1390.7,,,
+3,wind,,stretches where instructed and PN cross (volume; absolute net beside it),,54,102.1,88.9,,,

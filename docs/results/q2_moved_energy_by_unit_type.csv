@@ -1,0 +1,5 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+unit_type,label,moved_mwh,share_of_moved_pct
+Suppliers' customer accounts,Suppliers' customer accounts,170697.946,77.165964
+Transmission-connected and embedded units,Transmission-connected|and embedded units,44301.531,20.027015
+Other unit types,Other unit types,6209.380,2.807021

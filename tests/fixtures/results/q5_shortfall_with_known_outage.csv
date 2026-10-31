@@ -1,0 +1,15 @@
+section,fuel_group,item,unit_periods,positive_shortfall_mwh,share_of_positive_shortfall_pct,first_date,last_date,remit_publications
+1,,both,20,10.0,1.0,2025-08-23,2026-09-26,
+1,,none,700,600.0,60.0,2025-08-22,2026-09-27,
+1,,planned,200,250.0,25.0,2025-08-22,2026-09-27,
+1,,total,1000,1000.0,100.0,2025-08-22,2026-09-27,
+1,,unplanned,80,140.0,14.0,2025-08-24,2026-09-25,
+2,nuclear,none,100,30.0,10.0,2025-08-22,2026-09-27,
+2,nuclear,planned,150,180.0,60.0,2025-08-22,2026-09-27,
+2,nuclear,unplanned,50,90.0,30.0,2025-08-24,2026-09-25,
+2,wind,both,20,10.0,1.4,2025-08-23,2026-09-26,
+2,wind,none,600,570.0,81.4,2025-08-22,2026-09-27,
+2,wind,planned,50,70.0,10.0,2025-08-22,2026-09-27,
+2,wind,unplanned,30,50.0,7.1,2025-08-24,2026-09-25,
+3,,Active production unavailability publications by mapping rule: unmapped,,,,,,3
+3,,cohort unit-periods: no_metered_value,40,,,,,

@@ -1,0 +1,334 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "median_deviation_mwh": "number",
+        "q1_deviation_mwh": "number",
+        "q3_deviation_mwh": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q3_gap_from_plan_by_fuel_group.csv"
+  },
+  "description": "Most fuel types produce slightly less than planned, with wide spreads",
+  "height": 272,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": 0
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "name": "zero line",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "color": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "unit_periods",
+            "format": ",",
+            "title": "Half-hours, all units",
+            "type": "quantitative"
+          },
+          {
+            "field": "q1_deviation_mwh",
+            "format": ".1f",
+            "title": "25th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "median_deviation_mwh",
+            "format": ".1f",
+            "title": "Median, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "q3_deviation_mwh",
+            "format": ".1f",
+            "title": "75th percentile, MWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Plan minus meter, megawatt-hours (MWh)",
+              "per unit per half-hour",
+              "left: produced more than planned \u00b7 right: less"
+            ]
+          },
+          "field": "q1_deviation_mwh",
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "q3_deviation_mwh"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "opacity": 0.45,
+        "strokeCap": "round",
+        "strokeWidth": 8,
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Interquartile range (middle 50%)\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "color": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "unit_periods",
+            "format": ",",
+            "title": "Half-hours, all units",
+            "type": "quantitative"
+          },
+          {
+            "field": "q1_deviation_mwh",
+            "format": ".1f",
+            "title": "25th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "median_deviation_mwh",
+            "format": ".1f",
+            "title": "Median, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "q3_deviation_mwh",
+            "format": ".1f",
+            "title": "75th percentile, MWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "field": "median_deviation_mwh",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": true,
+        "opacity": 1,
+        "size": 80,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Median\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Interquartile range (middle 50%)",
+              "Median"
+            ],
+            "range": [
+              "#c9ced4",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Interquartile range (middle 50%)",
+              "Median"
+            ],
+            "range": [
+              "M-1,-0.45H1V0.45H-1Z",
+              "circle"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Interquartile range (middle 50%)",
+              "Median"
+            ],
+            "range": [
+              "#c9ced4",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "opacity": 0,
+        "type": "point"
+      },
+      "name": "key",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        },
+        {
+          "as": "key",
+          "calculate": "\"Interquartile range (middle 50%)\""
+        }
+      ]
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fuel group: the dot is its median gap\", \"between plan and meter, the bar its interquartile\", \"range (the middle 50% of half-hours).\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fuel group: the dot is its median gap between plan\", \"and meter, the bar its interquartile range (the middle 50% of\", \"half-hours).\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fuel group: the dot is its median gap between plan and meter, the\", \"bar its interquartile range (the middle 50% of half-hours).\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fuel group: the dot is its median gap between plan and meter, the bar its\", \"interquartile range (the middle 50% of half-hours).\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fuel group: the dot is its median gap between plan and meter, the bar its interquartile range\", \"(the middle 50% of half-hours).\"] : ([\"Each row is a fuel group: the dot is its median gap between plan and meter, the bar its interquartile range (the middle\", \"50% of half-hours).\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Most fuel types produce slightly less than\", \"planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 480 ? [\"Most fuel types produce slightly less than planned, with\", \"wide spreads\"] : (containerSize()[0] + 0 * width < 560 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 640 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 720 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : ([\"Most fuel types produce slightly less than planned, with wide spreads\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    }
+  ],
+  "width": "container"
+}

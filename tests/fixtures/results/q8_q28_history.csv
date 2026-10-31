@@ -1,0 +1,24 @@
+section,item,quintile,half_hours,days,first_date,last_date,value,result
+1,"population: matched days (all three values in at least 46 half-hours), every half-hour on them with all three",,500,11,2025-08-22,2025-09-01,,
+2,"bootstrap 90% interval for the gap, high",,,,,,0.030000,
+2,"bootstrap 90% interval for the gap, low",,,,,,-0.050000,
+2,bootstrap draws with a gap (900 of 1000 needed),,,,,,1000,available
+2,"gap, rho_demand minus rho_shortfall",,,,,,-0.010000,
+2,rho_demand: abs(error_api_final) with abs(demand_error_final_mw),,500,,,,0.040000,
+2,rho_shortfall: abs(error_api_final) with positive shortfall,,500,,,,0.050000,
+2,verdict (stronger at a gap of 0.1 or more either way),,,,,,,no clear difference
+3,"bootstrap 90% interval for the ratio, high",,,,,,1.200000,
+3,"bootstrap 90% interval for the ratio, low",,,,,,1.010000,
+3,bootstrap draws with a ratio (900 of 1000 needed),,,,,,1000,available
+3,"bottom quintile mean, MWh",,100,,,,500.000000,
+3,"difference, top minus bottom, MWh",,,,,,50.000000,
+3,"ratio, top over bottom",,,,,,1.100000,
+3,"top quintile mean, MWh",,100,,,,550.000000,
+3,verdict (supported at a ratio of 1.25 or more),,,,,,,not supported
+4,half-hours sharing the bottom quintile's largest abs(error_api_final) (value: that error),,40,,,,2,in the bottom quintile: 12
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",1,100,,,,500.000000,abs(error_api_final) 0 to 2
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",2,100,,,,510.000000,abs(error_api_final) 2 to 4
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",3,100,,,,520.000000,abs(error_api_final) 4 to 7
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",4,100,,,,530.000000,abs(error_api_final) 7 to 12
+4,"quintile of abs(error_api_final): mean positive shortfall, MWh",5,100,,,,550.000000,abs(error_api_final) 12 to 90
+5,half-hours with all three values,,500,11,,,,

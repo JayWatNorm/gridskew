@@ -1,0 +1,415 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "one_in_ten_pct": "number",
+        "typical_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q23_typical_gap_by_fuel_group.csv"
+  },
+  "description": "With no NESO instruction, wind farms stray furthest from their plans",
+  "height": 238,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "typical_label",
+            "title": "Median gap",
+            "type": "nominal"
+          },
+          {
+            "field": "one_in_ten_label",
+            "title": "90th percentile",
+            "type": "nominal"
+          },
+          {
+            "field": "fewest_units",
+            "title": "Units, fewest in a month",
+            "type": "nominal"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Gap between plan and meter, % of capacity",
+              "further right: further from plan"
+            ]
+          },
+          "field": "typical_pct",
+          "scale": {
+            "domain": [
+              0,
+              12
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "one_in_ten_pct"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Wind",
+            "Other",
+            "Bioenergy",
+            "Nuclear",
+            "Hydro",
+            "Gas",
+            "Pumped storage"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "height": 6,
+        "opacity": 0.4,
+        "type": "bar"
+      },
+      "transform": [
+        {
+          "filter": "isValid(datum.one_in_ten_pct)"
+        },
+        {
+          "as": "key",
+          "calculate": "\"90th percentile\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "color": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "typical_label",
+            "title": "Median gap",
+            "type": "nominal"
+          },
+          {
+            "field": "one_in_ten_label",
+            "title": "90th percentile",
+            "type": "nominal"
+          },
+          {
+            "field": "fewest_units",
+            "title": "Units, fewest in a month",
+            "type": "nominal"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Gap between plan and meter, % of capacity",
+              "further right: further from plan"
+            ]
+          },
+          "field": "typical_pct",
+          "scale": {
+            "domain": [
+              0,
+              12
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Wind",
+            "Other",
+            "Bioenergy",
+            "Nuclear",
+            "Hydro",
+            "Gas",
+            "Pumped storage"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "cornerRadiusEnd": 4,
+        "height": 16,
+        "type": "bar"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Median of 12 monthly medians\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "typical_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "typical_pct",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Wind",
+            "Other",
+            "Bioenergy",
+            "Nuclear",
+            "Hydro",
+            "Gas",
+            "Pumped storage"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "left",
+        "baseline": {
+          "expr": "isValid(datum.one_in_ten_pct) ? 'bottom' : 'middle'"
+        },
+        "dx": 4,
+        "dy": {
+          "expr": "isValid(datum.one_in_ten_pct) ? -5 : 0"
+        },
+        "type": "text"
+      }
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "one_in_ten_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "one_in_ten_pct",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Wind",
+            "Other",
+            "Bioenergy",
+            "Nuclear",
+            "Hydro",
+            "Gas",
+            "Pumped storage"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "left",
+        "dx": 4,
+        "type": "text"
+      },
+      "transform": [
+        {
+          "filter": "isValid(datum.one_in_ten_pct)"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Median of 12 monthly medians",
+              "90th percentile"
+            ],
+            "range": [
+              "#8c959f",
+              "#c9ced4"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Median of 12 monthly medians",
+              "90th percentile"
+            ],
+            "range": [
+              "M-1,-0.45H1V0.45H-1Z",
+              "M-1,-0.2H1V0.2H-1Z"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Median of 12 monthly medians",
+              "90th percentile"
+            ],
+            "range": [
+              "#8c959f",
+              "#c9ced4"
+            ]
+          },
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "opacity": 0,
+        "type": "point"
+      },
+      "name": "key",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        },
+        {
+          "as": "key",
+          "calculate": "\"Median of 12 monthly medians\""
+        }
+      ]
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is the median of a fuel group's 12 monthly\", \"medians; the pale line, the median of its 12 monthly\", \"90th percentiles (1 unit in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the\", \"pale line, the median of its 12 monthly 90th percentiles (1 unit\", \"in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the\", \"median of its 12 monthly 90th percentiles (1 unit in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its\", \"12 monthly 90th percentiles (1 unit in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its 12 monthly\", \"90th percentiles (1 unit in 10 misses by more).\"] : ([\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its 12 monthly 90th percentiles\", \"(1 unit in 10 misses by more).\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"With no NESO instruction, wind farms stray\", \"furthest from their plans\"] : (containerSize()[0] + 0 * width < 480 ? [\"With no NESO instruction, wind farms stray furthest from\", \"their plans\"] : (containerSize()[0] + 0 * width < 560 ? [\"With no NESO instruction, wind farms stray furthest from their plans\"] : (containerSize()[0] + 0 * width < 640 ? [\"With no NESO instruction, wind farms stray furthest from their plans\"] : (containerSize()[0] + 0 * width < 720 ? [\"With no NESO instruction, wind farms stray furthest from their plans\"] : ([\"With no NESO instruction, wind farms stray furthest from their plans\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    }
+  ],
+  "width": "container"
+}
