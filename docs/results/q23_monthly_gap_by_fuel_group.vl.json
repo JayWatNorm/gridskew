@@ -1,0 +1,641 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "end_name_pct": "number",
+        "gap_pct": "number",
+        "month": "utc:'%Y-%m-%d'"
+      },
+      "type": "csv"
+    },
+    "url": "results/q23_monthly_gap_by_fuel_group.csv"
+  },
+  "description": "The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month; every other type, by under 3.5%",
+  "height": 300,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": {
+            "date": 17,
+            "month": 8,
+            "utc": true,
+            "year": 2026
+          },
+          "type": "temporal"
+        },
+        "x2": {
+          "datum": {
+            "date": 12,
+            "month": 9,
+            "utc": true,
+            "year": 2026
+          }
+        },
+        "y": {
+          "value": 0
+        },
+        "y2": {
+          "value": "height"
+        }
+      },
+      "mark": {
+        "fill": "rgba(140, 149, 159, 0.2)",
+        "type": "rect"
+      },
+      "name": "provisional band",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "value": "provisional"
+        },
+        "x": {
+          "datum": {
+            "date": 17,
+            "month": 8,
+            "utc": true,
+            "year": 2026
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "value": 0
+        }
+      },
+      "mark": {
+        "align": "right",
+        "baseline": "top",
+        "dx": -2,
+        "dy": 4,
+        "fontStyle": "italic",
+        "type": "text"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "strokeWidth": {
+          "condition": {
+            "test": "datum.fuel_group == \"wind\"",
+            "value": 3
+          },
+          "value": 2
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "month_name",
+            "title": "Month",
+            "type": "nominal"
+          },
+          {
+            "field": "gap_label",
+            "title": "Typical gap, %",
+            "type": "nominal"
+          },
+          {
+            "field": "units",
+            "title": "Units",
+            "type": "nominal"
+          }
+        ],
+        "x": {
+          "axis": {
+            "grid": false,
+            "labelExpr": "indexof(['01', '09'], utcFormat(datum.value, '%m')) >= 0 ? [utcFormat(datum.value, '%b'), utcFormat(datum.value, '%Y')] : utcFormat(datum.value, '%b')",
+            "labelOverlap": "parity",
+            "title": null,
+            "values": [
+              {
+                "date": 1,
+                "month": 9,
+                "utc": true,
+                "year": 2025
+              },
+              {
+                "date": 1,
+                "month": 10,
+                "utc": true,
+                "year": 2025
+              },
+              {
+                "date": 1,
+                "month": 11,
+                "utc": true,
+                "year": 2025
+              },
+              {
+                "date": 1,
+                "month": 12,
+                "utc": true,
+                "year": 2025
+              },
+              {
+                "date": 1,
+                "month": 1,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 2,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 3,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 4,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 5,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 6,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 7,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 8,
+                "utc": true,
+                "year": 2026
+              },
+              {
+                "date": 1,
+                "month": 9,
+                "utc": true,
+                "year": 2026
+              }
+            ]
+          },
+          "field": "month",
+          "scale": {
+            "nice": false,
+            "padding": 14,
+            "type": "utc"
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": [
+              "Typical gap, % of capacity",
+              "higher: further from plan"
+            ],
+            "values": [
+              0,
+              2,
+              4,
+              6,
+              8,
+              10
+            ]
+          },
+          "field": "gap_pct",
+          "scale": {
+            "domain": [
+              0,
+              10
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        }
+      },
+      "mark": {
+        "strokeCap": "round",
+        "strokeJoin": "round",
+        "type": "line"
+      },
+      "transform": [
+        {
+          "filter": "datum.provisional == 'no'"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "strokeWidth": {
+          "condition": {
+            "test": "datum.fuel_group == \"wind\"",
+            "value": 3
+          },
+          "value": 2
+        },
+        "x": {
+          "field": "month",
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": [
+              "Typical gap, % of capacity",
+              "higher: further from plan"
+            ],
+            "values": [
+              0,
+              2,
+              4,
+              6,
+              8,
+              10
+            ]
+          },
+          "field": "gap_pct",
+          "scale": {
+            "domain": [
+              0,
+              10
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        }
+      },
+      "mark": {
+        "strokeDash": [
+          4,
+          3
+        ],
+        "type": "line"
+      },
+      "transform": [
+        {
+          "filter": "datum.dashed == 'yes'"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "field": "month",
+          "type": "temporal"
+        },
+        "x2": {
+          "field": "month"
+        },
+        "y": {
+          "axis": {
+            "title": [
+              "Typical gap, % of capacity",
+              "higher: further from plan"
+            ],
+            "values": [
+              0,
+              2,
+              4,
+              6,
+              8,
+              10
+            ]
+          },
+          "field": "gap_pct",
+          "scale": {
+            "domain": [
+              0,
+              10
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y2": {
+          "field": "end_name_pct"
+        }
+      },
+      "mark": {
+        "strokeWidth": 1.5,
+        "type": "rule",
+        "x2Offset": 15,
+        "xOffset": 7
+      },
+      "name": "connector",
+      "transform": [
+        {
+          "filter": "datum.provisional == 'yes'"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "month_name",
+            "title": "Month",
+            "type": "nominal"
+          },
+          {
+            "field": "gap_label",
+            "title": "Typical gap, %",
+            "type": "nominal"
+          },
+          {
+            "field": "units",
+            "title": "Units",
+            "type": "nominal"
+          }
+        ],
+        "x": {
+          "field": "month",
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": [
+              "Typical gap, % of capacity",
+              "higher: further from plan"
+            ],
+            "values": [
+              0,
+              2,
+              4,
+              6,
+              8,
+              10
+            ]
+          },
+          "field": "gap_pct",
+          "scale": {
+            "domain": [
+              0,
+              10
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        }
+      },
+      "mark": {
+        "filled": false,
+        "opacity": 1,
+        "size": 60,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "filter": "datum.provisional == 'yes'"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "fuel_group_name",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "month",
+          "type": "temporal"
+        },
+        "y": {
+          "field": "end_name_pct",
+          "type": "quantitative"
+        }
+      },
+      "mark": {
+        "align": "left",
+        "fontWeight": {
+          "expr": "datum.fuel_group == \"wind\" ? 600 : 400"
+        },
+        "type": "text",
+        "xOffset": 18
+      },
+      "transform": [
+        {
+          "filter": "datum.provisional == 'yes'"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "month_name",
+            "title": "Month",
+            "type": "nominal"
+          },
+          {
+            "field": "gap_label",
+            "title": "Typical gap, %",
+            "type": "nominal"
+          },
+          {
+            "field": "units",
+            "title": "Units",
+            "type": "nominal"
+          }
+        ],
+        "x": {
+          "field": "month",
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": [
+              "Typical gap, % of capacity",
+              "higher: further from plan"
+            ],
+            "values": [
+              0,
+              2,
+              4,
+              6,
+              8,
+              10
+            ]
+          },
+          "field": "gap_pct",
+          "scale": {
+            "domain": [
+              0,
+              10
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        }
+      },
+      "mark": {
+        "filled": true,
+        "opacity": 0,
+        "size": 260,
+        "type": "point"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each line is a fuel group's typical gap between plan\", \"and meter, month by month, in half-hours with no\", \"instruction. Higher is further from plan; the dashed\", \"end is September 2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each line is a fuel group's typical gap between plan and meter,\", \"month by month, in half-hours with no instruction. Higher is\", \"further from plan; the dashed end is September 2026, on early\", \"meter data.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each line is a fuel group's typical gap between plan and meter, month by month,\", \"in half-hours with no instruction. Higher is further from plan; the dashed end\", \"is September 2026, on early meter data.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each line is a fuel group's typical gap between plan and meter, month by month, in half-hours\", \"with no instruction. Higher is further from plan; the dashed end is September 2026, on early\", \"meter data.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each line is a fuel group's typical gap between plan and meter, month by month, in half-hours with no\", \"instruction. Higher is further from plan; the dashed end is September 2026, on early meter data.\"] : ([\"Each line is a fuel group's typical gap between plan and meter, month by month, in half-hours with no instruction. Higher\", \"is further from plan; the dashed end is September 2026, on early meter data.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"The typical wind farm missed its plan by 6.3 to\", \"8.0% of its capacity in every whole month; every\", \"other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 480 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of\", \"its capacity in every whole month; every other type, by\", \"under 3.5%\"] : (containerSize()[0] + 0 * width < 560 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity\", \"in every whole month; every other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 640 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every\", \"whole month; every other type, by under 3.5%\"] : (containerSize()[0] + 0 * width < 720 ? [\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month;\", \"every other type, by under 3.5%\"] : ([\"The typical wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month; every other\", \"type, by under 3.5%\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    }
+  ],
+  "width": "container"
+}

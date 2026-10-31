@@ -639,14 +639,11 @@
   ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Each row is a fuel group. The dot shows its",
-      "typical gap between plan and meter; right of zero",
-      "means it produced less than planned. The bar shows",
-      "where the middle half of its half-hours fell."
-    ],
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fuel group. The dot shows its typical\", \"gap between plan and meter; right of zero means it\", \"produced less than planned. The bar shows where the\", \"middle half of its half-hours fell.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fuel group. The dot shows its typical gap between\", \"plan and meter; right of zero means it produced less than\", \"planned. The bar shows where the middle half of its half-hours\", \"fell.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fuel group. The dot shows its typical gap between plan and meter;\", \"right of zero means it produced less than planned. The bar shows where the\", \"middle half of its half-hours fell.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fuel group. The dot shows its typical gap between plan and meter; right of zero\", \"means it produced less than planned. The bar shows where the middle half of its half-hours\", \"fell.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fuel group. The dot shows its typical gap between plan and meter; right of zero means it\", \"produced less than planned. The bar shows where the middle half of its half-hours fell.\"] : ([\"Each row is a fuel group. The dot shows its typical gap between plan and meter; right of zero means it produced less than\", \"planned. The bar shows where the middle half of its half-hours fell.\"])))))"
+    },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Most fuel types produce slightly\", \"less than planned, with wide spreads\"] : [\"Most fuel types produce slightly less than planned, with wide spreads\"]"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Most fuel types produce slightly less than\", \"planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 480 ? [\"Most fuel types produce slightly less than planned, with\", \"wide spreads\"] : (containerSize()[0] + 0 * width < 560 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 640 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : (containerSize()[0] + 0 * width < 720 ? [\"Most fuel types produce slightly less than planned, with wide spreads\"] : ([\"Most fuel types produce slightly less than planned, with wide spreads\"])))))"
     }
   },
   "transform": [

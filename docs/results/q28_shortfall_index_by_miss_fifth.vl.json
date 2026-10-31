@@ -399,15 +399,11 @@
   ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Each row is a fifth of the half-hours, from",
-      "the smallest carbon misses to the largest.",
-      "The dot is their average under-delivery,",
-      "with the smallest-miss fifth set to 100; a",
-      "dot at 125 or beyond would mean yes."
-    ],
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fifth of the half-hours, from the\", \"smallest carbon misses to the largest. The dot is\", \"their average under-delivery, with the smallest-miss\", \"fifth set to 100; a dot at 125 or beyond would mean\", \"yes.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fifth of the half-hours, from the smallest carbon\", \"misses to the largest. The dot is their average under-delivery,\", \"with the smallest-miss fifth set to 100; a dot at 125 or beyond\", \"would mean yes.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fifth of the half-hours, from the smallest carbon misses to the\", \"largest. The dot is their average under-delivery, with the smallest-miss fifth\", \"set to 100; a dot at 125 or beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fifth of the half-hours, from the smallest carbon misses to the largest. The\", \"dot is their average under-delivery, with the smallest-miss fifth set to 100; a dot at 125 or\", \"beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fifth of the half-hours, from the smallest carbon misses to the largest. The dot is their\", \"average under-delivery, with the smallest-miss fifth set to 100; a dot at 125 or beyond would mean yes.\"] : ([\"Each row is a fifth of the half-hours, from the smallest carbon misses to the largest. The dot is their average\", \"under-delivery, with the smallest-miss fifth set to 100; a dot at 125 or beyond would mean yes.\"])))))"
+    },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Bigger carbon misses came with slightly\", \"more under-delivery, not 25% more\"] : [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"]"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 480 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 560 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25%\", \"more\"] : (containerSize()[0] + 0 * width < 640 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 720 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"] : ([\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"])))))"
     }
   },
   "transform": [

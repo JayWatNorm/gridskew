@@ -173,14 +173,11 @@
   ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Each bar is a fuel group's whole gap between",
-      "plan and meter: blue is the part NESO",
-      "instructed, grey the part it did not. The",
-      "figure at the end is the instructed share."
-    ],
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is a fuel group's whole gap between plan and\", \"meter: blue is the part NESO instructed, grey the part\", \"it did not. The figure at the end is the instructed\", \"share.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is a fuel group's whole gap between plan and meter: blue\", \"is the part NESO instructed, grey the part it did not. The figure\", \"at the end is the instructed share.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is a fuel group's whole gap between plan and meter: blue is the part\", \"NESO instructed, grey the part it did not. The figure at the end is the\", \"instructed share.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is a fuel group's whole gap between plan and meter: blue is the part NESO\", \"instructed, grey the part it did not. The figure at the end is the instructed share.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is a fuel group's whole gap between plan and meter: blue is the part NESO instructed, grey the\", \"part it did not. The figure at the end is the instructed share.\"] : ([\"Each bar is a fuel group's whole gap between plan and meter: blue is the part NESO instructed, grey the part it did not.\", \"The figure at the end is the instructed share.\"])))))"
+    },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Instructions are most of the gap for gas,\", \"hydro and pumped storage, under half for wind\"] : [\"Instructions are most of the gap for gas, hydro and pumped storage, under half for wind\"]"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Instructions are most of the gap for gas, hydro\", \"and pumped storage, under half for wind\"] : (containerSize()[0] + 0 * width < 480 ? [\"Instructions are most of the gap for gas, hydro and\", \"pumped storage, under half for wind\"] : (containerSize()[0] + 0 * width < 560 ? [\"Instructions are most of the gap for gas, hydro and pumped storage,\", \"under half for wind\"] : (containerSize()[0] + 0 * width < 640 ? [\"Instructions are most of the gap for gas, hydro and pumped storage, under half\", \"for wind\"] : (containerSize()[0] + 0 * width < 720 ? [\"Instructions are most of the gap for gas, hydro and pumped storage, under half for wind\"] : ([\"Instructions are most of the gap for gas, hydro and pumped storage, under half for wind\"])))))"
     }
   },
   "transform": [

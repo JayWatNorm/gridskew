@@ -1,9 +1,0 @@
-# Contains BMRS data © Elexon Limited copyright and database right 2026.
-fuel_group,fewest_units,lowest_month_pct,middle_month_pct,highest_month_pct,middle_month_p90_pct,provisional_month_pct
-wind,212,6.309,7.4860,7.952,10.4760,8.722
-other,58,1.766,2.6005,3.343,6.3010,1.993
-bioenergy,11,1.090,2.1430,2.487,,3.587
-nuclear,10,0.325,1.1525,3.239,,2.300
-hydro,22,0.475,0.8955,1.745,2.4845,0.962
-gas_turbine,75,0.286,0.4375,0.598,1.6050,0.395
-pumped_storage,16,0.000,0.3520,0.664,,0.558

@@ -169,6 +169,7 @@
     background: var(--surface);
   }
   figcaption { margin-top: 0.5rem; }
+  .lead-in { margin: 1.75rem 0 0.25rem; font-weight: 600; }
 
   .tiles {
     display: grid;
@@ -340,8 +341,13 @@
     <h3>When NESO has not asked a unit to change its output, how closely does it follow its own plan? <span class="tag">Q23</span></h3>
     <p class="answer">Wind strays most. From September 2025 to August 2026, the typical wind farm missed its plan by <strong>6.3 to 8.0%</strong> of its capacity in every whole month, and the typical unit of every other type by under 3.5%. In September 2026, on early meter data, wind and bioenergy rose above their whole-month range; this is provisional and not explained.</p>
     <figure>
-      <div class="chart" id="q23-chart"></div>
-      <figcaption>Half-hours with no instruction in force: whole months September 2025 to August 2026, and September 2026 on early meter data. The tick shows only for groups of 20 units or more; coal (closed units) is left out. Source: Elexon BMRS.</figcaption>
+      <div class="chart" id="q23-typical-chart"></div>
+      <figcaption>Half-hours with no instruction in force, whole months September 2025 to August 2026. The pale line shows only for groups of 20 units or more; coal (closed units) is left out. Source: Elexon BMRS.</figcaption>
+    </figure>
+    <p class="lead-in">Month by month:</p>
+    <figure>
+      <div class="chart" id="q23-monthly-chart"></div>
+      <figcaption>Half-hours with no instruction in force: whole months September 2025 to August 2026, and September 2026 on early meter data. Coal (closed units) is left out. Source: Elexon BMRS.</figcaption>
     </figure>
     <details class="method">
       <summary>How we measured it</summary>
@@ -357,13 +363,13 @@
         <dt>Wind cut back to relieve the network</dt>
         <dd>Over the whole window, the typical wind farm missed by 7.8% of capacity on days when NESO asked at least one wind farm to cut output and flagged it as managing the network, and by 4.5% on days without (363 and 42 days): an association, not a cause.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 12 October 2026; interconnectors were left out the same day, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q23-how-close-to-their-pns-do-units-run-when-not-instructed">Full rule</a> · query <code>q23_pn_accuracy_proxy.sql</code> · <a href="results/q23_pn_accuracy_proxy.csv">saved output</a> · <a href="results/q23_uninstructed_gap_by_fuel_group.csv">chart data</a></dd>
+        <dd>Recorded 12 October 2026; interconnectors were left out the same day, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q23-how-close-to-their-pns-do-units-run-when-not-instructed">Full rule</a> · query <code>q23_pn_accuracy_proxy.sql</code> · <a href="results/q23_pn_accuracy_proxy.csv">saved output</a> · chart data: <a href="results/q23_typical_gap_by_fuel_group.csv">typical</a>, <a href="results/q23_monthly_gap_by_fuel_group.csv">month by month</a></dd>
       </dl>
     </details>
   </article>
 
   <article id="q3">
-    <h3>Does each type of power station usually produce more or less than it planned? <span class="tag">Q3</span></h3>
+    <h3>Does each fuel group usually produce more or less than it planned? <span class="tag">Q3</span></h3>
     <p class="answer">Slightly less, with wide spreads. Wind, gas, nuclear and bioenergy usually produced a little less than planned: wind's middle value is <strong>0.3 MWh</strong> short per half-hour (about 0.6 MW). But a quarter of wind's half-hours fell over 2.9 MWh short and a quarter ran over 1 MWh above. Hydro, pumped storage and interconnectors have a typical gap of zero: many of their half-hours show almost no gap, as when a unit planned to stay idle and did.</p>
     <figure>
       <div class="chart" id="q3-chart"></div>
@@ -796,6 +802,29 @@
 
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
+  // One colour per fuel group on the Q23 charts, light and dark, in the
+  // specs' fuel-group order: wind, other, bioenergy, nuclear, hydro, gas,
+  // pumped storage. The specs name the scheme; the page picks the steps.
+  const fuelGroupColours = [
+    ["#eb6834", "#d95926"],
+    ["#1baf7a", "#199e70"],
+    ["#6250d6", "#9085e9"],
+    ["#eda100", "#c98500"],
+    ["#2a78d6", "#3987e5"],
+    ["#e87ba4", "#d55181"],
+    ["#008300", "#008300"],
+  ];
+
+  function fuelGroupScheme() {
+    const scheme = [];
+    for (const [light, dark] of fuelGroupColours) {
+      scheme.push(prefersDark ? dark : light);
+    }
+    return scheme;
+  }
+
+  vega.scheme("gridskew-fuel-groups", fuelGroupScheme());
+
   const chartOptions = {
     actions: false,
     renderer: "svg",
@@ -804,7 +833,8 @@
     tooltip: { theme: prefersDark ? "dark" : "light" },
   };
 
-  vegaEmbed("#q23-chart", "results/q23_uninstructed_gap_by_fuel_group.vl.json", chartOptions);
+  vegaEmbed("#q23-typical-chart", "results/q23_typical_gap_by_fuel_group.vl.json", chartOptions);
+  vegaEmbed("#q23-monthly-chart", "results/q23_monthly_gap_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q3-chart", "results/q3_gap_from_plan_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q12-chart", "results/q12_instructed_share_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q5-chart", "results/q5_under_delivery_by_outage_notice.vl.json", chartOptions);

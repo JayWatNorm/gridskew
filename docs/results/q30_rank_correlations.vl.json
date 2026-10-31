@@ -383,16 +383,11 @@
   ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Each row is one way of comparing the two",
-      "misses. The dot is the rank correlation, from",
-      "\u22121 to 1, where 0 means no link; the line is",
-      "its 90% range. In the size rows, a dot in the",
-      "shaded band is as small as expected; the",
-      "direction rows were expected to be negative."
-    ],
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is one way of comparing the two misses. The\", \"dot is the rank correlation, from \u22121 to 1, where 0\", \"means no link; the line is its 90% range. In the size\", \"rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be\", \"negative.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is one way of comparing the two misses. The dot is the\", \"rank correlation, from \u22121 to 1, where 0 means no link; the line\", \"is its 90% range. In the size rows, a dot in the shaded band is\", \"as small as expected; the direction rows were expected to be\", \"negative.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is one way of comparing the two misses. The dot is the rank\", \"correlation, from \u22121 to 1, where 0 means no link; the line is its 90% range. In\", \"the size rows, a dot in the shaded band is as small as expected; the direction\", \"rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is one way of comparing the two misses. The dot is the rank correlation, from \u22121 to\", \"1, where 0 means no link; the line is its 90% range. In the size rows, a dot in the shaded\", \"band is as small as expected; the direction rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is one way of comparing the two misses. The dot is the rank correlation, from \u22121 to 1, where 0\", \"means no link; the line is its 90% range. In the size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be negative.\"] : ([\"Each row is one way of comparing the two misses. The dot is the rank correlation, from \u22121 to 1, where 0 means no link;\", \"the line is its 90% range. In the size rows, a dot in the shaded band is as small as expected; the direction rows were\", \"expected to be negative.\"])))))"
+    },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Wind and carbon forecast\", \"misses barely move together\"] : [\"Wind and carbon forecast misses barely move together\"]"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Wind and carbon forecast misses barely move\", \"together\"] : (containerSize()[0] + 0 * width < 480 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 560 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 640 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 720 ? [\"Wind and carbon forecast misses barely move together\"] : ([\"Wind and carbon forecast misses barely move together\"])))))"
     }
   },
   "transform": [

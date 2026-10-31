@@ -360,15 +360,11 @@
   ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Each row is a fuel group. The dot is the share",
-      "of its instructions under 10 minutes once",
-      "follow-on instructions are joined, Elexon's",
-      "test; the ring counts each on its own. Each",
-      "step on the scale is ten times the last."
-    ],
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fuel group. The dot is the share of its\", \"instructions under 10 minutes once follow-on\", \"instructions are joined, Elexon's test; the ring\", \"counts each on its own. Each step on the scale is ten\", \"times the last.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fuel group. The dot is the share of its\", \"instructions under 10 minutes once follow-on instructions are\", \"joined, Elexon's test; the ring counts each on its own. Each step\", \"on the scale is ten times the last.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fuel group. The dot is the share of its instructions under 10\", \"minutes once follow-on instructions are joined, Elexon's test; the ring counts\", \"each on its own. Each step on the scale is ten times the last.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fuel group. The dot is the share of its instructions under 10 minutes once\", \"follow-on instructions are joined, Elexon's test; the ring counts each on its own. Each step\", \"on the scale is ten times the last.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fuel group. The dot is the share of its instructions under 10 minutes once follow-on\", \"instructions are joined, Elexon's test; the ring counts each on its own. Each step on the scale is ten\", \"times the last.\"] : ([\"Each row is a fuel group. The dot is the share of its instructions under 10 minutes once follow-on instructions are\", \"joined, Elexon's test; the ring counts each on its own. Each step on the scale is ten times the last.\"])))))"
+    },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Batteries (the other group) and\", \"pumped storage get far more short\", \"instructions than power stations\"] : [\"Batteries (the other group) and pumped storage get far more short instructions than power stations\"]"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Batteries (the other group) and pumped storage\", \"get far more short instructions than power\", \"stations\"] : (containerSize()[0] + 0 * width < 480 ? [\"Batteries (the other group) and pumped storage get far\", \"more short instructions than power stations\"] : (containerSize()[0] + 0 * width < 560 ? [\"Batteries (the other group) and pumped storage get far more short\", \"instructions than power stations\"] : (containerSize()[0] + 0 * width < 640 ? [\"Batteries (the other group) and pumped storage get far more short instructions\", \"than power stations\"] : (containerSize()[0] + 0 * width < 720 ? [\"Batteries (the other group) and pumped storage get far more short instructions than power\", \"stations\"] : ([\"Batteries (the other group) and pumped storage get far more short instructions than power stations\"])))))"
     }
   },
   "transform": [

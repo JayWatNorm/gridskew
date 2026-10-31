@@ -17,7 +17,8 @@ keep the saved codes. A rerun on the same input writes identical files.
 
 The page that shows the specs sets their font and the colours of text,
 axes and gridlines. Each spec sets its data colours, and each colour has
-one meaning on every chart.
+one meaning on every chart, but for the Q23 charts' fuel-group colours: the
+page registers them for its colour mode as a scheme the specs name.
 
     python scripts/readme_charts.py <folder of saved outputs> <output folder>
 """
@@ -25,7 +26,6 @@ one meaning on every chart.
 import csv
 import io
 import json
-import math
 import statistics
 import sys
 import textwrap
@@ -130,8 +130,61 @@ Q23_WHOLE_MONTHS = [
     "2026-08-01",
 ]
 Q23_PROVISIONAL_MONTH = "2026-09-01"
+Q23_CHART_MONTHS = [*Q23_WHOLE_MONTHS, Q23_PROVISIONAL_MONTH]
+# The month-by-month line runs dashed from the last whole month into the
+# provisional one.
+Q23_DASHED_FROM_MONTH = Q23_WHOLE_MONTHS[-1]
 # A 90th percentile across fewer units than this is too thin to draw.
 Q23_UNITS_FOR_A_PERCENTILE = 20
+# The titles' claims about the other groups, checked against the data: their
+# typical gap stays under the first, every whole month under the second.
+Q23_OTHERS_TYPICAL_UNDER = Decimal("3")
+Q23_OTHERS_MONTHLY_UNDER = Decimal("3.5")
+Q23_EMPHASISED_GROUP = "wind"
+# Fixed scales, % of capacity; a value past one is refused, not clipped.
+Q23_TYPICAL_AXIS_TOP = 12
+Q23_MONTHLY_AXIS_TOP = 10
+Q23_MONTHLY_HEIGHT_PIXELS = 300
+# Line-end names keep this far apart, in % of capacity (15 px on the 300 px
+# plot), and this far above zero.
+Q23_END_NAME_GAP = Decimal("0.5")
+Q23_END_NAME_FLOOR = Decimal("0.2")
+Q23_KEY_TYPICAL = "Typical gap, 12 whole months"
+Q23_KEY_ONE_IN_TEN = "1 unit in 10 misses by more"
+# The band marks the provisional month on the month-by-month chart, and
+# ends the time axis just past its last month; the axis starts at the first
+# month, padded in pixels.
+Q23_BAND_FROM = "2026-08-17"
+Q23_BAND_TO = "2026-09-12"
+Q23_TIME_PADDING_PIXELS = 14
+MONTH_NAMES = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+]
+
+# One colour per fuel group, the same on both Q23 charts, as light and dark
+# steps of the validated categorical palette. The page registers the steps
+# for its colour mode as this scheme; the PNGs use the light ones.
+FUEL_GROUP_SCHEME = "gridskew-fuel-groups"
+FUEL_GROUP_COLOURS = {
+    "wind": ("#eb6834", "#d95926"),
+    "other": ("#1baf7a", "#199e70"),
+    "bioenergy": ("#6250d6", "#9085e9"),
+    "nuclear": ("#eda100", "#c98500"),
+    "hydro": ("#2a78d6", "#3987e5"),
+    "gas_turbine": ("#e87ba4", "#d55181"),
+    "pumped_storage": ("#008300", "#008300"),
+}
 
 # Q3: the one week read on two settlement runs.
 Q3_ONE_WEEK_DATA = "10–16 Aug 2026, one-week data"
@@ -220,9 +273,13 @@ Q12_TITLE = (
     "under half for wind"
 )
 Q5_TITLE = "All units: {share}% of under-delivery came with a published outage"
-Q23_TITLE = (
-    "Wind farms stray furthest from their own plans when NESO has not asked "
-    "them to change output"
+Q23_TYPICAL_TITLE = (
+    "With no NESO instruction, the typical wind farm missed its plan by "
+    "{typical}% of its capacity; no other type reached {others_under}%"
+)
+Q23_MONTHLY_TITLE = (
+    "The typical wind farm missed its plan by {lowest} to {highest}% of its "
+    "capacity in every whole month; every other type, by under {others_under}%"
 )
 Q24_TITLE = (
     "NESO flags almost all the energy its instructions move at wind farms as "
@@ -259,10 +316,15 @@ Q5_READING = (
     "notice for the unit was live when the half-hour began. The figure at "
     "the end is the share with a notice."
 )
-Q23_READING = (
-    "Each row is a fuel group, in half-hours with no instruction. The dot is "
-    "its typical unit's gap from plan in a typical month; the bar spans its "
-    "best and worst whole months. Further right is further from plan."
+Q23_TYPICAL_READING = (
+    "Each bar is a fuel group's typical gap between plan and meter in a "
+    "typical whole month, in half-hours with no instruction; the pale line "
+    "runs on to where 1 unit in 10 misses by more."
+)
+Q23_MONTHLY_READING = (
+    "Each line is a fuel group's typical gap between plan and meter, month by "
+    "month, in half-hours with no instruction. Higher is further from plan; "
+    "the dashed end is September 2026, on early meter data."
 )
 Q24_READING = (
     "Each bar is one fuel group's instructed energy as 100%: blue is the "
@@ -297,14 +359,18 @@ Q30_READING = (
 
 # Each chart's key: every mark it draws, as the key draws it.
 KEY_FIELD = "key"
-# Layers drawn without a key entry: the axes' titles explain them.
-UNKEYED_LAYERS = {"zero line", "connector"}
+# Layers drawn without a key entry: the axes' titles, or a word drawn on
+# the band, explain them.
+UNKEYED_LAYERS = {"zero line", "connector", "provisional band"}
 BAR_SYMBOL = "M-1,-0.45H1V0.45H-1Z"
 TICK_SYMBOL = "M-0.18,-1H0.18V1H-0.18Z"
 LINE_SYMBOL = "M-1,0H1"
 DASH_SYMBOL = "M-1,0H-0.55M-0.2,0H0.2M0.55,0H1"
 BAND_FILL = "rgba(140, 149, 159, 0.2)"
 NO_FILL = "transparent"
+# A pale line's entry in a key: thinner and lighter than a bar's.
+THIN_BAR_SYMBOL = "M-1,-0.2H1V0.2H-1Z"
+PALE_KEY_COLOUR = "#c9ced4"
 FIGURE_WIDTH_INCHES = 8
 INCHES_PER_ROW = 0.5
 FIGURE_MARGIN_INCHES = 1.6
@@ -314,13 +380,17 @@ TITLE_LINE_CHARACTERS = 70
 MINIMUM_FIGURE_HEIGHT_INCHES = 3.2
 LEGEND_ROW_INCHES = 0.22
 
-# The page wraps each chart's title for a phone, and more widely in a chart
-# box at least this wide; the wide lines fit the narrowest such box.
-NARROW_CAPTION_CHARACTERS = 46
-WIDE_CAPTION_CHARACTERS = 100
-WIDE_BOX_PIXELS = 700
-# "How to read this" is wrapped once, to fit a phone.
-READING_CHARACTERS = 54
+# The page wraps each chart's title, and how to read it, to fill the chart
+# box at its width: each line as full as it goes at the widest of these box
+# widths the box reaches. A box is 341 px inside its border on a 375 px
+# phone and at most 734 px; its text runs inside 28 px of padding. Average
+# character widths, measured 5.9 px for a 13.5 px semibold title and 5.5 px
+# for a 12.5 px reading line, with a margin.
+BOX_WIDTHS_PIXELS = [340, 400, 480, 560, 640, 720]
+BOX_PADDING_PIXELS = 28
+TITLE_CHARACTER_PIXELS = 6.5
+READING_CHARACTER_PIXELS = 5.7
+BOX_WIDTH = "containerSize()[0] + 0 * width"
 ROW_STEP_PIXELS = 34
 TWO_LINE_ROW_STEP_PIXELS = 44
 LINE_CHART_HEIGHT_PIXELS = 220
@@ -534,36 +604,45 @@ def csv_data(csv_name, number_fields):
     )
 
 
-def evenly_wrapped(line, width):
-    """The line in as few lines of at most width characters as it needs,
-    of about equal length, so no line is left with a word or two."""
-    fewest = textwrap.wrap(line, width, break_on_hyphens=False)
-    for even_width in range(math.ceil(len(line) / len(fewest)), width):
-        lines = textwrap.wrap(line, even_width, break_on_hyphens=False)
-        if len(lines) == len(fewest):
-            return lines
-    return fewest
+def lines_for_box(text, character_pixels, box_pixels):
+    """The text in lines as full as a chart box this wide holds."""
+    characters = int((box_pixels - BOX_PADDING_PIXELS) / character_pixels)
+    return textwrap.wrap(text, characters, break_on_hyphens=False)
+
+
+def wrapped_to_box(text, character_pixels):
+    """A Vega expression: the text wrapped to fill the chart box at its
+    width. The box is measured again whenever the plot width changes, that
+    is whenever the page is resized."""
+    choices = []
+    for box_pixels in BOX_WIDTHS_PIXELS:
+        lines = lines_for_box(text, character_pixels, box_pixels)
+        choices.append(json.dumps(lines, ensure_ascii=False))
+    expression = choices[-1]
+    narrower = list(zip(BOX_WIDTHS_PIXELS[1:], choices[:-1], strict=True))
+    for box_pixels, lines in reversed(narrower):
+        expression = f"{BOX_WIDTH} < {box_pixels} ? {lines} : ({expression})"
+    return expression
 
 
 def caption(title, reading):
-    """The chart's title above the plot, wrapped for a phone and, in a wider
-    chart box, for a wider screen, with how to read the chart under it. The
-    box is measured again whenever the plot width changes, that is whenever
-    the page is resized."""
-    narrow = json.dumps(
-        evenly_wrapped(title, NARROW_CAPTION_CHARACTERS), ensure_ascii=False
-    )
-    wide = json.dumps(
-        evenly_wrapped(title, WIDE_CAPTION_CHARACTERS), ensure_ascii=False
-    )
-    box_width = "containerSize()[0] + 0 * width"
+    """The chart's title above the plot, with how to read the chart under
+    it, as one line that write_spec wraps to the box."""
     return altair.TitleParams(
-        text=altair.ExprRef(
-            expr=f"{box_width} < {WIDE_BOX_PIXELS} ? {narrow} : {wide}"
-        ),
-        subtitle=evenly_wrapped(reading, READING_CHARACTERS),
+        text=altair.ExprRef(expr=wrapped_to_box(title, TITLE_CHARACTER_PIXELS)),
+        subtitle=[reading],
         anchor="start",
     )
+
+
+def reading_wrapped_to_box(spec):
+    """The spec with how to read the chart wrapped to the box like the
+    title. Vega-Lite's schema takes only fixed text for a subtitle, so
+    Altair cannot write this; Vega-Lite passes the signal through to Vega."""
+    title = spec["title"]
+    reading = " ".join(title["subtitle"])
+    title["subtitle"] = {"signal": wrapped_to_box(reading, READING_CHARACTER_PIXELS)}
+    return spec
 
 
 def page_layout(title, reading, height):
@@ -742,7 +821,8 @@ def stacked_parts(row_field, parts, colours, x_title, tooltip, scale):
 
 
 def write_spec(chart, path):
-    text = json.dumps(chart.to_dict(), sort_keys=True, indent=2) + "\n"
+    spec = reading_wrapped_to_box(chart.to_dict())
+    text = json.dumps(spec, sort_keys=True, indent=2) + "\n"
     path.write_bytes(text.encode("utf-8"))
 
 
@@ -1267,25 +1347,29 @@ def write_q5_chart(rows, output):
 
 
 def monthly_gaps(rows):
-    """Per fuel group, its rows by month; closed units are left out."""
+    """Per fuel group, its rows by month; closed units are left out, and a
+    group without a colour is refused."""
     by_group = {}
     for row in matching_rows(rows, "section", "1"):
         fuel_group = row["fuel_group"]
         if fuel_group in CLOSED_UNITS:
             continue
+        if fuel_group not in FUEL_GROUP_COLOURS:
+            raise ValueError(f"Fuel group {fuel_group!r} has no colour")
         if fuel_group not in by_group:
             by_group[fuel_group] = {}
         by_group[fuel_group][row["settlement_month"]] = row
     return by_group
 
 
-def whole_month_rows(by_month):
+def chart_month_rows(by_month, months):
+    """The group's rows for the months, in order; a missing month is refused,
+    so no line is drawn across a gap."""
     rows = []
-    for month in Q23_WHOLE_MONTHS:
-        if month in by_month:
-            rows.append(by_month[month])
-    if not rows:
-        raise ValueError("The saved output has no whole month for a fuel group")
+    for month in months:
+        if month not in by_month:
+            raise ValueError(f"The saved output has no row for month {month}")
+        rows.append(by_month[month])
     return rows
 
 
@@ -1308,186 +1392,557 @@ def typical_percentile(rows):
     return fixed(statistics.median(column_values(rows, "p90_absolute_pct")), 4)
 
 
-def provisional_month(by_month):
-    row = by_month.get(Q23_PROVISIONAL_MONTH)
-    if row is None:
+def one_decimal_label(value, suffix=""):
+    if value == "":
         return ""
-    return row["median_absolute_pct"]
+    return fixed(Decimal(value), 1) + suffix
 
 
-def uninstructed_gap_rows(rows):
-    """Per fuel group, largest middle month first: the range and middle of
-    the whole months' medians, the middle 90th percentile and the
-    provisional month."""
+def groups_in_colour_order(by_group):
+    groups = []
+    for fuel_group in FUEL_GROUP_COLOURS:
+        if fuel_group in by_group:
+            groups.append(fuel_group)
+    return groups
+
+
+def refused_past(value, top):
+    if Decimal(value) > top:
+        raise ValueError(f"{value} lies past the chart's scale, which ends at {top}")
+
+
+def typical_gap_rows(rows):
+    """Per fuel group, largest typical gap first: the middle of its 12 whole
+    months' typical gaps and of their 90th percentiles, with their labels."""
     chart_rows = []
     for fuel_group, by_month in monthly_gaps(rows).items():
-        whole = whole_month_rows(by_month)
-        medians = column_values(whole, "median_absolute_pct")
+        whole = chart_month_rows(by_month, Q23_WHOLE_MONTHS)
+        typical = fixed(
+            statistics.median(column_values(whole, "median_absolute_pct")), 4
+        )
+        one_in_ten = typical_percentile(whole)
+        for value in (typical, one_in_ten):
+            if value:
+                refused_past(value, Q23_TYPICAL_AXIS_TOP)
         chart_rows.append(
             {
                 "fuel_group": fuel_group,
                 "fewest_units": str(fewest_units(whole)),
-                "lowest_month_pct": str(min(medians)),
-                "middle_month_pct": fixed(statistics.median(medians), 4),
-                "highest_month_pct": str(max(medians)),
-                "middle_month_p90_pct": typical_percentile(whole),
-                "provisional_month_pct": provisional_month(by_month),
+                "typical_pct": typical,
+                "typical_label": one_decimal_label(typical, "%"),
+                "one_in_ten_pct": one_in_ten,
+                "one_in_ten_label": one_decimal_label(one_in_ten, "%"),
             }
         )
-    return sorted(chart_rows, key=largest_middle_month_first)
+    return sorted(chart_rows, key=largest_typical_gap_first)
 
 
-def largest_middle_month_first(row):
-    return (-Decimal(row["middle_month_pct"]), row["fuel_group"])
+def largest_typical_gap_first(row):
+    return (-Decimal(row["typical_pct"]), row["fuel_group"])
 
 
-def draw_uninstructed_gaps(rows, path):
+def end_name_heights(end_values):
+    """Where each line's name sits at its end, top first: at the line's end,
+    moved only as far as keeps END_NAME_GAP between names and every name
+    above the floor."""
+    ordered = sorted(end_values.items(), key=largest_end_first)
+    heights = []
+    for position, (_fuel_group, value) in enumerate(ordered):
+        height = value
+        if position > 0:
+            height = min(value, heights[-1] - Q23_END_NAME_GAP)
+        heights.append(height)
+    for position in range(len(heights) - 1, -1, -1):
+        lowest = Q23_END_NAME_FLOOR
+        if position < len(heights) - 1:
+            lowest = heights[position + 1] + Q23_END_NAME_GAP
+        heights[position] = max(heights[position], lowest)
+    placed = {}
+    for (fuel_group, _value), height in zip(ordered, heights, strict=True):
+        placed[fuel_group] = fixed(height, 3)
+    return placed
+
+
+def largest_end_first(item):
+    fuel_group, value = item
+    return (-value, fuel_group)
+
+
+def month_name(month):
+    year, number, _day = month.split("-")
+    return f"{MONTH_NAMES[int(number) - 1]} {year}"
+
+
+def monthly_gap_rows(rows):
+    """Per fuel group, in colour order, its typical gap in each chart month,
+    the provisional month marked, and where its line's name sits."""
+    by_group = monthly_gaps(rows)
+    groups = groups_in_colour_order(by_group)
+    end_values = {}
+    for fuel_group in groups:
+        end_row = chart_month_rows(by_group[fuel_group], [Q23_PROVISIONAL_MONTH])[0]
+        end_values[fuel_group] = Decimal(end_row["median_absolute_pct"])
+    end_heights = end_name_heights(end_values)
+    chart_rows = []
+    for fuel_group in groups:
+        month_rows = chart_month_rows(by_group[fuel_group], Q23_CHART_MONTHS)
+        for month, row in zip(Q23_CHART_MONTHS, month_rows, strict=True):
+            refused_past(row["median_absolute_pct"], Q23_MONTHLY_AXIS_TOP)
+            provisional = month == Q23_PROVISIONAL_MONTH
+            end_name = ""
+            if provisional:
+                end_name = end_heights[fuel_group]
+            chart_rows.append(
+                {
+                    "fuel_group": fuel_group,
+                    "month": month,
+                    "month_name": month_name(month),
+                    "gap_pct": row["median_absolute_pct"],
+                    "gap_label": one_decimal_label(row["median_absolute_pct"]),
+                    "units": row["units"],
+                    "provisional": yes_or_no(provisional),
+                    "dashed": yes_or_no(month >= Q23_DASHED_FROM_MONTH),
+                    "end_name_pct": end_name,
+                }
+            )
+    return chart_rows
+
+
+def yes_or_no(flag):
+    if flag:
+        return "yes"
+    return "no"
+
+
+def wind_and_the_rest(rows, value_field):
+    """The emphasised group's values and every other group's, checked to stay
+    under the title's figure for them."""
+    emphasised = []
+    others = []
+    for row in rows:
+        if row["fuel_group"] == Q23_EMPHASISED_GROUP:
+            emphasised.append(Decimal(row[value_field]))
+        else:
+            others.append(Decimal(row[value_field]))
+    if not emphasised:
+        raise ValueError(f"The saved output has no {Q23_EMPHASISED_GROUP} rows")
+    return emphasised, others
+
+
+def typical_title(chart_rows):
+    wind, others = wind_and_the_rest(chart_rows, "typical_pct")
+    for value in others:
+        if value >= Q23_OTHERS_TYPICAL_UNDER:
+            raise ValueError(f"A typical gap of {value} breaks the title's claim")
+    return Q23_TYPICAL_TITLE.format(
+        typical=fixed(wind[0], 1), others_under=Q23_OTHERS_TYPICAL_UNDER
+    )
+
+
+def monthly_title(chart_rows):
+    whole_months = []
+    for row in chart_rows:
+        if row["provisional"] == "no":
+            whole_months.append(row)
+    wind, others = wind_and_the_rest(whole_months, "gap_pct")
+    for value in others:
+        if value >= Q23_OTHERS_MONTHLY_UNDER:
+            raise ValueError(f"A monthly gap of {value} breaks the title's claim")
+    return Q23_MONTHLY_TITLE.format(
+        lowest=fixed(min(wind), 1),
+        highest=fixed(max(wind), 1),
+        others_under=Q23_OTHERS_MONTHLY_UNDER,
+    )
+
+
+def light_colour(fuel_group):
+    light, _dark = FUEL_GROUP_COLOURS[fuel_group]
+    return light
+
+
+def fuel_group_colour(channel):
+    """A mark's colour by fuel group, from the scheme the page registers for
+    its colour mode; no legend, as the chart names each group beside it."""
+    names = []
+    for fuel_group in FUEL_GROUP_COLOURS:
+        names.append(fuel_group_name(fuel_group))
+    # Altair knows only Vega's own scheme names, so the name goes to Vega as
+    # an expression.
+    scheme = altair.ExprRef(expr=json.dumps(FUEL_GROUP_SCHEME))
+    return channel(
+        "fuel_group_name:N",
+        scale=altair.Scale(domain=names, scheme=scheme),
+        legend=None,
+    )
+
+
+def draw_typical_gaps(rows, title, path):
     figure, axes = new_figure(len(rows))
     for position, row in enumerate(rows):
-        lowest = float(row["lowest_month_pct"])
-        highest = float(row["highest_month_pct"])
-        axes.plot(
-            [lowest, highest], [position, position], color=SPREAD_COLOUR, linewidth=6
+        colour = light_colour(row["fuel_group"])
+        typical = float(row["typical_pct"])
+        if row["one_in_ten_pct"]:
+            one_in_ten = float(row["one_in_ten_pct"])
+            axes.barh(
+                position,
+                one_in_ten - typical,
+                left=typical,
+                height=0.15,
+                color=colour,
+                alpha=0.4,
+            )
+            bar_label(axes, position, one_in_ten, row["one_in_ten_label"])
+        axes.barh(position, typical, height=0.5, color=colour)
+        axes.annotate(
+            row["typical_label"],
+            (typical, position - 0.3),
+            xytext=(LABEL_GAP_PIXELS, 0),
+            textcoords="offset points",
+            va="bottom",
+            fontsize=8,
+            color="#3d444d",
         )
-        if row["middle_month_p90_pct"]:
-            axes.plot(
-                float(row["middle_month_p90_pct"]),
-                position,
-                "|",
-                color=COMPARISON_COLOUR,
-                markersize=12,
-                markeredgewidth=2,
-            )
-        axes.plot(float(row["middle_month_pct"]), position, "o", color=RESULT_COLOUR)
-        if row["provisional_month_pct"]:
-            axes.plot(
-                float(row["provisional_month_pct"]),
-                position,
-                "o",
-                markerfacecolor="none",
-                markeredgecolor=COMPARISON_COLOUR,
-            )
     labels = []
     for row in rows:
         labels.append(fuel_group_name(row["fuel_group"]))
     row_labels(axes, labels)
-    axes.set_xlim(left=0)
+    axes.set_xlim(0, Q23_TYPICAL_AXIS_TOP)
     axes.set_xlabel("Gap between plan and meter, % of capacity")
-    png_title(
-        axes,
-        Q23_TITLE,
-        [
-            "Bar: range over the 12 whole months, September 2025 to August 2026; "
-            "dot: the middle of those months; ring: September 2026, early meter "
-            "data; tick: the middle of the 12 monthly 90th percentiles, groups "
-            "of 20 units or more"
-        ],
-    )
-    save_figure(figure, path)
+    png_title(axes, title, [Q23_TYPICAL_READING])
+    handles = [
+        Line2D([], [], color=COMPARISON_COLOUR, linewidth=8, label=Q23_KEY_TYPICAL),
+        Line2D(
+            [],
+            [],
+            color=COMPARISON_COLOUR,
+            alpha=0.4,
+            linewidth=3,
+            label=Q23_KEY_ONE_IN_TEN,
+        ),
+    ]
+    save_figure(figure, path, handles)
 
 
-def write_q23_chart(rows, output):
-    name = "q23_uninstructed_gap_by_fuel_group"
-    chart_rows = uninstructed_gap_rows(rows)
+def write_q23_typical_chart(rows, output):
+    name = "q23_typical_gap_by_fuel_group"
+    chart_rows = typical_gap_rows(rows)
+    title = typical_title(chart_rows)
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
-    draw_uninstructed_gaps(chart_rows, output / f"{name}.png")
+    draw_typical_gaps(chart_rows, title, output / f"{name}.png")
 
-    measures = [
-        "lowest_month_pct",
-        "middle_month_pct",
-        "highest_month_pct",
-        "middle_month_p90_pct",
-        "provisional_month_pct",
-    ]
-    data = csv_data(csv_name, measures)
-    fuel_group = row_axis("fuel_group_name")
+    data = csv_data(csv_name, ["typical_pct", "one_in_ten_pct"])
+    # Largest gap first, as the CSV; the first layer holds only the groups
+    # with a pale line, so the order is given.
+    names_in_order = []
+    for row in chart_rows:
+        names_in_order.append(fuel_group_name(row["fuel_group"]))
+    fuel_group = row_axis("fuel_group_name", names_in_order)
+    gap_axis = altair.X(
+        "typical_pct:Q",
+        scale=altair.Scale(domain=[0, Q23_TYPICAL_AXIS_TOP], nice=False),
+        axis=axis_title(
+            [
+                "Gap between plan and meter, % of capacity",
+                "further right: further from plan",
+            ]
+        ),
+    )
     tooltip = [
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
-        altair.Tooltip(
-            "lowest_month_pct:Q", title="Lowest whole month, %", format=".1f"
-        ),
-        altair.Tooltip(
-            "middle_month_pct:Q", title="Middle of the 12 months, %", format=".1f"
-        ),
-        altair.Tooltip(
-            "highest_month_pct:Q", title="Highest whole month, %", format=".1f"
-        ),
-        altair.Tooltip(
-            "provisional_month_pct:Q", title="September 2026, %", format=".1f"
-        ),
-        altair.Tooltip(
-            "middle_month_p90_pct:Q",
-            title="Middle of the 12 monthly 90th percentiles, %",
-            format=".1f",
-        ),
+        altair.Tooltip("typical_label:N", title="Typical gap"),
+        altair.Tooltip("one_in_ten_label:N", title="1 unit in 10 misses by more than"),
+        altair.Tooltip("fewest_units:N", title="Units, fewest in a month"),
     ]
     keys = {
-        "Range over the 12 whole months": key_mark(
-            SPREAD_COLOUR, SPREAD_COLOUR, BAR_SYMBOL
-        ),
-        "Middle of the 12 months": key_mark(RESULT_COLOUR, RESULT_COLOUR, "circle"),
-        "September 2026, early meter data": key_mark(
-            COMPARISON_COLOUR, NO_FILL, "circle"
-        ),
-        "1 unit in 10 misses by more": key_mark(
-            COMPARISON_COLOUR, COMPARISON_COLOUR, TICK_SYMBOL
-        ),
+        Q23_KEY_TYPICAL: key_mark(COMPARISON_COLOUR, COMPARISON_COLOUR, BAR_SYMBOL),
+        Q23_KEY_ONE_IN_TEN: key_mark(PALE_KEY_COLOUR, PALE_KEY_COLOUR, THIN_BAR_SYMBOL),
     }
-    month_range = keyed(
-        altair.Chart().mark_rule(strokeWidth=8, strokeCap="round"),
-        "Range over the 12 whole months",
+    has_pale_line = "isValid(datum.one_in_ten_pct)"
+    pale_line = keyed(
+        altair.Chart()
+        .transform_filter(has_pale_line)
+        .mark_bar(height=6, opacity=0.4, cornerRadiusEnd=3),
+        Q23_KEY_ONE_IN_TEN,
     ).encode(
-        x=altair.X(
-            "lowest_month_pct:Q",
-            scale=altair.Scale(zero=True),
-            axis=axis_title(
-                [
-                    "Gap between plan and meter, % of capacity",
-                    "further right: further from plan",
-                ]
-            ),
+        x=gap_axis,
+        x2="one_in_ten_pct:Q",
+        y=fuel_group,
+        fill=fuel_group_colour(altair.Fill),
+        tooltip=tooltip,
+    )
+    bars = keyed(
+        altair.Chart().mark_bar(height=16, cornerRadiusEnd=4), Q23_KEY_TYPICAL
+    ).encode(
+        x=gap_axis,
+        y=fuel_group,
+        fill=fuel_group_colour(altair.Fill),
+        tooltip=tooltip,
+    )
+    # The bar's value sits above a pale line that runs on from its end.
+    typical_labels = (
+        altair.Chart()
+        .mark_text(
+            align="left",
+            dx=LABEL_GAP_PIXELS,
+            baseline=altair.ExprRef(expr=f"{has_pale_line} ? 'bottom' : 'middle'"),
+            dy=altair.ExprRef(expr=f"{has_pale_line} ? -5 : 0"),
+        )
+        .encode(x="typical_pct:Q", y=fuel_group, text="typical_label:N")
+    )
+    one_in_ten_labels = (
+        altair.Chart()
+        .transform_filter(has_pale_line)
+        .mark_text(align="left", dx=LABEL_GAP_PIXELS)
+        .encode(x="one_in_ten_pct:Q", y=fuel_group, text="one_in_ten_label:N")
+    )
+    key = keyed(
+        drawn_once().mark_point(opacity=0, filled=True), Q23_KEY_TYPICAL
+    ).encode(
+        color=altair.Color(
+            f"{KEY_FIELD}:N", scale=key_scale(keys, "fill"), legend=key_legend()
         ),
-        x2="highest_month_pct:Q",
-        y=fuel_group,
-        stroke=key_stroke(keys),
-        tooltip=tooltip,
-    )
-    percentile = keyed(
-        altair.Chart()
-        .transform_filter("isValid(datum.middle_month_p90_pct)")
-        .mark_tick(thickness=2, size=18),
-        "1 unit in 10 misses by more",
-    ).encode(
-        x="middle_month_p90_pct:Q",
-        y=fuel_group,
-        fill=key_fill(keys),
-        tooltip=tooltip,
-    )
-    middle = keyed(
-        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
-        "Middle of the 12 months",
-    ).encode(
-        x="middle_month_pct:Q", y=fuel_group, tooltip=tooltip, **keyed_points(keys)
-    )
-    provisional = keyed(
-        altair.Chart()
-        .transform_filter("isValid(datum.provisional_month_pct)")
-        .mark_point(filled=False, size=70, strokeWidth=2, opacity=1),
-        "September 2026, early meter data",
-    ).encode(
-        x="provisional_month_pct:Q",
-        y=fuel_group,
-        tooltip=tooltip,
-        **keyed_points(keys),
+        shape=key_shape(keys),
     )
     chart = (
-        altair.layer(month_range, percentile, middle, provisional, data=data)
+        altair.layer(
+            pale_line,
+            bars,
+            typical_labels,
+            one_in_ten_labels,
+            key,
+            data=data,
+        )
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
         .properties(
-            **page_layout(Q23_TITLE, Q23_READING, len(chart_rows) * ROW_STEP_PIXELS)
+            **page_layout(title, Q23_TYPICAL_READING, len(chart_rows) * ROW_STEP_PIXELS)
+        )
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
+def draw_monthly_gaps(rows, title, path):
+    figure, axes = pyplot.subplots(figsize=(FIGURE_WIDTH_INCHES, 4.5))
+    quiet_frame(axes)
+    axes.grid(axis="y", color=GRID_COLOUR, linewidth=0.8)
+    last = len(Q23_CHART_MONTHS) - 1
+    axes.axvspan(last - 0.5, last + 0.4, color=COMPARISON_COLOUR, alpha=0.15)
+    axes.annotate(
+        "provisional",
+        (last - 0.5, Q23_MONTHLY_AXIS_TOP),
+        xytext=(-2, -2),
+        textcoords="offset points",
+        ha="right",
+        va="top",
+        fontsize=8,
+        fontstyle="italic",
+        color="#3d444d",
+    )
+    by_group = {}
+    for row in rows:
+        by_group.setdefault(row["fuel_group"], []).append(row)
+    for fuel_group, group_rows in by_group.items():
+        colour = light_colour(fuel_group)
+        width = 2.5 if fuel_group == Q23_EMPHASISED_GROUP else 1.5
+        values = []
+        for row in group_rows:
+            values.append(float(row["gap_pct"]))
+        axes.plot(range(last), values[:last], color=colour, linewidth=width)
+        axes.plot(
+            [last - 1, last],
+            values[last - 1 :],
+            color=colour,
+            linewidth=width,
+            linestyle=(0, (3, 2)),
+        )
+        axes.plot(
+            last, values[last], "o", markerfacecolor="white", markeredgecolor=colour
+        )
+        for position, row in enumerate(group_rows):
+            if not row["end_name_pct"]:
+                continue
+            end_name = float(row["end_name_pct"])
+            axes.plot(
+                [position + 0.1, position + 0.3],
+                [values[position], end_name],
+                color=colour,
+            )
+            axes.annotate(
+                fuel_group_name(fuel_group),
+                (position + 0.3, end_name),
+                xytext=(LABEL_GAP_PIXELS, 0),
+                textcoords="offset points",
+                va="center",
+                fontsize=8,
+                fontweight="bold" if fuel_group == Q23_EMPHASISED_GROUP else "normal",
+                color="#3d444d",
+            )
+    month_labels = []
+    for month in Q23_CHART_MONTHS:
+        month_labels.append(month_name(month).replace(" ", "\n"))
+    axes.set_xticks(range(len(Q23_CHART_MONTHS)), month_labels, fontsize=7)
+    axes.set_xlim(-0.5, last + 2)
+    axes.set_ylim(0, Q23_MONTHLY_AXIS_TOP)
+    axes.set_ylabel("Typical gap, % of capacity")
+    png_title(axes, title, [Q23_MONTHLY_READING])
+    save_figure(figure, path)
+
+
+def utc_date(day):
+    year, month, date = day.split("-")
+    return altair.DateTime(year=int(year), month=int(month), date=int(date), utc=True)
+
+
+def write_q23_monthly_chart(rows, output):
+    name = "q23_monthly_gap_by_fuel_group"
+    chart_rows = monthly_gap_rows(rows)
+    title = monthly_title(chart_rows)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
+    draw_monthly_gaps(chart_rows, title, output / f"{name}.png")
+
+    data = altair.UrlData(
+        url=f"{SPEC_DATA_FOLDER}/{csv_name}",
+        format=altair.CsvDataFormat(
+            type="csv",
+            parse={
+                "month": "utc:'%Y-%m-%d'",
+                "gap_pct": "number",
+                "end_name_pct": "number",
+            },
+        ),
+    )
+    month_ticks = []
+    for month in Q23_CHART_MONTHS:
+        month_ticks.append(utc_date(month))
+    # The year under September and January.
+    month_label = (
+        "indexof(['01', '09'], utcFormat(datum.value, '%m')) >= 0"
+        " ? [utcFormat(datum.value, '%b'), utcFormat(datum.value, '%Y')]"
+        " : utcFormat(datum.value, '%b')"
+    )
+    # The scale and axis are set once, on the whole months' lines.
+    month_axis = altair.X(
+        "month:T",
+        scale=altair.Scale(type="utc", nice=False, padding=Q23_TIME_PADDING_PIXELS),
+        axis=altair.Axis(
+            values=month_ticks,
+            labelExpr=month_label,
+            labelOverlap="parity",
+            title=None,
+            grid=False,
+        ),
+    )
+    month = altair.X("month:T")
+    gap = altair.Y(
+        "gap_pct:Q",
+        scale=altair.Scale(domain=[0, Q23_MONTHLY_AXIS_TOP], nice=False),
+        axis=altair.Axis(
+            values=list(range(0, Q23_MONTHLY_AXIS_TOP + 1, 2)),
+            title=["Typical gap, % of capacity", "higher: further from plan"],
+        ),
+    )
+    end_name = altair.Y("end_name_pct:Q")
+    colour = fuel_group_colour(altair.Stroke)
+    emphasised = f"datum.fuel_group == {json.dumps(Q23_EMPHASISED_GROUP)}"
+    line_width = altair.condition(emphasised, altair.value(3), altair.value(2))
+    tooltip = [
+        altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+        altair.Tooltip("month_name:N", title="Month"),
+        altair.Tooltip("gap_label:N", title="Typical gap, %"),
+        altair.Tooltip("units:N", title="Units"),
+    ]
+    is_whole_month = "datum.provisional == 'no'"
+    is_provisional = "datum.provisional == 'yes'"
+    band_start = utc_date(Q23_BAND_FROM)
+    band = (
+        drawn_once()
+        .mark_rect(fill=BAND_FILL)
+        .encode(
+            x=altair.XDatum(band_start, type="temporal"),
+            x2=altair.X2Datum(utc_date(Q23_BAND_TO)),
+            y=altair.value(0),
+            y2=altair.value("height"),
+        )
+        .properties(name="provisional band")
+    )
+    band_word = (
+        drawn_once()
+        .mark_text(align="right", baseline="top", dx=-2, dy=4, fontStyle="italic")
+        .encode(
+            x=altair.XDatum(band_start, type="temporal"),
+            y=altair.value(0),
+            text=altair.value("provisional"),
+        )
+    )
+    whole_months = (
+        altair.Chart()
+        .transform_filter(is_whole_month)
+        .mark_line(strokeCap="round", strokeJoin="round")
+        .encode(
+            x=month_axis, y=gap, stroke=colour, strokeWidth=line_width, tooltip=tooltip
+        )
+    )
+    dashed_end = (
+        altair.Chart()
+        .transform_filter("datum.dashed == 'yes'")
+        .mark_line(strokeDash=[4, 3])
+        .encode(x=month, y=gap, stroke=colour, strokeWidth=line_width)
+    )
+    to_its_name = (
+        altair.Chart()
+        .transform_filter(is_provisional)
+        .mark_rule(xOffset=7, x2Offset=15, strokeWidth=1.5)
+        .encode(
+            x=month,
+            y=gap,
+            x2=altair.X2("month"),
+            y2=altair.Y2("end_name_pct"),
+            stroke=colour,
+        )
+        .properties(name="connector")
+    )
+    hollow_end = (
+        altair.Chart()
+        .transform_filter(is_provisional)
+        .mark_point(filled=False, size=60, strokeWidth=2, opacity=1)
+        .encode(x=month, y=gap, stroke=colour, tooltip=tooltip)
+    )
+    names = (
+        altair.Chart()
+        .transform_filter(is_provisional)
+        .mark_text(
+            align="left",
+            xOffset=18,
+            fontWeight=altair.ExprRef(expr=f"{emphasised} ? 600 : 400"),
+        )
+        .encode(x=month, y=end_name, text="fuel_group_name:N")
+    )
+    # Every month's value on hover, over the line drawn for it.
+    hover = (
+        altair.Chart()
+        .mark_point(opacity=0, size=260, filled=True)
+        .encode(x=month, y=gap, stroke=colour, tooltip=tooltip)
+    )
+    chart = (
+        altair.layer(
+            band,
+            band_word,
+            whole_months,
+            dashed_end,
+            to_its_name,
+            hollow_end,
+            names,
+            hover,
+            data=data,
+        )
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
+        )
+        .properties(
+            **page_layout(title, Q23_MONTHLY_READING, Q23_MONTHLY_HEIGHT_PIXELS)
         )
     )
     write_spec(chart, output / f"{name}.vl.json")
@@ -2332,7 +2787,8 @@ def write_charts(result_folder, output_folder):
     write_q5_chart(q5, output)
     copy_saved_output(results, output, Q6_RESULT, BMRS_ATTRIBUTION)
     q23 = copy_saved_output(results, output, Q23_RESULT, BMRS_ATTRIBUTION)
-    write_q23_chart(q23, output)
+    write_q23_typical_chart(q23, output)
+    write_q23_monthly_chart(q23, output)
     q24 = copy_saved_output(results, output, Q24_RESULT, BMRS_ATTRIBUTION)
     write_q24_chart(q24, output)
     q25 = copy_saved_output(results, output, Q25_RESULT, BMRS_ATTRIBUTION)

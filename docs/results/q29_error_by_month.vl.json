@@ -209,13 +209,11 @@
   ],
   "title": {
     "anchor": "start",
-    "subtitle": [
-      "Each point is one month's average",
-      "miss. Above zero, the month came out",
-      "dirtier than forecast; below, cleaner."
-    ],
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each point is one month's average miss. Above zero,\", \"the month came out dirtier than forecast; below,\", \"cleaner.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each point is one month's average miss. Above zero, the month\", \"came out dirtier than forecast; below, cleaner.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each point is one month's average miss. Above zero, the month came out dirtier\", \"than forecast; below, cleaner.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each point is one month's average miss. Above zero, the month came out dirtier than forecast;\", \"below, cleaner.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each point is one month's average miss. Above zero, the month came out dirtier than forecast; below,\", \"cleaner.\"] : ([\"Each point is one month's average miss. Above zero, the month came out dirtier than forecast; below, cleaner.\"])))))"
+    },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Winter months came out cleaner than\", \"forecast, April to July slightly dirtier\"] : [\"Winter months came out cleaner than forecast, April to July slightly dirtier\"]"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Winter months came out cleaner than forecast,\", \"April to July slightly dirtier\"] : (containerSize()[0] + 0 * width < 480 ? [\"Winter months came out cleaner than forecast, April to\", \"July slightly dirtier\"] : (containerSize()[0] + 0 * width < 560 ? [\"Winter months came out cleaner than forecast, April to July slightly\", \"dirtier\"] : (containerSize()[0] + 0 * width < 640 ? [\"Winter months came out cleaner than forecast, April to July slightly dirtier\"] : (containerSize()[0] + 0 * width < 720 ? [\"Winter months came out cleaner than forecast, April to July slightly dirtier\"] : ([\"Winter months came out cleaner than forecast, April to July slightly dirtier\"])))))"
     }
   },
   "transform": [
