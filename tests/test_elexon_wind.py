@@ -16,6 +16,14 @@ from tests.fakes import cursor_of
 
 DBT_PROJECT = Path(__file__).parent.parent / "dbt" / "dbt_project.yml"
 ELEXON_FIXTURES = Path(__file__).parent / "fixtures" / "elexon"
+ELEXON_SOURCES = (
+    Path(__file__).parent.parent
+    / "dbt"
+    / "models"
+    / "staging"
+    / "elexon"
+    / "_elexon__sources.yml"
+)
 WINDFOR_URL = "https://data.elexon.co.uk/bmrs/api/v1/datasets/WINDFOR"
 FUELHH_URL = "https://data.elexon.co.uk/bmrs/api/v1/datasets/FUELHH"
 PUBLISH_FROM = datetime(2025, 8, 22, tzinfo=timezone.utc)
@@ -1108,3 +1116,33 @@ def test_a_target_before_the_first_capture_day_asks_nothing():
 
     get.assert_not_called()
     conn.cursor.assert_not_called()
+
+
+def elexon_source_table(table_name):
+    sources = yaml.safe_load(ELEXON_SOURCES.read_text(encoding="utf-8"))["sources"]
+    for source in sources:
+        if source["name"] != "elexon":
+            continue
+        for table in source["tables"]:
+            if table["name"] == table_name:
+                return table
+    raise AssertionError(f"no elexon source table {table_name}")
+
+
+@pytest.mark.parametrize("table_name", ["elexon_windfor", "elexon_fuelhh"])
+def test_a_wind_source_warns_a_day_after_its_last_capture_and_fails_after_two(
+    table_name,
+):
+    assert elexon_source_table(table_name)["config"]["freshness"] == {
+        "warn_after": {"count": 25, "period": "hour"},
+        "error_after": {"count": 48, "period": "hour"},
+    }
+
+
+def test_the_capture_completeness_warning_starts_on_the_first_capture_day():
+    variables = yaml.safe_load(DBT_PROJECT.read_text(encoding="utf-8"))["vars"]
+
+    assert (
+        date.fromisoformat(variables["wind_capture_from"])
+        == wind_poller.FIRST_CAPTURE_DAY
+    )
