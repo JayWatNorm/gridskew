@@ -13,6 +13,8 @@ select
     forecasts.forecast_4h,
     forecasts.final_forecast,
     forecasts.final_horizon_seconds,
+    forecasts.horizon_24h_seconds,
+    forecasts.horizon_4h_seconds,
     outturn.api_final_forecast,
     outturn.actual - forecasts.forecast_24h as error_24h,
     outturn.actual - forecasts.forecast_4h as error_4h,

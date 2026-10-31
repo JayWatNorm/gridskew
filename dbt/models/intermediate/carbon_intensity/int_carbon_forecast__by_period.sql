@@ -75,10 +75,19 @@ trajectories as (
             array_agg(forecast order by abs(horizon_seconds - 24 * 3600), retrieved_at)
                 filter (where abs(horizon_seconds - 24 * 3600) <= 1800)
         )[1] as forecast_24h,
+        -- The same order and filter as the forecast, so both come from one poll.
+        (
+            array_agg(horizon_seconds order by abs(horizon_seconds - 24 * 3600), retrieved_at)
+                filter (where abs(horizon_seconds - 24 * 3600) <= 1800)
+        )[1] as horizon_24h_seconds,
         (
             array_agg(forecast order by abs(horizon_seconds - 4 * 3600), retrieved_at)
                 filter (where abs(horizon_seconds - 4 * 3600) <= 1800)
         )[1] as forecast_4h,
+        (
+            array_agg(horizon_seconds order by abs(horizon_seconds - 4 * 3600), retrieved_at)
+                filter (where abs(horizon_seconds - 4 * 3600) <= 1800)
+        )[1] as horizon_4h_seconds,
         (
             array_agg(forecast order by horizon_seconds)
                 filter (where horizon_seconds >= 0)
@@ -97,7 +106,9 @@ judged_trajectories as (
         first_forecast,
         first_intensity_index,
         forecast_24h,
+        horizon_24h_seconds,
         forecast_4h,
+        horizon_4h_seconds,
         final_forecast,
         final_forecast - first_forecast as drift,
         coalesce(
@@ -117,6 +128,8 @@ select
     round(reading_rule.first_horizon_seconds / 3600, 4) as first_horizon_hours,
     round(reading_rule.final_horizon_seconds / 3600, 4) as final_horizon_hours,
     reading_rule.final_horizon_seconds,
+    reading_rule.horizon_24h_seconds,
+    reading_rule.horizon_4h_seconds,
     reading_rule.first_forecast,
     reading_rule.first_intensity_index,
     reading_rule.forecast_24h,
