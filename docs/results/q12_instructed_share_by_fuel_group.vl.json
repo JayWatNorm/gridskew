@@ -39,10 +39,9 @@
               "Instructed by NESO",
               "Not instructed"
             ],
-            "range": [
-              "#2a78d6",
-              "#a3a19a"
-            ]
+            "scheme": {
+              "expr": "\"gridskew-split-two\""
+            }
           },
           "sort": [
             "Instructed by NESO",
@@ -104,7 +103,7 @@
         }
       },
       "mark": {
-        "stroke": null,
+        "strokeWidth": 2,
         "type": "bar"
       },
       "transform": [

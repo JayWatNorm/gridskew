@@ -38,10 +38,9 @@
               "Flagged",
               "Not flagged"
             ],
-            "range": [
-              "#2a78d6",
-              "#a3a19a"
-            ]
+            "scheme": {
+              "expr": "\"gridskew-split-two\""
+            }
           },
           "sort": [
             "Flagged",
@@ -115,7 +114,7 @@
         }
       },
       "mark": {
-        "stroke": null,
+        "strokeWidth": 2,
         "type": "bar"
       },
       "transform": [
@@ -169,8 +168,8 @@
       },
       "mark": {
         "align": "right",
-        "color": "#ffffff",
         "dx": -4,
+        "style": "inside-label",
         "type": "text"
       },
       "transform": [
@@ -231,7 +230,7 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is one fuel group's instructed energy as\", \"100%: blue is the share NESO flagged as managing the\", \"network. Under each name is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is one fuel group's instructed energy as 100%: blue is\", \"the share NESO flagged as managing the network. Under each name\", \"is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is one fuel group's instructed energy as 100%: blue is the share NESO\", \"flagged as managing the network. Under each name is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is one fuel group's instructed energy as 100%: blue is the share NESO flagged as\", \"managing the network. Under each name is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is one fuel group's instructed energy as 100%: blue is the share NESO flagged as managing the\", \"network. Under each name is that energy in TWh.\"] : ([\"Each bar is one fuel group's instructed energy as 100%: blue is the share NESO flagged as managing the network. Under\", \"each name is that energy in TWh.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is one fuel group's instructed energy as\", \"100%, split into the share NESO flagged as managing\", \"the network and the rest. Under each name is that\", \"energy in TWh.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is one fuel group's instructed energy as 100%, split\", \"into the share NESO flagged as managing the network and the rest.\", \"Under each name is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is one fuel group's instructed energy as 100%, split into the share\", \"NESO flagged as managing the network and the rest. Under each name is that\", \"energy in TWh.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is one fuel group's instructed energy as 100%, split into the share NESO flagged as\", \"managing the network and the rest. Under each name is that energy in TWh.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is one fuel group's instructed energy as 100%, split into the share NESO flagged as managing the\", \"network and the rest. Under each name is that energy in TWh.\"] : ([\"Each bar is one fuel group's instructed energy as 100%, split into the share NESO flagged as managing the network and the\", \"rest. Under each name is that energy in TWh.\"])))))"
     },
     "text": {
       "expr": "containerSize()[0] + 0 * width < 400 ? [\"NESO flags almost all the energy its\", \"instructions move at wind farms as managing the\", \"network\"] : (containerSize()[0] + 0 * width < 480 ? [\"NESO flags almost all the energy its instructions move at\", \"wind farms as managing the network\"] : (containerSize()[0] + 0 * width < 560 ? [\"NESO flags almost all the energy its instructions move at wind farms\", \"as managing the network\"] : (containerSize()[0] + 0 * width < 640 ? [\"NESO flags almost all the energy its instructions move at wind farms as managing\", \"the network\"] : (containerSize()[0] + 0 * width < 720 ? [\"NESO flags almost all the energy its instructions move at wind farms as managing the network\"] : ([\"NESO flags almost all the energy its instructions move at wind farms as managing the network\"])))))"

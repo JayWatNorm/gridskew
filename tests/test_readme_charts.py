@@ -18,18 +18,19 @@ from scripts.readme_charts import (
     FUEL_GROUP_COLOURS,
     FUEL_GROUP_SCHEME,
     INSIDE_LABEL_COLOUR,
+    INSIDE_LABEL_STYLE,
     KEY_MARK_COLOUR,
     NEUTRAL_MARK_COLOUR,
     PALE_KEY_COLOUR,
-    PLANNED_COLOUR,
-    REST_COLOUR,
-    RESULT_COLOUR,
-    UNPLANNED_COLOUR,
+    SPLIT_GREYS,
+    SPLIT_THREE_SCHEME,
+    SPLIT_TWO_SCHEME,
     end_name_heights,
     write_charts,
 )
 
-# The colours a spec may write out; fuel-group colours are not among them.
+# The colours a spec may write out; fuel-group colours and the split greys
+# come from the page's schemes and are not among them.
 SHARED_COLOURS = [
     BAND_FILL,
     CLEANER_COLOUR,
@@ -39,10 +40,6 @@ SHARED_COLOURS = [
     KEY_MARK_COLOUR,
     NEUTRAL_MARK_COLOUR,
     PALE_KEY_COLOUR,
-    PLANNED_COLOUR,
-    REST_COLOUR,
-    RESULT_COLOUR,
-    UNPLANNED_COLOUR,
 ]
 
 FIXTURES = Path(__file__).parent / "fixtures" / "results"
@@ -833,6 +830,47 @@ def fuel_colours_not_from_the_scheme(folder):
     return sorted(set(wrong))
 
 
+def inside_label_styles(folder):
+    """Per spec that splits bars into parts, each text layer drawn inside a
+    bar (right-aligned against a part's end) as its style and any colour it
+    sets itself."""
+    found = {}
+    split = split_schemes(folder)
+    for name, spec in written_specs(folder).items():
+        if name not in split:
+            continue
+        layers = []
+        drawn_layers(spec, layers)
+        for layer in layers:
+            mark = layer["mark"]
+            if mark_type(layer) != "text" or not isinstance(mark, dict):
+                continue
+            if mark.get("align") != "right":
+                continue
+            found.setdefault(name, []).append((mark.get("style"), mark.get("color")))
+    return found
+
+
+def split_schemes(folder):
+    """Per spec that splits bars into parts, the scheme its parts' colour
+    names; a part colour given any other way shows as its scale."""
+    found = {}
+    for name, spec in written_specs(folder).items():
+        layers = []
+        drawn_layers(spec, layers)
+        for layer in layers:
+            for definition in colour_channels(layer):
+                if definition.get("field") != "part_name":
+                    continue
+                scale = definition.get("scale", {})
+                scheme = scale.get("scheme", {})
+                if isinstance(scheme, dict) and "expr" in scheme:
+                    found[name] = json.loads(scheme["expr"])
+                else:
+                    found[name] = scale
+    return found
+
+
 def diverging_colours(folder, spec_name):
     """The colours a Q29 chart's key gives dirtier and cleaner."""
     layers = []
@@ -1213,6 +1251,15 @@ def test_fuel_group_charts_colour_each_group_from_the_shared_scheme(written):
     assert fuel_colours_not_from_the_scheme(written) == []
 
 
+def test_bars_split_into_parts_take_the_page_split_greys(written):
+    # Colour means fuel group; greys mean the split inside a bar.
+    assert split_schemes(written) == {
+        "q12_instructed_share_by_fuel_group.vl.json": SPLIT_TWO_SCHEME,
+        "q24_flagged_share_by_fuel_group.vl.json": SPLIT_TWO_SCHEME,
+        "q5_under_delivery_by_outage_notice.vl.json": SPLIT_THREE_SCHEME,
+    }
+
+
 def test_both_q29_charts_share_one_diverging_pair_no_fuel_group_wears(written):
     pair = (DIRTIER_COLOUR, CLEANER_COLOUR)
     assert diverging_colours(written, "q29_error_by_time_of_day.vl.json") == pair
@@ -1309,10 +1356,42 @@ def test_q23_line_end_names_move_apart_only_as_far_as_they_must():
 def test_the_page_registers_the_fuel_group_colours_the_charts_name():
     page = PAGE.read_text(encoding="utf-8")
 
+    fuel_list = page.split("const fuelGroupColours = [", 1)[1].split("];", 1)[0]
+
     assert f'vega.scheme("{FUEL_GROUP_SCHEME}", fuelGroupScheme())' in page
-    assert FUEL_GROUP_COLOUR_PAIR.findall(page) == list(FUEL_GROUP_COLOURS.values())
+    assert FUEL_GROUP_COLOUR_PAIR.findall(fuel_list) == list(
+        FUEL_GROUP_COLOURS.values()
+    )
     # Each mode its own steps.
     assert "scheme.push(prefersDark ? dark : light);" in page
+
+
+def test_labels_inside_a_bar_take_the_page_colour_in_either_mode(written):
+    # The strong grey flips with the mode, so its label takes the page's
+    # own colour, set by the page's chart theme.
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert inside_label_styles(written) == {
+        "q24_flagged_share_by_fuel_group.vl.json": [(INSIDE_LABEL_STYLE, None)]
+    }
+    assert f'"{INSIDE_LABEL_STYLE}": {{ color: pageColour("--surface") }}' in page
+
+
+def test_the_page_registers_the_split_greys_for_each_mode():
+    page = PAGE.read_text(encoding="utf-8")
+    greys = []
+    for step, (light, dark) in SPLIT_GREYS.items():
+        greys.append(f'    {step}: ["{light}", "{dark}"],')
+
+    assert "\n".join(greys) in page
+    assert (
+        f'vega.scheme("{SPLIT_TWO_SCHEME}", splitScheme(["strong", "soft"]));' in page
+    )
+    assert (
+        f'vega.scheme("{SPLIT_THREE_SCHEME}", '
+        'splitScheme(["strong", "mid", "soft"]));' in page
+    )
+    assert page.count("scheme.push(prefersDark ? dark : light);") == 2
 
 
 def test_every_chart_shows_fuel_groups_by_their_display_names_only(written):

@@ -41,11 +41,9 @@
               "Unplanned outage",
               "No notice"
             ],
-            "range": [
-              "#184f95",
-              "#3987e5",
-              "#a3a19a"
-            ]
+            "scheme": {
+              "expr": "\"gridskew-split-three\""
+            }
           },
           "sort": [
             "Planned outage",
@@ -107,7 +105,7 @@
         }
       },
       "mark": {
-        "stroke": null,
+        "strokeWidth": 2,
         "type": "bar"
       },
       "transform": [

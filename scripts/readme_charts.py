@@ -323,9 +323,9 @@ Q23_MONTHLY_READING = (
     "early meter data."
 )
 Q24_READING = (
-    "Each bar is one fuel group's instructed energy as 100%: blue is the "
-    "share NESO flagged as managing the network. Under each name is that "
-    "energy in TWh."
+    "Each bar is one fuel group's instructed energy as 100%, split into the "
+    "share NESO flagged as managing the network and the rest. Under each name "
+    "is that energy in TWh."
 )
 Q25_READING = (
     "Each row is a fuel group. The dot is the share of its instructions "
@@ -396,18 +396,33 @@ SIGNED_SCALE_PADDING_PIXELS = 56
 SHARE_TICKS = [0, 25, 50, 75, 100]
 LOG_SHARE_TICKS = [0.01, 0.1, 1, 10, 100]
 
-# One meaning per colour, on every chart. A fuel group's marks take its
-# colour (FUEL_GROUP_COLOURS). Where colour encodes something else on a
-# fuel-group chart, blue is the part NESO instructed or flagged and the outage
-# blues the published outages, grey the rest. Charts not about fuel groups
-# draw their result in a neutral, so no fuel colour means anything else
-# there; mid grey is a comparison mark or a line a verdict needed. Crimson and
-# deep teal are dirtier and cleaner than forecast: no red or teal is a fuel
-# colour, and the pair passes the palette validator on both page surfaces.
-RESULT_COLOUR = "#2a78d6"
-PLANNED_COLOUR = "#184f95"
-UNPLANNED_COLOUR = "#3987e5"
-REST_COLOUR = "#a3a19a"
+# One meaning per colour, on every chart: colour means fuel group (its marks
+# take FUEL_GROUP_COLOURS); greys mean the split inside a bar. Charts not
+# about fuel groups draw their result in a neutral, so no fuel colour means
+# anything else there; mid grey is a comparison mark or a line a verdict
+# needed. Crimson and deep teal are dirtier and cleaner than forecast: no red
+# or teal is a fuel colour, and the pair passes the palette validator on both
+# page surfaces.
+#
+# The split greys, strongest against the page first, light and dark: the
+# instructed, flagged or planned part takes the strong grey, unplanned the
+# mid, the rest the soft. In dark mode the strong grey is the lightest, so it
+# still stands out most. Neighbouring greys differ by about 2:1 in contrast,
+# so a 2 px gap in the page's own colour separates the parts. The page
+# registers each set for its colour mode as a scheme the specs name.
+SPLIT_GREYS = {
+    "strong": ("#3d444d", "#d0d7de"),
+    "mid": ("#6e7781", "#8c959f"),
+    "soft": ("#a8afb7", "#4b535d"),
+}
+SPLIT_TWO_SCHEME = "gridskew-split-two"
+SPLIT_THREE_SCHEME = "gridskew-split-three"
+SPLIT_TWO = ["strong", "soft"]
+SPLIT_THREE = ["strong", "mid", "soft"]
+SPLIT_GAP_PIXELS = 2
+# A label on the strong grey takes the page's own colour, from the page's
+# chart theme, so it reads in either mode; the PNGs use white.
+INSIDE_LABEL_STYLE = "inside-label"
 NEUTRAL_MARK_COLOUR = "#6e7781"
 COMPARISON_COLOUR = "#8c959f"
 DIRTIER_COLOUR = "#c21725"
@@ -807,13 +822,27 @@ def zero_line():
     )
 
 
-def fill_by_name(name_field, names, colours, columns):
+def fill_by_name(name_field, names, scheme, columns):
+    """Each part in its split grey, from the scheme the page registers for
+    its colour mode; Altair knows only Vega's own scheme names, so the name
+    goes to Vega as an expression."""
     return altair.Color(
         f"{name_field}:N",
         sort=list(names),
-        scale=altair.Scale(domain=list(names), range=colours),
+        scale=altair.Scale(
+            domain=list(names), scheme=altair.ExprRef(expr=json.dumps(scheme))
+        ),
         legend=altair.Legend(title=None, orient="bottom", columns=columns),
     )
+
+
+def split_greys_light(steps):
+    """The light steps of the split greys named, for the PNGs."""
+    colours = []
+    for step in steps:
+        light, _dark = SPLIT_GREYS[step]
+        colours.append(light)
+    return colours
 
 
 def value_labels(position, value_field, value_format):
@@ -840,9 +869,10 @@ def label_above(x, y, text_field):
     )
 
 
-def stacked_parts(rows_axis, parts, colours, x_title, tooltip, scale):
+def stacked_parts(rows_axis, parts, scheme, x_title, tooltip, scale):
     """Bars stacked from the part columns, each part at its value divided by
-    the scale, on the given rows."""
+    the scale, on the given rows; a gap in the page's colour (the page's bar
+    stroke) between parts."""
     stack_order = f"indexof({json.dumps(list(parts))}, datum.part)"
     return (
         altair.Chart()
@@ -852,12 +882,12 @@ def stacked_parts(rows_axis, parts, colours, x_title, tooltip, scale):
             stack_order=stack_order,
             scaled=f"datum.amount / {scale}",
         )
-        .mark_bar(stroke=None)
+        .mark_bar(strokeWidth=SPLIT_GAP_PIXELS)
         .encode(
             x=altair.X("scaled:Q", stack="zero", axis=axis_title(x_title)),
             y=rows_axis,
             # One column: beside the chips' room it fits a phone.
-            color=fill_by_name("part_name", parts.values(), colours, 1),
+            color=fill_by_name("part_name", parts.values(), scheme, 1),
             order=altair.Order("stack_order:Q"),
             tooltip=tooltip,
         )
@@ -1135,7 +1165,7 @@ def write_q12_chart(rows, output):
 
     figure, axes = new_figure(len(chart_rows))
     ends = stacked_bars(
-        axes, chart_rows, Q12_PARTS, [RESULT_COLOUR, REST_COLOUR], 1_000_000
+        axes, chart_rows, Q12_PARTS, split_greys_light(SPLIT_TWO), 1_000_000
     )
     for position, row in enumerate(chart_rows):
         share = float(row["instructed_share_pct"])
@@ -1168,7 +1198,7 @@ def write_q12_chart(rows, output):
     bars = stacked_parts(
         rows_axis,
         Q12_PARTS,
-        [RESULT_COLOUR, REST_COLOUR],
+        SPLIT_TWO_SCHEME,
         ["Size of each part of the gap,", "terawatt-hours (TWh)"],
         tooltip,
         1_000_000,
@@ -1256,7 +1286,7 @@ def write_q5_chart(rows, output):
     title = Q5_TITLE.format(share=fixed(share_with_a_notice(rows), 0))
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
-    colours = [PLANNED_COLOUR, UNPLANNED_COLOUR, REST_COLOUR]
+    colours = split_greys_light(SPLIT_THREE)
 
     figure, axes = new_figure(len(chart_rows))
     ends = stacked_bars(axes, chart_rows, Q5_SEGMENTS, colours, 1_000_000)
@@ -1290,7 +1320,7 @@ def write_q5_chart(rows, output):
     bars = stacked_parts(
         rows_axis,
         Q5_SEGMENTS,
-        colours,
+        SPLIT_THREE_SCHEME,
         ["Under-delivery, terawatt-hours (TWh)"],
         tooltip,
         1_000_000,
@@ -1962,7 +1992,7 @@ def write_q24_chart(rows, output):
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
 
     figure, axes = new_figure(len(chart_rows))
-    stacked_bars(axes, chart_rows, Q24_PARTS, [RESULT_COLOUR, REST_COLOUR], 1)
+    stacked_bars(axes, chart_rows, Q24_PARTS, split_greys_light(SPLIT_TWO), 1)
     labels = []
     for position, row in enumerate(chart_rows):
         flagged = float(row["flagged_pct"])
@@ -1999,7 +2029,7 @@ def write_q24_chart(rows, output):
     bars = stacked_parts(
         rows_axis,
         Q24_PARTS,
-        [RESULT_COLOUR, REST_COLOUR],
+        SPLIT_TWO_SCHEME,
         [Q24_AXIS_TITLE],
         tooltip,
         1,
@@ -2014,7 +2044,7 @@ def write_q24_chart(rows, output):
     shares = (
         altair.Chart()
         .transform_calculate(share_label="format(datum.flagged_pct, '.0f') + '%'")
-        .mark_text(align="right", dx=-LABEL_GAP_PIXELS, color=INSIDE_LABEL_COLOUR)
+        .mark_text(align="right", dx=-LABEL_GAP_PIXELS, style=INSIDE_LABEL_STYLE)
         .encode(x="flagged_pct:Q", y=rows_axis, text="share_label:N")
     )
     chart = (

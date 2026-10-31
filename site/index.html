@@ -817,6 +817,7 @@
       },
       text: { color: pageColour("--text-secondary"), fontSize: 11.5 },
       bar: { stroke: pageColour("--surface"), strokeWidth: 1 },
+      style: { "inside-label": { color: pageColour("--surface") } },
     };
   }
 
@@ -846,6 +847,26 @@
   }
 
   vega.scheme("gridskew-fuel-groups", fuelGroupScheme());
+
+  // The greys that split a bar into parts, strongest against the page first,
+  // light and dark. In dark mode the strong grey is the lightest.
+  const splitGreys = {
+    strong: ["#3d444d", "#d0d7de"],
+    mid: ["#6e7781", "#8c959f"],
+    soft: ["#a8afb7", "#4b535d"],
+  };
+
+  function splitScheme(steps) {
+    const scheme = [];
+    for (const step of steps) {
+      const [light, dark] = splitGreys[step];
+      scheme.push(prefersDark ? dark : light);
+    }
+    return scheme;
+  }
+
+  vega.scheme("gridskew-split-two", splitScheme(["strong", "soft"]));
+  vega.scheme("gridskew-split-three", splitScheme(["strong", "mid", "soft"]));
 
   const chartOptions = {
     actions: false,
