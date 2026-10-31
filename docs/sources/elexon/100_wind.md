@@ -1,10 +1,11 @@
 # Wind forecast and outturn
 
-**WINDFOR and FUELHH (fuel type WIND): a one-off back-fill of a year of
-history**, WINDFOR publish days 20 August 2025 to 16 August 2026 and FUELHH
-settlement dates 22 August 2025 to 16 August 2026; see
-[101_wind_ingestion.md](101_wind_ingestion.md). Other fuel types and the
-actual-generation endpoints (`AGWS`, B1630) are not ingested.
+**WINDFOR and FUELHH (fuel type WIND): captured daily from 1 November 2026,
+beside a one-off back-fill of a year of history**, WINDFOR publish days
+20 August 2025 to 16 August 2026 and FUELHH settlement dates 22 August 2025
+to 16 August 2026; see [101_wind_ingestion.md](101_wind_ingestion.md). Other
+fuel types and the actual-generation endpoints (`AGWS`, B1630) are not
+ingested.
 
 ## In plain terms
 
@@ -106,6 +107,13 @@ add-back unknown.
 **Zero values.** A 2012 Elexon change proposal records negative WINDFOR
 values being set to zero. Whether that still applies is not known; the
 coverage check counts zero forecast values.
+
+**The daily capture keeps what Elexon serves when it first finds a day
+complete.** A publication Elexon replaces before then is never seen, and
+one replaced afterwards is not asked for: a complete day is not asked for
+again. Whether Elexon ever replaces a FUELHH publication is not known. A
+replacement that is stored lands beside the first, with its own
+`publish_time` and `retrieved_at`.
 
 ## Pairing
 
