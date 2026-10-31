@@ -1,0 +1,191 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "mean_absolute_error": "number",
+        "mean_error": "number",
+        "section": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q29_final_forecast_error_by_month_and_block.csv"
+  },
+  "description": "Afternoons came out dirtier than forecast, evenings cleaner",
+  "height": 176,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": 0
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "color": {
+          "field": "direction",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Dirtier than forecast",
+              "Cleaner than forecast"
+            ],
+            "range": [
+              "#eb6834",
+              "#1baf7a"
+            ]
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "block_name",
+            "title": "Time of day, UTC",
+            "type": "nominal"
+          },
+          {
+            "field": "half_hours",
+            "title": "Half-hours",
+            "type": "nominal"
+          },
+          {
+            "field": "mean_error",
+            "format": "+.1f",
+            "title": "Average miss, g/kWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "mean_absolute_error",
+            "format": ".1f",
+            "title": "Average size of the miss, g/kWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Average miss, gCO2/kWh",
+              "left: cleaner than forecast \u00b7 right: dirtier"
+            ]
+          },
+          "field": "mean_error",
+          "scale": {
+            "padding": 56
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "block",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "type": "bar"
+      }
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "mean_error",
+          "format": "+.1f",
+          "type": "quantitative"
+        },
+        "x": {
+          "axis": {
+            "title": [
+              "Average miss, gCO2/kWh",
+              "left: cleaner than forecast \u00b7 right: dirtier"
+            ]
+          },
+          "field": "mean_error",
+          "scale": {
+            "padding": 56
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "block",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": {
+          "expr": "datum.mean_error < 0 ? 'right' : 'left'"
+        },
+        "dx": {
+          "expr": "datum.mean_error < 0 ? -4 : 4"
+        },
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Afternoons came out dirtier\", \"than forecast, evenings cleaner\"] : [\"Afternoons came out dirtier than forecast, evenings cleaner\"]"
+    }
+  },
+  "transform": [
+    {
+      "filter": {
+        "equal": 3,
+        "field": "section"
+      }
+    },
+    {
+      "as": "block",
+      "calculate": "datum.item == \"UTC block 00:00-05:59\" ? \"Night|00:00\\u201305:59\" : datum.item == \"UTC block 06:00-11:59\" ? \"Morning|06:00\\u201311:59\" : datum.item == \"UTC block 12:00-17:59\" ? \"Afternoon|12:00\\u201317:59\" : datum.item == \"UTC block 18:00-23:59\" ? \"Evening|18:00\\u201323:59\" : datum.item"
+    },
+    {
+      "as": "direction",
+      "calculate": "datum.mean_error > 0 ? \"Dirtier than forecast\" : \"Cleaner than forecast\""
+    },
+    {
+      "as": "block_name",
+      "calculate": "replace(datum.block, '|', ', ')"
+    }
+  ],
+  "width": "container"
+}

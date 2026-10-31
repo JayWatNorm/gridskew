@@ -21,37 +21,99 @@
     },
     "url": "results/q29_final_forecast_error_by_month_and_block.csv"
   },
-  "height": 546,
+  "description": "Winter months came out cleaner than forecast, April to July slightly dirtier",
+  "height": 220,
   "layer": [
     {
       "encoding": {
-        "color": {
-          "field": "measure_name",
-          "legend": {
-            "columns": 1,
-            "orient": "bottom",
-            "title": null
+        "y": {
+          "datum": 0
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "x": {
+          "axis": {
+            "labelAngle": 0,
+            "labelExpr": "['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][toNumber(slice(datum.label, 5, 7)) - 1] + ' ' + slice(datum.label, 2, 4)",
+            "labelOverlap": "parity"
           },
-          "scale": {
-            "domain": [
-              "Mean error",
-              "Mean absolute error"
-            ],
-            "range": [
-              "#2a78d6",
-              "#eb6834"
+          "field": "month",
+          "title": null,
+          "type": "ordinal"
+        },
+        "y": {
+          "axis": {
+            "title": [
+              "Average miss, gCO2/kWh",
+              "positive: dirtier than forecast"
             ]
           },
-          "sort": [
-            "Mean error",
-            "Mean absolute error"
-          ],
+          "field": "mean_error",
+          "type": "quantitative"
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "strokeWidth": 2,
+        "type": "line"
+      }
+    },
+    {
+      "encoding": {
+        "color": {
+          "field": "direction",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Dirtier than forecast",
+              "Cleaner than forecast"
+            ],
+            "range": [
+              "#eb6834",
+              "#1baf7a"
+            ]
+          },
+          "type": "nominal"
+        },
+        "fill": {
+          "condition": {
+            "test": "datum.part_month",
+            "value": "transparent"
+          },
+          "field": "direction",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Dirtier than forecast",
+              "Cleaner than forecast"
+            ],
+            "range": [
+              "#eb6834",
+              "#1baf7a"
+            ]
+          },
           "type": "nominal"
         },
         "tooltip": [
           {
-            "field": "period",
-            "title": "Settlement month",
+            "field": "month",
+            "title": "Month",
             "type": "nominal"
           },
           {
@@ -60,112 +122,52 @@
             "type": "nominal"
           },
           {
-            "field": "measure_name",
-            "title": "Measure",
-            "type": "nominal"
-          },
-          {
-            "field": "value",
-            "format": ".3f",
-            "title": "gCO2/kWh",
+            "field": "mean_error",
+            "format": "+.1f",
+            "title": "Average miss, g/kWh",
             "type": "quantitative"
           },
           {
-            "field": "median_error",
-            "title": "Median error",
-            "type": "nominal"
-          },
-          {
-            "field": "zero_error_share",
-            "title": "Share with no error",
-            "type": "nominal"
+            "field": "mean_absolute_error",
+            "format": ".1f",
+            "title": "Average size of the miss, g/kWh",
+            "type": "quantitative"
           }
         ],
         "x": {
-          "field": "value",
-          "scale": {
-            "padding": 56
+          "axis": {
+            "labelAngle": 0,
+            "labelExpr": "['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][toNumber(slice(datum.label, 5, 7)) - 1] + ' ' + slice(datum.label, 2, 4)",
+            "labelOverlap": "parity"
           },
-          "title": "gCO2/kWh",
-          "type": "quantitative"
+          "field": "month",
+          "title": null,
+          "type": "ordinal"
         },
         "y": {
-          "field": "period",
-          "scale": {
-            "paddingInner": 0.3
+          "axis": {
+            "title": [
+              "Average miss, gCO2/kWh",
+              "positive: dirtier than forecast"
+            ]
           },
-          "sort": null,
-          "title": null,
-          "type": "nominal"
-        },
-        "yOffset": {
-          "field": "measure_name",
-          "scale": {
-            "paddingInner": 0.15
-          },
-          "sort": [
-            "Mean error",
-            "Mean absolute error"
-          ],
-          "type": "nominal"
+          "field": "mean_error",
+          "type": "quantitative"
         }
       },
       "mark": {
-        "cornerRadiusEnd": 3,
-        "type": "bar"
-      }
-    },
-    {
-      "encoding": {
-        "text": {
-          "field": "value",
-          "format": ".3f",
-          "type": "quantitative"
-        },
-        "x": {
-          "field": "value",
-          "scale": {
-            "padding": 56
-          },
-          "title": "gCO2/kWh",
-          "type": "quantitative"
-        },
-        "y": {
-          "field": "period",
-          "scale": {
-            "paddingInner": 0.3
-          },
-          "sort": null,
-          "title": null,
-          "type": "nominal"
-        },
-        "yOffset": {
-          "field": "measure_name",
-          "scale": {
-            "paddingInner": 0.15
-          },
-          "sort": [
-            "Mean error",
-            "Mean absolute error"
-          ],
-          "type": "nominal"
-        }
-      },
-      "mark": {
-        "align": {
-          "expr": "datum.value < 0 ? 'right' : 'left'"
-        },
-        "dx": {
-          "expr": "datum.value < 0 ? -4 : 4"
-        },
-        "type": "text"
+        "filled": false,
+        "opacity": 1,
+        "size": 70,
+        "strokeWidth": 2,
+        "type": "point"
       }
     }
   ],
   "title": {
     "anchor": "start",
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"gCO2/kWh, actual minus forecast:\", \"positive means dirtier than forecast\", \"n=17280 half-hours, settlement\", \"dates 2025-08-22 to 2026-08-16;\", \"read 2026-10-27 06:15 UTC\"] : [\"gCO2/kWh, actual minus forecast: positive means dirtier than forecast\", \"n=17280 half-hours, settlement dates 2025-08-22 to 2026-08-16; read 2026-10-27 06:15 UTC\"]"
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Winter months came out cleaner than\", \"forecast, April to July slightly dirtier\"] : [\"Winter months came out cleaner than forecast, April to July slightly dirtier\"]"
     }
   },
   "transform": [
@@ -176,22 +178,16 @@
       }
     },
     {
-      "as": [
-        "measure",
-        "value"
-      ],
-      "fold": [
-        "mean_error",
-        "mean_absolute_error"
-      ]
+      "as": "month",
+      "calculate": "slice(datum.item, 17, 24)"
     },
     {
-      "as": "period",
-      "calculate": "replace(datum.item, \"settlement month \", '')"
+      "as": "part_month",
+      "calculate": "indexof(datum.item, 'partial') >= 0"
     },
     {
-      "as": "measure_name",
-      "calculate": "datum.measure == \"mean_error\" ? \"Mean error\" : datum.measure == \"mean_absolute_error\" ? \"Mean absolute error\" : datum.measure"
+      "as": "direction",
+      "calculate": "datum.mean_error > 0 ? \"Dirtier than forecast\" : \"Cleaner than forecast\""
     }
   ],
   "width": "container"

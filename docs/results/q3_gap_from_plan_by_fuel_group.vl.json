@@ -1,0 +1,365 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "median_deviation_mwh": "number",
+        "q1_deviation_mwh": "number",
+        "q3_deviation_mwh": "number",
+        "week_first_run_median_mwh": "number",
+        "week_latest_run_median_mwh": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q3_gap_from_plan_by_fuel_group.csv"
+  },
+  "description": "Most fuel types produce slightly less than planned, with wide spreads",
+  "height": 272,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": 0
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "unit_periods",
+            "format": ",",
+            "title": "Unit-half-hours",
+            "type": "quantitative"
+          },
+          {
+            "field": "q1_deviation_mwh",
+            "format": ".1f",
+            "title": "25th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "median_deviation_mwh",
+            "format": ".1f",
+            "title": "Middle value, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "q3_deviation_mwh",
+            "format": ".1f",
+            "title": "75th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_first_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, first run, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_latest_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, two-month run, MWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Plan minus meter, MWh per unit-half-hour",
+              "left: produced more than planned \u00b7 right: less"
+            ]
+          },
+          "field": "q1_deviation_mwh",
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "q3_deviation_mwh"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "color": "#9ec5f4",
+        "strokeCap": "round",
+        "strokeWidth": 8,
+        "type": "rule"
+      }
+    },
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "unit_periods",
+            "format": ",",
+            "title": "Unit-half-hours",
+            "type": "quantitative"
+          },
+          {
+            "field": "q1_deviation_mwh",
+            "format": ".1f",
+            "title": "25th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "median_deviation_mwh",
+            "format": ".1f",
+            "title": "Middle value, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "q3_deviation_mwh",
+            "format": ".1f",
+            "title": "75th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_first_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, first run, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_latest_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, two-month run, MWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "field": "median_deviation_mwh",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "color": "#2a78d6",
+        "filled": true,
+        "opacity": 1,
+        "size": 80,
+        "type": "point"
+      }
+    },
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "unit_periods",
+            "format": ",",
+            "title": "Unit-half-hours",
+            "type": "quantitative"
+          },
+          {
+            "field": "q1_deviation_mwh",
+            "format": ".1f",
+            "title": "25th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "median_deviation_mwh",
+            "format": ".1f",
+            "title": "Middle value, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "q3_deviation_mwh",
+            "format": ".1f",
+            "title": "75th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_first_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, first run, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_latest_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, two-month run, MWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "field": "week_first_run_median_mwh",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "filled": false,
+        "opacity": 1,
+        "size": 70,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "filter": "isValid(datum.week_first_run_median_mwh)"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "unit_periods",
+            "format": ",",
+            "title": "Unit-half-hours",
+            "type": "quantitative"
+          },
+          {
+            "field": "q1_deviation_mwh",
+            "format": ".1f",
+            "title": "25th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "median_deviation_mwh",
+            "format": ".1f",
+            "title": "Middle value, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "q3_deviation_mwh",
+            "format": ".1f",
+            "title": "75th percentile, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_first_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, first run, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "week_latest_run_median_mwh",
+            "format": ".2f",
+            "title": "One week, two-month run, MWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "field": "week_latest_run_median_mwh",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "filled": false,
+        "opacity": 1,
+        "shape": "square",
+        "size": 50,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "filter": "isValid(datum.week_latest_run_median_mwh)"
+        }
+      ]
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Most fuel types produce slightly\", \"less than planned, with wide spreads\"] : [\"Most fuel types produce slightly less than planned, with wide spreads\"]"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    }
+  ],
+  "width": "container"
+}

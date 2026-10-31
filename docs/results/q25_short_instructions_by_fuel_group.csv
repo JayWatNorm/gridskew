@@ -1,0 +1,8 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+fuel_group,instructions,short_joined_pct,short_on_its_own_pct,short_joined_as_first_read_pct
+other,796257,21.186753,77.441705,21.359561
+pumped_storage,63937,16.147145,58.360574,16.384879
+gas_turbine,253392,0.210346,2.537176,0.292038
+hydro,53551,0.154992,0.722676,0.442569
+bioenergy,10141,0.049305,0.808599,0.098610
+wind,318067,0.017292,0.669985,0.241144

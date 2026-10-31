@@ -1,0 +1,245 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "high": "number",
+        "low": "number",
+        "rho": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q30_rank_correlations.csv"
+  },
+  "description": "Wind and carbon forecast misses barely move together",
+  "height": 176,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": -0.2,
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          }
+        },
+        "x2": {
+          "datum": 0.2
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "opacity": 0.15,
+        "type": "rect"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "x": {
+          "datum": 0,
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          }
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "x": {
+          "field": "low",
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "high"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|curtailment added back",
+            "Direction|curtailment added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "color": "#2a78d6",
+        "strokeWidth": 2,
+        "type": "rule"
+      }
+    },
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "measure",
+            "title": "Measure",
+            "type": "nominal"
+          },
+          {
+            "field": "rho",
+            "format": "+.2f",
+            "title": "Rank correlation",
+            "type": "quantitative"
+          },
+          {
+            "field": "low",
+            "format": "+.2f",
+            "title": "90% range from",
+            "type": "quantitative"
+          },
+          {
+            "field": "high",
+            "format": "+.2f",
+            "title": "90% range to",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Rank correlation with",
+              "the carbon forecast's miss"
+            ]
+          },
+          "field": "rho",
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|curtailment added back",
+            "Direction|curtailment added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "color": "#2a78d6",
+        "filled": true,
+        "opacity": 1,
+        "size": 80,
+        "type": "point"
+      }
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "rho_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "rho",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|curtailment added back",
+            "Direction|curtailment added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "baseline": "bottom",
+        "dy": -7,
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Wind and carbon forecast\", \"misses barely move together\"] : [\"Wind and carbon forecast misses barely move together\"]"
+    }
+  },
+  "transform": [
+    {
+      "as": "rho_label",
+      "calculate": "format(datum.rho, '+.2f')"
+    }
+  ],
+  "width": "container"
+}

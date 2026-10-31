@@ -1,0 +1,203 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "acceptance_volume_mwh": "number",
+        "flagged_pct": "number",
+        "not_flagged_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q24_flagged_share_by_fuel_group.csv"
+  },
+  "description": "NESO flags almost all of wind's balancing volume as managing the network",
+  "height": 264,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "part_name",
+          "legend": {
+            "columns": 2,
+            "orient": "bottom",
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Flagged",
+              "Not flagged"
+            ],
+            "range": [
+              "#2a78d6",
+              "#a3a19a"
+            ]
+          },
+          "sort": [
+            "Flagged",
+            "Not flagged"
+          ],
+          "type": "nominal"
+        },
+        "order": {
+          "field": "stack_order",
+          "type": "quantitative"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "part_name",
+            "title": "Part",
+            "type": "nominal"
+          },
+          {
+            "field": "scaled",
+            "format": ".1f",
+            "title": "Share, %",
+            "type": "quantitative"
+          },
+          {
+            "field": "volume_twh",
+            "format": ".1f",
+            "title": "Balancing volume, TWh",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Share of balancing volume, %"
+            ],
+            "values": [
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "field": "scaled",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          },
+          "stack": "zero",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "stroke": null,
+        "type": "bar"
+      },
+      "transform": [
+        {
+          "as": [
+            "part",
+            "amount"
+          ],
+          "fold": [
+            "flagged_pct",
+            "not_flagged_pct"
+          ]
+        },
+        {
+          "as": "part_name",
+          "calculate": "datum.part == \"flagged_pct\" ? \"Flagged\" : datum.part == \"not_flagged_pct\" ? \"Not flagged\" : datum.part"
+        },
+        {
+          "as": "stack_order",
+          "calculate": "indexof([\"flagged_pct\", \"not_flagged_pct\"], datum.part)"
+        },
+        {
+          "as": "scaled",
+          "calculate": "datum.amount / 1"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "share_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "flagged_pct",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "right",
+        "color": "#ffffff",
+        "dx": -4,
+        "type": "text"
+      },
+      "transform": [
+        {
+          "as": "share_label",
+          "calculate": "format(datum.flagged_pct, '.0f') + '%'"
+        }
+      ]
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"NESO flags almost all of wind's\", \"balancing volume as managing the network\"] : [\"NESO flags almost all of wind's balancing volume as managing the network\"]"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    },
+    {
+      "as": "volume_twh",
+      "calculate": "datum.acceptance_volume_mwh / 1000000"
+    },
+    {
+      "as": "label",
+      "calculate": "datum.fuel_group_name + '|' + format(datum.volume_twh, '.1f') + ' TWh'"
+    }
+  ],
+  "width": "container"
+}

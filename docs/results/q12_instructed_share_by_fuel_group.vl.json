@@ -1,0 +1,186 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "instructed_mwh": "number",
+        "instructed_share_pct": "number",
+        "parts_mwh": "number",
+        "rest_mwh": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q12_instructed_share_by_fuel_group.csv"
+  },
+  "description": "Instructions are most of the gap for gas, hydro and pumped storage, under half for wind",
+  "height": 238,
+  "layer": [
+    {
+      "encoding": {
+        "color": {
+          "field": "part_name",
+          "legend": {
+            "columns": 2,
+            "orient": "bottom",
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "NESO instructed",
+              "The rest"
+            ],
+            "range": [
+              "#2a78d6",
+              "#a3a19a"
+            ]
+          },
+          "sort": [
+            "NESO instructed",
+            "The rest"
+          ],
+          "type": "nominal"
+        },
+        "order": {
+          "field": "stack_order",
+          "type": "quantitative"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "part_name",
+            "title": "Part",
+            "type": "nominal"
+          },
+          {
+            "field": "scaled",
+            "format": ".2f",
+            "title": "TWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "instructed_share_pct",
+            "format": ".0f",
+            "title": "Instructed share, %",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Size of each part of the gap, TWh"
+            ]
+          },
+          "field": "scaled",
+          "stack": "zero",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "stroke": null,
+        "type": "bar"
+      },
+      "transform": [
+        {
+          "as": [
+            "part",
+            "amount"
+          ],
+          "fold": [
+            "instructed_mwh",
+            "rest_mwh"
+          ]
+        },
+        {
+          "as": "part_name",
+          "calculate": "datum.part == \"instructed_mwh\" ? \"NESO instructed\" : datum.part == \"rest_mwh\" ? \"The rest\" : datum.part"
+        },
+        {
+          "as": "stack_order",
+          "calculate": "indexof([\"instructed_mwh\", \"rest_mwh\"], datum.part)"
+        },
+        {
+          "as": "scaled",
+          "calculate": "datum.amount / 1000000"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "share_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "parts_twh",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": null,
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "left",
+        "dx": 4,
+        "type": "text"
+      },
+      "transform": [
+        {
+          "as": "parts_twh",
+          "calculate": "datum.parts_mwh / 1000000"
+        },
+        {
+          "as": "share_label",
+          "calculate": "format(datum.instructed_share_pct, '.0f') + '%'"
+        }
+      ]
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Instructions are most of the gap for gas,\", \"hydro and pumped storage, under half for wind\"] : [\"Instructions are most of the gap for gas, hydro and pumped storage, under half for wind\"]"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    }
+  ],
+  "width": "container"
+}
