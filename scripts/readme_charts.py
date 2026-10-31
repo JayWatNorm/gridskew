@@ -133,8 +133,9 @@ Q23_PROVISIONAL_MONTH = "2026-09-01"
 # A 90th percentile across fewer units than this is too thin to draw.
 Q23_UNITS_FOR_A_PERCENTILE = 20
 
-Q12_PARTS = {"instructed_mwh": "NESO instructed", "rest_mwh": "The rest"}
+Q12_PARTS = {"instructed_mwh": "Instructed by NESO", "rest_mwh": "Not instructed"}
 Q24_PARTS = {"flagged_pct": "Flagged", "not_flagged_pct": "Not flagged"}
+Q24_AXIS_TITLE = "Share of the energy instructions moved, %"
 
 Q25_JOINED_MEASURE = "2 continuous acceptance duration, BSC (acceptances)"
 Q25_OWN_SPAN_MEASURE = "1 dispatch granularity (acceptances)"
@@ -210,13 +211,19 @@ Q12_TITLE = (
     "under half for wind"
 )
 Q5_TITLE = "All units: {share}% of under-delivery came with a published outage"
-Q23_TITLE = "Wind farms stray furthest from their plans when NESO leaves them alone"
-Q24_TITLE = "NESO flags almost all of wind's balancing volume as managing the network"
-Q25_TITLE = (
-    "Units typed other and pumped storage get far more short instructions "
-    "than power stations"
+Q23_TITLE = (
+    "Wind farms stray furthest from their own plans when NESO has not asked "
+    "them to change output"
 )
-Q28_TITLE = "Bigger carbon misses came with slightly more shortfall, not 25% more"
+Q24_TITLE = (
+    "NESO flags almost all the energy its instructions move at wind farms as "
+    "managing the network"
+)
+Q25_TITLE = (
+    "Batteries (the other group) and pumped storage get far more short "
+    "instructions than power stations"
+)
+Q28_TITLE = "Bigger carbon misses came with slightly more under-delivery, not 25% more"
 Q29_TIME_TITLE = "Afternoons came out dirtier than forecast, evenings cleaner"
 Q29_MONTH_TITLE = (
     "Winter months came out cleaner than forecast, April to July slightly dirtier"
@@ -745,14 +752,14 @@ def draw_gap_from_plan(rows, path):
         labels.append(fuel_group_name(row["fuel_group"]))
     row_labels(axes, labels)
     axes.set_xlabel(
-        "Plan minus meter, MWh per unit-half-hour "
+        "Plan minus meter, MWh per unit per half-hour "
         "(left: produced more than planned; right: produced less)"
     )
     png_title(
         axes,
         Q3_TITLE,
         [
-            "Bar: middle half of unit-half-hours; dot: middle value, 22 August 2025 "
+            "Bar: middle half of all units' half-hours; dot: middle value, 22 August 2025 "
             "to 26 September 2026. Ring and square: one week, 10 to 16 August 2026, "
             "on one-week and two-month meter data."
         ],
@@ -800,13 +807,13 @@ def write_q3_chart(q3_rows, q22_rows, output):
     fuel_group = row_axis("fuel_group_name")
     x_axis = axis_title(
         [
-            "Plan minus meter, MWh per unit-half-hour",
+            "Plan minus meter, MWh per unit per half-hour",
             "left: produced more than planned · right: less",
         ]
     )
     tooltip = [
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
-        altair.Tooltip("unit_periods:Q", title="Unit-half-hours", format=","),
+        altair.Tooltip("unit_periods:Q", title="Half-hours, all units", format=","),
         altair.Tooltip(
             "q1_deviation_mwh:Q", title="25th percentile, MWh", format=".1f"
         ),
@@ -1339,7 +1346,7 @@ def write_q24_chart(rows, output):
     row_labels(axes, labels)
     axes.set_xlim(0, 100)
     axes.set_xticks(SHARE_TICKS)
-    axes.set_xlabel("Share of balancing volume, %")
+    axes.set_xlabel(Q24_AXIS_TITLE)
     png_title(axes, Q24_TITLE, ["22 August 2025 to 30 September 2026"])
     save_figure(figure, output / f"{name}.png", legend_handles(axes))
 
@@ -1350,13 +1357,13 @@ def write_q24_chart(rows, output):
         altair.Tooltip("fuel_group_name:N", title="Fuel group"),
         altair.Tooltip("part_name:N", title="Part"),
         altair.Tooltip("scaled:Q", title="Share, %", format=".1f"),
-        altair.Tooltip("volume_twh:Q", title="Balancing volume, TWh", format=".1f"),
+        altair.Tooltip("volume_twh:Q", title="Energy moved, TWh", format=".1f"),
     ]
     bars = stacked_parts(
         "label",
         Q24_PARTS,
         [RESULT_COLOUR, REST_COLOUR],
-        ["Share of balancing volume, %"],
+        [Q24_AXIS_TITLE],
         tooltip,
         1,
     ).encode(
@@ -1364,9 +1371,7 @@ def write_q24_chart(rows, output):
             "scaled:Q",
             stack="zero",
             scale=altair.Scale(domain=[0, 100]),
-            axis=altair.Axis(
-                values=SHARE_TICKS, title=["Share of balancing volume, %"]
-            ),
+            axis=altair.Axis(values=SHARE_TICKS, title=[Q24_AXIS_TITLE]),
         )
     )
     shares = (
@@ -1633,7 +1638,7 @@ def draw_shortfall_index(rows, path):
         labels.append(row["label"])
     row_labels(axes, labels)
     axes.set_xlim(95, 130)
-    axes.set_xlabel("Shortfall not instructed, smallest-miss fifth = 100")
+    axes.set_xlabel("Under-delivery not instructed, smallest-miss fifth = 100")
     png_title(
         axes,
         Q28_TITLE,
@@ -1663,14 +1668,18 @@ def write_q28_chart(rows, output):
     index_axis = altair.X(
         "index:Q",
         scale=index_scale,
-        axis=axis_title(["Shortfall not instructed,", "smallest-miss fifth = 100"]),
+        axis=axis_title(
+            ["Under-delivery not instructed,", "smallest-miss fifth = 100"]
+        ),
     )
     needed_index = altair.XDatum(Q28_NEEDED_INDEX, scale=index_scale)
     tooltip = [
         altair.Tooltip("misses:N", title="Carbon miss"),
         altair.Tooltip("half_hours:Q", title="Half-hours", format=","),
         altair.Tooltip(
-            "mean_shortfall_mwh:Q", title="Mean shortfall, MWh", format=",.0f"
+            "mean_shortfall_mwh:Q",
+            title="Average under-delivery, MWh",
+            format=",.0f",
         ),
         altair.Tooltip("index:Q", title="Index", format=".1f"),
         altair.Tooltip("index_low:Q", title="90% range from", format=".1f"),

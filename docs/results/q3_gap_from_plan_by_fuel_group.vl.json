@@ -58,7 +58,7 @@
           {
             "field": "unit_periods",
             "format": ",",
-            "title": "Unit-half-hours",
+            "title": "Half-hours, all units",
             "type": "quantitative"
           },
           {
@@ -95,7 +95,7 @@
         "x": {
           "axis": {
             "title": [
-              "Plan minus meter, MWh per unit-half-hour",
+              "Plan minus meter, MWh per unit per half-hour",
               "left: produced more than planned \u00b7 right: less"
             ]
           },
@@ -136,7 +136,7 @@
           {
             "field": "unit_periods",
             "format": ",",
-            "title": "Unit-half-hours",
+            "title": "Half-hours, all units",
             "type": "quantitative"
           },
           {
@@ -206,7 +206,7 @@
           {
             "field": "unit_periods",
             "format": ",",
-            "title": "Unit-half-hours",
+            "title": "Half-hours, all units",
             "type": "quantitative"
           },
           {
@@ -282,7 +282,7 @@
           {
             "field": "unit_periods",
             "format": ",",
-            "title": "Unit-half-hours",
+            "title": "Half-hours, all units",
             "type": "quantitative"
           },
           {

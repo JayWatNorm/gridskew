@@ -22,7 +22,7 @@
     },
     "url": "results/q25_short_instructions_by_fuel_group.csv"
   },
-  "description": "Units typed other and pumped storage get far more short instructions than power stations",
+  "description": "Batteries (the other group) and pumped storage get far more short instructions than power stations",
   "height": 264,
   "layer": [
     {
@@ -211,7 +211,7 @@
   "title": {
     "anchor": "start",
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Units typed other and pumped storage get far\", \"more short instructions than power stations\"] : [\"Units typed other and pumped storage get far more short instructions than power stations\"]"
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Batteries (the other group) and\", \"pumped storage get far more short\", \"instructions than power stations\"] : [\"Batteries (the other group) and pumped storage get far more short instructions than power stations\"]"
     }
   },
   "transform": [

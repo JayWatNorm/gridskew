@@ -21,7 +21,7 @@
     },
     "url": "results/q24_flagged_share_by_fuel_group.csv"
   },
-  "description": "NESO flags almost all of wind's balancing volume as managing the network",
+  "description": "NESO flags almost all the energy its instructions move at wind farms as managing the network",
   "height": 264,
   "layer": [
     {
@@ -73,14 +73,14 @@
           {
             "field": "volume_twh",
             "format": ".1f",
-            "title": "Balancing volume, TWh",
+            "title": "Energy moved, TWh",
             "type": "quantitative"
           }
         ],
         "x": {
           "axis": {
             "title": [
-              "Share of balancing volume, %"
+              "Share of the energy instructions moved, %"
             ],
             "values": [
               0,
@@ -182,7 +182,7 @@
   "title": {
     "anchor": "start",
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"NESO flags almost all of wind's\", \"balancing volume as managing the network\"] : [\"NESO flags almost all of wind's balancing volume as managing the network\"]"
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"NESO flags almost all the energy\", \"its instructions move at wind\", \"farms as managing the network\"] : [\"NESO flags almost all the energy its instructions move at wind farms as managing the network\"]"
     }
   },
   "transform": [

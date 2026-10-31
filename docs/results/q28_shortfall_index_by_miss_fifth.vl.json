@@ -22,7 +22,7 @@
     },
     "url": "results/q28_shortfall_index_by_miss_fifth.csv"
   },
-  "description": "Bigger carbon misses came with slightly more shortfall, not 25% more",
+  "description": "Bigger carbon misses came with slightly more under-delivery, not 25% more",
   "height": 220,
   "layer": [
     {
@@ -157,7 +157,7 @@
           {
             "field": "mean_shortfall_mwh",
             "format": ",.0f",
-            "title": "Mean shortfall, MWh",
+            "title": "Average under-delivery, MWh",
             "type": "quantitative"
           },
           {
@@ -182,7 +182,7 @@
         "x": {
           "axis": {
             "title": [
-              "Shortfall not instructed,",
+              "Under-delivery not instructed,",
               "smallest-miss fifth = 100"
             ]
           },
@@ -262,7 +262,7 @@
   "title": {
     "anchor": "start",
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Bigger carbon misses came with\", \"slightly more shortfall, not 25% more\"] : [\"Bigger carbon misses came with slightly more shortfall, not 25% more\"]"
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Bigger carbon misses came with slightly\", \"more under-delivery, not 25% more\"] : [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"]"
     }
   },
   "transform": [

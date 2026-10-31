@@ -36,8 +36,8 @@
           },
           "scale": {
             "domain": [
-              "NESO instructed",
-              "The rest"
+              "Instructed by NESO",
+              "Not instructed"
             ],
             "range": [
               "#2a78d6",
@@ -45,8 +45,8 @@
             ]
           },
           "sort": [
-            "NESO instructed",
-            "The rest"
+            "Instructed by NESO",
+            "Not instructed"
           ],
           "type": "nominal"
         },
@@ -118,7 +118,7 @@
         },
         {
           "as": "part_name",
-          "calculate": "datum.part == \"instructed_mwh\" ? \"NESO instructed\" : datum.part == \"rest_mwh\" ? \"The rest\" : datum.part"
+          "calculate": "datum.part == \"instructed_mwh\" ? \"Instructed by NESO\" : datum.part == \"rest_mwh\" ? \"Not instructed\" : datum.part"
         },
         {
           "as": "stack_order",

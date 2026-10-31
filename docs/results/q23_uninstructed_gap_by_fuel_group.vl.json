@@ -23,7 +23,7 @@
     },
     "url": "results/q23_uninstructed_gap_by_fuel_group.csv"
   },
-  "description": "Wind farms stray furthest from their plans when NESO leaves them alone",
+  "description": "Wind farms stray furthest from their own plans when NESO has not asked them to change output",
   "height": 238,
   "layer": [
     {
@@ -306,7 +306,7 @@
   "title": {
     "anchor": "start",
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Wind farms stray furthest from their\", \"plans when NESO leaves them alone\"] : [\"Wind farms stray furthest from their plans when NESO leaves them alone\"]"
+      "expr": "containerSize()[0] + 0 * width < 700 ? [\"Wind farms stray furthest from their own plans\", \"when NESO has not asked them to change output\"] : [\"Wind farms stray furthest from their own plans when NESO has not asked them to change output\"]"
     }
   },
   "transform": [
