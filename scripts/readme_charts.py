@@ -363,6 +363,10 @@ FIGURE_MARGIN_INCHES = 1.6
 DPI = 100
 PAD_INCHES = 0.2
 TITLE_LINE_CHARACTERS = 70
+AXIS_LABEL_CHARACTERS = 75
+# Room past the longest stacked bar for its end label, as a multiple of its
+# length.
+BAR_LABEL_ROOM = 1.3
 MINIMUM_FIGURE_HEIGHT_INCHES = 3.2
 LEGEND_ROW_INCHES = 0.22
 
@@ -498,6 +502,20 @@ def png_title(axes, title, subtitle_lines):
 
 def png_label(label):
     return label.replace("|", "\n")
+
+
+def wrapped_axis_label(text):
+    """An axis label in lines that fit the figure: the saved image is cut at
+    the figure's edge, so a longer line loses its end."""
+    return "\n".join(textwrap.wrap(text, AXIS_LABEL_CHARACTERS, break_on_hyphens=False))
+
+
+def x_label(axes, text):
+    axes.set_xlabel(wrapped_axis_label(text))
+
+
+def y_label(axes, text):
+    axes.set_ylabel(wrapped_axis_label(text))
 
 
 def row_labels(axes, labels):
@@ -847,7 +865,7 @@ def write_q2_chart(rows, output):
     row_labels(axes, labels)
     axes.set_xlim(0, 100)
     axes.set_xticks(SHARE_TICKS)
-    axes.set_xlabel(Q2_AXIS_TITLE)
+    x_label(axes, Q2_AXIS_TITLE)
     png_title(
         axes,
         title,
@@ -934,9 +952,10 @@ def draw_gap_from_plan(rows, path):
     for row in rows:
         labels.append(fuel_group_name(row["fuel_group"]))
     row_labels(axes, labels)
-    axes.set_xlabel(
+    x_label(
+        axes,
         "Plan minus meter, MWh per unit per half-hour "
-        "(left: produced more than planned; right: produced less)"
+        "(left: produced more than planned; right: produced less)",
     )
     png_title(
         axes,
@@ -1063,8 +1082,8 @@ def write_q12_chart(rows, output):
     for row in chart_rows:
         labels.append(fuel_group_name(row["fuel_group"]))
     row_labels(axes, labels)
-    axes.margins(x=0.1)
-    axes.set_xlabel("Size of each part of the gap between plan and meter, TWh")
+    axes.set_xlim(0, max(ends) * BAR_LABEL_ROOM)
+    x_label(axes, "Size of each part of the gap between plan and meter, TWh")
     png_title(
         axes,
         Q12_TITLE,
@@ -1189,8 +1208,8 @@ def write_q5_chart(rows, output):
     for row in chart_rows:
         labels.append(fuel_group_name(row["fuel_group"]))
     row_labels(axes, labels)
-    axes.margins(x=0.1)
-    axes.set_xlabel("Under-delivery, TWh")
+    axes.set_xlim(0, max(ends) * BAR_LABEL_ROOM)
+    x_label(axes, "Under-delivery, TWh")
     png_title(
         axes,
         title,
@@ -1502,7 +1521,7 @@ def draw_typical_gaps(rows, title, path):
         labels.append(fuel_group_name(row["fuel_group"]))
     row_labels(axes, labels)
     axes.set_xlim(0, Q23_TYPICAL_AXIS_TOP)
-    axes.set_xlabel("Gap between plan and meter, % of capacity")
+    x_label(axes, "Gap between plan and meter, % of capacity")
     png_title(axes, title, [Q23_TYPICAL_READING])
     handles = [
         Line2D([], [], color=COMPARISON_COLOUR, linewidth=8, label=Q23_KEY_TYPICAL),
@@ -1680,7 +1699,7 @@ def draw_monthly_gaps(rows, title, path):
     axes.set_xticks(range(len(Q23_CHART_MONTHS)), month_labels, fontsize=7)
     axes.set_xlim(-0.5, last + 2)
     axes.set_ylim(0, Q23_MONTHLY_AXIS_TOP)
-    axes.set_ylabel("Median gap, % of capacity")
+    y_label(axes, "Median gap, % of capacity")
     png_title(axes, title, [Q23_MONTHLY_READING])
     save_figure(figure, path)
 
@@ -1891,7 +1910,7 @@ def write_q24_chart(rows, output):
     row_labels(axes, labels)
     axes.set_xlim(0, 100)
     axes.set_xticks(SHARE_TICKS)
-    axes.set_xlabel(Q24_AXIS_TITLE)
+    x_label(axes, Q24_AXIS_TITLE)
     png_title(axes, Q24_TITLE, ["22 August 2025 to 30 September 2026"])
     save_figure(figure, output / f"{name}.png", legend_handles(axes))
 
@@ -2023,7 +2042,7 @@ def write_q25_chart(corrected_rows, first_read_rows, output):
     axes.set_xscale("log")
     axes.set_xlim(LOG_SHARE_TICKS[0], LOG_SHARE_TICKS[-1])
     axes.set_xticks(LOG_SHARE_TICKS, ["0.01%", "0.1%", "1%", "10%", "100%"])
-    axes.set_xlabel("Instructions under 10 minutes, % (log scale)")
+    x_label(axes, "Instructions under 10 minutes, % (log scale)")
     png_title(
         axes,
         Q25_TITLE,
@@ -2197,7 +2216,7 @@ def draw_shortfall_index(rows, path):
         labels.append(row["label"])
     row_labels(axes, labels)
     axes.set_xlim(95, 130)
-    axes.set_xlabel("Under-delivery not instructed, smallest-miss fifth = 100")
+    x_label(axes, "Under-delivery not instructed, smallest-miss fifth = 100")
     png_title(
         axes,
         Q28_TITLE,
@@ -2345,7 +2364,7 @@ def write_q29_time_chart(rows, output):
     row_labels(axes, labels)
     axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
     axes.margins(x=0.2)
-    axes.set_xlabel("Mean miss, gCO2/kWh (left: cleaner than forecast; right: dirtier)")
+    x_label(axes, "Mean miss, gCO2/kWh (left: cleaner than forecast; right: dirtier)")
     png_title(
         axes,
         Q29_TIME_TITLE,
@@ -2451,7 +2470,7 @@ def write_q29_month_chart(rows, output):
         )
         month_labels.append(month_of(row["item"]))
     axes.set_xticks(positions, month_labels, rotation=90)
-    axes.set_ylabel("Mean miss, gCO2/kWh")
+    y_label(axes, "Mean miss, gCO2/kWh")
     png_title(
         axes,
         Q29_MONTH_TITLE,
@@ -2572,7 +2591,7 @@ def draw_correlations(rows, path):
         labels.append(row["label"])
     row_labels(axes, labels)
     axes.set_xlim(-0.3, 0.3)
-    axes.set_xlabel("Rank correlation with the stored carbon forecast's miss")
+    x_label(axes, "Rank correlation with the stored carbon forecast's miss")
     png_title(
         axes,
         Q30_TITLE,
