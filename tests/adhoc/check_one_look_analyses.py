@@ -685,6 +685,29 @@ def q10_project_values_fixtures(gate_open=True):
 # A's second half-hour. A U1 value at 12:15 UTC on A matches no error row.
 # B47 holds only a null U1 value and B48 nothing, so B has 46 half-hours with
 # both values.
+#
+# The active cohort's window runs from A's first half-hour (23:00 UTC on 31
+# August) to analysis_read_until (00:00 UTC on 5 September), both included.
+# U1, U2, U4 and U5 each have a PN above 0 in it: active, so every value
+# above stays as it is. The other cohort units:
+#   IE1 (INTELE) and IF1 (INTFR): interconnectors whatever they did; each
+#     has 100 MWh in a top-quintile half-hour that must not count;
+#   IM1 only imports (PN 0, metered -2, and 0 in another half-hour): inactive;
+#   P1 has a PN of 3 in the window's first half-hour only, a row the
+#     shortfall table cannot judge: active;
+#   M1 has no PN, and metered 0 then 2 (first and latest run) at the window's
+#     last half-hour: active, with no PN unit-period;
+#   F1 has PN 0 and metered 3 then 0: active on its first run;
+#   BW1 is active only half an hour before the window, AW1 only half an hour
+#     after the cutoff, and NR1 has no row: all inactive, none with a row in
+#     the window.
+# Seven active units, two interconnectors (one INTELE), four inactive (three
+# with no row in the window), one active unit with no PN unit-period.
+#
+# Idle unit-periods behind the population half-hours: U5's (PN 0 and metered
+# 0) is idle; U2's at A's third half-hour (PN 0, metered 1) is not, nor is
+# U4's (PN 0 and metered 0 but not determinable). 94 half-hours of U1 and U2
+# and U5's one make 189 determinable unit-periods: an idle share of 1 / 189.
 Q4_FIXTURES = """
 create temporary table synthetic_carbon_error (
     period_start timestamptz,
@@ -696,11 +719,60 @@ create temporary table synthetic_shortfall (
     settlement_date date,
     period_start_utc timestamptz,
     unexplained_shortfall_mwh numeric,
-    determinability text
+    determinability text,
+    pn_mwh numeric default 1,
+    metered_mwh numeric default 1
 ) on commit drop;
-create temporary table synthetic_cohort (national_grid_bm_unit text) on commit drop;
+create temporary table synthetic_cohort (
+    national_grid_bm_unit text,
+    elexon_bm_unit text,
+    fuel_type text,
+    fuel_group text
+) on commit drop;
+create temporary table synthetic_pn_periods (
+    national_grid_bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    pn_mwh numeric,
+    mapping_status text
+) on commit drop;
+create temporary table synthetic_metered_periods (
+    bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    first_quantity_mwh numeric,
+    latest_quantity_mwh numeric,
+    mapping_status text,
+    mapped_national_grid_bm_unit text
+) on commit drop;
 
-insert into synthetic_cohort values ('U1'), ('U2'), ('U4'), ('U5');
+insert into synthetic_cohort values
+    ('U1', 'E_U1', 'CCGT', 'gas'), ('U2', 'E_U2', 'CCGT', 'gas'),
+    ('U4', 'E_U4', 'CCGT', 'gas'), ('U5', 'E_U5', 'WIND', 'wind'),
+    ('IE1', 'E_IE1', 'INTELE', 'unclassified'), ('IF1', 'E_IF1', 'INTFR', 'interconnector'),
+    ('IM1', 'E_IM1', 'PS', 'pumped storage'), ('P1', 'E_P1', 'OCGT', 'gas'),
+    ('M1', 'E_M1', 'BIOMASS', 'biomass'), ('F1', 'E_F1', 'NPSHYD', 'hydro'),
+    ('BW1', 'E_BW1', 'CCGT', 'gas'), ('AW1', 'E_AW1', 'CCGT', 'gas'),
+    ('NR1', 'E_NR1', 'CCGT', 'gas');
+
+insert into synthetic_pn_periods values
+    ('U1', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('U2', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('U4', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('U5', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('IE1', '2026-09-01', '2026-09-01 01:30+00', 5, 'mapped'),
+    ('IF1', '2026-09-01', '2026-09-01 01:30+00', 5, 'mapped'),
+    ('IM1', '2026-09-03', '2026-09-03 03:30+00', 0, 'mapped'),
+    ('P1', '2026-09-01', '2026-08-31 23:00+00', 3, 'mapped'),
+    ('F1', '2026-09-03', '2026-09-03 03:30+00', 0, 'mapped'),
+    ('BW1', '2026-08-31', '2026-08-31 22:30+00', 4, 'mapped'),
+    ('AW1', '2026-09-05', '2026-09-05 00:30+00', 4, 'mapped');
+
+insert into synthetic_metered_periods values
+    ('E_M1', '2026-09-05', '2026-09-05 00:00+00', 0, 2, 'mapped', 'M1'),
+    ('E_F1', '2026-09-03', '2026-09-03 03:30+00', 3, 0, 'mapped', 'F1'),
+    ('E_IM1', '2026-09-03', '2026-09-03 03:30+00', -2, -2, 'mapped', 'IM1'),
+    ('E_IM1', '2026-09-03', '2026-09-03 04:00+00', 0, 0, 'mapped', 'IM1');
 
 create temporary table synthetic_periods on commit drop as
 select
@@ -726,7 +798,11 @@ cross join generate_series(1, 48) as periods (period);
 insert into synthetic_carbon_error
 select
     period_start,
-    case when period % 2 = 1 then period else -period end,
+    case
+        when settlement_date = date '2026-09-02' and period = 39 then {b39_error}
+        when period % 2 = 1 then period
+        else -period
+    end,
     case
         when settlement_date = date '2026-09-03' and period = 1 then 1801
         when settlement_date = date '2026-08-31' then 1801
@@ -760,7 +836,34 @@ select 'U5', settlement_date, period_start, 0, 'determinable'
 from synthetic_periods
 where settlement_date = date '2026-09-01' and period = 2
 union all
-select 'U1', date '2026-09-01', timestamptz '2026-09-01 12:15:00+00', 5, 'determinable';
+select 'U1', date '2026-09-01', timestamptz '2026-09-01 12:15:00+00', 5, 'determinable'
+union all
+select 'IE1', settlement_date, period_start, 100, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-01' and period = 40
+union all
+select 'IF1', settlement_date, period_start, 100, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-02' and period = 40
+union all
+select 'P1', settlement_date, period_start, null, 'pn_incomplete'
+from synthetic_periods
+where settlement_date = date '2026-09-01' and period = 1
+union all
+select 'F1', settlement_date, period_start, 0, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-03' and period = 10
+union all
+select 'IM1', settlement_date, period_start, 2, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-03' and period = 10;
+
+update synthetic_shortfall set pn_mwh = 0, metered_mwh = 0
+where national_grid_bm_unit in ('U4', 'U5', 'F1');
+update synthetic_shortfall set pn_mwh = 0
+where national_grid_bm_unit = 'U2' and period_start_utc = timestamptz '2026-09-01 00:00+00';
+update synthetic_shortfall set pn_mwh = 0, metered_mwh = -2
+where national_grid_bm_unit = 'IM1';
 
 create temporary table synthetic_slot_polls (
     poll_slot timestamptz,
@@ -779,6 +882,8 @@ Q4_TABLES = {
     "int_carbon_error_by_period": "pg_temp.synthetic_carbon_error",
     "int_shortfall_by_unit_period": "pg_temp.synthetic_shortfall",
     "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+    "int_elexon__pn_period_mapped": "pg_temp.synthetic_pn_periods",
+    "int_elexon__b1610_period_mapped": "pg_temp.synthetic_metered_periods",
     "int_carbon_forecast__revisions": "pg_temp.synthetic_slot_polls",
 }
 
@@ -1136,6 +1241,115 @@ Q4_BOTTOM_TIES = (
     "half-hours sharing the bottom quintile's largest abs(error_final) "
     "(value: that error)"
 )
+Q4_TOP_TIES = (
+    "half-hours sharing the top quintile's smallest abs(error_final) "
+    "(value: that error)"
+)
+# Section 1 leads with the ratio and its interval, then the verdict.
+Q4_SECTION_ONE_ORDER = (
+    RATIO,
+    LOW,
+    HIGH,
+    DRAWS,
+    VERDICT,
+    BOTTOM,
+    TOP,
+    DIFFERENCE,
+    POPULATION,
+)
+WEEKDAY_NAMES = (
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+)
+
+
+def stale_finals_key(weekday_name, kept):
+    if kept:
+        return (
+            4,
+            "matched-day half-hours kept, final forecast at most 30 minutes ahead: "
+            f"settlement date on a {weekday_name}",
+            None,
+        )
+    return (
+        4,
+        "matched-day half-hours left out, final forecast over 30 minutes ahead: "
+        f"settlement date on a {weekday_name}",
+        None,
+    )
+
+
+def stale_finals_expected(kept_by_weekday, left_out_by_weekday):
+    """Every weekday's kept and left-out rows; weekdays not named hold 0."""
+
+    expected = {}
+    for weekday_name in WEEKDAY_NAMES:
+        expected[stale_finals_key(weekday_name, kept=True)] = dict(
+            half_hours=kept_by_weekday.get(weekday_name, 0)
+        )
+        expected[stale_finals_key(weekday_name, kept=False)] = dict(
+            half_hours=left_out_by_weekday.get(weekday_name, 0)
+        )
+    return expected
+
+
+ACTIVE_UNITS = (5, "cohort units: active in the window (value: units)", None)
+INTERCONNECTOR_UNITS = (
+    5,
+    "cohort units: interconnectors, fuel type beginning INT, left out (value: units)",
+    None,
+)
+INTELE_UNITS = (
+    5,
+    "cohort units: interconnectors with fuel type INTELE, an interconnector by "
+    "assumption (value: units)",
+    None,
+)
+INACTIVE_UNITS = (
+    5,
+    "cohort units: inactive in the window, left out (value: units)",
+    None,
+)
+NO_ROW_UNITS = (
+    5,
+    "cohort units: inactive with no row in the window (value: units)",
+    None,
+)
+NO_PN_UNITS = (
+    5,
+    "active units with no PN unit-period in the window, adding nothing to the sums "
+    "(value: units)",
+    None,
+)
+IDLE_UNIT_PERIODS = (
+    5,
+    "idle unit-periods behind the population half-hours: determinable, PN 0 and "
+    "metered 0 (value: unit-periods)",
+    None,
+)
+DETERMINABLE_UNIT_PERIODS = (
+    5,
+    "determinable unit-periods of active units behind the population half-hours "
+    "(value: unit-periods)",
+    None,
+)
+IDLE_SHARE = (5, "idle share of those determinable unit-periods", None)
+Q4_COHORT_EXPECTED = {
+    ACTIVE_UNITS: dict(value="7"),
+    INTERCONNECTOR_UNITS: dict(value="2"),
+    INTELE_UNITS: dict(value="1"),
+    INACTIVE_UNITS: dict(value="4"),
+    NO_ROW_UNITS: dict(value="3"),
+    NO_PN_UNITS: dict(value="1"),
+    IDLE_UNIT_PERIODS: dict(value="1"),
+    DETERMINABLE_UNIT_PERIODS: dict(value="189"),
+    IDLE_SHARE: dict(value="0.005291"),
+}
 
 # Q4 with A's and B's first ten half-hours at 1 except A10 at 3; 11 to 38 at
 # 1; 39 onwards at 1.25. A10 and B10 share an error of 10 at the edge of
@@ -1151,22 +1365,33 @@ Q4_BOTTOM_TIES = (
 # all 1.25: 1.25. A-twice draws are about a quarter, so the 5th percentile is
 # 1.041667 and the 95th 1.25. (An independent model of the tie order and the
 # picks gives the same values.)
+#
+# A39 and B39 share the top quintile's smallest error, 39, and both are in
+# it. Every matched-day half-hour is fresh: 48 on Tuesday 1 September and 46
+# on Wednesday 2 September (the first two of each date start on the UTC day
+# before).
 Q4_EXPECTED = {
     POPULATION: dict(
+        position=9,
         half_hours=94,
         days=2,
         first_date="2026-09-01",
         last_date="2026-09-02",
         result="reached",
     ),
-    BOTTOM: dict(value="1.000000"),
-    TOP: dict(value="1.250000"),
-    DIFFERENCE: dict(value="0.250000"),
-    RATIO: dict(value="1.250000"),
-    VERDICT: dict(result="supported"),
-    DRAWS: dict(value="1000", result="available"),
-    LOW: dict(value="1.041667"),
-    HIGH: dict(value="1.250000"),
+    BOTTOM: dict(position=6, value="1.000000"),
+    TOP: dict(position=7, value="1.250000"),
+    DIFFERENCE: dict(position=8, value="0.250000"),
+    RATIO: dict(position=1, value="1.250000"),
+    VERDICT: dict(position=5, result="supported"),
+    DRAWS: dict(position=4, value="1000", result="available"),
+    LOW: dict(position=2, value="1.041667"),
+    HIGH: dict(position=3, value="1.250000"),
+    (2, Q4_TOP_TIES, None): dict(
+        half_hours=2, value="39", result="in the top quintile: 2"
+    ),
+    **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {}),
+    **Q4_COHORT_EXPECTED,
     (2, QUINTILE, 1): dict(
         half_hours=19, value="1.000000", result="abs(error_final) 1 to 10"
     ),
@@ -1247,6 +1472,21 @@ Q4_NOT_REACHED_EXPECTED = {
     VERDICT: dict(result="population not reached: no result"),
     DRAWS: dict(value=None, result=None),
     (2, QUINTILE, 1): dict(half_hours=19),
+    (2, Q4_TOP_TIES, None): dict(half_hours=None, value=None, result=None),
+    **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {}),
+    ACTIVE_UNITS: dict(value="7"),
+    NO_PN_UNITS: dict(value="1"),
+    IDLE_UNIT_PERIODS: dict(value="1"),
+    DETERMINABLE_UNIT_PERIODS: dict(value="189"),
+    IDLE_SHARE: dict(value=None),
+}
+
+# B39's error at 38: A38, B38 and B39 share the top quintile's smallest
+# error, 38, at positions 75 to 77 of 94, and only the 77th is in it.
+Q4_TOP_TIE_SPLIT_EXPECTED = {
+    (2, Q4_TOP_TIES, None): dict(
+        half_hours=3, value="38", result="in the top quintile: 1"
+    ),
 }
 
 # Before its population each analysis shows counts only: these columns are
@@ -2545,13 +2785,16 @@ def q30_empty_expected():
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
-def q4_fixtures(a_bottom, b_bottom, a_tenth, stale_b_half_hours=0, extra_days=""):
+def q4_fixtures(
+    a_bottom, b_bottom, a_tenth, stale_b_half_hours=0, extra_days="", b39_error=39
+):
     return Q4_FIXTURES.format(
         a_bottom=a_bottom,
         b_bottom=b_bottom,
         a_tenth=a_tenth,
         stale_b_half_hours=stale_b_half_hours,
         extra_days=extra_days,
+        b39_error=b39_error,
     )
 
 
@@ -2817,6 +3060,21 @@ def unexpected_rows(title, run, expected):
     return found
 
 
+def section_order_mismatches(title, run, section, expected_keys):
+    """The section's rows come out in the expected order."""
+
+    rows, error = run
+    if error is not None:
+        return []
+    found_keys = []
+    for key in rows:
+        if key[0] == section:
+            found_keys.append(key)
+    if found_keys != list(expected_keys):
+        return [f"{title}: section {section} comes out as {found_keys}"]
+    return []
+
+
 def gated_values_left_null(title, run, gated):
     """Every gated column is null in every row of the gated sections."""
 
@@ -3046,11 +3304,17 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     )
     found = mismatches(title, main_run, Q4_EXPECTED)
     found += unexpected_rows(title, main_run, Q4_EXPECTED)
+    found += section_order_mismatches(title, main_run, 1, Q4_SECTION_ONE_ORDER)
     second_run = run_analysis(
         conn, q4_fixtures(1, 1, 3), reached, Q4, Q4_TABLES, time_zone
     )
     if second_run != main_run:
         found.append(f"{title}: a second run gives different rows")
+
+    top_tie_run = run_analysis(
+        conn, q4_fixtures(1, 1, 3, b39_error=38), reached, Q4, Q4_TABLES, time_zone
+    )
+    found += mismatches(f"{title} top-edge tie", top_tie_run, Q4_TOP_TIE_SPLIT_EXPECTED)
 
     unavailable_expected = dict(Q4_UNAVAILABLE_EXPECTED)
     unavailable_expected[DRAWS] = dict(value=str(usable_draws), result="unavailable")
@@ -3101,7 +3365,11 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     found += mismatches(
         f"{title} stale forecasts on a matched day",
         stale_run,
-        {POPULATION: dict(days=2, half_hours=91), LEFT_OUT: dict(half_hours=4)},
+        {
+            POPULATION: dict(days=2, half_hours=91),
+            LEFT_OUT: dict(half_hours=4),
+            **stale_finals_expected({"Tuesday": 48, "Wednesday": 43}, {"Wednesday": 3}),
+        },
     )
 
     all_stale_day_run = run_analysis(
@@ -3120,6 +3388,8 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
             NO_FRESH_DAYS: dict(days=1),
             LOW: Q4_EXPECTED[LOW],
             HIGH: Q4_EXPECTED[HIGH],
+            # Monday 31 August: its first two half-hours start on Sunday in UTC.
+            **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {"Monday": 48}),
         },
     )
     return found
