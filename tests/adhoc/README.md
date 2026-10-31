@@ -70,6 +70,13 @@ shows each trait the tests need.
 `remit_capture_fixture.py` writes `tests/fixtures/elexon/remit_publications.json`:
 one real day, keeping the first message that shows each trait the tests need.
 
+`wind_capture_fixture.py` writes the three wind fixtures from exactly three
+requests: WINDFOR for the publish days 24 October 2026 and 28 March 2026,
+whose issues' spans hold a clock change, and FUELHH WIND for 25 October 2026.
+It saves each full response in a folder named on the command line, keeps the
+first and last issue of each WINDFOR day and the FUELHH date whole, and prints
+every issue's point count, which fixes `expected_points_per_issue`.
+
 Never hand-edit a fixture: it stops recording what the API returned. The
 B1610 fixture is frozen evidence: Elexon serves only the settlement run in
 force, so its II rows cannot be fetched again, and the tests pin its values.

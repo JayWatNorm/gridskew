@@ -40,6 +40,9 @@ behaviour. The pytest suite makes no live API or database calls. See
 | `ndf_truncated.json` | `/datasets/NDF`, 1h publish window | 2026-08-20 | **Truncated extract**: 6 rows of ~119, keeping two forecast vintages (10:16 and 10:49) and a local-date rollover row |
 | `system_prices.json` | `/balancing/settlement/system-prices/2026-08-01/5` | 2026-08-20 | `{metadata, data}` envelope. 18-decimal numerics |
 | `bmunits_truncated.json` | `/reference/bmunits/all` | 2026-08-20 | **Truncated extract**: first 10 of an unknown total. Includes null `fuelType`, null `eic`, and one unit with null `elexonBmUnit` |
+| `windfor_autumn_change.json` | `/datasets/WINDFOR`, one request for the UTC publish day 2026-10-24 | 2026-10-31 | **Truncated**, built by `tests/adhoc/wind_capture_fixture.py`: the first and last stamped of 8 issues (03:30 and 23:30), every point, 148 of 592 rows. Every issue held 74 hourly points: its span from 21:00 UK time holds the 25 October 2026 clock change |
+| `windfor_spring_change.json` | `/datasets/WINDFOR`, one request for the UTC publish day 2026-03-28 | 2026-10-31 | **Truncated**, built by the same script: the first and last stamped of 8 issues (02:30 and 22:30), every point, 144 of 576 rows. Every issue held 72 hourly points: its span holds the 29 March 2026 clock change |
+| `fuelhh_wind_autumn_change.json` | `/datasets/FUELHH`, settlement date 2026-10-25, `fuelType=WIND` | 2026-10-31 | The whole response, built by the same script: 50 rows, periods 1 to 50 of the autumn clock-change date, one publication each |
 
 Truncated extracts preserve verbatim rows but not the full payload; do not use
 them for row-count assertions against the API.
