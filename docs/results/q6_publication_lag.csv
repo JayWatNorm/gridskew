@@ -1,0 +1,21 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+section,outage_class,event_type,item,notices,median_lag_minutes,p90_lag_minutes
+1,Planned,,,8545,-1362.9,-4.9
+1,Unplanned,,,11811,0.9,29.9
+1,,,,12,-6090.5,20.4
+2,Planned,Consumption unavailability,,845,-276.9,-3.2
+2,Planned,Other unavailability,,243,-771.2,99.1
+2,Planned,Production unavailability,,7072,-1394.6,-6.2
+2,Planned,Transmission unavailability,,385,-7184.9,-12.7
+2,Unplanned,Consumption unavailability,,355,0.9,31.9
+2,Unplanned,Other unavailability,,33,-558.1,28.8
+2,Unplanned,Production unavailability,,11201,0.8,29.8
+2,Unplanned,Transmission unavailability,,222,14.0,40.8
+2,,Other unavailability,,4,-16026.2,480.1
+2,,Production unavailability,,8,-6090.5,3.0
+3,,,1 other market information,514,,
+3,,,2 dismissed,9488,,
+3,,,3 first published before the burn-in date,2331,,
+3,,,4 event starts before the history,8,,
+3,,,5 in the population,20368,,
+3,,,6 in the population: class changed after the first publication,151,,

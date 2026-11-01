@@ -166,8 +166,10 @@ dbt/            Sources, seeds, models, tests and macros
 dbt_profiles/   Connection profile using environment variables
 tests/          pytest suite, captured fixtures and ad-hoc checks
 scripts/        Chart script for the results, run by hand
+site/           Static results page, published with GitHub Pages
 docs/           Source, ingestion and deployment documentation
-.github/        Continuous-integration workflow
+docs/results/   Saved results, with each chart's PNG and Vega-Lite spec
+.github/        Continuous-integration and Pages workflows
 ```
 
 - [Data source documentation](docs/README.md)

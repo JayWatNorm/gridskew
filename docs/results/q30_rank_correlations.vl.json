@@ -1,0 +1,399 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "high": "number",
+        "low": "number",
+        "rho": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q30_rank_correlations.csv"
+  },
+  "description": "Wind and carbon forecast misses barely move together",
+  "height": 176,
+  "layer": [
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Size expected: \u00b10.2"
+            ],
+            "range": [
+              "#6e7781",
+              "transparent",
+              "rgba(140, 149, 159, 0.2)"
+            ]
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "datum": -0.2,
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          }
+        },
+        "x2": {
+          "datum": 0.2
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "type": "rect"
+      },
+      "transform": [
+        {
+          "filter": "indexof(datum.label, \"Size of misses\") == 0"
+        },
+        {
+          "as": "key",
+          "calculate": "\"Size expected: \\u00b10.2\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "x": {
+          "datum": 0,
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          }
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "name": "zero line",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Size expected: \u00b10.2"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "field": "low",
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "high"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "strokeWidth": 2,
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"90% range\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Size expected: \u00b10.2"
+            ],
+            "range": [
+              "#6e7781",
+              "transparent",
+              "rgba(140, 149, 159, 0.2)"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Size expected: \u00b10.2"
+            ],
+            "range": [
+              "circle",
+              "M-1,0H1",
+              "M-1,-0.45H1V0.45H-1Z"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rank correlation",
+              "90% range",
+              "Size expected: \u00b10.2"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "measure",
+            "title": "Measure",
+            "type": "nominal"
+          },
+          {
+            "field": "rho",
+            "format": "+.2f",
+            "title": "Rank correlation",
+            "type": "quantitative"
+          },
+          {
+            "field": "low",
+            "format": "+.2f",
+            "title": "90% range from",
+            "type": "quantitative"
+          },
+          {
+            "field": "high",
+            "format": "+.2f",
+            "title": "90% range to",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Rank correlation with",
+              "the carbon forecast's miss"
+            ]
+          },
+          "field": "rho",
+          "scale": {
+            "domain": [
+              -0.3,
+              0.3
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": false,
+        "opacity": 1,
+        "size": 80,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Rank correlation\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "rho_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "rho",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Size of misses|turned-down wind added back",
+            "Direction|turned-down wind added back",
+            "Size of misses|delivered wind",
+            "Direction|delivered wind"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "baseline": "bottom",
+        "dy": -7,
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row compares the two misses one way: the dot is\", \"the rank correlation, the line its 90% range. In the\", \"size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be\", \"negative.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row compares the two misses one way: the dot is the rank\", \"correlation, the line its 90% range. In the size rows, a dot in\", \"the shaded band is as small as expected; the direction rows were\", \"expected to be negative.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the\", \"line its 90% range. In the size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90%\", \"range. In the size rows, a dot in the shaded band is as small as expected; the direction rows\", \"were expected to be negative.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. In the\", \"size rows, a dot in the shaded band is as small as expected; the direction rows were expected to be\", \"negative.\"] : ([\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. In the size rows, a\", \"dot in the shaded band is as small as expected; the direction rows were expected to be negative.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Wind and carbon forecast misses barely move\", \"together\"] : (containerSize()[0] + 0 * width < 480 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 560 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 640 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 720 ? [\"Wind and carbon forecast misses barely move together\"] : ([\"Wind and carbon forecast misses barely move together\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "rho_label",
+      "calculate": "format(datum.rho, '+.2f')"
+    }
+  ],
+  "width": "container"
+}

@@ -1,0 +1,274 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+section,fuel_group,settlement_month,measure,n,under_10_minutes,under_10_minutes_pct,median_minutes
+1,bioenergy,2025-08-01,1 dispatch granularity (acceptances),597,9,1.5,34.0
+1,bioenergy,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",597,0,0.0,156.0
+1,bioenergy,2025-08-01,"3 overlap chains, no 12.1 window (chains)",91,0,0.0,56.0
+1,bioenergy,2025-09-01,1 dispatch granularity (acceptances),1025,8,0.8,36.0
+1,bioenergy,2025-09-01,"2 continuous acceptance duration, BSC (acceptances)",1025,1,0.1,145.0
+1,bioenergy,2025-09-01,"3 overlap chains, no 12.1 window (chains)",153,1,0.7,67.0
+1,bioenergy,2025-10-01,1 dispatch granularity (acceptances),687,7,1.0,40.0
+1,bioenergy,2025-10-01,"2 continuous acceptance duration, BSC (acceptances)",687,1,0.1,181.0
+1,bioenergy,2025-10-01,"3 overlap chains, no 12.1 window (chains)",76,1,1.3,83.0
+1,bioenergy,2025-11-01,1 dispatch granularity (acceptances),657,3,0.5,42.0
+1,bioenergy,2025-11-01,"2 continuous acceptance duration, BSC (acceptances)",657,0,0.0,199.0
+1,bioenergy,2025-11-01,"3 overlap chains, no 12.1 window (chains)",67,0,0.0,66.0
+1,bioenergy,2025-12-01,1 dispatch granularity (acceptances),917,11,1.2,33.0
+1,bioenergy,2025-12-01,"2 continuous acceptance duration, BSC (acceptances)",917,3,0.3,159.0
+1,bioenergy,2025-12-01,"3 overlap chains, no 12.1 window (chains)",141,3,2.1,53.0
+1,bioenergy,2026-01-01,1 dispatch granularity (acceptances),482,4,0.8,39.0
+1,bioenergy,2026-01-01,"2 continuous acceptance duration, BSC (acceptances)",482,0,0.0,172.0
+1,bioenergy,2026-01-01,"3 overlap chains, no 12.1 window (chains)",72,0,0.0,54.5
+1,bioenergy,2026-02-01,1 dispatch granularity (acceptances),315,3,1.0,35.0
+1,bioenergy,2026-02-01,"2 continuous acceptance duration, BSC (acceptances)",315,0,0.0,151.0
+1,bioenergy,2026-02-01,"3 overlap chains, no 12.1 window (chains)",56,0,0.0,44.0
+1,bioenergy,2026-03-01,1 dispatch granularity (acceptances),318,9,2.8,42.0
+1,bioenergy,2026-03-01,"2 continuous acceptance duration, BSC (acceptances)",318,0,0.0,210.5
+1,bioenergy,2026-03-01,"3 overlap chains, no 12.1 window (chains)",34,0,0.0,67.5
+1,bioenergy,2026-04-01,1 dispatch granularity (acceptances),705,10,1.4,32.0
+1,bioenergy,2026-04-01,"2 continuous acceptance duration, BSC (acceptances)",705,3,0.4,157.0
+1,bioenergy,2026-04-01,"3 overlap chains, no 12.1 window (chains)",105,3,2.9,52.0
+1,bioenergy,2026-05-01,1 dispatch granularity (acceptances),773,6,0.8,38.0
+1,bioenergy,2026-05-01,"2 continuous acceptance duration, BSC (acceptances)",773,1,0.1,159.0
+1,bioenergy,2026-05-01,"3 overlap chains, no 12.1 window (chains)",103,1,1.0,65.0
+1,bioenergy,2026-06-01,1 dispatch granularity (acceptances),674,23,3.4,32.0
+1,bioenergy,2026-06-01,"2 continuous acceptance duration, BSC (acceptances)",674,0,0.0,192.0
+1,bioenergy,2026-06-01,"3 overlap chains, no 12.1 window (chains)",68,0,0.0,73.5
+1,bioenergy,2026-07-01,1 dispatch granularity (acceptances),809,5,0.6,39.0
+1,bioenergy,2026-07-01,"2 continuous acceptance duration, BSC (acceptances)",809,0,0.0,191.0
+1,bioenergy,2026-07-01,"3 overlap chains, no 12.1 window (chains)",97,0,0.0,81.0
+1,bioenergy,2026-08-01,1 dispatch granularity (acceptances),536,6,1.1,32.0
+1,bioenergy,2026-08-01,"2 continuous acceptance duration, BSC (acceptances)",536,1,0.2,154.0
+1,bioenergy,2026-08-01,"3 overlap chains, no 12.1 window (chains)",80,1,1.3,88.0
+1,bioenergy,2026-09-01,1 dispatch granularity (acceptances),1646,14,0.9,32.0
+1,bioenergy,2026-09-01,"2 continuous acceptance duration, BSC (acceptances)",1646,0,0.0,199.5
+1,bioenergy,2026-09-01,"3 overlap chains, no 12.1 window (chains)",122,0,0.0,122.5
+1,gas_turbine,2025-08-01,1 dispatch granularity (acceptances),5369,191,3.6,28.0
+1,gas_turbine,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",5369,20,0.4,162.0
+1,gas_turbine,2025-08-01,"3 overlap chains, no 12.1 window (chains)",716,20,2.8,54.5
+1,gas_turbine,2025-09-01,1 dispatch granularity (acceptances),19311,609,3.2,30.0
+1,gas_turbine,2025-09-01,"2 continuous acceptance duration, BSC (acceptances)",19311,55,0.3,206.0
+1,gas_turbine,2025-09-01,"3 overlap chains, no 12.1 window (chains)",2018,53,2.6,51.0
+1,gas_turbine,2025-10-01,1 dispatch granularity (acceptances),22174,616,2.8,30.0
+1,gas_turbine,2025-10-01,"2 continuous acceptance duration, BSC (acceptances)",22174,59,0.3,210.0
+1,gas_turbine,2025-10-01,"3 overlap chains, no 12.1 window (chains)",1977,56,2.8,57.0
+1,gas_turbine,2025-11-01,1 dispatch granularity (acceptances),17708,559,3.2,30.0
+1,gas_turbine,2025-11-01,"2 continuous acceptance duration, BSC (acceptances)",17708,76,0.4,178.0
+1,gas_turbine,2025-11-01,"3 overlap chains, no 12.1 window (chains)",2222,75,3.4,49.0
+1,gas_turbine,2025-12-01,1 dispatch granularity (acceptances),21729,702,3.2,30.0
+1,gas_turbine,2025-12-01,"2 continuous acceptance duration, BSC (acceptances)",21729,71,0.3,200.0
+1,gas_turbine,2025-12-01,"3 overlap chains, no 12.1 window (chains)",2250,67,3.0,48.5
+1,gas_turbine,2026-01-01,1 dispatch granularity (acceptances),22580,717,3.2,30.0
+1,gas_turbine,2026-01-01,"2 continuous acceptance duration, BSC (acceptances)",22580,72,0.3,199.0
+1,gas_turbine,2026-01-01,"3 overlap chains, no 12.1 window (chains)",2460,72,2.9,48.0
+1,gas_turbine,2026-02-01,1 dispatch granularity (acceptances),16783,450,2.7,30.0
+1,gas_turbine,2026-02-01,"2 continuous acceptance duration, BSC (acceptances)",16783,62,0.4,194.0
+1,gas_turbine,2026-02-01,"3 overlap chains, no 12.1 window (chains)",1880,61,3.2,55.0
+1,gas_turbine,2026-03-01,1 dispatch granularity (acceptances),19551,477,2.4,32.0
+1,gas_turbine,2026-03-01,"2 continuous acceptance duration, BSC (acceptances)",19551,42,0.2,211.0
+1,gas_turbine,2026-03-01,"3 overlap chains, no 12.1 window (chains)",1658,41,2.5,60.0
+1,gas_turbine,2026-04-01,1 dispatch granularity (acceptances),18529,430,2.3,34.0
+1,gas_turbine,2026-04-01,"2 continuous acceptance duration, BSC (acceptances)",18529,39,0.2,215.0
+1,gas_turbine,2026-04-01,"3 overlap chains, no 12.1 window (chains)",1467,38,2.6,63.0
+1,gas_turbine,2026-05-01,1 dispatch granularity (acceptances),18127,578,3.2,30.0
+1,gas_turbine,2026-05-01,"2 continuous acceptance duration, BSC (acceptances)",18127,51,0.3,186.0
+1,gas_turbine,2026-05-01,"3 overlap chains, no 12.1 window (chains)",2012,49,2.4,54.0
+1,gas_turbine,2026-06-01,1 dispatch granularity (acceptances),18120,548,3.0,31.0
+1,gas_turbine,2026-06-01,"2 continuous acceptance duration, BSC (acceptances)",18120,70,0.4,185.0
+1,gas_turbine,2026-06-01,"3 overlap chains, no 12.1 window (chains)",2185,68,3.1,49.0
+1,gas_turbine,2026-07-01,1 dispatch granularity (acceptances),17654,510,2.9,31.0
+1,gas_turbine,2026-07-01,"2 continuous acceptance duration, BSC (acceptances)",17654,55,0.3,202.0
+1,gas_turbine,2026-07-01,"3 overlap chains, no 12.1 window (chains)",1825,52,2.8,53.0
+1,gas_turbine,2026-08-01,1 dispatch granularity (acceptances),14313,414,2.9,31.0
+1,gas_turbine,2026-08-01,"2 continuous acceptance duration, BSC (acceptances)",14313,44,0.3,185.0
+1,gas_turbine,2026-08-01,"3 overlap chains, no 12.1 window (chains)",1719,43,2.5,59.0
+1,gas_turbine,2026-09-01,1 dispatch granularity (acceptances),21444,521,2.4,34.0
+1,gas_turbine,2026-09-01,"2 continuous acceptance duration, BSC (acceptances)",21444,24,0.1,219.0
+1,gas_turbine,2026-09-01,"3 overlap chains, no 12.1 window (chains)",1554,23,1.5,80.0
+1,hydro,2025-08-01,1 dispatch granularity (acceptances),636,20,3.1,36.0
+1,hydro,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",636,1,0.2,150.0
+1,hydro,2025-08-01,"3 overlap chains, no 12.1 window (chains)",139,1,0.7,68.0
+1,hydro,2025-09-01,1 dispatch granularity (acceptances),3106,48,1.5,43.0
+1,hydro,2025-09-01,"2 continuous acceptance duration, BSC (acceptances)",3106,10,0.3,176.0
+1,hydro,2025-09-01,"3 overlap chains, no 12.1 window (chains)",565,10,1.8,97.0
+1,hydro,2025-10-01,1 dispatch granularity (acceptances),3971,105,2.6,46.0
+1,hydro,2025-10-01,"2 continuous acceptance duration, BSC (acceptances)",3971,20,0.5,173.0
+1,hydro,2025-10-01,"3 overlap chains, no 12.1 window (chains)",713,20,2.8,93.0
+1,hydro,2025-11-01,1 dispatch granularity (acceptances),4387,86,2.0,51.0
+1,hydro,2025-11-01,"2 continuous acceptance duration, BSC (acceptances)",4387,18,0.4,189.0
+1,hydro,2025-11-01,"3 overlap chains, no 12.1 window (chains)",664,18,2.7,115.0
+1,hydro,2025-12-01,1 dispatch granularity (acceptances),3909,110,2.8,54.0
+1,hydro,2025-12-01,"2 continuous acceptance duration, BSC (acceptances)",3909,22,0.6,189.0
+1,hydro,2025-12-01,"3 overlap chains, no 12.1 window (chains)",678,22,3.2,81.5
+1,hydro,2026-01-01,1 dispatch granularity (acceptances),3475,48,1.4,57.0
+1,hydro,2026-01-01,"2 continuous acceptance duration, BSC (acceptances)",3475,5,0.1,209.0
+1,hydro,2026-01-01,"3 overlap chains, no 12.1 window (chains)",421,5,1.2,181.0
+1,hydro,2026-02-01,1 dispatch granularity (acceptances),3764,70,1.9,50.0
+1,hydro,2026-02-01,"2 continuous acceptance duration, BSC (acceptances)",3764,12,0.3,188.0
+1,hydro,2026-02-01,"3 overlap chains, no 12.1 window (chains)",600,12,2.0,112.5
+1,hydro,2026-03-01,1 dispatch granularity (acceptances),6836,164,2.4,51.0
+1,hydro,2026-03-01,"2 continuous acceptance duration, BSC (acceptances)",6836,47,0.7,211.0
+1,hydro,2026-03-01,"3 overlap chains, no 12.1 window (chains)",766,47,6.1,171.5
+1,hydro,2026-04-01,1 dispatch granularity (acceptances),4800,125,2.6,49.0
+1,hydro,2026-04-01,"2 continuous acceptance duration, BSC (acceptances)",4800,24,0.5,180.0
+1,hydro,2026-04-01,"3 overlap chains, no 12.1 window (chains)",823,22,2.7,123.0
+1,hydro,2026-05-01,1 dispatch granularity (acceptances),2411,43,1.8,49.0
+1,hydro,2026-05-01,"2 continuous acceptance duration, BSC (acceptances)",2411,6,0.2,189.0
+1,hydro,2026-05-01,"3 overlap chains, no 12.1 window (chains)",405,6,1.5,103.0
+1,hydro,2026-06-01,1 dispatch granularity (acceptances),4906,104,2.1,44.0
+1,hydro,2026-06-01,"2 continuous acceptance duration, BSC (acceptances)",4906,15,0.3,184.0
+1,hydro,2026-06-01,"3 overlap chains, no 12.1 window (chains)",745,15,2.0,176.0
+1,hydro,2026-07-01,1 dispatch granularity (acceptances),3877,91,2.3,48.0
+1,hydro,2026-07-01,"2 continuous acceptance duration, BSC (acceptances)",3877,5,0.1,185.0
+1,hydro,2026-07-01,"3 overlap chains, no 12.1 window (chains)",613,5,0.8,152.0
+1,hydro,2026-08-01,1 dispatch granularity (acceptances),3121,137,4.4,39.0
+1,hydro,2026-08-01,"2 continuous acceptance duration, BSC (acceptances)",3121,34,1.1,190.0
+1,hydro,2026-08-01,"3 overlap chains, no 12.1 window (chains)",507,34,6.7,101.0
+1,hydro,2026-09-01,1 dispatch granularity (acceptances),4352,139,3.2,53.0
+1,hydro,2026-09-01,"2 continuous acceptance duration, BSC (acceptances)",4352,18,0.4,196.0
+1,hydro,2026-09-01,"3 overlap chains, no 12.1 window (chains)",591,17,2.9,174.0
+1,other,2025-08-01,1 dispatch granularity (acceptances),14563,11650,80.0,5.0
+1,other,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",14563,3544,24.3,26.0
+1,other,2025-08-01,"3 overlap chains, no 12.1 window (chains)",5081,2834,55.8,8.0
+1,other,2025-09-01,1 dispatch granularity (acceptances),43785,33626,76.8,5.0
+1,other,2025-09-01,"2 continuous acceptance duration, BSC (acceptances)",43785,10011,22.9,27.0
+1,other,2025-09-01,"3 overlap chains, no 12.1 window (chains)",15413,8009,52.0,9.0
+1,other,2025-10-01,1 dispatch granularity (acceptances),51238,38037,74.2,5.0
+1,other,2025-10-01,"2 continuous acceptance duration, BSC (acceptances)",51238,10476,20.4,30.0
+1,other,2025-10-01,"3 overlap chains, no 12.1 window (chains)",16219,8187,50.5,9.0
+1,other,2025-11-01,1 dispatch granularity (acceptances),49323,37953,76.9,5.0
+1,other,2025-11-01,"2 continuous acceptance duration, BSC (acceptances)",49323,9585,19.4,28.0
+1,other,2025-11-01,"3 overlap chains, no 12.1 window (chains)",15960,7473,46.8,11.0
+1,other,2025-12-01,1 dispatch granularity (acceptances),50062,38566,77.0,5.0
+1,other,2025-12-01,"2 continuous acceptance duration, BSC (acceptances)",50062,10702,21.4,28.0
+1,other,2025-12-01,"3 overlap chains, no 12.1 window (chains)",16490,8300,50.3,9.0
+1,other,2026-01-01,1 dispatch granularity (acceptances),47282,34981,74.0,5.0
+1,other,2026-01-01,"2 continuous acceptance duration, BSC (acceptances)",47282,8977,19.0,29.0
+1,other,2026-01-01,"3 overlap chains, no 12.1 window (chains)",15249,6958,45.6,11.0
+1,other,2026-02-01,1 dispatch granularity (acceptances),46196,35959,77.8,5.0
+1,other,2026-02-01,"2 continuous acceptance duration, BSC (acceptances)",46196,9634,20.9,27.0
+1,other,2026-02-01,"3 overlap chains, no 12.1 window (chains)",14966,7456,49.8,10.0
+1,other,2026-03-01,1 dispatch granularity (acceptances),69785,53922,77.3,5.0
+1,other,2026-03-01,"2 continuous acceptance duration, BSC (acceptances)",69785,12516,17.9,31.0
+1,other,2026-03-01,"3 overlap chains, no 12.1 window (chains)",20467,9449,46.2,11.0
+1,other,2026-04-01,1 dispatch granularity (acceptances),72595,57380,79.0,5.0
+1,other,2026-04-01,"2 continuous acceptance duration, BSC (acceptances)",72595,14203,19.6,29.0
+1,other,2026-04-01,"3 overlap chains, no 12.1 window (chains)",22400,10811,48.3,10.0
+1,other,2026-05-01,1 dispatch granularity (acceptances),66960,52075,77.8,5.0
+1,other,2026-05-01,"2 continuous acceptance duration, BSC (acceptances)",66960,14397,21.5,27.0
+1,other,2026-05-01,"3 overlap chains, no 12.1 window (chains)",21906,11211,51.2,9.0
+1,other,2026-06-01,1 dispatch granularity (acceptances),65833,50700,77.0,5.0
+1,other,2026-06-01,"2 continuous acceptance duration, BSC (acceptances)",65833,14196,21.6,28.0
+1,other,2026-06-01,"3 overlap chains, no 12.1 window (chains)",21481,10993,51.2,9.0
+1,other,2026-07-01,1 dispatch granularity (acceptances),68302,54678,80.1,5.0
+1,other,2026-07-01,"2 continuous acceptance duration, BSC (acceptances)",68302,17063,25.0,25.0
+1,other,2026-07-01,"3 overlap chains, no 12.1 window (chains)",23670,13120,55.4,8.0
+1,other,2026-08-01,1 dispatch granularity (acceptances),68784,55525,80.7,5.0
+1,other,2026-08-01,"2 continuous acceptance duration, BSC (acceptances)",68784,18004,26.2,22.0
+1,other,2026-08-01,"3 overlap chains, no 12.1 window (chains)",25357,14121,55.7,8.0
+1,other,2026-09-01,1 dispatch granularity (acceptances),81549,62970,77.2,5.0
+1,other,2026-09-01,"2 continuous acceptance duration, BSC (acceptances)",81549,16769,20.6,28.0
+1,other,2026-09-01,"3 overlap chains, no 12.1 window (chains)",26282,12843,48.9,10.0
+1,pumped_storage,2025-08-01,1 dispatch granularity (acceptances),676,551,81.5,6.0
+1,pumped_storage,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",676,150,22.2,32.0
+1,pumped_storage,2025-08-01,"3 overlap chains, no 12.1 window (chains)",212,130,61.3,7.0
+1,pumped_storage,2025-09-01,1 dispatch granularity (acceptances),4014,2433,60.6,7.0
+1,pumped_storage,2025-09-01,"2 continuous acceptance duration, BSC (acceptances)",4014,577,14.4,49.0
+1,pumped_storage,2025-09-01,"3 overlap chains, no 12.1 window (chains)",1060,509,48.0,10.0
+1,pumped_storage,2025-10-01,1 dispatch granularity (acceptances),4968,2837,57.1,7.0
+1,pumped_storage,2025-10-01,"2 continuous acceptance duration, BSC (acceptances)",4968,779,15.7,52.0
+1,pumped_storage,2025-10-01,"3 overlap chains, no 12.1 window (chains)",1380,695,50.4,9.0
+1,pumped_storage,2025-11-01,1 dispatch granularity (acceptances),5105,3262,63.9,6.0
+1,pumped_storage,2025-11-01,"2 continuous acceptance duration, BSC (acceptances)",5105,903,17.7,44.0
+1,pumped_storage,2025-11-01,"3 overlap chains, no 12.1 window (chains)",1507,802,53.2,8.0
+1,pumped_storage,2025-12-01,1 dispatch granularity (acceptances),4326,2466,57.0,7.0
+1,pumped_storage,2025-12-01,"2 continuous acceptance duration, BSC (acceptances)",4326,792,18.3,42.0
+1,pumped_storage,2025-12-01,"3 overlap chains, no 12.1 window (chains)",1278,685,53.6,8.0
+1,pumped_storage,2026-01-01,1 dispatch granularity (acceptances),4373,2702,61.8,7.0
+1,pumped_storage,2026-01-01,"2 continuous acceptance duration, BSC (acceptances)",4373,704,16.1,52.0
+1,pumped_storage,2026-01-01,"3 overlap chains, no 12.1 window (chains)",1192,630,52.9,8.0
+1,pumped_storage,2026-02-01,1 dispatch granularity (acceptances),3876,1867,48.2,11.0
+1,pumped_storage,2026-02-01,"2 continuous acceptance duration, BSC (acceptances)",3876,574,14.8,95.0
+1,pumped_storage,2026-02-01,"3 overlap chains, no 12.1 window (chains)",1005,513,51.0,9.0
+1,pumped_storage,2026-03-01,1 dispatch granularity (acceptances),5776,2992,51.8,8.0
+1,pumped_storage,2026-03-01,"2 continuous acceptance duration, BSC (acceptances)",5776,728,12.6,81.0
+1,pumped_storage,2026-03-01,"3 overlap chains, no 12.1 window (chains)",1471,676,46.0,12.0
+1,pumped_storage,2026-04-01,1 dispatch granularity (acceptances),5197,2837,54.6,7.0
+1,pumped_storage,2026-04-01,"2 continuous acceptance duration, BSC (acceptances)",5197,896,17.2,51.0
+1,pumped_storage,2026-04-01,"3 overlap chains, no 12.1 window (chains)",1614,824,51.1,9.0
+1,pumped_storage,2026-05-01,1 dispatch granularity (acceptances),4820,3062,63.5,7.0
+1,pumped_storage,2026-05-01,"2 continuous acceptance duration, BSC (acceptances)",4820,901,18.7,41.0
+1,pumped_storage,2026-05-01,"3 overlap chains, no 12.1 window (chains)",1447,804,55.6,8.0
+1,pumped_storage,2026-06-01,1 dispatch granularity (acceptances),5802,3281,56.5,7.0
+1,pumped_storage,2026-06-01,"2 continuous acceptance duration, BSC (acceptances)",5802,820,14.1,54.0
+1,pumped_storage,2026-06-01,"3 overlap chains, no 12.1 window (chains)",1554,736,47.4,11.0
+1,pumped_storage,2026-07-01,1 dispatch granularity (acceptances),5169,3034,58.7,7.0
+1,pumped_storage,2026-07-01,"2 continuous acceptance duration, BSC (acceptances)",5169,901,17.4,42.0
+1,pumped_storage,2026-07-01,"3 overlap chains, no 12.1 window (chains)",1547,800,51.7,9.0
+1,pumped_storage,2026-08-01,1 dispatch granularity (acceptances),5044,3556,70.5,6.0
+1,pumped_storage,2026-08-01,"2 continuous acceptance duration, BSC (acceptances)",5044,925,18.3,32.0
+1,pumped_storage,2026-08-01,"3 overlap chains, no 12.1 window (chains)",1494,817,54.7,8.0
+1,pumped_storage,2026-09-01,1 dispatch granularity (acceptances),4791,2853,59.5,7.0
+1,pumped_storage,2026-09-01,"2 continuous acceptance duration, BSC (acceptances)",4791,826,17.2,48.0
+1,pumped_storage,2026-09-01,"3 overlap chains, no 12.1 window (chains)",1389,729,52.5,9.0
+1,wind,2025-08-01,1 dispatch granularity (acceptances),5247,82,1.6,32.0
+1,wind,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",5247,10,0.2,211.0
+1,wind,2025-08-01,"3 overlap chains, no 12.1 window (chains)",499,10,2.0,202.0
+1,wind,2025-09-01,1 dispatch granularity (acceptances),28268,698,2.5,32.0
+1,wind,2025-09-01,"2 continuous acceptance duration, BSC (acceptances)",28268,73,0.3,211.0
+1,wind,2025-09-01,"3 overlap chains, no 12.1 window (chains)",2106,72,3.4,242.5
+1,wind,2025-10-01,1 dispatch granularity (acceptances),30229,774,2.6,33.0
+1,wind,2025-10-01,"2 continuous acceptance duration, BSC (acceptances)",30229,52,0.2,211.0
+1,wind,2025-10-01,"3 overlap chains, no 12.1 window (chains)",2158,52,2.4,259.5
+1,wind,2025-11-01,1 dispatch granularity (acceptances),21559,708,3.3,33.0
+1,wind,2025-11-01,"2 continuous acceptance duration, BSC (acceptances)",21559,63,0.3,211.0
+1,wind,2025-11-01,"3 overlap chains, no 12.1 window (chains)",1655,62,3.7,212.0
+1,wind,2025-12-01,1 dispatch granularity (acceptances),25303,688,2.7,33.0
+1,wind,2025-12-01,"2 continuous acceptance duration, BSC (acceptances)",25303,46,0.2,211.0
+1,wind,2025-12-01,"3 overlap chains, no 12.1 window (chains)",1790,44,2.5,236.5
+1,wind,2026-01-01,1 dispatch granularity (acceptances),24020,779,3.2,33.0
+1,wind,2026-01-01,"2 continuous acceptance duration, BSC (acceptances)",24020,52,0.2,212.0
+1,wind,2026-01-01,"3 overlap chains, no 12.1 window (chains)",1597,51,3.2,242.0
+1,wind,2026-02-01,1 dispatch granularity (acceptances),19308,676,3.5,32.0
+1,wind,2026-02-01,"2 continuous acceptance duration, BSC (acceptances)",19308,53,0.3,211.0
+1,wind,2026-02-01,"3 overlap chains, no 12.1 window (chains)",1511,52,3.4,196.0
+1,wind,2026-03-01,1 dispatch granularity (acceptances),34512,887,2.6,33.0
+1,wind,2026-03-01,"2 continuous acceptance duration, BSC (acceptances)",34512,79,0.2,212.0
+1,wind,2026-03-01,"3 overlap chains, no 12.1 window (chains)",2245,77,3.4,281.0
+1,wind,2026-04-01,1 dispatch granularity (acceptances),27496,780,2.8,33.0
+1,wind,2026-04-01,"2 continuous acceptance duration, BSC (acceptances)",27496,73,0.3,209.0
+1,wind,2026-04-01,"3 overlap chains, no 12.1 window (chains)",2404,70,2.9,218.0
+1,wind,2026-05-01,1 dispatch granularity (acceptances),13398,376,2.8,33.0
+1,wind,2026-05-01,"2 continuous acceptance duration, BSC (acceptances)",13398,39,0.3,211.0
+1,wind,2026-05-01,"3 overlap chains, no 12.1 window (chains)",1071,38,3.5,160.0
+1,wind,2026-06-01,1 dispatch granularity (acceptances),19277,534,2.8,32.0
+1,wind,2026-06-01,"2 continuous acceptance duration, BSC (acceptances)",19277,39,0.2,205.0
+1,wind,2026-06-01,"3 overlap chains, no 12.1 window (chains)",1844,39,2.1,177.0
+1,wind,2026-07-01,1 dispatch granularity (acceptances),15624,469,3.0,32.0
+1,wind,2026-07-01,"2 continuous acceptance duration, BSC (acceptances)",15624,40,0.3,200.0
+1,wind,2026-07-01,"3 overlap chains, no 12.1 window (chains)",1543,39,2.5,154.0
+1,wind,2026-08-01,1 dispatch granularity (acceptances),10013,428,4.3,32.0
+1,wind,2026-08-01,"2 continuous acceptance duration, BSC (acceptances)",10013,33,0.3,186.0
+1,wind,2026-08-01,"3 overlap chains, no 12.1 window (chains)",1060,33,3.1,152.5
+1,wind,2026-09-01,1 dispatch granularity (acceptances),43813,1176,2.7,32.0
+1,wind,2026-09-01,"2 continuous acceptance duration, BSC (acceptances)",43813,115,0.3,211.0
+1,wind,2026-09-01,"3 overlap chains, no 12.1 window (chains)",2965,112,3.8,304.0
+2,bioenergy,,1 dispatch granularity (acceptances),10141,118,1.2,35.0
+2,bioenergy,,"2 continuous acceptance duration, BSC (acceptances)",10141,10,0.1,173.0
+2,bioenergy,,"3 overlap chains, no 12.1 window (chains)",1265,10,0.8,68.0
+2,gas_turbine,,1 dispatch granularity (acceptances),253392,7322,2.9,31.0
+2,gas_turbine,,"2 continuous acceptance duration, BSC (acceptances)",253392,740,0.3,203.0
+2,gas_turbine,,"3 overlap chains, no 12.1 window (chains)",25943,718,2.8,54.0
+2,hydro,,1 dispatch granularity (acceptances),53551,1290,2.4,49.0
+2,hydro,,"2 continuous acceptance duration, BSC (acceptances)",53551,237,0.4,190.0
+2,hydro,,"3 overlap chains, no 12.1 window (chains)",8230,234,2.8,124.0
+2,other,,1 dispatch granularity (acceptances),796257,618022,77.6,5.0
+2,other,,"2 continuous acceptance duration, BSC (acceptances)",796257,170077,21.4,28.0
+2,other,,"3 overlap chains, no 12.1 window (chains)",260941,131765,50.5,9.0
+2,pumped_storage,,1 dispatch granularity (acceptances),63937,37733,59.0,7.0
+2,pumped_storage,,"2 continuous acceptance duration, BSC (acceptances)",63937,10476,16.4,49.0
+2,pumped_storage,,"3 overlap chains, no 12.1 window (chains)",18150,9350,51.5,9.0
+2,wind,,1 dispatch granularity (acceptances),318067,9055,2.8,33.0
+2,wind,,"2 continuous acceptance duration, BSC (acceptances)",318067,767,0.2,211.0
+2,wind,,"3 overlap chains, no 12.1 window (chains)",24448,751,3.1,218.0
+3,,,acceptances captured more than once (latest capture used),28807,,,
+3,,,acceptances of units outside the cohort,2021245,,,
