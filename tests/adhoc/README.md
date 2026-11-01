@@ -42,7 +42,7 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `check_one_look_analyses.py` | The Q10, Q4, Q2-RF, Q25, Q27, Q8 and Q28 one-look analyses on hand-worked rows, in UTC and Europe/London sessions: every listed cell, each gate, Q4's not-applicable branch and bootstrap interval, Q2-RF's undefined share, Q25's acceptance across the London midnight, Q27's run without look-ahead, Q8's gap either side of 0.1 and -0.1, Q28's ratio either side of 1.25, and how Q4 and Q28 assign equal-error half-hours when a quintile boundary splits a tie | Disposable PostgreSQL |
 | `check_scheduled_set.py` | The nightly DAG's and the BM-unit DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
 | `check_nightly_run.py` | The nightly DAG's default dbt commands, run for real after the full build: each succeeds, each node gets one audit row, no view is recreated, and audit rows past retention are deleted | Disposable PostgreSQL |
-| `check_database_writes.py` | What the loaders and the quarantine write, read back by column name; that a repeated load is ignored; the B1610 coverage and REMIT quarantine queries; that the demand back-fill holds a UTC publish day in a London session. Runs after every step that reads the fixtures and deletes its own rows | Disposable PostgreSQL |
+| `check_database_writes.py` | What the loaders and the quarantine write, read back by column name; that a repeated load is ignored; the B1610 coverage and REMIT quarantine queries; that the demand back-fill holds a UTC publish day in a London session; the wind capture's completeness and quarantine queries in UTC, Europe/London, `Etc/GMT-14` and `Etc/GMT+12` sessions; that `warn_wind_capture_days_short` names exactly the days the capture's rule names; and two capture runs across a failed request. Runs after every step that reads the fixtures and deletes its own rows | Disposable PostgreSQL and dbt |
 | `check_insert_rows.py` | The shared insert helper: every row lands, each value type binds to its column, a repeated load is ignored and a failed row leaves nothing once rolled back | Disposable PostgreSQL |
 
 The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
@@ -69,6 +69,13 @@ shows each trait the tests need.
 
 `remit_capture_fixture.py` writes `tests/fixtures/elexon/remit_publications.json`:
 one real day, keeping the first message that shows each trait the tests need.
+
+`wind_capture_fixture.py` writes the three wind fixtures from exactly three
+requests: WINDFOR for the publish days 24 October 2026 and 28 March 2026,
+whose issues' spans hold a clock change, and FUELHH WIND for 25 October 2026.
+It saves each full response in a folder named on the command line, keeps the
+first and last issue of each WINDFOR day and the FUELHH date whole, and prints
+every issue's point count, which fixes `expected_points_per_issue`.
 
 Never hand-edit a fixture: it stops recording what the API returned. The
 B1610 fixture is frozen evidence: Elexon serves only the settlement run in

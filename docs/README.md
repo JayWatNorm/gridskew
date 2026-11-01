@@ -61,7 +61,7 @@ docs/sources/
     090_qas.md                Services outside the mechanism (ABSVD)   [running]
     091_qas_ingestion.md        14, 35 and 450 days; one-off backfill
     100_wind.md               Expected versus metered wind             [WINDFOR, FUELHH]
-    101_wind_ingestion.md       one-off back-fill of a year, no DAG
+    101_wind_ingestion.md       daily at 06:00 UTC; a year's back-fill
 ```
 
 The four ideas every dataset follows from are in **How the GB electricity

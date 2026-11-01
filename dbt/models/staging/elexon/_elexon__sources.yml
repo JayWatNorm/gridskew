@@ -529,9 +529,14 @@ sources:
           One row per hourly point and issue: the national wind generation
           forecast (WINDFOR). Up to eight issues a day, each forecasting about
           three days of hourly points; every issue is kept. Covers only wind farms visible to NESO with
-          operational metering. Loaded once, by
-          ingestion/elexon/wind_backfill.py, for publish days 20 August 2025 to
-          16 August 2026; no schedule, so no freshness check.
+          operational metering. Captured daily at 06:00 UTC by
+          gridskew_elexon_wind, from publish day 1 November 2026; publish days
+          20 August 2025 to 16 August 2026 come from a one-off back-fill
+          (ingestion/elexon/wind_backfill.py).
+        config:
+          freshness:
+            warn_after: {count: 25, period: hour}
+            error_after: {count: 48, period: hour}
         columns:
 
           - name: start_time
@@ -555,9 +560,14 @@ sources:
         description: >
           One row per settlement period, fuel type and publication: the
           half-hourly generation outturn by fuel type (FUELHH). Only fuel type
-          WIND is loaded; taken to be metered generation (inferred). Loaded once with WINDFOR, for
-          settlement dates 22 August 2025 to 16 August 2026; no freshness
-          check.
+          WIND is loaded; taken to be metered generation (inferred). Captured
+          daily at 06:00 UTC with WINDFOR, from settlement date 1 November
+          2026; settlement dates 22 August 2025 to 16 August 2026 come from
+          the one-off back-fill.
+        config:
+          freshness:
+            warn_after: {count: 25, period: hour}
+            error_after: {count: 48, period: hour}
         columns:
 
           - name: settlement_date

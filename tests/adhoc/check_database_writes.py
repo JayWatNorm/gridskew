@@ -1,10 +1,18 @@
 """Read back by column name what the loaders and the quarantine write, and run
-the B1610 coverage and REMIT quarantine queries against a real database.
+the B1610 coverage, REMIT quarantine and wind capture queries against a real
+database.
 
 The unit tests replace the database with mocks, so they cannot show which
 column a value lands in, that a repeated load is ignored, or what a query
 counts. Each read-back uses a second connection, so it also proves the
 writer committed.
+
+The wind capture checks run the completeness and quarantine queries in UTC,
+Europe/London, Etc/GMT-14 and Etc/GMT+12 sessions on rows they roll back;
+check that the warning test warn_wind_capture_days_short names exactly the
+days the poller's rule names, on rows inside its range, counting back from
+today and from 28 October 2026; and run the capture functions twice across
+a failure, with HTTP faked, on days in 2099.
 
 The loaders commit, so in the CI `test` job this runs after every step that
 reads the fixtures, and deletes its own rows at the end.
@@ -20,15 +28,25 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import psycopg
+import requests
+from psycopg.types.json import Jsonb
 
 from ingestion.carbon_intensity.forecast_poller import load as load_forecast
 from ingestion.carbon_intensity.forecast_poller import parse as parse_forecast
 from ingestion.carbon_intensity.outturn_poller import load as load_outturn
 from ingestion.carbon_intensity.outturn_poller import parse as parse_outturn
-from ingestion.elexon import demand_backfill, qas_poller, wind_backfill
+from ingestion.database import insert_rows
+from ingestion.elexon import (
+    demand_backfill,
+    qas_poller,
+    wind_backfill,
+    wind_poller,
+)
 from ingestion.elexon.b1610_poller import (
     decimal_json_dumps,
     recent_unit_count,
@@ -49,6 +67,7 @@ from ingestion.elexon.remit_poller import (
     quarantined_row_count,
 )
 from ingestion.elexon.remit_poller import parse as parse_remit
+from ingestion.elexon.settlement_calendar import expected_period_count
 from ingestion.elexon.wind_poller import (
     load_fuelhh,
     load_windfor,
@@ -56,6 +75,7 @@ from ingestion.elexon.wind_poller import (
     parse_windfor,
 )
 from ingestion.routing import ContractRejected, quarantine_rows
+from tests.adhoc.check_analyses_compile import compile_analyses
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 # A capture time no fixture uses, so every row this check writes is its own.
@@ -176,6 +196,48 @@ B1610_COLUMNS = (
     "quantity",
     "retrieved_at",
 )
+LONDON = ZoneInfo("Europe/London")
+# At any hour one of the last two is on another date than UTC.
+SESSION_ZONES = ("UTC", "Europe/London", "Etc/GMT-14", "Etc/GMT+12")
+WIND_WARNING_TEST = "warn_wind_capture_days_short"
+# Up to nine WINDFOR issues of one day; the eighth falls on the next London
+# day in summer.
+CHECK_ISSUE_TIMES = WINDFOR_ISSUE_TIMES + ("01:30",)
+WINDFOR_INSERT = (
+    "INSERT INTO raw.elexon_windfor (start_time, publish_time, generation, "
+    "retrieved_at) VALUES %s"
+)
+FUELHH_INSERT = (
+    "INSERT INTO raw.elexon_fuelhh (settlement_date, settlement_period, "
+    "start_time, fuel_type, publish_time, generation, retrieved_at) VALUES %s"
+)
+QUARANTINE_INSERT = (
+    "INSERT INTO raw.endpoint_quarantine (dataset, retrieved_at, request_context, "
+    "validation_errors, observed_fields, payload) VALUES %s"
+)
+# The year-2000 days of the completeness and quarantine query checks. The
+# autumn clock change of 2000 was on 29 October: publish days 27 to 29
+# October expect 74 points, and 29 October has 50 periods; 26 March had 46.
+AUGUST_10_2000 = date(2000, 8, 10)
+AUGUST_11_2000 = date(2000, 8, 11)
+AUGUST_12_2000 = date(2000, 8, 12)
+AUGUST_13_2000 = date(2000, 8, 13)
+OCTOBER_27_2000 = date(2000, 10, 27)
+OCTOBER_28_2000 = date(2000, 10, 28)
+SPRING_CHANGE_2000 = date(2000, 3, 26)
+AUTUMN_CHANGE_2000 = date(2000, 10, 29)
+OCTOBER_30_2000 = date(2000, 10, 30)
+# The two-run sequence asks for days in 2099; the out-of-range values are in
+# 2100. No fixture or other check uses either year, and the end of the check
+# deletes every wind row and quarantine row from 2099 on.
+# The warning test, counted back from this day, checks 28 September to
+# 26 October 2026: summer days, the 74-point publish days 23 to 25 October
+# and the 50-period date 25 October, whatever day the check runs.
+WARNING_DAY_AFTER_CLOCK_CHANGE = date(2026, 10, 28)
+SEQUENCE_YEARS_FROM = date(2099, 1, 1)
+FIRST_RUN_TARGET = date(2099, 6, 10)
+SECOND_RUN_TARGET = date(2099, 6, 11)
+OUT_OF_RANGE_DAY = date(2100, 1, 1)
 
 
 def disposable_connection(time_zone=None):
@@ -654,8 +716,534 @@ def check_qas_rejected_row_loads_nothing(writer, reader):
     assert quarantined["volume"] == "-1.500", quarantined
 
 
+def uk_evening_in_utc(day):
+    return datetime(day.year, day.month, day.day, 21, tzinfo=LONDON).astimezone(
+        timezone.utc
+    )
+
+
+def windfor_day_rows(publish_day, points_per_issue):
+    """WINDFOR rows as the API returns them: one issue per entry of
+    points_per_issue, stamped at the summer issue times on the UTC publish
+    day, each with that many hourly points from 21:00 UK time the day
+    before."""
+
+    issue_times = CHECK_ISSUE_TIMES[: len(points_per_issue)]
+    first_point = uk_evening_in_utc(publish_day - timedelta(days=1))
+    rows = []
+    for issue_time, points in zip(issue_times, points_per_issue, strict=True):
+        for hour in range(points):
+            start = first_point + timedelta(hours=hour)
+            rows.append(
+                {
+                    "dataset": "WINDFOR",
+                    "publishTime": f"{publish_day.isoformat()}T{issue_time}:00Z",
+                    "startTime": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "generation": 3000 + hour,
+                }
+            )
+    return rows
+
+
+def fuelhh_date_rows(settlement_date, periods):
+    """FUELHH WIND rows as the API returns them, one per period given, each
+    published as its period ends. A period given twice is published again an
+    hour later."""
+
+    london_midnight = datetime(
+        settlement_date.year, settlement_date.month, settlement_date.day, tzinfo=LONDON
+    ).astimezone(timezone.utc)
+    published_periods = set()
+    rows = []
+    for period in periods:
+        start = london_midnight + (period - 1) * timedelta(minutes=30)
+        published = start + timedelta(minutes=30)
+        if period in published_periods:
+            published += timedelta(hours=1)
+        published_periods.add(period)
+        rows.append(
+            {
+                "dataset": "FUELHH",
+                "publishTime": published.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "startTime": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "settlementDate": settlement_date.isoformat(),
+                "settlementPeriod": period,
+                "fuelType": "WIND",
+                "generation": 2000 + period,
+            }
+        )
+    return rows
+
+
+def whole_windfor_day(publish_day):
+    points = wind_poller.expected_points_per_issue(publish_day)
+    return windfor_day_rows(publish_day, [points] * 8)
+
+
+def whole_fuelhh_date(settlement_date):
+    return fuelhh_date_rows(
+        settlement_date, range(1, expected_period_count(settlement_date) + 1)
+    )
+
+
+def periods(first, last):
+    return list(range(first, last + 1))
+
+
+def store_uncommitted(conn, windfor_rows, fuelhh_rows, stored_at):
+    """Insert wind rows in the connection's open transaction; the caller rolls
+    them back."""
+
+    with conn.cursor() as cursor:
+        insert_rows(cursor, WINDFOR_INSERT, parse_windfor(windfor_rows, stored_at))
+        insert_rows(cursor, FUELHH_INSERT, parse_fuelhh(fuelhh_rows, stored_at))
+
+
+def quarantine_row_naming(dataset, request_context):
+    return (
+        dataset,
+        CHECK_CAPTURE,
+        Jsonb(request_context),
+        Jsonb({"source_index": 0, "errors": []}),
+        Jsonb([]),
+        Jsonb({}),
+    )
+
+
+def use_session_zone(conn, zone):
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT set_config('TimeZone', %s, false)", (zone,))
+
+
+def store_year_2000_wind_rows(conn):
+    windfor_rows = [
+        # Complete: its 23:30 issue is on 11 August in London.
+        *windfor_day_rows(AUGUST_10_2000, [73] * 8),
+        # The last issue one point short.
+        *windfor_day_rows(AUGUST_11_2000, [73] * 7 + [72]),
+        *windfor_day_rows(AUGUST_12_2000, [73] * 7),
+        # A partial ninth issue.
+        *windfor_day_rows(AUGUST_13_2000, [73] * 8 + [40]),
+        # The span holds the clock change: 74 points are expected.
+        *windfor_day_rows(OCTOBER_27_2000, [73] * 8),
+        *windfor_day_rows(OCTOBER_28_2000, [74] * 8),
+    ]
+    fuelhh_rows = [
+        *fuelhh_date_rows(SPRING_CHANGE_2000, periods(1, 46)),
+        *fuelhh_date_rows(AUGUST_10_2000, periods(1, 48)),
+        # Period 7 published twice.
+        *fuelhh_date_rows(AUGUST_11_2000, periods(1, 48) + [7]),
+        *fuelhh_date_rows(AUGUST_12_2000, periods(1, 47)),
+        *fuelhh_date_rows(AUGUST_13_2000, periods(1, 47) + [49]),
+        *fuelhh_date_rows(AUTUMN_CHANGE_2000, periods(1, 50)),
+        *fuelhh_date_rows(OCTOBER_30_2000, [0] + periods(2, 48)),
+    ]
+    store_uncommitted(conn, windfor_rows, fuelhh_rows, CHECK_CAPTURE)
+    quarantined = [
+        quarantine_row_naming(
+            "WINDFOR", {"publishDateTimeFrom": "2000-08-14T00:00:00+00:00"}
+        ),
+        # Read as a UTC instant: 23:30 UTC on 16 August.
+        quarantine_row_naming(
+            "WINDFOR", {"publishDateTimeFrom": "2000-08-17T00:30:00+01:00"}
+        ),
+        quarantine_row_naming("FUELHH", {"settlementDate": "2000-08-15"}),
+        # Other datasets' rows naming a day hold nothing for the wind captures.
+        quarantine_row_naming("QAS", {"settlementDate": "2000-08-14"}),
+        quarantine_row_naming(
+            "NDF", {"publishDateTimeFrom": "2000-08-15T00:00:00+00:00"}
+        ),
+    ]
+    with conn.cursor() as cursor:
+        insert_rows(cursor, QUARANTINE_INSERT, quarantined)
+
+
+def check_wind_completeness_and_quarantine_queries():
+    """The poller's completeness and quarantine queries on year-2000 rows name
+    the same days in a UTC session as in three others. The rows are rolled
+    back."""
+
+    windfor_days = [
+        AUGUST_10_2000,
+        AUGUST_11_2000,
+        AUGUST_12_2000,
+        AUGUST_13_2000,
+        OCTOBER_27_2000,
+        OCTOBER_28_2000,
+    ]
+    fuelhh_dates = [
+        SPRING_CHANGE_2000,
+        AUGUST_10_2000,
+        AUGUST_11_2000,
+        AUGUST_12_2000,
+        AUGUST_13_2000,
+        AUTUMN_CHANGE_2000,
+        OCTOBER_30_2000,
+    ]
+    quarantine_days = days_from(AUGUST_13_2000, date(2000, 8, 18))
+    expected = {
+        "WINDFOR complete": {AUGUST_10_2000, OCTOBER_28_2000},
+        "FUELHH complete": {
+            SPRING_CHANGE_2000,
+            AUGUST_10_2000,
+            AUGUST_11_2000,
+            AUTUMN_CHANGE_2000,
+        },
+        "WINDFOR held": {date(2000, 8, 14), date(2000, 8, 16)},
+        "FUELHH held": {date(2000, 8, 15)},
+    }
+
+    conn = disposable_connection()
+    try:
+        store_year_2000_wind_rows(conn)
+        for zone in SESSION_ZONES:
+            use_session_zone(conn, zone)
+            found = {
+                "WINDFOR complete": wind_poller.complete_days(
+                    conn, "WINDFOR", windfor_days
+                ),
+                "FUELHH complete": wind_poller.complete_days(
+                    conn, "FUELHH", fuelhh_dates
+                ),
+                "WINDFOR held": wind_poller.held_days(conn, "WINDFOR", quarantine_days),
+                "FUELHH held": wind_poller.held_days(conn, "FUELHH", quarantine_days),
+            }
+            assert found == expected, f"wind queries in a {zone} session: {found}"
+    finally:
+        conn.rollback()
+        conn.close()
+
+
+def database_utc_today(conn):
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT (now() AT TIME ZONE 'UTC')::date")
+        (utc_today,) = cursor.fetchone()
+    return utc_today
+
+
+def compiled_wind_warning(capture_from, warn_today):
+    """The warning test's SQL, compiled with wind_capture_from set, and
+    wind_warn_today too unless warn_today is None (today's UTC date)."""
+
+    dbt_vars = {"wind_capture_from": capture_from.isoformat()}
+    if warn_today is not None:
+        dbt_vars["wind_warn_today"] = warn_today.isoformat()
+    manifest = compile_analyses(dbt_vars, also_compiled=(WIND_WARNING_TEST,))
+    for node in manifest["nodes"].values():
+        if node["resource_type"] == "test" and node["name"] == WIND_WARNING_TEST:
+            return node["compiled_code"]
+    raise AssertionError(f"dbt did not compile {WIND_WARNING_TEST}")
+
+
+def split_from_the_73_point_rule(expected_points):
+    """Points per issue that the span rule and a constant 73 judge apart."""
+
+    if expected_points > 73:
+        return 73
+    return 72
+
+
+def store_rows_inside_the_warning_range(conn, utc_today):
+    """Rows on days inside the warning's range, stored now: one day per rule
+    condition, and the range's ends left empty. Days whose span or calendar
+    holds a clock change get rows only when the range holds one."""
+
+    def days_ago(count):
+        return utc_today - timedelta(days=count)
+
+    points = {}
+    last_period = {}
+    for count in (25, 24, 23, 22, 21, 19):
+        points[count] = wind_poller.expected_points_per_issue(days_ago(count))
+        last_period[count] = expected_period_count(days_ago(count))
+    windfor_rows = [
+        *windfor_day_rows(days_ago(25), [points[25]] * 8),
+        *windfor_day_rows(days_ago(24), [points[24]] * 7),
+        # The last issue one point short.
+        *windfor_day_rows(days_ago(23), [points[23]] * 7 + [points[23] - 1]),
+        # A partial ninth issue.
+        *windfor_day_rows(days_ago(22), [points[22]] * 8 + [40]),
+    ]
+    fuelhh_rows = [
+        *fuelhh_date_rows(days_ago(25), periods(1, last_period[25])),
+        *fuelhh_date_rows(days_ago(24), periods(1, last_period[24] - 1)),
+        # Period 7 published twice.
+        *fuelhh_date_rows(days_ago(23), periods(1, last_period[23]) + [7]),
+        # An out-of-range period in place of the last.
+        *fuelhh_date_rows(days_ago(22), periods(1, last_period[22] - 1) + [51]),
+        # A period 0 in place of the first.
+        *fuelhh_date_rows(days_ago(21), [0] + periods(2, last_period[21])),
+        *fuelhh_date_rows(days_ago(19), periods(2, last_period[19] + 1)),
+    ]
+    clock_change_days = []
+    for count in range(17, 2, -1):
+        day = days_ago(count)
+        expected_points = wind_poller.expected_points_per_issue(day)
+        if expected_points != 73:
+            points = split_from_the_73_point_rule(expected_points)
+            windfor_rows.extend(windfor_day_rows(day, [points] * 8))
+            clock_change_days.append(f"WINDFOR {day}")
+        if expected_period_count(day) != 48:
+            fuelhh_rows.extend(fuelhh_date_rows(day, periods(1, 48)))
+            clock_change_days.append(f"FUELHH {day}")
+    store_uncommitted(conn, windfor_rows, fuelhh_rows, datetime.now(timezone.utc))
+    return clock_change_days
+
+
+def days_from(first, last):
+    days = []
+    day = first
+    while day <= last:
+        days.append(day)
+        day += timedelta(days=1)
+    return days
+
+
+def days_the_poller_names(conn, range_days):
+    """(dataset, day) for each day of the range the poller's rule finds not
+    complete."""
+
+    named = set()
+    for dataset in ("WINDFOR", "FUELHH"):
+        complete = wind_poller.complete_days(conn, dataset, range_days)
+        for day in range_days:
+            if day not in complete:
+                named.add((dataset, day))
+    return named
+
+
+def days_the_warning_names(conn, warning_sql):
+    named = set()
+    with conn.cursor() as cursor:
+        cursor.execute(warning_sql)
+        for dataset, day, *_counts in cursor.fetchall():
+            named.add((dataset, day))
+    return named
+
+
+def check_wind_warning_agrees_with_the_poller(warn_today=None):
+    """The warning test lists exactly the days of its range the poller's rule
+    finds not complete, in every session zone, with wind_capture_from before
+    the range and inside it. The range counts back from warn_today, or from
+    today's UTC date when it is None. The rows are rolled back."""
+
+    conn = disposable_connection()
+    try:
+        utc_today = warn_today
+        if utc_today is None:
+            utc_today = database_utc_today(conn)
+        capture_from_dates = [
+            utc_today - timedelta(days=40),
+            utc_today - timedelta(days=20),
+        ]
+        warnings = {}
+        for capture_from in capture_from_dates:
+            warnings[capture_from] = compiled_wind_warning(capture_from, warn_today)
+        clock_change_days = store_rows_inside_the_warning_range(conn, utc_today)
+        for capture_from, warning_sql in warnings.items():
+            first_day = max(capture_from, utc_today - timedelta(days=30))
+            range_days = days_from(first_day, utc_today - timedelta(days=2))
+            for zone in SESSION_ZONES:
+                use_session_zone(conn, zone)
+                by_poller = days_the_poller_names(conn, range_days)
+                by_warning = days_the_warning_names(conn, warning_sql)
+                assert by_warning == by_poller, (
+                    f"wind_capture_from {capture_from}, {zone} session: only the "
+                    f"warning names {sorted(by_warning - by_poller)}; only the "
+                    f"poller names {sorted(by_poller - by_warning)}"
+                )
+    finally:
+        conn.rollback()
+        conn.close()
+    print(
+        f"Wind warning: agrees with the poller on rows dated up to {utc_today}, "
+        f"clock-change days in range: {clock_change_days or 'none'}"
+    )
+
+
+def unavailable_response():
+    response = MagicMock()
+    response.status_code = 503
+    response.raise_for_status.side_effect = requests.HTTPError(
+        "503 Service Unavailable", response=response
+    )
+    return response
+
+
+def elexon_answering(replies, asked):
+    """Stand in for Elexon's API: each request gets the reply scripted for
+    its day, a body or None for HTTP 503, and the day is recorded in asked."""
+
+    def get(url, params, headers, timeout):
+        if url.endswith("/WINDFOR"):
+            day = date.fromisoformat(params["publishDateTimeFrom"][:10])
+        else:
+            day = date.fromisoformat(params["settlementDateFrom"])
+        asked.append(day)
+        reply = replies[day]
+        if reply is None:
+            return unavailable_response()
+        response = MagicMock()
+        response.json.return_value = {"data": reply}
+        return response
+
+    return get
+
+
+def run_capture(capture, conn, target, replies):
+    """Run one capture task body with Elexon faked; return the days it asked
+    and the error it raised, if any."""
+
+    asked = []
+    raised = None
+    with (
+        patch("ingestion.elexon.wind_poller.time.sleep"),
+        patch(
+            "ingestion.elexon.wind_poller.requests.get",
+            side_effect=elexon_answering(replies, asked),
+        ),
+    ):
+        try:
+            capture(conn, target)
+        except RuntimeError as error:
+            raised = error
+    return asked, raised
+
+
+def june_2099(day_number):
+    return date(2099, 6, day_number)
+
+
+def load_windfor_rows(writer, rows):
+    load_windfor(parse_windfor(rows, datetime.now(timezone.utc)), writer)
+
+
+def load_fuelhh_rows(writer, rows):
+    load_fuelhh(parse_fuelhh(rows, datetime.now(timezone.utc)), writer)
+
+
+def windfor_out_of_range_rows():
+    """One point of an issue stamped in 2100."""
+
+    return windfor_day_rows(OUT_OF_RANGE_DAY, [1])
+
+
+def fuelhh_out_of_range_rows():
+    """A period of a date in 2100, and a period 51 of 5 June 2099, a date in
+    the second run's look-back."""
+
+    return fuelhh_date_rows(OUT_OF_RANGE_DAY, [1]) + fuelhh_date_rows(
+        june_2099(5), [51]
+    )
+
+
+WIND_SEQUENCES = {
+    "WINDFOR": SimpleNamespace(
+        capture_target=wind_poller.capture_windfor_target,
+        capture_look_back=wind_poller.capture_windfor_look_back,
+        whole_day=whole_windfor_day,
+        short_reply=windfor_day_rows(june_2099(9), [73] * 7),
+        load_rows=load_windfor_rows,
+        out_of_range_rows=windfor_out_of_range_rows,
+        out_of_range_context={"publishDateTimeFrom": "2100-01-01T00:00:00+00:00"},
+        also_asked_again=[],
+    ),
+    "FUELHH": SimpleNamespace(
+        capture_target=wind_poller.capture_fuelhh_target,
+        capture_look_back=wind_poller.capture_fuelhh_look_back,
+        whole_day=whole_fuelhh_date,
+        short_reply=fuelhh_date_rows(june_2099(9), periods(1, 20)),
+        load_rows=load_fuelhh_rows,
+        out_of_range_rows=fuelhh_out_of_range_rows,
+        out_of_range_context={"settlementDate": "2100-01-01"},
+        also_asked_again=[june_2099(5)],
+    ),
+}
+OUT_OF_RANGE_FINDING = {
+    "row": {},
+    "index": 0,
+    "errors": [{"field": "check", "error": "out of range"}],
+}
+
+
+def check_wind_capture_across_two_runs(writer):
+    """P2 sequence faults on real tables, for each dataset. The first run's
+    look-back gets a short reply, HTTP 503 and a whole day. Out-of-range
+    values are then stored. The second run asks again for the short and the
+    failed days, and for a date an out-of-range period left not complete,
+    and for nothing else; its target task asks only its target."""
+
+    for dataset, sequence in WIND_SEQUENCES.items():
+        for day_number in (3, 4, 5, 6):
+            sequence.load_rows(writer, sequence.whole_day(june_2099(day_number)))
+
+        asked, raised = run_capture(
+            sequence.capture_target,
+            writer,
+            FIRST_RUN_TARGET,
+            {june_2099(10): sequence.whole_day(june_2099(10))},
+        )
+        assert (asked, raised) == ([june_2099(10)], None), (dataset, asked, raised)
+        asked, raised = run_capture(
+            sequence.capture_look_back,
+            writer,
+            FIRST_RUN_TARGET,
+            {
+                june_2099(9): sequence.short_reply,
+                june_2099(8): None,
+                june_2099(7): sequence.whole_day(june_2099(7)),
+            },
+        )
+        assert asked == [june_2099(9), june_2099(8), june_2099(7)], (dataset, asked)
+        assert "2099-06-08" in str(raised), (dataset, raised)
+        assert not isinstance(raised, ContractRejected), (dataset, raised)
+
+        sequence.load_rows(writer, sequence.out_of_range_rows())
+        quarantine_rows(
+            [OUT_OF_RANGE_FINDING],
+            writer,
+            dataset,
+            datetime.now(timezone.utc),
+            sequence.out_of_range_context,
+        )
+
+        asked, raised = run_capture(
+            sequence.capture_target,
+            writer,
+            SECOND_RUN_TARGET,
+            {june_2099(11): sequence.whole_day(june_2099(11))},
+        )
+        assert (asked, raised) == ([june_2099(11)], None), (dataset, asked, raised)
+        asked_again = [june_2099(9), june_2099(8), *sequence.also_asked_again]
+        replies = {}
+        for day in asked_again:
+            replies[day] = sequence.whole_day(day)
+        asked, raised = run_capture(
+            sequence.capture_look_back, writer, SECOND_RUN_TARGET, replies
+        )
+        assert (asked, raised) == (asked_again, None), (dataset, asked, raised)
+
+
+def delete_wind_sequence_rows(cursor):
+    first_instant = datetime(SEQUENCE_YEARS_FROM.year, 1, 1, tzinfo=timezone.utc)
+    cursor.execute(
+        "DELETE FROM raw.elexon_windfor WHERE publish_time >= %s", (first_instant,)
+    )
+    cursor.execute(
+        "DELETE FROM raw.elexon_fuelhh WHERE settlement_date >= %s",
+        (SEQUENCE_YEARS_FROM,),
+    )
+    cursor.execute(
+        "DELETE FROM raw.endpoint_quarantine WHERE dataset IN ('WINDFOR', 'FUELHH') "
+        "AND coalesce(request_context ->> 'publishDateTimeFrom', "
+        "request_context ->> 'settlementDate') >= %s",
+        (SEQUENCE_YEARS_FROM.isoformat(),),
+    )
+
+
 def delete_check_rows(writer):
     with writer.cursor() as cursor:
+        delete_wind_sequence_rows(cursor)
         cursor.execute(
             "DELETE FROM raw.endpoint_quarantine WHERE request_context = %s::jsonb",
             (json.dumps(CHECK_CONTEXT),),
@@ -805,12 +1393,20 @@ def main():
             FUELHH_COLUMNS,
             ("settlement_date", "settlement_period", "fuel_type", "publish_time"),
         )
+        check_wind_completeness_and_quarantine_queries()
+        check_wind_warning_agrees_with_the_poller()
+        check_wind_warning_agrees_with_the_poller(WARNING_DAY_AFTER_CLOCK_CHANGE)
+        check_wind_capture_across_two_runs(writer)
     finally:
         writer.rollback()
         delete_check_rows(writer)
         writer.close()
         reader.close()
     print("Database writes: every value read back from its own column")
+    print(
+        "Wind capture: the queries agree in four session zones, and a second "
+        "run asks again only for the days the first left not complete"
+    )
 
 
 if __name__ == "__main__":

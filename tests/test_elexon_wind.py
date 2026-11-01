@@ -1,8 +1,11 @@
 import json
+import logging
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import psycopg
 import pytest
 import requests
 import yaml
@@ -12,6 +15,15 @@ from ingestion.routing import ContractRejected
 from tests.fakes import cursor_of
 
 DBT_PROJECT = Path(__file__).parent.parent / "dbt" / "dbt_project.yml"
+ELEXON_FIXTURES = Path(__file__).parent / "fixtures" / "elexon"
+ELEXON_SOURCES = (
+    Path(__file__).parent.parent
+    / "dbt"
+    / "models"
+    / "staging"
+    / "elexon"
+    / "_elexon__sources.yml"
+)
 WINDFOR_URL = "https://data.elexon.co.uk/bmrs/api/v1/datasets/WINDFOR"
 FUELHH_URL = "https://data.elexon.co.uk/bmrs/api/v1/datasets/FUELHH"
 PUBLISH_FROM = datetime(2025, 8, 22, tzinfo=timezone.utc)
@@ -30,6 +42,11 @@ AUGUST_20 = date(2025, 8, 20)
 AUGUST_21 = date(2025, 8, 21)
 AUGUST_22 = date(2025, 8, 22)
 AUGUST_23 = date(2025, 8, 23)
+NOVEMBER_10 = date(2026, 11, 10)
+# Every issue's span from 21:00 UK time holds the 25 October 2026 clock change.
+AUTUMN_CHANGE_PUBLISH_DAY = date(2026, 10, 24)
+AUTUMN_CHANGE_DATE = date(2026, 10, 25)
+SPRING_CHANGE_DATE = date(2027, 3, 28)
 
 
 def windfor_row(publish_time, start_time, generation):
@@ -493,3 +510,661 @@ def test_a_dry_run_makes_no_request_and_lists_the_days_to_fetch():
         },
         "requests_to_make": 2,
     }
+
+
+def recorded(file_name):
+    """A recorded response body from tests/fixtures/elexon."""
+
+    return json.loads((ELEXON_FIXTURES / file_name).read_text(encoding="utf-8"))
+
+
+def stored_issues(publish_day, issue_points):
+    """Rows as the WINDFOR completeness query returns them: one per stored
+    issue of the publish day, with its publish time and its point count."""
+
+    first_issue = datetime(
+        publish_day.year, publish_day.month, publish_day.day, 2, 30, tzinfo=timezone.utc
+    )
+    rows = []
+    for issue_number, points in enumerate(issue_points):
+        published = first_issue + timedelta(hours=2 * issue_number)
+        rows.append((publish_day, published, points))
+    return rows
+
+
+def stored_periods(settlement_date, periods):
+    """Rows as the FUELHH completeness query returns them: one per stored
+    publication of a period."""
+
+    rows = []
+    for period in periods:
+        rows.append((settlement_date, period))
+    return rows
+
+
+def periods_from(first, last):
+    return list(range(first, last + 1))
+
+
+def recorded_autumn_change_periods():
+    rows = []
+    for row in recorded("fuelhh_wind_autumn_change.json")["data"]:
+        rows.append(
+            (date.fromisoformat(row["settlementDate"]), row["settlementPeriod"])
+        )
+    return rows
+
+
+def days_newest_first(newest, oldest):
+    days = []
+    day = newest
+    while day >= oldest:
+        days.append(day)
+        day -= timedelta(days=1)
+    return days
+
+
+@pytest.mark.parametrize(
+    ("publish_day", "points"),
+    [
+        pytest.param(NOVEMBER_10, 73, id="winter"),
+        pytest.param(date(2026, 10, 22), 73, id="autumn-change-after-span"),
+        pytest.param(date(2026, 10, 23), 74, id="autumn-change-at-span-end"),
+        pytest.param(AUTUMN_CHANGE_PUBLISH_DAY, 74, id="autumn-change-mid-span"),
+        pytest.param(AUTUMN_CHANGE_DATE, 74, id="autumn-change-at-span-start"),
+        pytest.param(date(2026, 10, 26), 73, id="autumn-change-before-span"),
+        pytest.param(date(2027, 3, 25), 73, id="spring-change-after-span"),
+        pytest.param(date(2027, 3, 26), 72, id="spring-change-at-span-end"),
+        pytest.param(date(2027, 3, 27), 72, id="spring-change-mid-span"),
+        pytest.param(SPRING_CHANGE_DATE, 72, id="spring-change-at-span-start"),
+        pytest.param(date(2027, 3, 29), 73, id="spring-change-before-span"),
+        pytest.param(date(2026, 3, 28), 72, id="recorded-spring-day"),
+    ],
+)
+def test_an_issue_holds_a_point_each_hour_from_21_00_uk_time_the_day_before_to_21_00_two_days_after(
+    publish_day, points
+):
+    assert wind_poller.expected_points_per_issue(publish_day) == points
+
+
+@pytest.mark.parametrize(
+    ("file_name", "publish_day", "first_and_last_issue"),
+    [
+        pytest.param(
+            "windfor_autumn_change.json",
+            AUTUMN_CHANGE_PUBLISH_DAY,
+            ("2026-10-24T03:30:00Z", "2026-10-24T23:30:00Z"),
+            id="autumn",
+        ),
+        pytest.param(
+            "windfor_spring_change.json",
+            date(2026, 3, 28),
+            ("2026-03-28T02:30:00Z", "2026-03-28T22:30:00Z"),
+            id="spring",
+        ),
+    ],
+)
+def test_each_recorded_issue_of_a_clock_change_day_holds_its_expected_points(
+    file_name, publish_day, first_and_last_issue
+):
+    points_by_issue = {}
+    for row in recorded(file_name)["data"]:
+        issue = row["publishTime"]
+        points_by_issue[issue] = points_by_issue.get(issue, 0) + 1
+
+    expected_points = wind_poller.expected_points_per_issue(publish_day)
+    first_issue, last_issue = first_and_last_issue
+    assert points_by_issue == {
+        first_issue: expected_points,
+        last_issue: expected_points,
+    }
+
+
+@pytest.mark.parametrize(
+    ("stored", "complete"),
+    [
+        pytest.param(stored_issues(NOVEMBER_10, [73] * 8), {NOVEMBER_10}, id="8-of-73"),
+        pytest.param(stored_issues(NOVEMBER_10, [73] * 9), {NOVEMBER_10}, id="9-of-73"),
+        pytest.param(
+            stored_issues(AUTUMN_CHANGE_PUBLISH_DAY, [74] * 8),
+            {AUTUMN_CHANGE_PUBLISH_DAY},
+            id="8-of-74-on-a-74-point-day",
+        ),
+        pytest.param(stored_issues(NOVEMBER_10, [73] * 7), set(), id="7-issues"),
+        pytest.param(
+            stored_issues(NOVEMBER_10, [73] * 7 + [72]), set(), id="last-issue-short"
+        ),
+        pytest.param(
+            stored_issues(NOVEMBER_10, [73] * 8 + [40]), set(), id="partial-ninth"
+        ),
+        pytest.param(
+            stored_issues(AUTUMN_CHANGE_PUBLISH_DAY, [73] * 8),
+            set(),
+            id="8-of-73-on-a-74-point-day",
+        ),
+    ],
+)
+def test_a_publish_day_is_complete_with_8_issues_each_holding_its_expected_points(
+    stored, complete
+):
+    assert wind_poller.windfor_days_complete(stored) == complete
+
+
+@pytest.mark.parametrize(
+    ("stored", "complete"),
+    [
+        pytest.param(
+            stored_periods(NOVEMBER_10, periods_from(1, 48)), {NOVEMBER_10}, id="48"
+        ),
+        pytest.param(
+            recorded_autumn_change_periods(), {AUTUMN_CHANGE_DATE}, id="recorded-50"
+        ),
+        pytest.param(
+            stored_periods(SPRING_CHANGE_DATE, periods_from(1, 46)),
+            {SPRING_CHANGE_DATE},
+            id="46",
+        ),
+        pytest.param(
+            stored_periods(NOVEMBER_10, periods_from(1, 48) + [7]),
+            {NOVEMBER_10},
+            id="period-7-published-twice",
+        ),
+        pytest.param(
+            stored_periods(NOVEMBER_10, periods_from(1, 47)), set(), id="1-to-47"
+        ),
+        pytest.param(
+            stored_periods(NOVEMBER_10, periods_from(2, 49)), set(), id="2-to-49"
+        ),
+        pytest.param(
+            stored_periods(NOVEMBER_10, periods_from(1, 47) + [49]),
+            set(),
+            id="1-to-47-and-49",
+        ),
+        pytest.param(
+            stored_periods(NOVEMBER_10, [0] + periods_from(2, 48)),
+            set(),
+            id="0-and-2-to-48",
+        ),
+        pytest.param(
+            stored_periods(AUTUMN_CHANGE_DATE, periods_from(1, 48)),
+            set(),
+            id="48-on-a-50-period-date",
+        ),
+        pytest.param(
+            stored_periods(SPRING_CHANGE_DATE, periods_from(1, 48)),
+            set(),
+            id="48-on-a-46-period-date",
+        ),
+    ],
+)
+def test_a_settlement_date_is_complete_with_exactly_periods_1_to_its_calendar_count(
+    stored, complete
+):
+    assert wind_poller.fuelhh_dates_complete(stored) == complete
+
+
+@pytest.mark.parametrize(
+    ("target", "look_back"),
+    [
+        pytest.param(date(2026, 11, 1), [], id="first-capture-day"),
+        pytest.param(
+            date(2026, 11, 3),
+            [date(2026, 11, 2), date(2026, 11, 1)],
+            id="down-to-the-first-capture-day",
+        ),
+        pytest.param(
+            date(2026, 11, 8),
+            days_newest_first(date(2026, 11, 7), date(2026, 11, 1)),
+            id="seven-days-to-the-first-capture-day",
+        ),
+        pytest.param(
+            date(2026, 11, 9),
+            days_newest_first(date(2026, 11, 8), date(2026, 11, 2)),
+            id="seven-days",
+        ),
+        pytest.param(
+            date(2026, 12, 1),
+            days_newest_first(date(2026, 11, 30), date(2026, 11, 24)),
+            id="across-a-month",
+        ),
+    ],
+)
+def test_the_look_back_holds_the_seven_days_before_the_target_newest_first(
+    target, look_back
+):
+    assert wind_poller.look_back_days(target) == look_back
+
+
+def test_a_day_complete_or_held_in_quarantine_is_not_asked():
+    days = days_newest_first(date(2026, 11, 30), date(2026, 11, 24))
+
+    asked = wind_poller.days_to_ask(
+        days,
+        complete_days={date(2026, 11, 30), date(2026, 11, 26)},
+        held_days={date(2026, 11, 28)},
+    )
+
+    assert asked == [
+        date(2026, 11, 29),
+        date(2026, 11, 27),
+        date(2026, 11, 25),
+        date(2026, 11, 24),
+    ]
+
+
+NOVEMBER_5 = date(2026, 11, 5)
+DECEMBER_1 = date(2026, 12, 1)
+# 24 to 30 November 2026 except 27 November.
+LATE_NOVEMBER_COMPLETE_DAYS = [
+    date(2026, 11, 30),
+    date(2026, 11, 29),
+    date(2026, 11, 28),
+    date(2026, 11, 26),
+    date(2026, 11, 25),
+    date(2026, 11, 24),
+]
+
+
+def whole_windfor_days(publish_days):
+    """Completeness rows of 8 issues of 73 points for each day."""
+
+    rows = []
+    for publish_day in publish_days:
+        rows.extend(stored_issues(publish_day, [73] * 8))
+    return rows
+
+
+def whole_fuelhh_dates(settlement_dates):
+    """Completeness rows of periods 1 to 48 for each date."""
+
+    rows = []
+    for settlement_date in settlement_dates:
+        rows.extend(stored_periods(settlement_date, periods_from(1, 48)))
+    return rows
+
+
+def windfor_quarantine_row(publish_day):
+    """A quarantine query row: publishDateTimeFrom as run_windfor stores it."""
+
+    return (f"{publish_day.isoformat()}T00:00:00+00:00",)
+
+
+def fuelhh_quarantine_row(settlement_date):
+    """A quarantine query row: settlementDate as run_fuelhh stores it."""
+
+    return (settlement_date.isoformat(),)
+
+
+def database_holding(stored=(), stored_after=None, quarantined=()):
+    """A fake connection for the capture functions. The completeness query
+    returns `stored` before the requests and `stored_after` (by default the
+    same rows) after them; the quarantine query returns `quarantined`."""
+
+    if stored_after is None:
+        stored_after = stored
+    completeness_answers = [list(stored), list(stored_after)]
+    conn = MagicMock()
+    cursor = cursor_of(conn)
+
+    def answer(query, params):
+        if "raw.endpoint_quarantine" in query:
+            cursor.fetchall.return_value = list(quarantined)
+            return
+        cursor.fetchall.return_value = completeness_answers.pop(0)
+
+    cursor.execute.side_effect = answer
+    return conn
+
+
+def no_pause():
+    """Stand in for the second between look-back requests."""
+
+    return patch("ingestion.elexon.wind_poller.time.sleep")
+
+
+def windfor_requests(publish_days):
+    made = []
+    for publish_day in publish_days:
+        made.append(windfor_request(publish_day))
+    return made
+
+
+def empty_reply():
+    return response_with({"data": []})
+
+
+def whole_windfor_reply():
+    return response_with(recorded("windfor_autumn_change.json"))
+
+
+def capture_summary(caplog):
+    """The summary a capture task logged, as a dictionary."""
+
+    for record in caplog.records:
+        logged = json.loads(record.getMessage())
+        if "task" in logged:
+            return logged
+    raise AssertionError("no capture summary was logged")
+
+
+WINDFOR_CAPTURE = SimpleNamespace(
+    target=wind_poller.capture_windfor_target,
+    look_back=wind_poller.capture_windfor_look_back,
+    request=windfor_request,
+    whole_days=whole_windfor_days,
+    quarantine_row=windfor_quarantine_row,
+    reply="windfor_autumn_change.json",
+)
+FUELHH_CAPTURE = SimpleNamespace(
+    target=wind_poller.capture_fuelhh_target,
+    look_back=wind_poller.capture_fuelhh_look_back,
+    request=fuelhh_request,
+    whole_days=whole_fuelhh_dates,
+    quarantine_row=fuelhh_quarantine_row,
+    reply="fuelhh_wind_autumn_change.json",
+)
+CAPTURES = [
+    pytest.param(WINDFOR_CAPTURE, id="WINDFOR"),
+    pytest.param(FUELHH_CAPTURE, id="FUELHH"),
+]
+
+
+@pytest.mark.parametrize("capture", CAPTURES)
+def test_the_target_task_asks_for_its_target_alone(capture):
+    conn = database_holding(stored=capture.whole_days(LATE_NOVEMBER_COMPLETE_DAYS))
+
+    with http_answering(response_with(recorded(capture.reply))) as get:
+        capture.target(conn, DECEMBER_1)
+
+    assert requested(get) == [capture.request(DECEMBER_1)]
+
+
+@pytest.mark.parametrize("capture", CAPTURES)
+def test_the_look_back_asks_only_the_days_before_the_target_not_complete(capture):
+    conn = database_holding(stored=capture.whole_days(LATE_NOVEMBER_COMPLETE_DAYS))
+
+    with http_answering(response_with(recorded(capture.reply))) as get:
+        capture.look_back(conn, DECEMBER_1)
+
+    assert requested(get) == [capture.request(date(2026, 11, 27))]
+
+
+def test_a_complete_target_is_not_asked_again():
+    conn = database_holding(stored=whole_windfor_days([NOVEMBER_10]))
+
+    with http_answering() as get:
+        wind_poller.capture_windfor_target(conn, NOVEMBER_10)
+
+    get.assert_not_called()
+
+
+@pytest.mark.parametrize("capture", CAPTURES)
+def test_a_target_held_in_quarantine_fails_the_task_without_a_request(capture):
+    conn = database_holding(quarantined=[capture.quarantine_row(NOVEMBER_5)])
+
+    with http_answering() as get:
+        with pytest.raises(ContractRejected, match="2026-11-05"):
+            capture.target(conn, NOVEMBER_5)
+
+    get.assert_not_called()
+
+
+def test_the_look_back_asks_every_day_but_the_held_one_then_fails_without_a_retry():
+    conn = database_holding(quarantined=[windfor_quarantine_row(NOVEMBER_5)])
+
+    with no_pause(), http_answering(*[empty_reply()] * 6) as get:
+        with pytest.raises(ContractRejected, match="2026-11-05"):
+            wind_poller.capture_windfor_look_back(conn, date(2026, 11, 9))
+
+    assert requested(get) == windfor_requests(
+        [
+            date(2026, 11, 8),
+            date(2026, 11, 7),
+            date(2026, 11, 6),
+            date(2026, 11, 4),
+            date(2026, 11, 3),
+            date(2026, 11, 2),
+        ]
+    )
+
+
+def test_a_quarantined_day_is_followed_by_the_next_days_request_then_the_task_fails():
+    reply_with_a_missing_value = recorded("windfor_autumn_change.json")
+    reply_with_a_missing_value["data"][5]["generation"] = None
+    conn = database_holding()
+
+    with (
+        no_pause(),
+        http_answering(response_with(reply_with_a_missing_value), empty_reply()) as get,
+    ):
+        with pytest.raises(ContractRejected, match="2026-11-02"):
+            wind_poller.capture_windfor_look_back(conn, date(2026, 11, 3))
+
+    assert tables_written(conn) == ["raw.endpoint_quarantine"]
+    assert requested(get) == windfor_requests([date(2026, 11, 2), date(2026, 11, 1)])
+
+
+def test_the_look_back_asks_each_day_once_past_failed_requests_then_fails():
+    conn = database_holding()
+
+    with (
+        no_pause(),
+        http_answering(
+            failed_response(503, "503 Service Unavailable"),
+            requests.ConnectionError("connection reset"),
+            whole_windfor_reply(),
+        ) as get,
+    ):
+        with pytest.raises(
+            RuntimeError, match="requests failed.*2026-11-03.*2026-11-02"
+        ):
+            wind_poller.capture_windfor_look_back(conn, date(2026, 11, 4))
+
+    assert requested(get) == windfor_requests(
+        [date(2026, 11, 3), date(2026, 11, 2), date(2026, 11, 1)]
+    )
+
+
+def test_the_look_back_stops_at_once_on_http_429():
+    conn = database_holding()
+
+    with (
+        no_pause(),
+        http_answering(
+            failed_response(429, "429 Too Many Requests"), whole_windfor_reply()
+        ) as get,
+    ):
+        with pytest.raises(RuntimeError, match="HTTP 429"):
+            wind_poller.capture_windfor_look_back(conn, date(2026, 11, 4))
+
+    assert requested(get) == windfor_requests([date(2026, 11, 3)])
+
+
+def test_the_look_back_stops_at_once_on_a_database_error():
+    conn = database_holding()
+    cursor_of(conn).executemany.side_effect = psycopg.OperationalError(
+        "server closed the connection unexpectedly"
+    )
+
+    with (
+        no_pause(),
+        http_answering(whole_windfor_reply(), whole_windfor_reply()) as get,
+    ):
+        with pytest.raises(RuntimeError, match="OperationalError"):
+            wind_poller.capture_windfor_look_back(conn, date(2026, 11, 4))
+
+    assert requested(get) == windfor_requests([date(2026, 11, 3)])
+
+
+def test_look_back_requests_are_a_second_apart():
+    conn = database_holding()
+
+    with no_pause() as pause, http_answering(*[empty_reply()] * 3):
+        wind_poller.capture_windfor_look_back(conn, date(2026, 11, 4))
+
+    seconds_paused = []
+    for pause_call in pause.call_args_list:
+        seconds_paused.append(pause_call.args[0])
+    assert seconds_paused == [1, 1]
+
+
+def test_a_short_target_reply_ends_the_target_task_without_an_error(caplog):
+    caplog.set_level(logging.INFO, logger="ingestion.elexon.wind_poller")
+    conn = database_holding()
+
+    with http_answering(empty_reply()):
+        wind_poller.capture_fuelhh_target(conn, NOVEMBER_10)
+
+    assert capture_summary(caplog)["not_complete"] == ["2026-11-10"]
+
+
+def test_a_target_retry_asks_for_the_target_alone_again():
+    with http_answering(
+        failed_response(503, "503 Service Unavailable"), whole_windfor_reply()
+    ) as get:
+        with pytest.raises(RuntimeError, match="HTTP 503") as first_try:
+            wind_poller.capture_windfor_target(database_holding(), NOVEMBER_10)
+        wind_poller.capture_windfor_target(database_holding(), NOVEMBER_10)
+
+    # Any failure but a contract rejection is left for Airflow to retry.
+    assert not isinstance(first_try.value, ContractRejected)
+    assert requested(get) == windfor_requests([NOVEMBER_10, NOVEMBER_10])
+
+
+def test_a_second_look_back_run_asks_again_for_the_short_and_failed_days_only():
+    first_run = database_holding(
+        stored=whole_windfor_days(
+            [date(2026, 11, 6), date(2026, 11, 5), date(2026, 11, 4), date(2026, 11, 3)]
+        )
+    )
+    with (
+        no_pause(),
+        http_answering(
+            empty_reply(),
+            failed_response(503, "503 Service Unavailable"),
+            whole_windfor_reply(),
+        ) as first_run_get,
+    ):
+        with pytest.raises(RuntimeError, match="2026-11-08"):
+            wind_poller.capture_windfor_look_back(first_run, date(2026, 11, 10))
+
+    # The first run stored 7 November and its target, 10 November.
+    second_run = database_holding(
+        stored=whole_windfor_days(
+            [
+                date(2026, 11, 10),
+                date(2026, 11, 7),
+                date(2026, 11, 6),
+                date(2026, 11, 5),
+                date(2026, 11, 4),
+            ]
+        )
+    )
+    with (
+        no_pause(),
+        http_answering(whole_windfor_reply(), whole_windfor_reply()) as second_run_get,
+    ):
+        wind_poller.capture_windfor_look_back(second_run, date(2026, 11, 11))
+
+    assert requested(first_run_get) == windfor_requests(
+        [date(2026, 11, 9), date(2026, 11, 8), date(2026, 11, 7)]
+    )
+    assert requested(second_run_get) == windfor_requests(
+        [date(2026, 11, 9), date(2026, 11, 8)]
+    )
+
+
+def test_the_summary_counts_each_day_and_warns_of_a_day_leaving_not_complete(caplog):
+    caplog.set_level(logging.INFO, logger="ingestion.elexon.wind_poller")
+    stored_before = whole_windfor_days(
+        [
+            date(2026, 11, 7),
+            date(2026, 11, 6),
+            date(2026, 11, 5),
+            date(2026, 11, 4),
+            date(2026, 11, 3),
+        ]
+    )
+    stored_after = stored_before + whole_windfor_days([date(2026, 11, 8)])
+    conn = database_holding(stored=stored_before, stored_after=stored_after)
+
+    with no_pause(), http_answering(whole_windfor_reply(), empty_reply()):
+        wind_poller.capture_windfor_look_back(conn, date(2026, 11, 9))
+
+    assert capture_summary(caplog) == {
+        "dataset": "WINDFOR",
+        "task": "look_back",
+        "target": "2026-11-09",
+        "first_day": "2026-11-02",
+        "last_day": "2026-11-08",
+        "asked": ["2026-11-08", "2026-11-02"],
+        "rows_returned": {"2026-11-08": 148, "2026-11-02": 0},
+        "failed": {},
+        "quarantined": [],
+        "held": [],
+        "not_complete": ["2026-11-02"],
+        "leaving_not_complete": "2026-11-02",
+    }
+    warnings = []
+    for record in caplog.records:
+        if record.levelno == logging.WARNING:
+            warnings.append(json.loads(record.getMessage())["day"])
+    assert warnings == ["2026-11-02"]
+
+
+def test_the_first_run_asks_for_the_first_capture_day_and_no_older_day():
+    first_capture_day = date(2026, 11, 1)
+
+    with http_answering(empty_reply()) as get:
+        wind_poller.capture_windfor_target(database_holding(), first_capture_day)
+        wind_poller.capture_windfor_look_back(database_holding(), first_capture_day)
+
+    assert requested(get) == windfor_requests([first_capture_day])
+
+
+def test_a_target_before_the_first_capture_day_asks_nothing():
+    conn = MagicMock()
+
+    with http_answering() as get:
+        wind_poller.capture_fuelhh_target(conn, date(2026, 10, 31))
+        wind_poller.capture_fuelhh_look_back(conn, date(2026, 10, 31))
+
+    get.assert_not_called()
+    conn.cursor.assert_not_called()
+
+
+def elexon_source_table(table_name):
+    sources = yaml.safe_load(ELEXON_SOURCES.read_text(encoding="utf-8"))["sources"]
+    for source in sources:
+        if source["name"] != "elexon":
+            continue
+        for table in source["tables"]:
+            if table["name"] == table_name:
+                return table
+    raise AssertionError(f"no elexon source table {table_name}")
+
+
+@pytest.mark.parametrize("table_name", ["elexon_windfor", "elexon_fuelhh"])
+def test_a_wind_source_warns_a_day_after_its_last_capture_and_fails_after_two(
+    table_name,
+):
+    assert elexon_source_table(table_name)["config"]["freshness"] == {
+        "warn_after": {"count": 25, "period": "hour"},
+        "error_after": {"count": 48, "period": "hour"},
+    }
+
+
+def test_the_capture_completeness_warning_starts_on_the_first_capture_day():
+    variables = yaml.safe_load(DBT_PROJECT.read_text(encoding="utf-8"))["vars"]
+
+    assert (
+        date.fromisoformat(variables["wind_capture_from"])
+        == wind_poller.FIRST_CAPTURE_DAY
+    )
+
+
+def test_the_nightly_warning_counts_back_from_the_utc_date():
+    variables = yaml.safe_load(DBT_PROJECT.read_text(encoding="utf-8"))["vars"]
+
+    # A fixed day would stop the nightly checking new days.
+    assert variables["wind_warn_today"] is None
