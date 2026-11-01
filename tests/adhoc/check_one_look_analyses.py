@@ -47,6 +47,10 @@ REACHED_VARS = {
     "forecast_drift_half_hours_needed": 7,
     "shortfall_error_matched_days_needed": 2,
     "rf_restatement_dates_needed": 2,
+    # Not the project's 450, so a 450 typed into the SQL fails; the two
+    # manifests' cutoffs differ, so a typed cutoff fails one of them.
+    "b1610_rf_capture_offset_days": 449,
+    "rf_restatement_capture_cutoff": "2026-11-29 12:00:00+00",
     "forecast_stalls_days_needed": 4,
     **STALLS_WINDOW_VARS,
     **Q29_WINDOW_VARS,
@@ -56,7 +60,7 @@ NOT_REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 8,
     "shortfall_error_matched_days_needed": 3,
-    "rf_restatement_dates_needed": 4,
+    "rf_restatement_capture_cutoff": "2026-11-30 00:00:00+00",
     "forecast_stalls_days_needed": 5,
     **STALLS_WINDOW_VARS,
 }
@@ -1531,25 +1535,33 @@ Q2RF_GATED = (
 )
 
 
-# Q2-RF's B1610 rows. 22 and 23 August 2025 are the first two dates with
-# both runs; 20 August has only R3 and 21 August only RF (neither is a
-# population date); 24 August is a third date (outside the first two);
-# 6 September 2026 is after analysis_read_until. T_ZERO's R3 is 0, so its
-# group's share is not defined; T_SOLAR has only an R3 row, so its group has
-# no unit-period in both runs. extra_cohort_rows lets one case give T_GAS-1
-# a second fuel group.
+# Q2-RF's B1610 rows, with the time each was stored (R3: the back-fill, 24
+# August 2026 10:00). The REACHED cutoff is 29 November 2026 12:00, and the
+# RF capture (offset 449 there) first asks for a date on its settlement date
+# plus 450 days. 22 and 23 August 2025 are the first two dates holding both
+# runs; 22 August's RF was stored exactly at the cutoff, two weeks late, and
+# 23 August's in two parts (2__SUPP's after a retry). 20 August has only R3,
+# its RF due and not held; 21 August only RF: its R3 row was stored after
+# both cutoffs. 24 August is a third date (outside the first two). T_ZERO's
+# R3 is 0, so its group's share is not defined; T_SOLAR has only an R3 row,
+# so its group has no unit-period in both runs. extra_cohort_rows lets one
+# case give T_GAS-1 a second fuel group; changes runs after the inserts.
 Q2RF_FIXTURES = """
 create temporary table synthetic_b1610 (
     bm_unit text,
     settlement_date date,
     settlement_period integer,
     settlement_run_type text,
-    quantity numeric
+    quantity numeric,
+    retrieved_at timestamptz
 ) on commit drop;
 create temporary table synthetic_cohort (
     national_grid_bm_unit text,
     elexon_bm_unit text,
     fuel_group text
+) on commit drop;
+create temporary table synthetic_registry_extract (
+    retrieved_at timestamptz
 ) on commit drop;
 
 insert into synthetic_cohort values
@@ -1559,36 +1571,79 @@ insert into synthetic_cohort values
     ('ZERO-1', 'T_ZERO', 'hydro'),
     ('SOLAR-1', 'T_SOLAR', 'solar'),
     ('NOID-1', null, 'gas'){extra_cohort_rows};
-
+insert into synthetic_registry_extract values ('2026-11-29 06:00+00');
+{b1610_rows}
+{changes}
+"""
+Q2RF_B1610_ROWS = """
 insert into synthetic_b1610 values
-    ('T_GAS-1', '2025-08-20', 1, 'R3', 70),
-    ('T_GAS-1', '2025-08-21', 1, 'RF', 50),
-    ('T_GAS-1', '2025-08-22', 1, 'R3', 10), ('T_GAS-1', '2025-08-22', 1, 'RF', 12),
-    ('T_GAS-1', '2025-08-22', 1, 'SF', 999),
-    ('T_WIND-1', '2025-08-22', 1, 'R3', -4), ('T_WIND-1', '2025-08-22', 1, 'RF', -1),
-    ('2__SUPP', '2025-08-22', 1, 'R3', 5), ('2__SUPP', '2025-08-22', 1, 'RF', 5),
-    ('T_ZERO', '2025-08-22', 1, 'R3', 0), ('T_ZERO', '2025-08-22', 1, 'RF', 3),
-    ('T_SOLAR', '2025-08-22', 1, 'R3', 9),
-    ('T_GAS-1', '2025-08-22', 2, 'R3', 20), ('T_GAS-1', '2025-08-22', 2, 'RF', 15),
-    ('T_WIND-1', '2025-08-22', 2, 'R3', 6),
-    ('2__SUPP', '2025-08-22', 2, 'RF', 7),
-    ('T_GAS-1', '2025-08-23', 1, 'R3', 8), ('T_GAS-1', '2025-08-23', 1, 'RF', 8),
-    ('2__SUPP', '2025-08-23', 1, 'R3', -10), ('2__SUPP', '2025-08-23', 1, 'RF', -6),
-    ('T_GAS-1', '2025-08-24', 1, 'R3', 100), ('T_GAS-1', '2025-08-24', 1, 'RF', 0),
-    ('T_GAS-1', '2026-09-06', 1, 'R3', 1000), ('T_GAS-1', '2026-09-06', 1, 'RF', 0);
+    ('T_GAS-1', '2025-08-20', 1, 'R3', 70, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-21', 1, 'RF', 50, '2026-11-14 00:05+00'),
+    ('T_GAS-1', '2025-08-21', 1, 'R3', 1000, '2026-12-01 00:00+00'),
+    ('T_GAS-1', '2025-08-22', 1, 'R3', 10, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-22', 1, 'RF', 12, '2026-11-29 12:00+00'),
+    ('T_GAS-1', '2025-08-22', 1, 'SF', 999, '2026-08-24 10:00+00'),
+    ('T_WIND-1', '2025-08-22', 1, 'R3', -4, '2026-08-24 10:00+00'),
+    ('T_WIND-1', '2025-08-22', 1, 'RF', -1, '2026-11-29 12:00+00'),
+    ('2__SUPP', '2025-08-22', 1, 'R3', 5, '2026-08-24 10:00+00'),
+    ('2__SUPP', '2025-08-22', 1, 'RF', 5, '2026-11-29 12:00+00'),
+    ('T_ZERO', '2025-08-22', 1, 'R3', 0, '2026-08-24 10:00+00'),
+    ('T_ZERO', '2025-08-22', 1, 'RF', 3, '2026-11-29 12:00+00'),
+    ('T_SOLAR', '2025-08-22', 1, 'R3', 9, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-22', 2, 'R3', 20, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-22', 2, 'RF', 15, '2026-11-29 12:00+00'),
+    ('T_WIND-1', '2025-08-22', 2, 'R3', 6, '2026-08-24 10:00+00'),
+    ('2__SUPP', '2025-08-22', 2, 'RF', 7, '2026-11-29 12:00+00'),
+    ('T_GAS-1', '2025-08-23', 1, 'R3', 8, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-23', 1, 'RF', 8, '2026-11-16 00:05+00'),
+    ('2__SUPP', '2025-08-23', 1, 'R3', -10, '2026-08-24 10:00+00'),
+    ('2__SUPP', '2025-08-23', 1, 'RF', -6, '2026-11-18 06:00+00'),
+    ('T_GAS-1', '2025-08-24', 1, 'R3', 100, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-24', 1, 'RF', 0, '2026-11-17 00:05+00');
+"""
+# K2: 22 August's RF and 2__SUPP's 23 August RF stored a microsecond after
+# the REACHED cutoff, so neither is held at it.
+STORED_JUST_AFTER_THE_CUTOFF = """
+update synthetic_b1610
+set retrieved_at = '2026-11-29 12:00:00.000001+00'
+where settlement_run_type = 'RF'
+    and (
+        settlement_date = '2025-08-22'
+        or (settlement_date = '2025-08-23' and bm_unit = '2__SUPP')
+    );
 """
 
 Q2RF_TABLES = {
     "elexon_b1610": "pg_temp.synthetic_b1610",
     "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+    "int_elexon__bm_units_current": "pg_temp.synthetic_registry_extract",
 }
+# Sections 2 to 5 never carry energy, before or after the population.
+_, Q2RF_ENERGY_COLUMNS = Q2RF_GATED
+Q2RF_NO_ENERGY = ({2, 3, 4, 5}, Q2RF_ENERGY_COLUMNS)
 
 # (section, item, None) -> {column: expected}. Gas: 10 to 12, 20 to 15, 8 to
 # 8: gross 7 of 38, net -3. Wind: -4 to -1 (6 only in R3): 3 of 4, net 3.
 # Outside: 5 to 5, -10 to -6 (7 only in RF): 4 of 15, net 4. Hydro: 0 to 3,
-# not defined. Overall: 17 of 57, net 7.
-Q2RF_EXPECTED = {
+# not defined. Overall: 17 of 57, net 7. The cohort total is overall less
+# outside: 5 unit-periods, 13 of 42, net 3.
+Q2RF_MEASURES = {
+    (1, "cohort total", None): dict(
+        position=1,
+        unit_periods=5,
+        units=3,
+        changed_unit_periods=4,
+        gross_change_mwh="13.000",
+        r3_absolute_mwh="42.000",
+        gross_share="0.309524",
+        net_change_mwh="3.000",
+        net_share="0.071429",
+        share_status="defined",
+        only_in_r3=2,
+        only_in_rf=0,
+    ),
     (1, "gas", None): dict(
+        position=4,
         unit_periods=3,
         units=1,
         changed_unit_periods=2,
@@ -1600,11 +1655,9 @@ Q2RF_EXPECTED = {
         share_status="defined",
         only_in_r3=0,
         only_in_rf=0,
-        dates=2,
-        first_date="2025-08-22",
-        last_date="2025-08-23",
     ),
     (1, "wind", None): dict(
+        position=4,
         unit_periods=1,
         gross_change_mwh="3.000",
         r3_absolute_mwh="4.000",
@@ -1614,6 +1667,7 @@ Q2RF_EXPECTED = {
         only_in_rf=0,
     ),
     (1, "outside the cohort", None): dict(
+        position=3,
         unit_periods=2,
         changed_unit_periods=1,
         gross_change_mwh="4.000",
@@ -1624,6 +1678,7 @@ Q2RF_EXPECTED = {
         only_in_rf=1,
     ),
     (1, "hydro", None): dict(
+        position=4,
         unit_periods=1,
         gross_change_mwh="3.000",
         r3_absolute_mwh="0.000",
@@ -1632,6 +1687,7 @@ Q2RF_EXPECTED = {
         share_status="not defined: sum of abs(R3) is 0",
     ),
     (1, "overall", None): dict(
+        position=2,
         unit_periods=7,
         units=4,
         changed_unit_periods=5,
@@ -1645,6 +1701,7 @@ Q2RF_EXPECTED = {
         only_in_rf=1,
     ),
     (1, "solar", None): dict(
+        position=4,
         unit_periods=0,
         units=0,
         changed_unit_periods=0,
@@ -1656,6 +1713,67 @@ Q2RF_EXPECTED = {
         only_in_r3=1,
         only_in_rf=0,
     ),
+}
+Q2RF_POPULATION = {
+    (1, "gas", None): dict(dates=2, first_date="2025-08-22", last_date="2025-08-23"),
+}
+# Each date's RF is first asked for at 00:00 UTC, its settlement date plus
+# 449 + 1 days: 20 August 2025 on 13 November 2026, and so on. Every August
+# date has 48 periods. The dates holding R3 have RF stored, or expected, at:
+# 23 August 16 November 00:05, 24 August 17 November 00:05, and 20 and 22
+# August at the cutoff (20 August's is due and not held). The second of
+# these is 17 November 00:05: the population of two was reached then, with 23
+# and 24 August, and 22 August, stored late but before the cutoff, took its
+# place by date.
+Q2RF_SETTLEMENT_DATES = {
+    (4, "date 2025-08-20", None): dict(
+        settlement_date="2025-08-20",
+        date_status="RF due, not held",
+        expected_periods=48,
+        r3_periods=1,
+        rf_periods=0,
+        rf_capture_due_at="2026-11-13 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
+    (4, "date 2025-08-21", None): dict(
+        settlement_date="2025-08-21",
+        date_status="RF held, no R3",
+        expected_periods=48,
+        r3_periods=0,
+        rf_periods=1,
+        rf_capture_due_at="2026-11-14 00:00:00+00:00",
+        rf_first_stored_at="2026-11-14 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-22", None): dict(
+        settlement_date="2025-08-22",
+        date_status="in the population",
+        expected_periods=48,
+        r3_periods=2,
+        rf_periods=2,
+        rf_capture_due_at="2026-11-15 00:00:00+00:00",
+        rf_first_stored_at="2026-11-29 12:00:00+00:00",
+    ),
+    (4, "date 2025-08-23", None): dict(
+        settlement_date="2025-08-23",
+        date_status="in the population",
+        expected_periods=48,
+        r3_periods=1,
+        rf_periods=1,
+        rf_capture_due_at="2026-11-16 00:00:00+00:00",
+        rf_first_stored_at="2026-11-16 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-24", None): dict(
+        settlement_date="2025-08-24",
+        date_status="R3 and RF held, after the population",
+        expected_periods=48,
+        r3_periods=1,
+        rf_periods=1,
+        rf_capture_due_at="2026-11-17 00:00:00+00:00",
+        rf_first_stored_at="2026-11-17 00:05:00+00:00",
+    ),
+}
+Q2RF_EXPECTED = {
+    **Q2RF_MEASURES,
     (2, "date 2025-08-22: R3", None): dict(unit_periods=7, units=5, periods=2),
     (2, "date 2025-08-22: RF", None): dict(unit_periods=6, units=4, periods=2),
     (2, "date 2025-08-23: R3", None): dict(unit_periods=2, units=2, periods=1),
@@ -1665,7 +1783,26 @@ Q2RF_EXPECTED = {
         "Elexon IDs with more than one cohort fuel group (each would count twice)",
         None,
     ): dict(units=0),
+    **Q2RF_SETTLEMENT_DATES,
+    (5, "capture cutoff", None): dict(position=1, instant="2026-11-29 12:00:00+00:00"),
+    (5, "population reached at", None): dict(
+        position=2, instant="2026-11-17 00:05:00+00:00"
+    ),
+    (5, "registry extract retrieved at", None): dict(
+        position=3, instant="2026-11-29 06:00:00+00:00"
+    ),
 }
+# The headline first, then every unit, the units outside the cohort and the
+# fuel groups by name.
+Q2RF_MEASURES_ORDER = [
+    (1, "cohort total", None),
+    (1, "overall", None),
+    (1, "outside the cohort", None),
+    (1, "gas", None),
+    (1, "hydro", None),
+    (1, "solar", None),
+    (1, "wind", None),
+]
 
 REPEATED_ID = (
     3,
@@ -1676,7 +1813,8 @@ TWO_GROUPS_FOR_ONE_ID = ",\n    ('GAS-1B', 'T_GAS-1', 'wind')"
 # With T_GAS-1 in gas and wind, its three unit-periods (10 to 12, 20 to 15,
 # 8 to 8) still count once overall: the main run's 7 unit-periods, 17 of 57,
 # net 7. Counted once per group they would give 10 unit-periods, 24 of 95,
-# net 4.
+# net 4. The cohort total likewise stays 5 unit-periods, 13 of 42, net 3;
+# adding the fuel-group rows would give 20 of 80.
 Q2RF_OVERALL = (1, "overall", None)
 Q2RF_TWO_GROUPS_OVERALL = dict(
     unit_periods=7,
@@ -1688,8 +1826,235 @@ Q2RF_TWO_GROUPS_OVERALL = dict(
     only_in_r3=2,
     only_in_rf=1,
 )
+Q2RF_COHORT_TOTAL = (1, "cohort total", None)
+Q2RF_TWO_GROUPS_COHORT_TOTAL = dict(
+    unit_periods=5,
+    gross_change_mwh="13.000",
+    r3_absolute_mwh="42.000",
+    net_change_mwh="3.000",
+)
 
-# Four dates needed: 22 to 24 August are before the cutoff, so three.
+# K2: with 22 August's RF stored after the cutoff, the population is 23 and
+# 24 August. The cohort total, T_GAS-1 alone: 8 to 8 and 100 to 0, gross 100
+# of 108, net -100. 2__SUPP's 23 August R3 row has no RF held at the cutoff.
+Q2RF_LATE_EXPECTED = {
+    (1, "cohort total", None): dict(
+        unit_periods=2,
+        gross_change_mwh="100.000",
+        r3_absolute_mwh="108.000",
+        gross_share="0.925926",
+        net_change_mwh="-100.000",
+        dates=2,
+        first_date="2025-08-23",
+        last_date="2025-08-24",
+    ),
+    (1, "outside the cohort", None): dict(unit_periods=0, only_in_r3=1, only_in_rf=0),
+    (4, "date 2025-08-22", None): dict(
+        date_status="RF due, not held", rf_periods=0, rf_first_stored_at=None
+    ),
+    (4, "date 2025-08-23", None): dict(
+        date_status="in the population",
+        rf_first_stored_at="2026-11-16 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-24", None): dict(date_status="in the population"),
+    (5, "population reached at", None): dict(instant="2026-11-17 00:05:00+00:00"),
+}
+
+# K4: every settlement date one day earlier, stored times unchanged. The
+# population is 21 and 22 August, every measure is as in the main case, each
+# date's RF is due a day earlier, and the reach time does not move. Earlier
+# rather than later, so the first population date falls before 22 August
+# 2025 and a floor typed in at that date fails.
+ONE_DAY_EARLIER = "update synthetic_b1610 set settlement_date = settlement_date - 1;"
+Q2RF_ONE_DAY_EARLIER_EXPECTED = {
+    (1, "gas", None): dict(dates=2, first_date="2025-08-21", last_date="2025-08-22"),
+    (2, "date 2025-08-21: R3", None): dict(unit_periods=7, units=5, periods=2),
+    (2, "date 2025-08-21: RF", None): dict(unit_periods=6, units=4, periods=2),
+    (2, "date 2025-08-22: R3", None): dict(unit_periods=2, units=2, periods=1),
+    (2, "date 2025-08-22: RF", None): dict(unit_periods=2, units=2, periods=1),
+    REPEATED_ID: dict(units=0),
+    (4, "date 2025-08-19", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-12 00:00:00+00:00",
+    ),
+    (4, "date 2025-08-20", None): dict(
+        date_status="RF held, no R3",
+        rf_capture_due_at="2026-11-13 00:00:00+00:00",
+    ),
+    (4, "date 2025-08-21", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-14 00:00:00+00:00",
+        rf_first_stored_at="2026-11-29 12:00:00+00:00",
+    ),
+    (4, "date 2025-08-22", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-15 00:00:00+00:00",
+    ),
+    (4, "date 2025-08-23", None): dict(
+        date_status="R3 and RF held, after the population",
+        rf_capture_due_at="2026-11-16 00:00:00+00:00",
+    ),
+    (5, "capture cutoff", None): dict(instant="2026-11-29 12:00:00+00:00"),
+    (5, "population reached at", None): dict(instant="2026-11-17 00:05:00+00:00"),
+    (5, "registry extract retrieved at", None): dict(
+        instant="2026-11-29 06:00:00+00:00"
+    ),
+}
+
+# K5: one gas unit on the two clock-change days, 27 October 2024 (50 periods)
+# and 30 March 2025 (46). Periods 1: 1 to 1 on both; period 50: 4 to 6;
+# period 46: 10 to 7. Gross 5 of 16, net -1. RF is first asked for at 00:00
+# UTC on 20 January 2026 and 23 June 2026 (01:00 BST: the same time cast in
+# a London session would read 22 June 23:00 UTC).
+Q2RF_CLOCK_CHANGE_ROWS = """
+insert into synthetic_b1610 values
+    ('T_GAS-1', '2024-10-27', 1, 'R3', 1, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2024-10-27', 1, 'RF', 1, '2026-01-20 00:05+00'),
+    ('T_GAS-1', '2024-10-27', 50, 'R3', 4, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2024-10-27', 50, 'RF', 6, '2026-01-20 00:05+00'),
+    ('T_GAS-1', '2025-03-30', 1, 'R3', 1, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-03-30', 1, 'RF', 1, '2026-06-23 00:05+00'),
+    ('T_GAS-1', '2025-03-30', 46, 'R3', 10, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-03-30', 46, 'RF', 7, '2026-06-23 00:05+00');
+"""
+Q2RF_CLOCK_CHANGE_MEASURES = dict(
+    unit_periods=4,
+    changed_unit_periods=2,
+    gross_change_mwh="5.000",
+    r3_absolute_mwh="16.000",
+    gross_share="0.312500",
+    net_change_mwh="-1.000",
+    net_share="-0.062500",
+)
+Q2RF_CLOCK_CHANGE_EXPECTED = {
+    (1, "cohort total", None): Q2RF_CLOCK_CHANGE_MEASURES,
+    (1, "overall", None): Q2RF_CLOCK_CHANGE_MEASURES,
+    (4, "date 2024-10-27", None): dict(
+        expected_periods=50,
+        r3_periods=2,
+        rf_periods=2,
+        rf_capture_due_at="2026-01-20 00:00:00+00:00",
+    ),
+    (4, "date 2025-03-30", None): dict(
+        expected_periods=46,
+        r3_periods=2,
+        rf_periods=2,
+        rf_capture_due_at="2026-06-23 00:00:00+00:00",
+    ),
+    (5, "population reached at", None): dict(instant="2026-06-23 00:05:00+00:00"),
+}
+
+# K6: the production calendar, on the project's 30 dates and 450-day offset,
+# at the NOT_REACHED cutoff, 30 November 2026 00:00. One unit, period 1, R3
+# for every date from 22 August to 30 September 2025. RF stored five minutes
+# after it is due (22 August's due 16 November 2026 00:00) from 22 August to
+# 5 September, except 25 August. 5 September's is due exactly at the cutoff
+# and stored after it. Held at the cutoff: 13 dates. Expected RF: the 13
+# stored times, then 25 August and 5 September at the cutoff, then 6 to 20
+# September when due, 1 to 15 December: the 30th is 15 December 00:00.
+Q2RF_CALENDAR_ROWS = """
+insert into synthetic_b1610
+select 'T_GAS-1', date '2025-08-22' + day_number, 1, 'R3', 10, '2026-08-24 10:00+00'
+from generate_series(0, 39) as day_number;
+insert into synthetic_b1610 values
+    ('T_GAS-1', '2025-08-22', 1, 'RF', 11, '2026-11-16 00:05+00'),
+    ('T_GAS-1', '2025-08-23', 1, 'RF', 11, '2026-11-17 00:05+00'),
+    ('T_GAS-1', '2025-08-24', 1, 'RF', 11, '2026-11-18 00:05+00'),
+    ('T_GAS-1', '2025-08-26', 1, 'RF', 11, '2026-11-20 00:05+00'),
+    ('T_GAS-1', '2025-08-27', 1, 'RF', 11, '2026-11-21 00:05+00'),
+    ('T_GAS-1', '2025-08-28', 1, 'RF', 11, '2026-11-22 00:05+00'),
+    ('T_GAS-1', '2025-08-29', 1, 'RF', 11, '2026-11-23 00:05+00'),
+    ('T_GAS-1', '2025-08-30', 1, 'RF', 11, '2026-11-24 00:05+00'),
+    ('T_GAS-1', '2025-08-31', 1, 'RF', 11, '2026-11-25 00:05+00'),
+    ('T_GAS-1', '2025-09-01', 1, 'RF', 11, '2026-11-26 00:05+00'),
+    ('T_GAS-1', '2025-09-02', 1, 'RF', 11, '2026-11-27 00:05+00'),
+    ('T_GAS-1', '2025-09-03', 1, 'RF', 11, '2026-11-28 00:05+00'),
+    ('T_GAS-1', '2025-09-04', 1, 'RF', 11, '2026-11-29 00:05+00'),
+    ('T_GAS-1', '2025-09-05', 1, 'RF', 11, '2026-11-30 00:05+00');
+"""
+IN_THE_POPULATION = dict(date_status="in the population")
+RF_NOT_YET_DUE = dict(date_status="RF not yet due")
+Q2RF_CALENDAR_DATES = {
+    (4, "date 2025-08-22", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-16 00:00:00+00:00",
+        rf_first_stored_at="2026-11-16 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-23", None): IN_THE_POPULATION,
+    (4, "date 2025-08-24", None): IN_THE_POPULATION,
+    (4, "date 2025-08-25", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-19 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
+    (4, "date 2025-08-26", None): IN_THE_POPULATION,
+    (4, "date 2025-08-27", None): IN_THE_POPULATION,
+    (4, "date 2025-08-28", None): IN_THE_POPULATION,
+    (4, "date 2025-08-29", None): IN_THE_POPULATION,
+    (4, "date 2025-08-30", None): IN_THE_POPULATION,
+    (4, "date 2025-08-31", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-25 00:00:00+00:00",
+    ),
+    (4, "date 2025-09-01", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-26 00:00:00+00:00",
+    ),
+    (4, "date 2025-09-02", None): IN_THE_POPULATION,
+    (4, "date 2025-09-03", None): IN_THE_POPULATION,
+    (4, "date 2025-09-04", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-29 00:00:00+00:00",
+        rf_first_stored_at="2026-11-29 00:05:00+00:00",
+    ),
+    (4, "date 2025-09-05", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-30 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
+    (4, "date 2025-09-06", None): dict(
+        date_status="RF not yet due",
+        rf_capture_due_at="2026-12-01 00:00:00+00:00",
+    ),
+    (4, "date 2025-09-07", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-08", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-09", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-10", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-11", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-12", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-13", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-14", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-15", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-16", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-17", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-18", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-19", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-20", None): dict(
+        date_status="RF not yet due",
+        rf_capture_due_at="2026-12-15 00:00:00+00:00",
+    ),
+}
+# 25 August lies inside the population's first and last date, holds R3 and
+# no RF: its row must not be read.
+Q2RF_CALENDAR_EXPECTED = {
+    (1, "overall", None): dict(
+        unit_periods=13,
+        only_in_r3=0,
+        only_in_rf=0,
+        gross_change_mwh=None,
+        share_status="population not reached: no result",
+        dates=13,
+        first_date="2025-08-22",
+        last_date="2025-09-04",
+    ),
+    (5, "capture cutoff", None): dict(instant="2026-11-30 00:00:00+00:00"),
+    (5, "population projected at", None): dict(
+        position=2, instant="2026-12-15 00:00:00+00:00"
+    ),
+}
+
+# The project's 30 dates needed, at the NOT_REACHED cutoff (30 November 2026
+# 00:00): 22 to 24 August hold both runs, so three.
 Q2RF_NOT_REACHED_EXPECTED = {
     (1, "overall", None): dict(
         unit_periods=8,
@@ -1698,7 +2063,50 @@ Q2RF_NOT_REACHED_EXPECTED = {
         share_status="population not reached: no result",
         dates=3,
     ),
+    # 20 and 22 to 24 August and 5 September hold R3 at this cutoff: five
+    # dates, not 30, so no reach time lists 5 September. Its RF is due
+    # exactly at the cutoff; only "due at or before the cutoff" lists it.
+    (
+        5,
+        "population not projected: fewer dates hold R3 than needed",
+        None,
+    ): dict(position=2, instant=None),
+    (4, "date 2025-09-05", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-30 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
 }
+# No capture cutoff passed (PROJECT_VALUES_VARS: the project's 30 dates and
+# 450-day offset, rf_restatement_capture_cutoff null). One unit holds R3 and
+# RF on 30 dates from 22 August 2025, every row stored before this check can
+# run, so the data reach the population; without a recorded cutoff the gate
+# stays shut and only counts come out.
+Q2RF_NO_CUTOFF_ROWS = """
+insert into synthetic_b1610
+select 'T_GAS-1', date '2025-08-22' + day_number, 1, 'R3', 10, '2026-08-24 10:00+00'
+from generate_series(0, 29) as day_number;
+insert into synthetic_b1610
+select 'T_GAS-1', date '2025-08-22' + day_number, 1, 'RF', 11, '2026-08-25 10:00+00'
+from generate_series(0, 29) as day_number;
+"""
+Q2RF_NO_CUTOFF_EXPECTED = {
+    (1, "cohort total", None): dict(
+        unit_periods=30,
+        changed_unit_periods=None,
+        gross_change_mwh=None,
+        share_status="no capture cutoff passed: no result",
+        dates=30,
+        first_date="2025-08-22",
+        last_date="2025-09-20",
+    ),
+    (5, "capture cutoff", None): dict(instant=None),
+    (5, "population reached at", None): dict(instant="2026-08-25 10:00:00+00:00"),
+}
+R3_DUE_AT_THE_NOT_REACHED_CUTOFF = """
+insert into synthetic_b1610 values
+    ('T_GAS-1', '2025-09-05', 1, 'R3', 10, '2026-08-24 10:00+00');
+"""
 
 
 # Q25: one acceptance that crosses 00:00 UTC, the boundary between two daily
@@ -3184,8 +3592,21 @@ def q4_fixtures(
 ALL_STALE_DAY = ", (date '2026-08-31')"
 
 
-def q2rf_fixtures(extra_cohort_rows=""):
-    return Q2RF_FIXTURES.format(extra_cohort_rows=extra_cohort_rows)
+def q2rf_fixtures(extra_cohort_rows="", b1610_rows=Q2RF_B1610_ROWS, changes=""):
+    return Q2RF_FIXTURES.format(
+        extra_cohort_rows=extra_cohort_rows, b1610_rows=b1610_rows, changes=changes
+    )
+
+
+def q2rf_section(run, section):
+    """The run with only the rows of one section."""
+
+    rows, error = run
+    in_section = {}
+    for key, cells in rows.items():
+        if cells["section"] == section:
+            in_section[key] = cells
+    return in_section, error
 
 
 def q8_q28_fixtures(
@@ -3775,19 +4196,99 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     return found
 
 
-def q2rf_mismatches(conn, reached, not_reached, time_zone):
+def q2rf_mismatches(conn, reached, not_reached, project_values, time_zone):
     title = f"[{time_zone}] Q2-RF"
     main_run = run_analysis(
         conn, q2rf_fixtures(), reached, Q2RF, Q2RF_TABLES, time_zone
     )
     found = mismatches(title, main_run, Q2RF_EXPECTED)
+    found += mismatches(title, main_run, Q2RF_POPULATION)
     found += unexpected_rows(title, main_run, Q2RF_EXPECTED)
+    found += section_order_mismatches(title, main_run, 1, Q2RF_MEASURES_ORDER)
+    found += gated_values_left_null(title, main_run, Q2RF_NO_ENERGY)
+
+    late_run = run_analysis(
+        conn,
+        q2rf_fixtures(changes=STORED_JUST_AFTER_THE_CUTOFF),
+        reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} late", late_run, Q2RF_LATE_EXPECTED)
+
+    one_day_earlier_run = run_analysis(
+        conn,
+        q2rf_fixtures(changes=ONE_DAY_EARLIER),
+        reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    earlier_title = f"{title} one day earlier"
+    found += mismatches(earlier_title, one_day_earlier_run, Q2RF_MEASURES)
+    found += mismatches(
+        earlier_title, one_day_earlier_run, Q2RF_ONE_DAY_EARLIER_EXPECTED
+    )
+    found += unexpected_rows(
+        earlier_title,
+        one_day_earlier_run,
+        {**Q2RF_MEASURES, **Q2RF_ONE_DAY_EARLIER_EXPECTED},
+    )
+
+    clock_change_run = run_analysis(
+        conn,
+        q2rf_fixtures(b1610_rows=Q2RF_CLOCK_CHANGE_ROWS),
+        reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} clock changes", clock_change_run, Q2RF_CLOCK_CHANGE_EXPECTED
+    )
 
     early_run = run_analysis(
-        conn, q2rf_fixtures(), not_reached, Q2RF, Q2RF_TABLES, time_zone
+        conn,
+        q2rf_fixtures(changes=R3_DUE_AT_THE_NOT_REACHED_CUTOFF),
+        not_reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
     )
     found += mismatches(f"{title} early", early_run, Q2RF_NOT_REACHED_EXPECTED)
     found += gated_values_left_null(f"{title} early", early_run, Q2RF_GATED)
+    found += gated_values_left_null(f"{title} early", early_run, Q2RF_NO_ENERGY)
+
+    calendar_run = run_analysis(
+        conn,
+        q2rf_fixtures(b1610_rows=Q2RF_CALENDAR_ROWS),
+        not_reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    calendar_title = f"{title} production calendar"
+    found += mismatches(calendar_title, calendar_run, Q2RF_CALENDAR_EXPECTED)
+    found += mismatches(calendar_title, calendar_run, Q2RF_CALENDAR_DATES)
+    found += unexpected_rows(
+        calendar_title, q2rf_section(calendar_run, 4), Q2RF_CALENDAR_DATES
+    )
+    found += gated_values_left_null(calendar_title, calendar_run, Q2RF_GATED)
+    found += gated_values_left_null(calendar_title, calendar_run, Q2RF_NO_ENERGY)
+
+    no_cutoff_run = run_analysis(
+        conn,
+        q2rf_fixtures(b1610_rows=Q2RF_NO_CUTOFF_ROWS),
+        project_values,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    no_cutoff_title = f"{title} no cutoff"
+    found += mismatches(no_cutoff_title, no_cutoff_run, Q2RF_NO_CUTOFF_EXPECTED)
+    found += gated_values_left_null(no_cutoff_title, no_cutoff_run, Q2RF_GATED)
+    found += gated_values_left_null(no_cutoff_title, no_cutoff_run, Q2RF_NO_ENERGY)
 
     two_groups_run = run_analysis(
         conn,
@@ -3800,7 +4301,11 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     found += mismatches(
         f"{title} two groups",
         two_groups_run,
-        {REPEATED_ID: dict(units=1), Q2RF_OVERALL: Q2RF_TWO_GROUPS_OVERALL},
+        {
+            REPEATED_ID: dict(units=1),
+            Q2RF_OVERALL: Q2RF_TWO_GROUPS_OVERALL,
+            Q2RF_COHORT_TOTAL: Q2RF_TWO_GROUPS_COHORT_TOTAL,
+        },
     )
     return found
 
@@ -4057,7 +4562,9 @@ def check_all(reached, not_reached, boundary, project_values, schedule_window):
             found += q10_mismatches(conn, reached, not_reached, time_zone)
             found += q10_project_values_mismatches(conn, project_values, time_zone)
             found += q4_mismatches(conn, reached, not_reached, boundary, time_zone)
-            found += q2rf_mismatches(conn, reached, not_reached, time_zone)
+            found += q2rf_mismatches(
+                conn, reached, not_reached, project_values, time_zone
+            )
             found += q25_mismatches(conn, reached, time_zone)
             found += q27_mismatches(conn, reached, not_reached, time_zone)
             found += q27_schedule_change_mismatches(conn, schedule_window, time_zone)

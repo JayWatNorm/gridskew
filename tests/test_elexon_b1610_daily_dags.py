@@ -1,8 +1,10 @@
 """Guard which settlement date each daily B1610 run captures, without Airflow."""
 
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
+import yaml
 
 from tests.fakes import (
     DAG_SETTINGS,
@@ -11,6 +13,8 @@ from tests.fakes import (
     longest_retry_span,
     shortest_retry_span,
 )
+
+DBT_PROJECT = Path(__file__).parent.parent / "dbt" / "dbt_project.yml"
 
 DAILY_CAPTURES = [
     pytest.param("gridskew_elexon_b1610_II_dag.py", "II", id="II"),
@@ -123,3 +127,11 @@ def test_rf_history_starts_with_the_first_b1610_settlement_date(monkeypatch):
     )
     # The release controller refuses a new DAG that would start unpaused.
     assert settings["is_paused_upon_creation"] is True
+
+
+def test_the_rf_analysis_offset_is_the_rf_capture_lag(monkeypatch):
+    # Q2-RF works out when each date's RF capture first asks from this offset.
+    rf_dag = load_dag_file(monkeypatch, "gridskew_elexon_b1610_RF_dag.py")
+    variables = yaml.safe_load(DBT_PROJECT.read_text(encoding="utf-8"))["vars"]
+
+    assert timedelta(days=variables["b1610_rf_capture_offset_days"]) == rf_dag["LAG"]

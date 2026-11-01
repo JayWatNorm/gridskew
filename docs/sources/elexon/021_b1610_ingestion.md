@@ -51,7 +51,9 @@ latest held. RF is the last run and stays in force once published, so its
 450-day offset needs no margin: it is after RF under today's 14-month
 timetable and under any shorter one. `R1` to `R3` are not standing rungs;
 Elexon stops serving a run once a later run replaces it, so a run not
-captured in its window cannot be recovered.
+captured in its window cannot be recovered. The dbt var
+`b1610_rf_capture_offset_days` mirrors the RF DAG's `LAG`, so the Q2-RF
+analysis can say when each date's RF is due, and a test keeps the two equal.
 
 Before downloading, each capture asks which run Elexon serves for the date
 (one settlement period, `/datasets/B1610`). If a later run has already
