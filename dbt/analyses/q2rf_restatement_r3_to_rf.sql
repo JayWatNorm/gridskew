@@ -19,6 +19,7 @@
 -- returns counts and no energy.
 
 {% set dates_needed = var('rf_restatement_dates_needed') %}
+{% set capture_offset_days = var('b1610_rf_capture_offset_days') %}
 {% set capture_cutoff = utc_instant_var('rf_restatement_capture_cutoff') %}
 {% set stored_until %}{% if capture_cutoff is none %}now(){% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
 
@@ -222,6 +223,47 @@ repeated_cohort_ids as (
         group by elexon_bm_unit
         having count(*) > 1
     ) as repeated
+),
+
+-- The RF capture's daily run starts when its one-day data interval ends, so
+-- it first asks for a date at 00:00 UTC on the settlement date plus the
+-- offset plus one day.
+settlement_dates as (
+    select
+        held_dates.settlement_date,
+        held_dates.r3_periods,
+        held_dates.rf_periods,
+        held_dates.rf_first_stored_at,
+        {{ settlement_period_count('held_dates.settlement_date') }} as expected_periods,
+        (held_dates.settlement_date + {{ capture_offset_days }} + 1)::timestamp
+            at time zone 'UTC' as rf_capture_due_at,
+        population_dates.settlement_date is not null as is_in_population
+    from held_dates
+    left join population_dates
+        on held_dates.settlement_date = population_dates.settlement_date
+),
+
+settlement_date_rows as (
+    select
+        4 as section,
+        'date ' || settlement_date as item,
+        settlement_date,
+        case
+            when is_in_population then 'in the population'
+            when r3_periods > 0 and rf_periods > 0
+                then 'R3 and RF held, after the population'
+            when rf_periods > 0 then 'RF held, no R3'
+            when rf_capture_due_at <= {{ stored_until }} then 'RF due, not held'
+            else 'RF not yet due'
+        end as date_status,
+        expected_periods,
+        r3_periods,
+        rf_periods,
+        rf_capture_due_at,
+        rf_first_stored_at
+    from settlement_dates
+    where rf_periods > 0
+        or (r3_periods > 0 and rf_capture_due_at <= {{ stored_until }})
 )
 
 select
@@ -242,7 +284,14 @@ select
     dates,
     first_date,
     last_date,
-    position
+    position,
+    null::date as settlement_date,
+    null::text as date_status,
+    null::integer as expected_periods,
+    null::bigint as r3_periods,
+    null::bigint as rf_periods,
+    null::timestamptz as rf_capture_due_at,
+    null::timestamptz as rf_first_stored_at
 from measure_rows
 
 union all
@@ -262,6 +311,13 @@ select
     null,
     null,
     periods,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
     null,
     null,
     null,
@@ -288,7 +344,44 @@ select
     null,
     null,
     null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
     null
 from repeated_cohort_ids
 
-order by section, position, item
+union all
+
+select
+    section,
+    item,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    settlement_date,
+    date_status,
+    expected_periods,
+    r3_periods,
+    rf_periods,
+    rf_capture_due_at,
+    rf_first_stored_at
+from settlement_date_rows
+
+order by section, position, settlement_date, item

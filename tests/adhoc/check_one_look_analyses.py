@@ -641,6 +641,56 @@ Q2RF_MEASURES = {
 Q2RF_POPULATION = {
     (1, "gas", None): dict(dates=2, first_date="2025-08-22", last_date="2025-08-23"),
 }
+# Each date's RF is first asked for at 00:00 UTC, its settlement date plus
+# 449 + 1 days: 20 August 2025 on 13 November 2026, and so on. Every August
+# date has 48 periods.
+Q2RF_SETTLEMENT_DATES = {
+    (4, "date 2025-08-20", None): dict(
+        settlement_date="2025-08-20",
+        date_status="RF due, not held",
+        expected_periods=48,
+        r3_periods=1,
+        rf_periods=0,
+        rf_capture_due_at="2026-11-13 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
+    (4, "date 2025-08-21", None): dict(
+        settlement_date="2025-08-21",
+        date_status="RF held, no R3",
+        expected_periods=48,
+        r3_periods=0,
+        rf_periods=1,
+        rf_capture_due_at="2026-11-14 00:00:00+00:00",
+        rf_first_stored_at="2026-11-14 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-22", None): dict(
+        settlement_date="2025-08-22",
+        date_status="in the population",
+        expected_periods=48,
+        r3_periods=2,
+        rf_periods=2,
+        rf_capture_due_at="2026-11-15 00:00:00+00:00",
+        rf_first_stored_at="2026-11-29 12:00:00+00:00",
+    ),
+    (4, "date 2025-08-23", None): dict(
+        settlement_date="2025-08-23",
+        date_status="in the population",
+        expected_periods=48,
+        r3_periods=1,
+        rf_periods=1,
+        rf_capture_due_at="2026-11-16 00:00:00+00:00",
+        rf_first_stored_at="2026-11-16 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-24", None): dict(
+        settlement_date="2025-08-24",
+        date_status="R3 and RF held, after the population",
+        expected_periods=48,
+        r3_periods=1,
+        rf_periods=1,
+        rf_capture_due_at="2026-11-17 00:00:00+00:00",
+        rf_first_stored_at="2026-11-17 00:05:00+00:00",
+    ),
+}
 Q2RF_EXPECTED = {
     **Q2RF_MEASURES,
     (2, "date 2025-08-22: R3", None): dict(unit_periods=7, units=5, periods=2),
@@ -652,6 +702,7 @@ Q2RF_EXPECTED = {
         "Elexon IDs with more than one cohort fuel group (each would count twice)",
         None,
     ): dict(units=0),
+    **Q2RF_SETTLEMENT_DATES,
 }
 # The headline first, then every unit, the units outside the cohort and the
 # fuel groups by name.
@@ -710,6 +761,56 @@ Q2RF_LATE_EXPECTED = {
         last_date="2025-08-24",
     ),
     (1, "outside the cohort", None): dict(unit_periods=0, only_in_r3=1, only_in_rf=0),
+    (4, "date 2025-08-22", None): dict(
+        date_status="RF due, not held", rf_periods=0, rf_first_stored_at=None
+    ),
+    (4, "date 2025-08-23", None): dict(
+        date_status="in the population",
+        rf_first_stored_at="2026-11-16 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-24", None): dict(date_status="in the population"),
+}
+
+# K5: one gas unit on the two clock-change days, 27 October 2024 (50 periods)
+# and 30 March 2025 (46). Periods 1: 1 to 1 on both; period 50: 4 to 6;
+# period 46: 10 to 7. Gross 5 of 16, net -1. RF is first asked for at 00:00
+# UTC on 20 January 2026 and 23 June 2026 (01:00 BST: the same time cast in
+# a London session would read 22 June 23:00 UTC).
+Q2RF_CLOCK_CHANGE_ROWS = """
+insert into synthetic_b1610 values
+    ('T_GAS-1', '2024-10-27', 1, 'R3', 1, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2024-10-27', 1, 'RF', 1, '2026-01-20 00:05+00'),
+    ('T_GAS-1', '2024-10-27', 50, 'R3', 4, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2024-10-27', 50, 'RF', 6, '2026-01-20 00:05+00'),
+    ('T_GAS-1', '2025-03-30', 1, 'R3', 1, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-03-30', 1, 'RF', 1, '2026-06-23 00:05+00'),
+    ('T_GAS-1', '2025-03-30', 46, 'R3', 10, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-03-30', 46, 'RF', 7, '2026-06-23 00:05+00');
+"""
+Q2RF_CLOCK_CHANGE_MEASURES = dict(
+    unit_periods=4,
+    changed_unit_periods=2,
+    gross_change_mwh="5.000",
+    r3_absolute_mwh="16.000",
+    gross_share="0.312500",
+    net_change_mwh="-1.000",
+    net_share="-0.062500",
+)
+Q2RF_CLOCK_CHANGE_EXPECTED = {
+    (1, "cohort total", None): Q2RF_CLOCK_CHANGE_MEASURES,
+    (1, "overall", None): Q2RF_CLOCK_CHANGE_MEASURES,
+    (4, "date 2024-10-27", None): dict(
+        expected_periods=50,
+        r3_periods=2,
+        rf_periods=2,
+        rf_capture_due_at="2026-01-20 00:00:00+00:00",
+    ),
+    (4, "date 2025-03-30", None): dict(
+        expected_periods=46,
+        r3_periods=2,
+        rf_periods=2,
+        rf_capture_due_at="2026-06-23 00:00:00+00:00",
+    ),
 }
 
 # The project's 30 dates needed, at the NOT_REACHED cutoff (30 November 2026
@@ -2156,6 +2257,18 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
         time_zone,
     )
     found += mismatches(f"{title} late", late_run, Q2RF_LATE_EXPECTED)
+
+    clock_change_run = run_analysis(
+        conn,
+        q2rf_fixtures(b1610_rows=Q2RF_CLOCK_CHANGE_ROWS),
+        reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} clock changes", clock_change_run, Q2RF_CLOCK_CHANGE_EXPECTED
+    )
 
     early_run = run_analysis(
         conn, q2rf_fixtures(), not_reached, Q2RF, Q2RF_TABLES, time_zone
