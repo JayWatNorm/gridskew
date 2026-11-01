@@ -26,7 +26,7 @@ miss be set beside the size of the carbon miss, half-hour by half-hour.
 | Meaning | National wind generation forecast | Half-hourly generation outturn by fuel type |
 | Scope | Wind farms visible to NESO with operational metering | Taken to be metered generation in Great Britain (inferred, not documented) |
 | Granularity | Hourly points, MW | Settlement periods, average MW |
-| Issues | Up to eight a day; each issue forecasts 73 hourly points, about three days | One row per period, published as the period ends |
+| Issues | Up to eight a day, eight on almost every day; each issue forecasts 73 hourly points, about three days (72 or 74 when its span holds a clock change). The daily capture treats a day with fewer than eight as short: two publish days in the year to August 2026 held seven | One row per period, published as the period ends |
 | Endpoint | `/datasets/WINDFOR`, filtered by `publishDateTimeFrom` / `To` | `/datasets/FUELHH`, filtered by `settlementDateFrom` / `To` and `fuelType` |
 | Documented maximum range | None | None |
 

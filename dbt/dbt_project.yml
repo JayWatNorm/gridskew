@@ -103,6 +103,10 @@ vars:
   # day (ingestion/elexon/wind_poller.py FIRST_CAPTURE_DAY); the warning
   # test warn_wind_capture_days_short checks days from it.
   wind_capture_from: '2026-11-01'
+  # The day warn_wind_capture_days_short counts back from. Null, as the nightly
+  # runs it, is today's UTC date; a check sets a fixed day to hold a clock
+  # change in the test's range.
+  wind_warn_today: null
 
 # Writes nothing unless the invocation passes --vars '{audit: true}'.
 on-run-end:

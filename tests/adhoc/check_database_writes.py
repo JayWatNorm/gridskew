@@ -10,8 +10,9 @@ writer committed.
 The wind capture checks run the completeness and quarantine queries in UTC,
 Europe/London, Etc/GMT-14 and Etc/GMT+12 sessions on rows they roll back;
 check that the warning test warn_wind_capture_days_short names exactly the
-days the poller's rule names, on rows inside its range; and run the capture
-functions twice across a failure, with HTTP faked, on days in 2099.
+days the poller's rule names, on rows inside its range, counting back from
+today and from 28 October 2026; and run the capture functions twice across
+a failure, with HTTP faked, on days in 2099.
 
 The loaders commit, so in the CI `test` job this runs after every step that
 reads the fixtures, and deletes its own rows at the end.
@@ -229,6 +230,10 @@ OCTOBER_30_2000 = date(2000, 10, 30)
 # The two-run sequence asks for days in 2099; the out-of-range values are in
 # 2100. No fixture or other check uses either year, and the end of the check
 # deletes every wind row and quarantine row from 2099 on.
+# The warning test, counted back from this day, checks 28 September to
+# 26 October 2026: summer days, the 74-point publish days 23 to 25 October
+# and the 50-period date 25 October, whatever day the check runs.
+WARNING_DAY_AFTER_CLOCK_CHANGE = date(2026, 10, 28)
 SEQUENCE_YEARS_FROM = date(2099, 1, 1)
 FIRST_RUN_TARGET = date(2099, 6, 10)
 SECOND_RUN_TARGET = date(2099, 6, 11)
@@ -916,13 +921,14 @@ def database_utc_today(conn):
     return utc_today
 
 
-def compiled_wind_warning(capture_from):
-    """The warning test's SQL, compiled with wind_capture_from set."""
+def compiled_wind_warning(capture_from, warn_today):
+    """The warning test's SQL, compiled with wind_capture_from set, and
+    wind_warn_today too unless warn_today is None (today's UTC date)."""
 
-    manifest = compile_analyses(
-        {"wind_capture_from": capture_from.isoformat()},
-        also_compiled=(WIND_WARNING_TEST,),
-    )
+    dbt_vars = {"wind_capture_from": capture_from.isoformat()}
+    if warn_today is not None:
+        dbt_vars["wind_warn_today"] = warn_today.isoformat()
+    manifest = compile_analyses(dbt_vars, also_compiled=(WIND_WARNING_TEST,))
     for node in manifest["nodes"].values():
         if node["resource_type"] == "test" and node["name"] == WIND_WARNING_TEST:
             return node["compiled_code"]
@@ -1015,21 +1021,24 @@ def days_the_warning_names(conn, warning_sql):
     return named
 
 
-def check_wind_warning_agrees_with_the_poller():
+def check_wind_warning_agrees_with_the_poller(warn_today=None):
     """The warning test lists exactly the days of its range the poller's rule
     finds not complete, in every session zone, with wind_capture_from before
-    the range and inside it. The rows are rolled back."""
+    the range and inside it. The range counts back from warn_today, or from
+    today's UTC date when it is None. The rows are rolled back."""
 
     conn = disposable_connection()
     try:
-        utc_today = database_utc_today(conn)
+        utc_today = warn_today
+        if utc_today is None:
+            utc_today = database_utc_today(conn)
         capture_from_dates = [
             utc_today - timedelta(days=40),
             utc_today - timedelta(days=20),
         ]
         warnings = {}
         for capture_from in capture_from_dates:
-            warnings[capture_from] = compiled_wind_warning(capture_from)
+            warnings[capture_from] = compiled_wind_warning(capture_from, warn_today)
         clock_change_days = store_rows_inside_the_warning_range(conn, utc_today)
         for capture_from, warning_sql in warnings.items():
             first_day = max(capture_from, utc_today - timedelta(days=30))
@@ -1386,6 +1395,7 @@ def main():
         )
         check_wind_completeness_and_quarantine_queries()
         check_wind_warning_agrees_with_the_poller()
+        check_wind_warning_agrees_with_the_poller(WARNING_DAY_AFTER_CLOCK_CHANGE)
         check_wind_capture_across_two_runs(writer)
     finally:
         writer.rollback()

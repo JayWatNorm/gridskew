@@ -6,8 +6,9 @@ for the target unless it is complete or held in quarantine, one request a
 try, retried for up to ten hours. poll_windfor_look_back and
 poll_fuelhh_look_back ask once for each of the seven days before the target
 that is neither, newest first, with no retry: the next morning's run asks
-again. Days are held from 1 November 2026. A held day fails its task each
-morning, with no request, until its quarantine rows are dealt with.
+again. Days are captured from 1 November 2026. A day held in quarantine
+fails its task each morning, with no request for it, until its quarantine
+rows are dealt with.
 
 A manual trigger has no data interval and is refused. Days older than the
 look-back need `airflow backfill create`.

@@ -1161,3 +1161,10 @@ def test_the_capture_completeness_warning_starts_on_the_first_capture_day():
         date.fromisoformat(variables["wind_capture_from"])
         == wind_poller.FIRST_CAPTURE_DAY
     )
+
+
+def test_the_nightly_warning_counts_back_from_the_utc_date():
+    variables = yaml.safe_load(DBT_PROJECT.read_text(encoding="utf-8"))["vars"]
+
+    # A fixed day would stop the nightly checking new days.
+    assert variables["wind_warn_today"] is None

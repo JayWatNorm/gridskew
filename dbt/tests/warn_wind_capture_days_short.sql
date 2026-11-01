@@ -6,19 +6,30 @@
 -- same rule; tests/adhoc/check_database_writes.py checks that both name the
 -- same days. Checks the days from wind_capture_from and the last 30 UTC days
 -- up to two days ago: the last two may not be captured when the nightly runs.
+-- Today is the UTC date, or the var wind_warn_today when a check sets it.
 -- Counts only. Reads only rows stored since the day before the first day,
 -- through the retrieved_at index: no row of a day in the range is stored
 -- earlier.
 
 {{ config(severity='warn') }}
 
-with checked_range as (
+with warn_today as (
+    select
+        {% if var('wind_warn_today') is not none -%}
+            '{{ var("wind_warn_today") }}'::date
+        {%- else -%}
+            (now() at time zone 'UTC')::date
+        {%- endif %} as day
+),
+
+checked_range as (
     select
         greatest(
             '{{ var("wind_capture_from") }}'::date,
-            (now() at time zone 'UTC')::date - 30
+            warn_today.day - 30
         ) as first_day,
-        (now() at time zone 'UTC')::date - 2 as last_day
+        warn_today.day - 2 as last_day
+    from warn_today
 ),
 
 checked_days as (

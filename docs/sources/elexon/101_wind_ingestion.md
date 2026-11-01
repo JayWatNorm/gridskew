@@ -56,8 +56,8 @@ The DAG runs at 06:00 UTC. Each run targets the previous UTC day: its WINDFOR
 publish day, the UTC date of the issues' source stamps, and the settlement
 date of the same name (at 06:00 UTC the London date is the UTC date in winter
 and in summer). By then the day's last issue, stamped 22:30 or 23:30, is out,
-and the date's last period ended six or seven hours earlier. Days are held
-from 1 November 2026; a target before then asks for nothing.
+and the date's last period ended six or seven hours earlier. Days are
+captured from 1 November 2026; a target before then asks for nothing.
 
 Four tasks share the one-slot `elexon` pool, so requests go one at a time,
 and none waits for another:
@@ -112,9 +112,11 @@ look-back, after asking for its other days. To release a held day:
 Counting every try, a run makes at most 13 per dataset, 26 in all: 6 tries of
 the target and 7 older days, all of them failing only when the API is down
 for the whole morning after an outage. A day is asked for at most 13 times
-over its life: 6 tries as the target and once a day for seven days after. No
-day is asked for twice within 30 minutes. A gap older than seven days needs
-`airflow backfill create`.
+over its life: 6 tries as the target and once a day for seven days after.
+On the schedule no day is asked for twice within 30 minutes; a backfill of
+several runs can ask a short day again within minutes
+([operations](../../operations.md#running-past-days-again)). A gap older
+than seven days needs `airflow backfill create`.
 
 **Each task logs one JSON line**: the dataset, the task, the target and the
 range, the days asked for and the rows each returned, the days whose request
@@ -148,9 +150,9 @@ times.** In the summer and winter samples all eight issues fell inside the
 UTC day. **A FUELHH settlement date is held when it stores exactly its
 calendar's number of distinct periods**: 46, 48 or 50. A held day or date is
 skipped, so running the back-fill again fetches only those still missing or
-short, including one a stopped run left part-way. Whether one request
-returns all 50 periods of an autumn clock-change date is untested; if it
-does not, the date stays not held and is listed.
+short, including one a stopped run left part-way. One request for
+the autumn clock-change date 25 October 2026 returned all 50 periods; a
+date that returns fewer stays not held and is listed.
 
 Run it in the Airflow container, which holds the `gridskew_prod` connection,
 after V012 is applied:

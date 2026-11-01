@@ -41,8 +41,11 @@ it.
 `gridskew_elexon_wind` targets the first day of each run's interval, and each
 run's look-back asks again for the seven days before its target, so a
 backfill is needed only for a day older than that. Backfill the runs whose
-targets are the days wanted; add `--dry-run` first and check that it lists
-exactly those runs.
+targets are the days wanted, with `--max-active-runs 1`; add `--dry-run` first
+and check that it lists exactly those runs. Each backfilled run's look-back
+asks again for every day before its target that is not complete, so a day
+one run leaves short is asked again by the next run within minutes: backfill
+only the runs the gap needs.
 
 ## The quarantine
 

@@ -430,7 +430,6 @@ def ask_each_once(conn, dataset, days, summary):
             summary["quarantined"].append(day.isoformat())
             continue
         except Exception as error:
-            conn.rollback()
             reason = failure_reason(error)
             summary["failed"][day.isoformat()] = reason
             logger.warning(
@@ -444,6 +443,7 @@ def ask_each_once(conn, dataset, days, summary):
                     }
                 ),
             )
+            conn.rollback()
             if stops_the_asking(error):
                 break
             continue
