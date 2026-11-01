@@ -2077,6 +2077,32 @@ Q2RF_NOT_REACHED_EXPECTED = {
         rf_first_stored_at=None,
     ),
 }
+# No capture cutoff passed (PROJECT_VALUES_VARS: the project's 30 dates and
+# 450-day offset, rf_restatement_capture_cutoff null). One unit holds R3 and
+# RF on 30 dates from 22 August 2025, every row stored before this check can
+# run, so the data reach the population; without a recorded cutoff the gate
+# stays shut and only counts come out.
+Q2RF_NO_CUTOFF_ROWS = """
+insert into synthetic_b1610
+select 'T_GAS-1', date '2025-08-22' + day_number, 1, 'R3', 10, '2026-08-24 10:00+00'
+from generate_series(0, 29) as day_number;
+insert into synthetic_b1610
+select 'T_GAS-1', date '2025-08-22' + day_number, 1, 'RF', 11, '2026-08-25 10:00+00'
+from generate_series(0, 29) as day_number;
+"""
+Q2RF_NO_CUTOFF_EXPECTED = {
+    (1, "cohort total", None): dict(
+        unit_periods=30,
+        changed_unit_periods=None,
+        gross_change_mwh=None,
+        share_status="no capture cutoff passed: no result",
+        dates=30,
+        first_date="2025-08-22",
+        last_date="2025-09-20",
+    ),
+    (5, "capture cutoff", None): dict(instant=None),
+    (5, "population reached at", None): dict(instant="2026-08-25 10:00:00+00:00"),
+}
 R3_DUE_AT_THE_NOT_REACHED_CUTOFF = """
 insert into synthetic_b1610 values
     ('T_GAS-1', '2025-09-05', 1, 'R3', 10, '2026-08-24 10:00+00');
@@ -4170,7 +4196,7 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     return found
 
 
-def q2rf_mismatches(conn, reached, not_reached, time_zone):
+def q2rf_mismatches(conn, reached, not_reached, project_values, time_zone):
     title = f"[{time_zone}] Q2-RF"
     main_run = run_analysis(
         conn, q2rf_fixtures(), reached, Q2RF, Q2RF_TABLES, time_zone
@@ -4250,6 +4276,19 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     )
     found += gated_values_left_null(calendar_title, calendar_run, Q2RF_GATED)
     found += gated_values_left_null(calendar_title, calendar_run, Q2RF_NO_ENERGY)
+
+    no_cutoff_run = run_analysis(
+        conn,
+        q2rf_fixtures(b1610_rows=Q2RF_NO_CUTOFF_ROWS),
+        project_values,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    no_cutoff_title = f"{title} no cutoff"
+    found += mismatches(no_cutoff_title, no_cutoff_run, Q2RF_NO_CUTOFF_EXPECTED)
+    found += gated_values_left_null(no_cutoff_title, no_cutoff_run, Q2RF_GATED)
+    found += gated_values_left_null(no_cutoff_title, no_cutoff_run, Q2RF_NO_ENERGY)
 
     two_groups_run = run_analysis(
         conn,
@@ -4523,7 +4562,9 @@ def check_all(reached, not_reached, boundary, project_values, schedule_window):
             found += q10_mismatches(conn, reached, not_reached, time_zone)
             found += q10_project_values_mismatches(conn, project_values, time_zone)
             found += q4_mismatches(conn, reached, not_reached, boundary, time_zone)
-            found += q2rf_mismatches(conn, reached, not_reached, time_zone)
+            found += q2rf_mismatches(
+                conn, reached, not_reached, project_values, time_zone
+            )
             found += q25_mismatches(conn, reached, time_zone)
             found += q27_mismatches(conn, reached, not_reached, time_zone)
             found += q27_schedule_change_mismatches(conn, schedule_window, time_zone)

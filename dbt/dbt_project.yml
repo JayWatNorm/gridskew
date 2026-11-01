@@ -105,7 +105,8 @@ vars:
   # Q2-RF works out when the RF capture first asks for each settlement date
   # from this many days, the RF DAG's LAG (a test keeps them equal). It reads
   # B1610 rows stored at or before the capture cutoff, a UTC instant with its
-  # offset passed at the read; null reads up to the query's own time.
+  # offset passed at the read; null counts rows up to the query's own time
+  # and shows no energy.
   b1610_rf_capture_offset_days: 450
   rf_restatement_capture_cutoff: null
   # Q2-RF is read once, when this many settlement dates hold RF and R3.

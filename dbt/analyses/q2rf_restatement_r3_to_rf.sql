@@ -20,8 +20,9 @@
 -- counts and dates, no energy.
 --
 -- How the query reads it. A date holds a run when at least one row of that
--- run was stored by the cutoff (a null cutoff reads up to the query's own
--- time). R3 and RF are full-joined by unit, date and period: unit-periods in
+-- run was stored by the cutoff. Energy shows only when a cutoff is passed:
+-- with none, the query counts rows stored up to its own time and returns
+-- counts and dates only, however many dates are held. R3 and RF are full-joined by unit, date and period: unit-periods in
 -- only one run are coverage, not change. The fuel group comes from the
 -- latest registry extract by Elexon ID. The cohort total counts each cohort
 -- unit-period once; B1610 units outside the cohort (no published fuel type,
@@ -40,6 +41,7 @@
 {% set capture_cutoff = utc_instant_var('rf_restatement_capture_cutoff') %}
 {% set cutoff_passed %}{% if capture_cutoff is none %}null::timestamptz{% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
 {% set stored_until %}{% if capture_cutoff is none %}now(){% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
+{% set cutoff_recorded = 'false' if capture_cutoff is none else 'true' %}
 
 with date_runs as (
     select
@@ -80,13 +82,24 @@ population_dates as (
     where date_order <= {{ dates_needed }}
 ),
 
-gate as (
+population_count as (
     select
         count(*) as dates,
         min(settlement_date) as first_date,
         max(settlement_date) as last_date,
         count(*) >= {{ dates_needed }} as is_reached
     from population_dates
+),
+
+-- Energy shows only at a recorded cutoff, so a rerun reads the same rows.
+gate as (
+    select
+        dates,
+        first_date,
+        last_date,
+        is_reached,
+        is_reached and {{ cutoff_recorded }} as is_open
+    from population_count
 ),
 
 -- A retry adds later rows to a date already held, so the unit-period rows
@@ -200,18 +213,19 @@ measure_rows as (
         measures.item,
         measures.unit_periods,
         measures.units,
-        case when gate.is_reached then measures.changed_unit_periods end as changed_unit_periods,
-        case when gate.is_reached then round(measures.gross_change_mwh, 3) end as gross_change_mwh,
-        case when gate.is_reached then round(measures.earlier_absolute_mwh, 3) end as earlier_absolute_mwh,
-        case when gate.is_reached and measures.earlier_absolute_mwh > 0
+        case when gate.is_open then measures.changed_unit_periods end as changed_unit_periods,
+        case when gate.is_open then round(measures.gross_change_mwh, 3) end as gross_change_mwh,
+        case when gate.is_open then round(measures.earlier_absolute_mwh, 3) end as earlier_absolute_mwh,
+        case when gate.is_open and measures.earlier_absolute_mwh > 0
             then round(measures.gross_change_mwh / measures.earlier_absolute_mwh, 6)
         end as gross_share,
-        case when gate.is_reached then round(measures.net_change_mwh, 3) end as net_change_mwh,
-        case when gate.is_reached and measures.earlier_absolute_mwh > 0
+        case when gate.is_open then round(measures.net_change_mwh, 3) end as net_change_mwh,
+        case when gate.is_open and measures.earlier_absolute_mwh > 0
             then round(measures.net_change_mwh / measures.earlier_absolute_mwh, 6)
         end as net_share,
         case
             when not gate.is_reached then 'population not reached: no result'
+            when not gate.is_open then 'no capture cutoff passed: no result'
             when measures.earlier_absolute_mwh = 0
                 then 'not defined: sum of abs({{ earlier_run }}) is 0'
             else 'defined'
