@@ -272,7 +272,7 @@
     <ul class="findings">
       <li><strong>Wind strays furthest from its own plan.</strong> With no NESO instruction in force, the median wind farm missed its plan by more than the median unit of any other type in every whole month from September 2025 to August 2026. <a href="#q23">Q23</a></li>
       <li><strong>Most under-delivery comes with no published outage.</strong> About a quarter (24%, 22 Aug 2025 – 27 Sep 2026) came with one; for wind, about a tenth. <a href="#q5">Q5</a></li>
-      <li><strong>NESO flags almost all the energy its instructions move at wind farms as managing the network:</strong> 97% (Aug 2025 – Sep 2026). <a href="#q24">Q24</a></li>
+      <li><strong>NESO flags almost all the energy its instructions move at wind farms as managing the network:</strong> 97% (settlement months Aug 2025 – Sep 2026). <a href="#q24">Q24</a></li>
       <li><strong>The carbon forecast's misses barely track any of it.</strong> In the fifth of half-hours with the biggest carbon misses (22 Aug 2025 – 16 Aug 2026), under-delivery was only 5% larger than in the fifth with the smallest; the test needed 25%. Misses in NESO's demand and wind forecasts show only weak links too. <a href="#q28">Q28</a>, <a href="#q8">Q8</a>, <a href="#q30">Q30</a></li>
     </ul>
     <p class="caveat">The carbon forecast tested is the stored forecast (see the words below), not a day-ahead forecast. Q4 repeats the test on GridSkew's own archive of every forecast, where the timing is known.</p>
@@ -434,7 +434,7 @@
 
   <article id="q12">
     <h3>How much of the gap between plan and meter comes from NESO's instructions? <span class="tag">Q12</span></h3>
-    <p class="answer">Most of it for gas, hydro and pumped storage: <strong>83 to 91%</strong>, counting the instructed and the not-instructed part each by its size. For wind, instructions are 44%, so the part NESO did not instruct is larger. NESO never instructed a nuclear unit in this period.</p>
+    <p class="answer">Most of it for gas, hydro and pumped storage (22 Aug 2025 – 26 Sep 2026): <strong>83 to 91%</strong>, counting the instructed and the not-instructed part each by its size. For wind, instructions are 44%, so the part NESO did not instruct is larger. NESO never instructed a nuclear unit in those dates.</p>
     <figure>
       <div class="chart" id="q12-chart"></div>
       <figcaption>22 August 2025 to 26 September 2026. Interconnectors (never instructed) and coal (closed units) are left out. Source: Elexon BMRS.</figcaption>
@@ -519,10 +519,10 @@
 
   <article id="q24">
     <h3>How much of the energy NESO's instructions move does it flag as managing the network? <span class="tag">Q24</span></h3>
-    <p class="answer">Almost all of it for wind (<strong>97%</strong> of 13.4 TWh, Aug 2025 – Sep 2026) and hydro (93%), and 70% for pumped storage. The flag marks an instruction as possibly for network reasons, such as relieving a bottleneck, rather than balancing supply and demand. For bioenergy, the other group (mostly batteries) and gas it is 24%, 31% and 35%.</p>
+    <p class="answer">Almost all of it for wind (<strong>97%</strong> of 13.4 TWh, settlement months Aug 2025 – Sep 2026) and hydro (93%), and 70% for pumped storage. The flag marks an instruction as possibly for network reasons, such as relieving a bottleneck, rather than balancing supply and demand. For bioenergy, the other group (mostly batteries) and gas it is 24%, 31% and 35%.</p>
     <figure>
       <div class="chart" id="q24-chart"></div>
-      <figcaption>22 August 2025 to 30 September 2026. Units with a published fuel type only: they carry 42.5% of all instructions. Coal and nuclear units had none. Source: Elexon BMRS.</figcaption>
+      <figcaption>Settlement months Aug 2025 – Sep 2026. Units with a published fuel type only: they carry 42.5% of all instructions. Coal and nuclear units had none. Source: Elexon BMRS.</figcaption>
     </figure>
     <details class="method">
       <summary>How we measured it</summary>
@@ -606,7 +606,7 @@
 
   <article id="q28">
     <h3>When NESO's stored carbon forecast misses by more, do units fall further short of their plans? <span class="tag">Q28</span></h3>
-    <p class="answer">No. The fifth of half-hours with the biggest misses carried <strong>5% more</strong> under-delivery (90% range 3% to 8%) than the fifth with the smallest: a small but steady rise, far short of the 25% needed.</p>
+    <p class="answer">No. Over 22 Aug 2025 – 16 Aug 2026, the fifth of half-hours with the biggest misses carried <strong>5% more</strong> under-delivery (90% range 3% to 8%) than the fifth with the smallest: a small but steady rise, far short of the 25% needed.</p>
     <figure>
       <div class="chart" id="q28-chart"></div>
       <figcaption>17,278 half-hours, all units together. Mean under-delivery per half-hour, 22 Aug 2025 – 16 Aug 2026: 762 MWh in the smallest-miss fifth, 801 MWh in the largest. Source: Elexon BMRS and NESO Carbon Intensity API.</figcaption>
@@ -825,7 +825,7 @@
 
   // One colour per fuel group on every chart, light and dark, in the specs'
   // fuel-group order: wind, other, bioenergy, nuclear, hydro, gas, pumped
-  // storage, then interconnectors in a neutral grey. The specs name the
+  // storage, then interconnectors in a warm taupe that no grey shares. The specs name the
   // scheme; the page picks the steps for its colour mode.
   const fuelGroupColours = [
     ["#eb6834", "#d95926"],
@@ -835,7 +835,7 @@
     ["#2a78d6", "#3987e5"],
     ["#e87ba4", "#d55181"],
     ["#008300", "#008300"],
-    ["#8c959f", "#8c959f"],
+    ["#9a7f63", "#9a7f63"],
   ];
 
   function fuelGroupScheme() {
@@ -851,9 +851,9 @@
   // The greys that split a bar into parts, strongest against the page first,
   // light and dark. In dark mode the strong grey is the lightest.
   const splitGreys = {
-    strong: ["#3d444d", "#d0d7de"],
-    mid: ["#6e7781", "#8c959f"],
-    soft: ["#a8afb7", "#4b535d"],
+    strong: ["#0a111a", "#dfe6ef"],
+    mid: ["#3a414a", "#a6adb6"],
+    soft: ["#7a818a", "#5b626b"],
   };
 
   function splitScheme(steps) {

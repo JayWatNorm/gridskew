@@ -180,8 +180,9 @@ FUEL_GROUP_COLOURS = {
     "hydro": ("#2a78d6", "#3987e5"),
     "gas_turbine": ("#e87ba4", "#d55181"),
     "pumped_storage": ("#008300", "#008300"),
-    # Links, not a fuel: a neutral grey, and left out of the palette checks.
-    "interconnector": ("#8c959f", "#8c959f"),
+    # Links, not a fuel: a warm taupe, so it reads as neither a fuel hue nor
+    # one of the greys that split a bar; left out of the palette checks.
+    "interconnector": ("#9a7f63", "#9a7f63"),
 }
 
 # Q3's key.
@@ -329,7 +330,7 @@ Q23_MONTHLY_READING = (
 Q24_READING = (
     "Each bar is one fuel group's instructed energy as 100%, split into the "
     "share NESO flagged as managing the network and the rest. Under each name "
-    "is that energy in TWh, {months}."
+    "is that energy in TWh, settlement months {months}."
 )
 Q25_READING = (
     "Each row is a fuel group. The dot is the share of its instructions "
@@ -411,13 +412,14 @@ LOG_SHARE_TICKS = [0.01, 0.1, 1, 10, 100]
 # The split greys, strongest against the page first, light and dark: the
 # instructed, flagged or planned part takes the strong grey, unplanned the
 # mid, the rest the soft. In dark mode the strong grey is the lightest, so it
-# still stands out most. Neighbouring greys differ by about 2:1 in contrast,
-# so a 2 px gap in the page's own colour separates the parts. The page
+# still stands out most. Every grey, the soft one too, reaches 3:1 against
+# the page; neighbouring greys differ by about 2:1 or more, and a 2 px gap
+# in the page's own colour separates the parts. The page
 # registers each set for its colour mode as a scheme the specs name.
 SPLIT_GREYS = {
-    "strong": ("#3d444d", "#d0d7de"),
-    "mid": ("#6e7781", "#8c959f"),
-    "soft": ("#a8afb7", "#4b535d"),
+    "strong": ("#0a111a", "#dfe6ef"),
+    "mid": ("#3a414a", "#a6adb6"),
+    "soft": ("#7a818a", "#5b626b"),
 }
 SPLIT_TWO_SCHEME = "gridskew-split-two"
 SPLIT_THREE_SCHEME = "gridskew-split-three"
@@ -2045,7 +2047,7 @@ def write_q24_chart(rows, output):
     axes.set_xlim(0, 100)
     axes.set_xticks(SHARE_TICKS)
     x_label(axes, Q24_AXIS_TITLE)
-    png_title(axes, Q24_TITLE, [f"Energy under each name, {months}"])
+    png_title(axes, Q24_TITLE, [f"Energy under each name, settlement months {months}"])
     save_figure(figure, output / f"{name}.png", legend_handles(axes))
 
     data = csv_data(

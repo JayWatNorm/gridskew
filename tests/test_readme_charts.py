@@ -179,6 +179,10 @@ ROWS_ADDED_TO_FIXTURES = {
     "q5_shortfall_with_known_outage.csv": [
         "2,interconnector,none,154,51.5,100.0,2025-08-22,2026-09-27,",
     ],
+    # A first month, so Q24's range is a span the chart works out.
+    "q24_system_action_share.csv": [
+        "1,wind,2025-08-01,stretches with a volume,100,300,500.0,450.0,90.0,120.0,80.0",
+    ],
     "q30_wind_vs_carbon_error.csv": [
         '3,"rho_signed (secondary): wind error, outturn with cohort curtailment '
         'add-back, with error_api_final; expected direction negative",,500,,,,'
@@ -1317,14 +1321,15 @@ def test_both_q29_charts_share_one_diverging_pair_no_fuel_group_wears(written):
 def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
     # Q3's fixture covers 22 August 2025 to 26 September 2026, and Q12 reads
     # Q3's half-hours; Q5's rows run 22 August 2025 to 27 September 2026;
-    # Q24's fixture holds September 2026 only; Q2's week is its rule's.
+    # Q24's fixture holds August 2025 and September 2026, as settlement
+    # months; Q2's week is its rule's.
     q3 = "22 Aug 2025 – 26 Sep 2026"
     assert q3 in x_axis_titles(written, "q3_gap_from_plan_by_fuel_group.vl.json")
     assert q3 in x_axis_titles(written, "q12_instructed_share_by_fuel_group.vl.json")
     assert "22 Aug 2025 – 27 Sep 2026" in x_axis_titles(
         written, "q5_under_delivery_by_outage_notice.vl.json"
     )
-    assert "energy in TWh, Sep 2026." in reading_line(
+    assert "energy in TWh, settlement months Aug 2025 – Sep 2026." in reading_line(
         written, "q24_flagged_share_by_fuel_group.vl.json"
     )
     assert (
@@ -1337,15 +1342,48 @@ def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
     )
 
 
-def test_q2s_week_is_its_registered_population():
-    # Q2's outputs hold no dates, so its week is the rule's.
+def with_dates_moved(path, moves):
+    text = path.read_text(encoding="utf-8")
+    for before, after in moves.items():
+        text = text.replace(before, after)
+    path.write_text(text, encoding="utf-8")
+
+
+def test_each_energy_range_moves_with_its_saved_outputs_dates(tmp_path):
+    # The fixtures hold the real outputs' dates, so a range typed in would
+    # pass the test above; here each output's dates move a day, and every
+    # range must move with them (Q12's with Q3's rows).
+    saved = saved_outputs_folder(tmp_path / "saved")
+    with_dates_moved(
+        saved / "q3_metered_vs_notified.csv",
+        {"2025-08-22": "2025-08-23", "2026-09-26": "2026-09-25"},
+    )
+    with_dates_moved(
+        saved / "q5_shortfall_with_known_outage.csv",
+        {"2025-08-22": "2025-08-21", "2026-09-27": "2026-09-28"},
+    )
+    write_charts(saved, tmp_path / "out")
+    written_folder = tmp_path / "out"
+
+    q3 = "23 Aug 2025 – 25 Sep 2026"
+    assert q3 in x_axis_titles(written_folder, "q3_gap_from_plan_by_fuel_group.vl.json")
+    assert q3 in x_axis_titles(
+        written_folder, "q12_instructed_share_by_fuel_group.vl.json"
+    )
+    assert "21 Aug 2025 – 28 Sep 2026" in x_axis_titles(
+        written_folder, "q5_under_delivery_by_outage_notice.vl.json"
+    )
+
+
+def test_q2s_week_is_its_registered_population_and_q22s():
+    # Q2's and Q22's outputs hold no dates, so the week is their rules'.
     first_day, rest = Q2_WEEK.split("–")
     last_day, month, year = rest.split(" ")
-    rule = f"Settlement dates {first_day} to {last_day} {FULL_MONTHS[month]} {year}"
+    dates = f"settlement dates {first_day} to {last_day} {FULL_MONTHS[month]} {year}"
+    questions = QUESTIONS.read_text(encoding="utf-8")
 
-    assert f"**Population.** {rule}, every BM unit" in QUESTIONS.read_text(
-        encoding="utf-8"
-    )
+    assert f"**Population.** S{dates[1:]}, every BM unit" in questions
+    assert f"run of {dates}, side by side" in questions
 
 
 def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
@@ -1356,12 +1394,16 @@ def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
     page = PAGE.read_text(encoding="utf-8")
     expected = [
         f"About a quarter (24%, {q5}) came with one",
-        f"managing the network:</strong> 97% ({q24}).",
+        f"managing the network:</strong> 97% (settlement months {q24}).",
         f"the biggest carbon misses ({q28}), under-delivery",
         f"Slightly less, with wide spreads ({q3}).",
         f"0.03 MWh per unit per half-hour (bioenergy, {Q2_WEEK}).",
         f"of under-delivery ({q5}) came with a published outage",
-        f"of 13.4 TWh, {q24})",
+        f"of 13.4 TWh, settlement months {q24})",
+        f"<figcaption>Settlement months {q24}. Units with",
+        f"Most of it for gas, hydro and pumped storage ({q3}): <strong>83 to 91%",
+        "NESO never instructed a nuclear unit in those dates.",
+        f"No. Over {q28}, the fifth of half-hours with the biggest misses",
         f"Mean under-delivery per half-hour, {q28}: 762 MWh",
         f"Materially: for settlement dates {Q2_WEEK}, 3.4%",
     ]
@@ -1496,6 +1538,50 @@ def test_the_page_registers_the_split_greys_for_each_mode():
         'splitScheme(["strong", "mid", "soft"]));' in page
     )
     assert page.count("scheme.push(prefersDark ? dark : light);") == 2
+
+
+def channel_luminance(channel_hex):
+    channel = int(channel_hex, 16) / 255
+    if channel <= 0.04045:
+        return channel / 12.92
+    return ((channel + 0.055) / 1.055) ** 2.4
+
+
+def relative_luminance(colour):
+    red = channel_luminance(colour[1:3])
+    green = channel_luminance(colour[3:5])
+    blue = channel_luminance(colour[5:7])
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def contrast_ratio(first, second):
+    lighter, darker = sorted(
+        [relative_luminance(first), relative_luminance(second)], reverse=True
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def test_every_split_grey_stands_out_from_the_page_and_its_neighbour():
+    # WCAG's 3:1 for graphics, in both modes, for the soft grey too; each
+    # grey apart from the next one down; and no split grey also means
+    # interconnectors, a neutral result or a comparison.
+    page = PAGE.read_text(encoding="utf-8")
+    light_page, dark_page = re.findall(r"--surface: (#[0-9a-f]{6});", page)
+    steps = ["strong", "mid", "soft"]
+
+    for mode, surface in enumerate([light_page, dark_page]):
+        greys = []
+        for step in steps:
+            greys.append(SPLIT_GREYS[step][mode])
+        for grey in greys:
+            assert contrast_ratio(grey, surface) >= 3.0
+        for upper, lower in zip(greys[:-1], greys[1:], strict=True):
+            assert contrast_ratio(upper, lower) >= 1.5
+    other_greys = set(FUEL_GROUP_COLOURS["interconnector"])
+    other_greys.update([NEUTRAL_MARK_COLOUR, COMPARISON_COLOUR])
+    for light, dark in SPLIT_GREYS.values():
+        assert light not in other_greys
+        assert dark not in other_greys
 
 
 def test_every_chart_shows_fuel_groups_by_their_display_names_only(written):
