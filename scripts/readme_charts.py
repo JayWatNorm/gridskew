@@ -63,6 +63,12 @@ Q25_RESULT = "q25_instruction_fragmentation.csv"
 Q25_CORRECTED_RESULT = "q25_instruction_fragmentation_corrected.csv"
 Q8_Q28_RESULT = "q8_q28_history.csv"
 Q28_REVERSE_RESULT = "q28_reverse_exploratory.csv"
+# Context counts read on 1 November 2026: denominators for scale, each row
+# labelled "context only: denominator, not a registered result".
+CONTEXT_CARBON_RESULT = "context_carbon_intensity.csv"
+CONTEXT_DEMAND_RESULT = "context_demand.csv"
+CONTEXT_PLAN_RESULT = "context_plan_per_unit_half_hour.csv"
+CONTEXT_CAPACITY_RESULT = "context_plan_pct_capacity.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
 SPEC_DATA_FOLDER = "results"
@@ -181,9 +187,10 @@ FUEL_GROUP_COLOURS = {
     "hydro": ("#2a78d6", "#3987e5"),
     "gas_turbine": ("#e87ba4", "#d55181"),
     "pumped_storage": ("#008300", "#008300"),
-    # Links, not a fuel: a warm taupe, so it reads as neither a fuel hue nor
-    # one of the greys that split a bar; left out of the palette checks.
-    "interconnector": ("#9a7f63", "#9a7f63"),
+    # Links, not a fuel: a plum, at least the validator's normal-vision floor
+    # from every fuel colour, the greys and Q29's pair, and clear of every
+    # fuel colour under each simulated colour-vision deficiency.
+    "interconnector": ("#902070", "#9040a0"),
 }
 
 # Q3's key.
@@ -367,6 +374,20 @@ Q28_REVERSE_READING = (
 )
 Q29_TIME_READING = "Each bar is the mean miss in a six-hour block of the day."
 Q29_MONTH_READING = "Each point is one month's mean miss."
+Q29_DEMAND_TITLE = "For scale: mean national demand each month"
+Q29_DEMAND_HEIGHT_PIXELS = 140
+Q29_DEMAND_READING = (
+    "Each bar is one month's mean national demand (NESO's initial outturn), "
+    "for scale only; no link is tested."
+)
+
+# A scale for each chart's figures, from the context counts.
+Q3_SCALE = "For scale, a wind unit's mean plan is {wind} MWh a half-hour."
+Q12_SCALE = "For scale, wind planned {wind} TWh over these dates and gas {gas} TWh."
+Q5_SCALE = (
+    "For scale, wind's under-delivery is about {share}% of the energy it planned."
+)
+Q29_TIME_SCALE = "For scale, the mean carbon intensity was {intensity} g/kWh."
 Q30_READING = (
     "Each row compares the two misses one way: the dot is the rank "
     "correlation, the line its 90% range. In the size rows, a dot in the "
@@ -1057,14 +1078,26 @@ def write_q2_chart(rows, output):
 # Q3: which way each fuel group misses its plan
 
 
-def gap_from_plan_rows(q3_rows):
-    """Q3's quartiles per fuel group, in the saved order; closed units are
-    left out."""
+def context_plan(plan_rows, fuel_group):
+    """A fuel group's planned energy over Q3's dates, from the context count."""
+    return matching_rows(plan_rows, "fuel_group", fuel_group)[0]
+
+
+def planned_twh(plan_rows, fuel_group):
+    """A fuel group's planned energy over Q3's dates, TWh, one decimal."""
+    mwh = Decimal(context_plan(plan_rows, fuel_group)["q3_abs_pn_mwh"])
+    return fixed(mwh / Decimal(1_000_000), 1)
+
+
+def gap_from_plan_rows(q3_rows, plan_rows):
+    """Q3's quartiles per fuel group, in the saved order, with its mean plan
+    per unit per half-hour for scale; closed units are left out."""
     chart_rows = []
     for row in q3_rows:
         fuel_group = row["fuel_group"]
         if fuel_group in CLOSED_UNITS:
             continue
+        mean_plan = context_plan(plan_rows, fuel_group)["q3_mean_plan_mwh"]
         chart_rows.append(
             {
                 "fuel_group": fuel_group,
@@ -1072,6 +1105,7 @@ def gap_from_plan_rows(q3_rows):
                 "q1_deviation_mwh": row["q1_deviation_mwh"],
                 "median_deviation_mwh": row["median_deviation_mwh"],
                 "q3_deviation_mwh": row["q3_deviation_mwh"],
+                "mean_plan_mwh": mean_plan,
             }
         )
     return chart_rows
@@ -1122,14 +1156,21 @@ def draw_gap_from_plan(rows, dates, path):
     save_figure(figure, path, handles)
 
 
-def write_q3_chart(q3_rows, output):
+def write_q3_chart(q3_rows, plan_rows, output):
     name = "q3_gap_from_plan_by_fuel_group"
-    chart_rows = gap_from_plan_rows(q3_rows)
+    chart_rows = gap_from_plan_rows(q3_rows, plan_rows)
+    wind_plan = fixed(Decimal(context_plan(plan_rows, "wind")["q3_mean_plan_mwh"]), 1)
+    reading = f"{Q3_READING} {Q3_SCALE.format(wind=wind_plan)}"
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
     draw_gap_from_plan(chart_rows, output_date_range(q3_rows), output / f"{name}.png")
 
-    measures = ["q1_deviation_mwh", "median_deviation_mwh", "q3_deviation_mwh"]
+    measures = [
+        "q1_deviation_mwh",
+        "median_deviation_mwh",
+        "q3_deviation_mwh",
+        "mean_plan_mwh",
+    ]
     data = csv_data(csv_name, measures)
     fuel_group = row_axis("fuel_group_name")
     x_axis = axis_title(
@@ -1153,6 +1194,11 @@ def write_q3_chart(q3_rows, output):
         altair.Tooltip("median_deviation_mwh:Q", title="Median, MWh", format=".1f"),
         altair.Tooltip(
             "q3_deviation_mwh:Q", title="75th percentile, MWh", format=".1f"
+        ),
+        altair.Tooltip(
+            "mean_plan_mwh:Q",
+            title="Mean plan per unit per half-hour, MWh (for scale)",
+            format=".1f",
         ),
     ]
     spread = keyed(
@@ -1180,9 +1226,7 @@ def write_q3_chart(q3_rows, output):
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(
-            **page_layout(Q3_TITLE, Q3_READING, len(chart_rows) * ROW_STEP_PIXELS)
-        )
+        .properties(**page_layout(Q3_TITLE, reading, len(chart_rows) * ROW_STEP_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -1219,12 +1263,15 @@ def largest_parts_first(row):
     return (-Decimal(row["parts_mwh"]), row["fuel_group"])
 
 
-def write_q12_chart(rows, q3_rows, output):
+def write_q12_chart(rows, q3_rows, plan_rows, output):
     """Q12's output holds no dates; it reads Q3's half-hours, so its range is
-    Q3's."""
+    Q3's, and so are the planned energies set beside it for scale."""
     name = "q12_instructed_share_by_fuel_group"
     chart_rows = instructed_share_rows(rows)
     dates = output_date_range(q3_rows)
+    scale = Q12_SCALE.format(
+        wind=planned_twh(plan_rows, "wind"), gas=planned_twh(plan_rows, "gas_turbine")
+    )
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
 
@@ -1279,7 +1326,9 @@ def write_q12_chart(rows, q3_rows, output):
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
         .properties(
-            **page_layout(Q12_TITLE, Q12_READING, len(chart_rows) * ROW_STEP_PIXELS)
+            **page_layout(
+                Q12_TITLE, f"{Q12_READING} {scale}", len(chart_rows) * ROW_STEP_PIXELS
+            )
         )
     )
     write_spec(chart, output / f"{name}.vl.json")
@@ -1341,9 +1390,18 @@ def share_with_a_notice(rows):
     return percentage(with_notice, total)
 
 
-def write_q5_chart(rows, output):
+def wind_share_of_plan(chart_rows, plan_rows):
+    """Wind's under-delivery as a whole-number % of the energy it planned over
+    Q3's dates (a day shorter than Q5's), for scale."""
+    wind = matching_rows(chart_rows, "fuel_group", "wind")[0]
+    planned = Decimal(context_plan(plan_rows, "wind")["q3_abs_pn_mwh"])
+    return fixed(percentage(Decimal(wind["total_mwh"]), planned), 0)
+
+
+def write_q5_chart(rows, plan_rows, output):
     name = "q5_under_delivery_by_outage_notice"
     chart_rows = notice_rows(rows)
+    reading = f"{Q5_READING} {Q5_SCALE.format(share=wind_share_of_plan(chart_rows, plan_rows))}"
     title = Q5_TITLE.format(share=fixed(share_with_a_notice(rows), 0))
     dates = output_date_range(rows)
     columns = list(chart_rows[0])
@@ -1396,7 +1454,7 @@ def write_q5_chart(rows, output):
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(**page_layout(title, Q5_READING, len(chart_rows) * ROW_STEP_PIXELS))
+        .properties(**page_layout(title, reading, len(chart_rows) * ROW_STEP_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -1849,9 +1907,29 @@ def utc_date(day):
     return altair.DateTime(year=int(year), month=int(month), date=int(date), utc=True)
 
 
-def write_q23_monthly_chart(rows, output):
+def with_planned_output(chart_rows, capacity_rows):
+    """Each group-month with the median unit's planned output as a % of
+    capacity, from the context count, for scale; a month the count lacks is
+    refused."""
+    for row in chart_rows:
+        planned = None
+        for capacity_row in matching_rows(
+            capacity_rows, "fuel_group", row["fuel_group"]
+        ):
+            if capacity_row["settlement_month"] == row["month"]:
+                planned = capacity_row["median_unit_planned_pct_of_capacity"]
+        if planned is None:
+            raise ValueError(
+                f"The context count has no planned output for {row['fuel_group']} "
+                f"in {row['month']}"
+            )
+        row["planned_label"] = one_decimal_label(planned)
+    return chart_rows
+
+
+def write_q23_monthly_chart(rows, capacity_rows, output):
     name = "q23_monthly_gap_by_fuel_group"
-    chart_rows = monthly_gap_rows(rows)
+    chart_rows = with_planned_output(monthly_gap_rows(rows), capacity_rows)
     title = monthly_title(chart_rows)
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
@@ -1907,6 +1985,9 @@ def write_q23_monthly_chart(rows, output):
         altair.Tooltip("month_name:N", title="Month"),
         altair.Tooltip("gap_label:N", title="Median gap, %"),
         altair.Tooltip("units:N", title="Units"),
+        altair.Tooltip(
+            "planned_label:N", title="Median unit's plan, % of capacity (for scale)"
+        ),
     ]
     is_whole_month = "datum.provisional == 'no'"
     is_provisional = "datum.provisional == 'yes'"
@@ -2676,8 +2757,17 @@ def signed_bar_label(axes, position, value, text):
     )
 
 
-def write_q29_time_chart(rows, output):
+def mean_intensity(carbon_rows):
+    """The mean carbon intensity over Q29's half-hours, g/kWh, from the
+    context count."""
+    return row_for(carbon_rows, "1", "all half-hours")["mean_actual_g_per_kwh"]
+
+
+def write_q29_time_chart(rows, carbon_rows, output):
     name = "q29_error_by_time_of_day"
+    scale = Q29_TIME_SCALE.format(
+        intensity=fixed(Decimal(mean_intensity(carbon_rows)), 0)
+    )
     blocks = matching_rows(rows, "section", "3")
     (overall,) = matching_rows(rows, "section", "1")
 
@@ -2746,7 +2836,7 @@ def write_q29_time_chart(rows, output):
         .properties(
             **page_layout(
                 Q29_TIME_TITLE,
-                Q29_TIME_READING,
+                f"{Q29_TIME_READING} {scale}",
                 len(blocks) * TWO_LINE_ROW_STEP_PIXELS,
             )
         )
@@ -2861,6 +2951,75 @@ def write_q29_month_chart(rows, output):
         .properties(
             **page_layout(Q29_MONTH_TITLE, Q29_MONTH_READING, LINE_CHART_HEIGHT_PIXELS)
         )
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
+# Q29 context: mean national demand by month, for scale only
+
+
+def demand_by_month_rows(demand_rows):
+    """Per settlement month, the mean national demand in GW, one decimal,
+    from the context count; part months are marked."""
+    chart_rows = []
+    for row in matching_rows(demand_rows, "section", "2"):
+        chart_rows.append(
+            {
+                "month": month_of(row["item"]),
+                "item": row["item"],
+                "half_hours": row["half_hours_with_demand"],
+                "mean_demand_gw": fixed(
+                    Decimal(row["mean_demand_mw"]) / Decimal(1000), 1
+                ),
+                "part_month": yes_or_no(is_part_month(row["item"])),
+            }
+        )
+    return chart_rows
+
+
+def write_q29_demand_chart(demand_rows, output):
+    name = "q29_context_demand_by_month"
+    chart_rows = demand_by_month_rows(demand_rows)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
+
+    figure, axes = pyplot.subplots(figsize=(FIGURE_WIDTH_INCHES, 2.6))
+    quiet_frame(axes)
+    axes.grid(axis="y", color=GRID_COLOUR, linewidth=0.8)
+    positions = list(range(len(chart_rows)))
+    demands = []
+    month_labels = []
+    for row in chart_rows:
+        demands.append(float(row["mean_demand_gw"]))
+        month_labels.append(row["month"])
+    axes.bar(positions, demands, width=0.6, color=NEUTRAL_MARK_COLOUR)
+    axes.set_xticks(positions, month_labels, rotation=90)
+    y_label(axes, "Mean demand, GW")
+    png_title(axes, Q29_DEMAND_TITLE, [Q29_DEMAND_READING])
+    save_figure(figure, output / f"{name}.png")
+
+    data = csv_data(csv_name, ["mean_demand_gw"])
+    month = altair.X(
+        "month:O",
+        title=None,
+        axis=altair.Axis(labelExpr=MONTH_LABEL, labelAngle=0, labelOverlap="parity"),
+    )
+    demand = altair.Y(
+        "mean_demand_gw:Q",
+        axis=axis_title(["Mean national demand, GW", "for scale only"]),
+    )
+    tooltip = [
+        altair.Tooltip("item:N", title="Month"),
+        altair.Tooltip("half_hours:N", title="Half-hours"),
+        altair.Tooltip("mean_demand_gw:Q", title="Mean demand, GW", format=".1f"),
+    ]
+    bars = (
+        altair.Chart()
+        .mark_bar(color=NEUTRAL_MARK_COLOUR, cornerRadiusEnd=BAR_CORNER_RADIUS)
+        .encode(x=month, y=demand, tooltip=tooltip)
+    )
+    chart = altair.layer(bars, data=data).properties(
+        **page_layout(Q29_DEMAND_TITLE, Q29_DEMAND_READING, Q29_DEMAND_HEIGHT_PIXELS)
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -3010,18 +3169,26 @@ def write_charts(result_folder, output_folder):
         results, output, Q2_BY_PREFIX_RESULT, BMRS_ATTRIBUTION
     )
     write_q2_chart(q2_by_prefix, output)
+    carbon = copy_saved_output(
+        results, output, CONTEXT_CARBON_RESULT, CARBON_ATTRIBUTION
+    )
+    demand = copy_saved_output(results, output, CONTEXT_DEMAND_RESULT, BMRS_ATTRIBUTION)
+    plan = copy_saved_output(results, output, CONTEXT_PLAN_RESULT, BMRS_ATTRIBUTION)
+    capacity = copy_saved_output(
+        results, output, CONTEXT_CAPACITY_RESULT, BMRS_ATTRIBUTION
+    )
     q3 = copy_saved_output(results, output, Q3_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, Q3_COVERAGE_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, Q22_RESULT, BMRS_ATTRIBUTION)
-    write_q3_chart(q3, output)
+    write_q3_chart(q3, plan, output)
     q12 = copy_saved_output(results, output, Q12_RESULT, BMRS_ATTRIBUTION)
-    write_q12_chart(q12, q3, output)
+    write_q12_chart(q12, q3, plan, output)
     q5 = copy_saved_output(results, output, Q5_RESULT, BMRS_ATTRIBUTION)
-    write_q5_chart(q5, output)
+    write_q5_chart(q5, plan, output)
     copy_saved_output(results, output, Q6_RESULT, BMRS_ATTRIBUTION)
     q23 = copy_saved_output(results, output, Q23_RESULT, BMRS_ATTRIBUTION)
     write_q23_typical_chart(q23, output)
-    write_q23_monthly_chart(q23, output)
+    write_q23_monthly_chart(q23, capacity, output)
     q24 = copy_saved_output(results, output, Q24_RESULT, BMRS_ATTRIBUTION)
     write_q24_chart(q24, output)
     q25 = copy_saved_output(results, output, Q25_RESULT, BMRS_ATTRIBUTION)
@@ -3038,8 +3205,9 @@ def write_charts(result_folder, output_folder):
     )
     write_q28_reverse_chart(q28_reverse, output)
     q29 = copy_saved_output(results, output, Q29_RESULT, CARBON_ATTRIBUTION)
-    write_q29_time_chart(q29, output)
+    write_q29_time_chart(q29, carbon, output)
     write_q29_month_chart(q29, output)
+    write_q29_demand_chart(demand, output)
     q30 = copy_saved_output(results, output, Q30_RESULT, BMRS_AND_CARBON_ATTRIBUTION)
     write_q30_chart(q30, output)
 

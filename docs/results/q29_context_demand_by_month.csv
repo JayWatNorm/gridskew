@@ -1,0 +1,15 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+month,item,half_hours,mean_demand_gw,part_month
+2025-08,settlement month 2025-08 (partial: 22 to 31),480,21.4,yes
+2025-09,settlement month 2025-09,1440,23.6,no
+2025-10,settlement month 2025-10,1490,26.5,no
+2025-11,settlement month 2025-11,1440,29.7,no
+2025-12,settlement month 2025-12,1488,30.1,no
+2026-01,settlement month 2026-01,1488,32.8,no
+2026-02,settlement month 2026-02,1344,31.1,no
+2026-03,settlement month 2026-03,1486,27.5,no
+2026-04,settlement month 2026-04,1440,23.5,no
+2026-05,settlement month 2026-05,1488,22.6,no
+2026-06,settlement month 2026-06,1440,22.4,no
+2026-07,settlement month 2026-07,1488,21.9,no
+2026-08,settlement month 2026-08 (partial: 1 to 16),768,21.6,yes

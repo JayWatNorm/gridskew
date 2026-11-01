@@ -110,7 +110,73 @@ BMRS_AND_CARBON_LINE = (
 # chart leaves out. Q12's order differs from the
 # chart's (largest gap first); interconnectors are left out. Q2's unit types
 # sum to round figures, with E beside T and C beside V.
+CONTEXT_LABEL = "context only: denominator, not a registered result"
+# Q23's chart months, for the planned-output context fixture.
+Q23_FIXTURE_MONTHS = [
+    "2025-09-01",
+    "2025-10-01",
+    "2025-11-01",
+    "2025-12-01",
+    "2026-01-01",
+    "2026-02-01",
+    "2026-03-01",
+    "2026-04-01",
+    "2026-05-01",
+    "2026-06-01",
+    "2026-07-01",
+    "2026-08-01",
+    "2026-09-01",
+]
+
+
+def planned_output_fixture_lines():
+    """Wind plans 20.05% of capacity in the first month, one point more each
+    month (halves round up to 20.1 and so on); nuclear 50% and up."""
+    lines = [
+        "fuel_group,settlement_month,units,half_hours,"
+        "median_unit_planned_pct_of_capacity,p90_unit_planned_pct_of_capacity,"
+        "pooled_planned_pct_of_capacity,label"
+    ]
+    for step, month in enumerate(Q23_FIXTURE_MONTHS):
+        lines.append(
+            f"wind,{month},20,1000,{20 + step}.050,40.000,25.000,{CONTEXT_LABEL}"
+        )
+        lines.append(
+            f"nuclear,{month},4,200,{50 + step}.000,90.000,60.000,{CONTEXT_LABEL}"
+        )
+    return lines
+
+
 NEW_SAVED_OUTPUTS = {
+    # Context counts, each unlike the real ones so a typed figure fails: 124.5
+    # g/kWh and 21,350 MW are halves rounded up; wind's mean plan 18.25 MWh a
+    # half-hour; its 5,600 MWh planned makes Q5's 700 MWh of under-delivery
+    # 12.5%, so 13%; gas's 12.35 TWh shows as 12.4.
+    "context_carbon_intensity.csv": [
+        "section,item,half_hours_in_window,half_hours_counted,"
+        "mean_actual_g_per_kwh,median_actual_g_per_kwh,label",
+        f"1,all half-hours,500,500,124.5,118.0,{CONTEXT_LABEL}",
+    ],
+    "context_demand.csv": [
+        "section,item,half_hours_in_window,half_hours_with_demand,mean_demand_mw,"
+        "mean_demand_mwh_per_half_hour,demand_twh,label",
+        f"1,all half-hours,1920,1920,23064,11532,22.15,{CONTEXT_LABEL}",
+        "2,settlement month 2025-08 (partial: 22 to 31),480,480,21350,10675,5.12,"
+        f"{CONTEXT_LABEL}",
+        f"2,settlement month 2025-09,1440,1440,23635,11817,17.02,{CONTEXT_LABEL}",
+    ],
+    "context_plan_per_unit_half_hour.csv": [
+        "fuel_group,q3_unit_periods,q3_abs_pn_mwh,q3_mean_plan_mwh,"
+        "q3_median_plan_mwh,q3_unit_periods_nonzero_plan,"
+        "q3_median_nonzero_plan_mwh,q22_unit_periods,q22_mean_plan_mwh,"
+        "q22_median_plan_mwh,q22_median_nonzero_plan_mwh,label",
+        f"wind,400,5600.0,18.250,8.500,300,11.000,40,8.000,2.500,4.000,{CONTEXT_LABEL}",
+        f"gas_turbine,300,12350000.0,40.000,0.000,60,200.000,30,49.000,0.000,198.000,"
+        f"{CONTEXT_LABEL}",
+        f"nuclear,150,8100.0,135.000,0.000,70,299.000,15,143.000,193.000,295.000,"
+        f"{CONTEXT_LABEL}",
+    ],
+    "context_plan_pct_capacity.csv": planned_output_fixture_lines(),
     "q3_metered_vs_notified.csv": [
         "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
         "q1_deviation_mwh,q3_deviation_mwh,abs_metered_mwh,abs_pn_mwh",
@@ -239,10 +305,10 @@ EXPECTED_CHART_CSVS = {
     "Other unit types,Other unit types,14000.000,14.000000\n",
     "q3_gap_from_plan_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,unit_periods,q1_deviation_mwh,median_deviation_mwh,"
-    "q3_deviation_mwh\n"
-    "wind,400,-1.000,0.300,2.900\n"
-    "nuclear,150,0.000,0.250,2.600\n"
-    "gas_turbine,300,0.000,0.170,1.100\n",
+    "q3_deviation_mwh,mean_plan_mwh\n"
+    "wind,400,-1.000,0.300,2.900,18.250\n"
+    "nuclear,150,0.000,0.250,2.600,135.000\n"
+    "gas_turbine,300,0.000,0.170,1.100,40.000\n",
     "q12_instructed_share_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,unit_periods,instructed_mwh,rest_mwh,parts_mwh,"
     "instructed_share_pct\n"
@@ -266,33 +332,33 @@ EXPECTED_CHART_CSVS = {
     "nuclear,4,1.1250,1.1%,,\n",
     "q23_monthly_gap_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,month,month_name,gap_pct,gap_label,units,provisional,dashed,"
-    "end_name_pct\n"
-    "wind,2025-09-01,Sep 2025,6.300,6.3,20,no,no,\n"
-    "wind,2025-10-01,Oct 2025,7.000,7.0,29,no,no,\n"
-    "wind,2025-11-01,Nov 2025,7.200,7.2,30,no,no,\n"
-    "wind,2025-12-01,Dec 2025,7.900,7.9,30,no,no,\n"
-    "wind,2026-01-01,Jan 2026,7.400,7.4,30,no,no,\n"
-    "wind,2026-02-01,Feb 2026,7.600,7.6,30,no,no,\n"
-    "wind,2026-03-01,Mar 2026,7.800,7.8,30,no,no,\n"
-    "wind,2026-04-01,Apr 2026,6.900,6.9,30,no,no,\n"
-    "wind,2026-05-01,May 2026,6.800,6.8,30,no,no,\n"
-    "wind,2026-06-01,Jun 2026,7.300,7.3,30,no,no,\n"
-    "wind,2026-07-01,Jul 2026,6.500,6.5,30,no,no,\n"
-    "wind,2026-08-01,Aug 2026,7.500,7.5,30,no,yes,\n"
-    "wind,2026-09-01,Sep 2026,8.700,8.7,31,yes,yes,8.700\n"
-    "nuclear,2025-09-01,Sep 2025,0.900,0.9,4,no,no,\n"
-    "nuclear,2025-10-01,Oct 2025,1.450,1.5,4,no,no,\n"
-    "nuclear,2025-11-01,Nov 2025,1.100,1.1,4,no,no,\n"
-    "nuclear,2025-12-01,Dec 2025,0.800,0.8,4,no,no,\n"
-    "nuclear,2026-01-01,Jan 2026,1.800,1.8,4,no,no,\n"
-    "nuclear,2026-02-01,Feb 2026,0.300,0.3,4,no,no,\n"
-    "nuclear,2026-03-01,Mar 2026,0.500,0.5,4,no,no,\n"
-    "nuclear,2026-04-01,Apr 2026,1.150,1.2,4,no,no,\n"
-    "nuclear,2026-05-01,May 2026,1.400,1.4,4,no,no,\n"
-    "nuclear,2026-06-01,Jun 2026,0.950,1.0,4,no,no,\n"
-    "nuclear,2026-07-01,Jul 2026,1.300,1.3,4,no,no,\n"
-    "nuclear,2026-08-01,Aug 2026,1.200,1.2,4,no,yes,\n"
-    "nuclear,2026-09-01,Sep 2026,2.300,2.3,4,yes,yes,2.300\n",
+    "end_name_pct,planned_label\n"
+    "wind,2025-09-01,Sep 2025,6.300,6.3,20,no,no,,20.1\n"
+    "wind,2025-10-01,Oct 2025,7.000,7.0,29,no,no,,21.1\n"
+    "wind,2025-11-01,Nov 2025,7.200,7.2,30,no,no,,22.1\n"
+    "wind,2025-12-01,Dec 2025,7.900,7.9,30,no,no,,23.1\n"
+    "wind,2026-01-01,Jan 2026,7.400,7.4,30,no,no,,24.1\n"
+    "wind,2026-02-01,Feb 2026,7.600,7.6,30,no,no,,25.1\n"
+    "wind,2026-03-01,Mar 2026,7.800,7.8,30,no,no,,26.1\n"
+    "wind,2026-04-01,Apr 2026,6.900,6.9,30,no,no,,27.1\n"
+    "wind,2026-05-01,May 2026,6.800,6.8,30,no,no,,28.1\n"
+    "wind,2026-06-01,Jun 2026,7.300,7.3,30,no,no,,29.1\n"
+    "wind,2026-07-01,Jul 2026,6.500,6.5,30,no,no,,30.1\n"
+    "wind,2026-08-01,Aug 2026,7.500,7.5,30,no,yes,,31.1\n"
+    "wind,2026-09-01,Sep 2026,8.700,8.7,31,yes,yes,8.700,32.1\n"
+    "nuclear,2025-09-01,Sep 2025,0.900,0.9,4,no,no,,50.0\n"
+    "nuclear,2025-10-01,Oct 2025,1.450,1.5,4,no,no,,51.0\n"
+    "nuclear,2025-11-01,Nov 2025,1.100,1.1,4,no,no,,52.0\n"
+    "nuclear,2025-12-01,Dec 2025,0.800,0.8,4,no,no,,53.0\n"
+    "nuclear,2026-01-01,Jan 2026,1.800,1.8,4,no,no,,54.0\n"
+    "nuclear,2026-02-01,Feb 2026,0.300,0.3,4,no,no,,55.0\n"
+    "nuclear,2026-03-01,Mar 2026,0.500,0.5,4,no,no,,56.0\n"
+    "nuclear,2026-04-01,Apr 2026,1.150,1.2,4,no,no,,57.0\n"
+    "nuclear,2026-05-01,May 2026,1.400,1.4,4,no,no,,58.0\n"
+    "nuclear,2026-06-01,Jun 2026,0.950,1.0,4,no,no,,59.0\n"
+    "nuclear,2026-07-01,Jul 2026,1.300,1.3,4,no,no,,60.0\n"
+    "nuclear,2026-08-01,Aug 2026,1.200,1.2,4,no,yes,,61.0\n"
+    "nuclear,2026-09-01,Sep 2026,2.300,2.3,4,yes,yes,2.300,62.0\n",
     "q24_flagged_share_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,acceptance_volume_mwh,flagged_pct,not_flagged_pct\n"
     "wind,9000.0,96.0,4.0\n"
@@ -323,6 +389,11 @@ EXPECTED_CHART_CSVS = {
     "4,1.6–2.0 GW,1.6–2.0 GW,100,1.240000,+1.2,0.500000,2.000000\n"
     '5,Most under-delivery|2.0–6.0 GW,"Most under-delivery, 2.0–6.0 GW",100,'
     "2.000000,+2.0,1.000000,3.000000\n",
+    # 21,350 MW is 21.35 GW, a half rounded up.
+    "q29_context_demand_by_month.csv": BMRS_LINE
+    + "month,item,half_hours,mean_demand_gw,part_month\n"
+    "2025-08,settlement month 2025-08 (partial: 22 to 31),480,21.4,yes\n"
+    "2025-09,settlement month 2025-09,1440,23.6,no\n",
     "q30_rank_correlations.csv": BMRS_AND_CARBON_LINE + "label,measure,rho,low,high\n"
     "Size of misses|turned-down wind added back,"
     '"Size of the two misses, with turned-down wind added back",'
@@ -339,6 +410,10 @@ EXPECTED_CHART_CSVS = {
 }
 
 WRITTEN_FILES = [
+    "context_carbon_intensity.csv",
+    "context_demand.csv",
+    "context_plan_pct_capacity.csv",
+    "context_plan_per_unit_half_hour.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
     "q12_instructed_share_by_fuel_group.vl.json",
@@ -367,6 +442,9 @@ WRITTEN_FILES = [
     "q28_shortfall_index_by_miss_fifth.csv",
     "q28_shortfall_index_by_miss_fifth.png",
     "q28_shortfall_index_by_miss_fifth.vl.json",
+    "q29_context_demand_by_month.csv",
+    "q29_context_demand_by_month.png",
+    "q29_context_demand_by_month.vl.json",
     "q29_error_by_month.png",
     "q29_error_by_month.vl.json",
     "q29_error_by_time_of_day.png",
@@ -1178,6 +1256,10 @@ def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
 
 def test_every_written_csv_starts_with_its_attribution(written):
     assert first_lines(written) == {
+        "context_carbon_intensity.csv": CARBON_LINE,
+        "context_demand.csv": BMRS_LINE,
+        "context_plan_pct_capacity.csv": BMRS_LINE,
+        "context_plan_per_unit_half_hour.csv": BMRS_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
         "q22_first_against_latest_run.csv": BMRS_LINE,
@@ -1192,6 +1274,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q28_reverse_carbon_miss_by_under_delivery_fifth.csv": BMRS_AND_CARBON_LINE,
         "q28_reverse_exploratory.csv": BMRS_AND_CARBON_LINE,
         "q28_shortfall_index_by_miss_fifth.csv": BMRS_AND_CARBON_LINE,
+        "q29_context_demand_by_month.csv": BMRS_LINE,
         "q29_final_forecast_error_by_month_and_block.csv": CARBON_LINE,
         "q2_changes_by_unit_prefix.csv": BMRS_LINE,
         "q2_moved_energy_by_unit_type.csv": BMRS_LINE,
@@ -1244,6 +1327,9 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
         ),
         "q28_shortfall_index_by_miss_fifth.vl.json": (
             "results/q28_shortfall_index_by_miss_fifth.csv"
+        ),
+        "q29_context_demand_by_month.vl.json": (
+            "results/q29_context_demand_by_month.csv"
         ),
         "q29_error_by_month.vl.json": (
             "results/q29_final_forecast_error_by_month_and_block.csv"
@@ -1573,6 +1659,206 @@ def test_q28s_reverse_chart_shows_each_fifths_gw_range_and_miss():
         assert chart_row["interval_high"] == saved_row["interval_high"]
 
 
+def whole(value):
+    return str(Decimal(value).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def tenths(value):
+    return str(Decimal(value).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def percent_of(part, whole_amount, places):
+    share = Decimal(100) * Decimal(part) / Decimal(whole_amount)
+    if places == 0:
+        return whole(share)
+    return tenths(share)
+
+
+def one_row(rows, column, value):
+    found = []
+    for row in rows:
+        if row[column] == value:
+            found.append(row)
+    assert len(found) == 1
+    return found[0]
+
+
+def nearest_ten(value):
+    return str(Decimal(value / 10).quantize(Decimal(1), rounding=ROUND_HALF_UP) * 10)
+
+
+def item_rows(rows, section, item):
+    found = []
+    for row in rows:
+        if row["section"] == section and row["item"] == item:
+            found.append(row)
+    return found
+
+
+def item_row(rows, section, item):
+    found = []
+    for row in rows:
+        if row["section"] == section and row["item"] == item:
+            found.append(row)
+    assert len(found) == 1
+    return found[0]
+
+
+def wind_planned_range(capacity_rows):
+    """The median wind unit's planned output, % of capacity, over Q23's
+    whole months, September 2025 to August 2026."""
+    values = []
+    for row in capacity_rows:
+        whole_month = "2025-09-01" <= row["settlement_month"] <= "2026-08-01"
+        if row["fuel_group"] == "wind" and whole_month:
+            values.append(Decimal(row["median_unit_planned_pct_of_capacity"]))
+    assert len(values) == 12
+    return whole(min(values)), whole(max(values))
+
+
+def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
+    page = PAGE.read_text(encoding="utf-8")
+    plan = saved_output_rows("context_plan_per_unit_half_hour.csv")
+    carbon = saved_output_rows("context_carbon_intensity.csv")
+    demand = saved_output_rows("context_demand.csv")
+    capacity = saved_output_rows("context_plan_pct_capacity.csv")
+    q3 = saved_output_rows("q3_metered_vs_notified.csv")
+    q29 = saved_output_rows("q29_final_forecast_error_by_month_and_block.csv")
+    q8_q28 = saved_output_rows("q8_q28_history.csv")
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    q24 = saved_output_rows("q24_system_action_share.csv")
+    q22 = saved_output_rows("q22_first_against_latest_run.csv")
+    q2 = saved_output_rows("q2_settlement_run_changes.csv")
+    coverage = saved_output_rows("q3_coverage.csv")
+    q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
+
+    wind_plan = one_row(plan, "fuel_group", "wind")
+    wind_median = one_row(q3, "fuel_group", "wind")["median_deviation_mwh"]
+    all_carbon = item_row(carbon, "1", "all half-hours")
+    q29_size = one_row(q29, "section", "1")["mean_absolute_error"]
+    largest_fifth = []
+    for row in q8_q28:
+        if row["section"] == "4" and row["quintile"] == "5":
+            largest_fifth.append(row["value"])
+    all_demand = item_row(demand, "1", "all half-hours")
+    planned_total = Decimal(0)
+    for row in plan:
+        planned_total += Decimal(row["q3_abs_pn_mwh"])
+    under_delivery = item_row(q5, "1", "total")["positive_shortfall_mwh"]
+    wind_flagged = one_row(
+        item_rows(q24, "2", "stretches with a volume, all months"), "fuel_group", "wind"
+    )
+    bioenergy = one_row(q22, "fuel_group", "bioenergy")
+    first = Decimal(bioenergy["first_median_exact"])
+    latest = Decimal(bioenergy["latest_median_exact"])
+    revised = one_row(q2, "run_pair", "SF->R1")["moved_mwh"]
+    cohort = item_row(coverage, "2", "fuel type known (the cohort)")
+    no_meter = item_row(coverage, "3", "no_metered_value")
+    metered = item_row(coverage, "1", "mapped, fuel type known (the cohort)")
+    uninstructed = item_row(q23, "3", "cohort unit-periods: determinable, uninstructed")
+    unmetered = item_row(
+        q23, "3", "cohort unit-periods: no_metered_value, uninstructed"
+    )
+    q5_unmetered = item_row(q5, "3", "cohort unit-periods: no_metered_value")
+    q5_metered = item_row(q5, "3", "cohort unit-periods: determinable")
+    low, high = wind_planned_range(capacity)
+    three_gas_units_gwh = Decimal("0.18") * Decimal(revised) / Decimal(1000)
+
+    expected = [
+        f"(about 0.6 MW), about {percent_of(wind_median, wind_plan['q3_mean_plan_mwh'], 1)}% "
+        f"of a wind unit's mean plan of {tenths(wind_plan['q3_mean_plan_mwh'])} MWh a "
+        "half-hour.",
+        f"<strong>9.3 g/kWh</strong>, about "
+        f"{percent_of(q29_size, all_carbon['mean_actual_g_per_kwh'], 1)}% of the mean "
+        f"carbon intensity of {whole(all_carbon['mean_actual_g_per_kwh'])} g/kWh,",
+        f"801 MWh in the largest, about "
+        f"{percent_of(largest_fifth[0], all_demand['mean_demand_mwh_per_half_hour'], 0)}% "
+        f"of mean national demand "
+        f"({int(all_demand['mean_demand_mwh_per_half_hour']):,} MWh a half-hour).",
+        f"in every whole month, against plans of {low} to {high}% of capacity;",
+        f"16.4 TWh of under-delivery (about {percent_of(under_delivery, planned_total, 0)}% "
+        "of the energy these units planned over almost the same dates)",
+        f"Sep 2026; about "
+        f"{percent_of(wind_flagged['acceptance_volume_mwh'], wind_plan['q3_abs_pn_mwh'], 0)}% "
+        "of the energy wind farms planned)",
+        f"its median gap moved from {first.quantize(Decimal('0.01'))} to "
+        f"{latest.quantize(Decimal('0.01'))} MWh, about "
+        f"{percent_of(first - latest, first, 0)}%.",
+        f"revisions came to about {nearest_ten(three_gas_units_gwh)} GWh, 18% of the "
+        "energy revised",
+        "Among transmission-connected and embedded units, three gas units account "
+        "for 18% of it",
+        f"no meter reading ({percent_of(no_meter['unit_periods'], int(cohort['unit_periods']) + int(no_meter['unit_periods']), 1)}%), "
+        f"and 283,242 with a meter reading and no plan "
+        f"({percent_of(int(metered['unit_periods']) - int(cohort['unit_periods']), metered['unit_periods'], 1)}%).",
+        f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
+        "of half-hours with no instruction).",
+        f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); "
+        "10 notices that name no unit that could be matched.",
+        f"Waiting for 2,880 complete half-hours ({2880 // 48} days' worth).",
+        "<figcaption>For scale only; no link is tested. Mean national demand",
+        f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
+        "count.",
+    ]
+    missing = []
+    for phrase in expected:
+        if phrase not in page:
+            missing.append(phrase)
+
+    assert missing == []
+    assert 283_242 == int(metered["unit_periods"]) - int(cohort["unit_periods"])
+
+
+def test_each_context_row_is_labelled_a_denominator_not_a_result():
+    for name in [
+        "context_carbon_intensity.csv",
+        "context_demand.csv",
+        "context_plan_per_unit_half_hour.csv",
+        "context_plan_pct_capacity.csv",
+    ]:
+        for row in saved_output_rows(name):
+            assert row["label"] == CONTEXT_LABEL
+
+
+def test_chart_reading_lines_give_scale_from_the_context_counts(written):
+    # The fixture, unlike the real counts: wind's mean plan 18.25 MWh, gas
+    # 12.35 TWh planned, wind's 700 MWh of under-delivery against 5,600 MWh
+    # planned (12.5%), 124.5 g/kWh; each half rounds up.
+    assert "a wind unit's mean plan is 18.3 MWh a half-hour." in reading_line(
+        written, "q3_gap_from_plan_by_fuel_group.vl.json"
+    )
+    assert "wind planned 0.0 TWh over these dates and gas 12.4 TWh." in (
+        reading_line(written, "q12_instructed_share_by_fuel_group.vl.json")
+    )
+    assert "wind's under-delivery is about 13% of the energy it planned." in (
+        reading_line(written, "q5_under_delivery_by_outage_notice.vl.json")
+    )
+    assert "the mean carbon intensity was 125 g/kWh." in reading_line(
+        written, "q29_error_by_time_of_day.vl.json"
+    )
+    assert "for scale only; no link is tested." in reading_line(
+        written, "q29_context_demand_by_month.vl.json"
+    )
+
+
+def test_a_q23_month_with_no_planned_output_context_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    without_lines_containing(saved / "context_plan_pct_capacity.csv", "wind,2026-03-01")
+
+    with pytest.raises(ValueError, match="no planned output"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_the_page_and_rules_speak_as_i_or_neutrally():
+    voice = re.compile(r"\b(we|our|us)\b", re.IGNORECASE)
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert voice.findall(page) == []
+    assert voice.findall(QUESTIONS.read_text(encoding="utf-8")) == []
+    assert page.count("<summary>How I measured it</summary>") == 12
+    assert '<h2 id="found-title">What I found</h2>' in page
+
+
 def test_q23s_answer_says_how_far_units_strayed_not_why():
     # With no instruction in force the gap can still hold a forecast miss,
     # energy bought outside the Balancing Mechanism, a declared cut or a
@@ -1599,9 +1885,9 @@ def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
         f"managing the network:</strong> 97% (settlement months {q24}).",
         f"the biggest carbon misses ({q28}), under-delivery",
         f"Slightly less, with wide spreads ({q3}).",
-        f"0.03 MWh per unit per half-hour (bioenergy, {Q2_WEEK}).",
+        f"0.03 MWh per unit per half-hour (bioenergy, {Q2_WEEK}):",
         f"of under-delivery ({q5}) came with a published outage",
-        f"of 13.4 TWh, settlement months {q24})",
+        f"of 13.4 TWh, settlement months {q24};",
         f"<figcaption>Settlement months {q24}; the first is a part month",
         f"Most of it for gas, hydro and pumped storage ({q3}): <strong>83 to 91%",
         "NESO never instructed a nuclear unit in those dates.",
@@ -1946,6 +2232,7 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q25_short_instructions_by_fuel_group.vl.json",
         "results/q29_error_by_time_of_day.vl.json",
         "results/q29_error_by_month.vl.json",
+        "results/q29_context_demand_by_month.vl.json",
         "results/q28_shortfall_index_by_miss_fifth.vl.json",
         "results/q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json",
         "results/q30_rank_correlations.vl.json",
