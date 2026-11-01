@@ -359,7 +359,7 @@
 
   <article id="q23">
     <h3>When NESO has not asked a unit to change its output, how closely does it follow its own plan? <span class="tag">Q23</span></h3>
-    <p class="answer">Wind strays most. Only half-hours with no NESO instruction count, so any gap is the unit's own miss. From September 2025 to August 2026, the median wind farm missed its plan by <strong>6.3 to 8.0%</strong> of its capacity in every whole month; the median unit of every other type, by under 3.5%. In September 2026, on early meter data, wind and bioenergy rose above their whole-month range; this is provisional and not explained.</p>
+    <p class="answer">Wind strays most. Only half-hours with no NESO instruction count. The gap shows how far a unit strayed from its plan, not why. From September 2025 to August 2026, the median wind farm missed its plan by <strong>6.3 to 8.0%</strong> of its capacity in every whole month; the median unit of every other type, by under 3.5%. In September 2026, on early meter data, wind and bioenergy rose above their whole-month range; this is provisional and not explained.</p>
     <figure>
       <div class="chart" id="q23-typical-chart"></div>
       <figcaption>Half-hours with no instruction in force, whole months September 2025 to August 2026. The pale line shows only for groups of 20 units or more; coal (closed units) is left out. Source: Elexon BMRS.</figcaption>
@@ -522,7 +522,7 @@
     <p class="answer">Almost all of it for wind (<strong>97%</strong> of 13.4 TWh, settlement months Aug 2025 – Sep 2026) and hydro (93%), and 70% for pumped storage. The flag marks an instruction as possibly for network reasons, such as relieving a bottleneck, rather than balancing supply and demand. For bioenergy, the other group (mostly batteries) and gas it is 24%, 31% and 35%.</p>
     <figure>
       <div class="chart" id="q24-chart"></div>
-      <figcaption>Settlement months Aug 2025 – Sep 2026. Units with a published fuel type only: they carry 42.5% of all instructions. Coal and nuclear units had none. Source: Elexon BMRS.</figcaption>
+      <figcaption>Settlement months Aug 2025 – Sep 2026; the first is a part month, from 22 August 2025. Units with a published fuel type only: they carry 42.5% of all instructions. Coal and nuclear units had none. Source: Elexon BMRS.</figcaption>
     </figure>
     <details class="method">
       <summary>How we measured it</summary>
@@ -851,8 +851,8 @@
   // The greys that split a bar into parts, strongest against the page first,
   // light and dark. In dark mode the strong grey is the lightest.
   const splitGreys = {
-    strong: ["#0a111a", "#dfe6ef"],
-    mid: ["#3a414a", "#a6adb6"],
+    strong: ["#232a33", "#dfe6ef"],
+    mid: ["#4d545d", "#a6adb6"],
     soft: ["#7a818a", "#5b626b"],
   };
 
