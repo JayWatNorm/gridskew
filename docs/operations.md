@@ -19,6 +19,7 @@ model's and test's result in `dbt_dev.dbt_node_results`.
 | `gridskew_elexon_pn`, `_qpn`, `_boalf` | 00:00 | The API was unavailable; for BOALF, an empty response | Clear the task; for several past days, backfill (below). [PN ingestion](sources/elexon/011_pn_ingestion.md#backfill), [BOALF](sources/elexon/041_boalf_ingestion.md#an-empty-response-fails-the-run) |
 | `gridskew_elexon_qas` | 00:00 | The API was unavailable | Retries continue for about four days; then clear the task. Each run captures the dates 14, 35 and 450 days before its interval, so a date missed at one age is captured at the next, and an Airflow backfill fetches those earlier dates, not the days it names. [QAS ingestion](sources/elexon/091_qas_ingestion.md#three-captures-of-every-date) |
 | `gridskew_elexon_remit` | :15 | A row in quarantine, which keeps every run failing | Read the quarantined rows' `validation_errors` (below) and fix the contract or parser, then load again from the earliest `publishDateTimeFrom` in their `request_context`. [REMIT ingestion](sources/elexon/031_remit_ingestion.md#a-quarantined-row-keeps-the-run-failing) |
+| `gridskew_elexon_wind` | 06:00 | The API was unavailable, or a day is held in quarantine | Usually none: a target retries for up to ten hours, and each run's look-back asks again for the seven days before its target. A quarantined day fails its task each morning, with no request for it, until its quarantine rows are dealt with ([wind ingestion](sources/elexon/101_wind_ingestion.md#daily-capture)). A day older than the look-back needs a backfill (below) |
 | `gridskew_elexon_bmunits` | 00:00 | The registry capture or its dbt step failed | Inspect the source and quarantine evidence, fix the cause, then retry the DAG, or only its dbt task if the capture succeeded. [BM-unit recovery](sources/elexon/071_bmunits_ingestion.md#recovery) |
 | `gridskew__dbt_freshness_dag` | :20 | A source is later than its threshold in the dbt source files | Look for that source's own failed run; freshness passes again once it catches up |
 | `gridskew__dbt_nightly` | 02:30 | A model or test failed, or the run refused because a period table changed | For a failed model or test, read `dbt_dev.dbt_node_results`. A refusal happens before dbt runs, so its task log names the changed models or missing tables; trigger one full refresh. [dbt guide](../dbt/README.md#period-facts) |
@@ -36,6 +37,15 @@ airflow backfill create --dag-id <dag id> --from-date <first day> --to-date <las
 Add `--reprocess-behavior completed` to repeat a day that already has a
 successful run. A manual trigger has no data interval and these DAGs refuse
 it.
+
+`gridskew_elexon_wind` targets the first day of each run's interval, and each
+run's look-back asks again for the seven days before its target, so a
+backfill is needed only for a day older than that. Backfill the runs whose
+targets are the days wanted, with `--max-active-runs 1`; add `--dry-run` first
+and check that it lists exactly those runs. Each backfilled run's look-back
+asks again for every day before its target that is not complete, so a day
+one run leaves short is asked again by the next run within minutes: backfill
+only the runs the gap needs.
 
 ## The quarantine
 

@@ -1,0 +1,9 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+section,breakdown,item,unit_periods,abs_metered_mwh,abs_pn_mwh
+1,all metered unit-periods,"mapped, no fuel type",39297780,312269965.2,
+1,all metered unit-periods,"mapped, fuel type known (the cohort)",8936288,227599943.2,
+1,all metered unit-periods,unmapped,112207222,81063848.3,
+2,mapped metered unit-periods with a PN,no fuel type,35155866,239727767.0,234868745.2
+2,mapped metered unit-periods with a PN,fuel type known (the cohort),8653046,227339603.0,231840558.9
+3,cohort table by determinability,determinable,8653046,227339603.0,231840558.9
+3,cohort table by determinability,no_metered_value,583913,,8589262.2

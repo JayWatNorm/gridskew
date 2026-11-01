@@ -29,6 +29,20 @@ vars:
   # this many complete half-hours (60 days). Part of the same reading rule.
   forecast_drift_population_from: '2026-08-17 00:00:00+00'
   forecast_drift_half_hours_needed: 2880
+  # The last half-hour an exploration of 11 September 2026 saw; Q1 and Q10
+  # report the part not seen, every half-hour that starts after it.
+  forecast_explored_until: '2026-09-10 05:30:00+00'
+  # The forecast archive's poll schedules: a poll belongs to the last schedule
+  # whose from_slot is at or before its time, and is partial below full_poll_rows.
+  forecast_poll_schedules:
+    - from_slot: null
+      label: 'on the half-hour'
+      full_poll_rows: 97
+      basis: 'decision 016, note of 25 October 2026'
+    - from_slot: '2026-09-10 11:00:00+00'
+      label: ':05 and :35'
+      full_poll_rows: 96
+      basis: 'the reading rule'
   # The analyses leave out half-hours that start after this time (Q6: notices
   # first published after it), so a one-look result can be reproduced. Null
   # reads all stored history.
@@ -97,14 +111,22 @@ vars:
   # Q2-RF is read once, when this many settlement dates hold RF and R3.
   rf_restatement_dates_needed: 30
   # Q27 (forecast stalls) counts slot polls from this start and is read once
-  # the window holds this many days. The exploratory window is the stalls
-  # seen before the question was registered, reported apart.
+  # the window holds this many days. The exploratory window is the record
+  # before the window, to its last slot, reported apart.
   forecast_stalls_from: '2026-11-01 00:00:00+00'
   forecast_stalls_days_needed: 90
-  forecast_stalls_exploratory_from: '2026-10-01 00:00:00+00'
-  forecast_stalls_exploratory_until: '2026-10-24 23:30:00+00'
+  forecast_stalls_exploratory_from: '2026-08-17 00:00:00+00'
+  forecast_stalls_exploratory_until: '2026-10-31 23:30:00+00'
   # How long record_run_results keeps a node result.
   node_results_retention_days: 180
+  # The daily wind capture holds publish days and settlement dates from this
+  # day (ingestion/elexon/wind_poller.py FIRST_CAPTURE_DAY); the warning
+  # test warn_wind_capture_days_short checks days from it.
+  wind_capture_from: '2026-11-01'
+  # The day warn_wind_capture_days_short counts back from. Null, as the nightly
+  # runs it, is today's UTC date; a check sets a fixed day to hold a clock
+  # change in the test's range.
+  wind_warn_today: null
 
 # Writes nothing unless the invocation passes --vars '{audit: true}'.
 on-run-end:

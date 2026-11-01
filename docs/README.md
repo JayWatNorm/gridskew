@@ -30,6 +30,7 @@ docs/
   schema-migrations.md        How the raw schema is versioned
   carbon-forecast-trajectory.md  How the forecast drift question is read
   research-questions.md       Each question's reading rule and status
+  results/                    Saved results behind the charts, with each chart's PNG and spec
 docs/sources/
   ingestion-patterns.md       Why the pollers differ. Read this first  [both sources]
   endpoint-validation.md      Contracts, routing, warning logs and quarantine
@@ -60,7 +61,7 @@ docs/sources/
     090_qas.md                Services outside the mechanism (ABSVD)   [running]
     091_qas_ingestion.md        14, 35 and 450 days; one-off backfill
     100_wind.md               Expected versus metered wind             [WINDFOR, FUELHH]
-    101_wind_ingestion.md       one-off back-fill of a year, no DAG
+    101_wind_ingestion.md       daily at 06:00 UTC; a year's back-fill
 ```
 
 The four ideas every dataset follows from are in **How the GB electricity

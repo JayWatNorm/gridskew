@@ -1,0 +1,15 @@
+section,item,quintile,half_hours,days,first_date,last_date,value,result
+1,"population: window half-hours with error_api_final, a forecast, a first outturn and a known add-back",,500,11,2025-08-22,2025-09-01,,
+1,"reading: describe only, no test, threshold or verdict; associated with, never caused by",,,,,,,"stated expectation, not a test: abs(rho) under about 0.2"
+2,"rho_abs (primary): abs(wind error, outturn with cohort curtailment add-back) with abs(error_api_final)",,500,,,,0.010000,
+2,"rho_abs (primary): bootstrap 90% interval, high",,,,,,0.040000,
+2,"rho_abs (primary): bootstrap 90% interval, low",,,,,,-0.020000,
+2,rho_abs (primary): bootstrap draws with a value (900 of 1000 needed),,,,,,1000,available
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",1,100,,,,9.000000,abs(wind error) 0 to 200 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",2,100,,,,9.400000,abs(wind error) 200 to 430 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",3,100,,,,9.300000,abs(wind error) 430 to 700 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",4,100,,,,9.200000,abs(wind error) 700 to 1100 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",5,100,,,,9.500000,abs(wind error) 1100 to 9000 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): median error_api_final",1,100,,,,-1.000000,
+4,"rho_abs (sensitivity): abs(wind error, delivered outturn) with abs(error_api_final)",,500,,,,-0.040000,
+5,population half-hours with a non-zero add-back,,300,,,,,

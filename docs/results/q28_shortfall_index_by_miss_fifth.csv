@@ -1,0 +1,7 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026. Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+quintile,label,misses,half_hours,mean_shortfall_mwh,index,index_low,index_high
+1,Smallest misses|0–3 g,"Smallest misses, 0–3 g",3456,761.776637,100.0000,,
+2,3–5 g,3–5 g,3456,765.656933,100.5094,,
+3,5–9 g,5–9 g,3456,769.059791,100.9561,,
+4,9–15 g,9–15 g,3455,784.955801,103.0428,,
+5,Largest misses|15 g and up,"Largest misses, 15 g and up",3455,800.953575,105.1428,102.7775,107.5448

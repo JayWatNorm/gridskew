@@ -1,0 +1,20 @@
+# Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+section,item,half_hours,half_hours_with_error,half_hours_without_error,mean_absolute_error,mean_error,median_error,zero_error_share
+1,"all half-hours (partly seen before the rule: mean +0.43, median 0)",17280,17280,0,9.327,-0.615,-1.000,0.042
+2,settlement month 2025-08 (partial: 22 to 31),480,480,0,9.865,-0.494,-1.000,0.054
+2,settlement month 2025-09,1440,1440,0,9.178,-0.567,0.000,0.038
+2,settlement month 2025-10,1490,1490,0,8.458,-0.621,0.000,0.042
+2,settlement month 2025-11,1440,1440,0,10.310,-3.421,-2.000,0.038
+2,settlement month 2025-12,1488,1488,0,9.010,-2.964,-3.000,0.034
+2,settlement month 2026-01,1488,1488,0,8.564,-1.780,-2.000,0.044
+2,settlement month 2026-02,1344,1344,0,8.508,-1.984,-2.000,0.044
+2,settlement month 2026-03,1486,1486,0,9.849,-0.437,-1.000,0.042
+2,settlement month 2026-04,1440,1440,0,9.131,0.715,1.000,0.047
+2,settlement month 2026-05,1488,1488,0,9.336,0.794,1.000,0.051
+2,settlement month 2026-06,1440,1440,0,9.210,0.375,1.000,0.041
+2,settlement month 2026-07,1488,1488,0,9.357,0.842,1.000,0.040
+2,settlement month 2026-08 (partial: 1 to 16),768,768,0,12.134,3.460,3.000,0.035
+3,UTC block 00:00-05:59,4320,4320,0,7.958,0.598,0.000,0.053
+3,UTC block 06:00-11:59,4320,4320,0,9.265,-2.422,-2.000,0.039
+3,UTC block 12:00-17:59,4320,4320,0,9.672,5.305,4.000,0.038
+3,UTC block 18:00-23:59,4320,4320,0,10.412,-5.940,-6.000,0.039

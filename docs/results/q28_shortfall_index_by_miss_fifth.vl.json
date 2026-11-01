@@ -1,0 +1,416 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "index": "number",
+        "index_high": "number",
+        "index_low": "number",
+        "mean_shortfall_mwh": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q28_shortfall_index_by_miss_fifth.csv"
+  },
+  "description": "Bigger carbon misses came with slightly more under-delivery, not 25% more",
+  "height": 220,
+  "layer": [
+    {
+      "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean under-delivery (index)",
+              "90% range (largest fifth)",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "datum": 125,
+          "scale": {
+            "domain": [
+              95,
+              130
+            ],
+            "nice": false
+          }
+        }
+      },
+      "mark": {
+        "strokeDash": [
+          5,
+          4
+        ],
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        },
+        {
+          "as": "key",
+          "calculate": "\"Needed for yes (125)\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "value": "needed for yes"
+        },
+        "x": {
+          "datum": 125,
+          "scale": {
+            "domain": [
+              95,
+              130
+            ],
+            "nice": false
+          }
+        },
+        "y": {
+          "value": 0
+        }
+      },
+      "mark": {
+        "align": "right",
+        "baseline": "top",
+        "dx": -4,
+        "dy": 2,
+        "type": "text"
+      },
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean under-delivery (index)",
+              "90% range (largest fifth)",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "field": "index_low",
+          "scale": {
+            "domain": [
+              95,
+              130
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "index_high"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Smallest misses|0\u20133 g",
+            "3\u20135 g",
+            "5\u20139 g",
+            "9\u201315 g",
+            "Largest misses|15 g and up"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "strokeWidth": 2,
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "filter": "isValid(datum.index_low)"
+        },
+        {
+          "as": "key",
+          "calculate": "\"90% range (largest fifth)\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean under-delivery (index)",
+              "90% range (largest fifth)",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#6e7781",
+              "transparent",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean under-delivery (index)",
+              "90% range (largest fifth)",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "circle",
+              "M-1,0H1",
+              "M-1,0H-0.55M-0.2,0H0.2M0.55,0H1"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean under-delivery (index)",
+              "90% range (largest fifth)",
+              "Needed for yes (125)"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#8c959f"
+            ]
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "misses",
+            "title": "Carbon miss",
+            "type": "nominal"
+          },
+          {
+            "field": "half_hours",
+            "format": ",",
+            "title": "Half-hours",
+            "type": "quantitative"
+          },
+          {
+            "field": "mean_shortfall_mwh",
+            "format": ",.0f",
+            "title": "Mean under-delivery, MWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "index",
+            "format": ".1f",
+            "title": "Index",
+            "type": "quantitative"
+          },
+          {
+            "field": "index_low",
+            "format": ".1f",
+            "title": "90% range from",
+            "type": "quantitative"
+          },
+          {
+            "field": "index_high",
+            "format": ".1f",
+            "title": "90% range to",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Under-delivery not instructed,",
+              "smallest-miss fifth = 100",
+              "further right: more under-delivery"
+            ]
+          },
+          "field": "index",
+          "scale": {
+            "domain": [
+              95,
+              130
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Smallest misses|0\u20133 g",
+            "3\u20135 g",
+            "5\u20139 g",
+            "9\u201315 g",
+            "Largest misses|15 g and up"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": false,
+        "opacity": 1,
+        "size": 80,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Mean under-delivery (index)\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "index_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "index",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Smallest misses|0\u20133 g",
+            "3\u20135 g",
+            "5\u20139 g",
+            "9\u201315 g",
+            "Largest misses|15 g and up"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "baseline": "bottom",
+        "dy": -7,
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fifth of the half-hours, smallest carbon\", \"misses first; the dot is their mean under-delivery,\", \"with the smallest fifth set to 100. A dot at 125 or\", \"beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fifth of the half-hours, smallest carbon misses\", \"first; the dot is their mean under-delivery, with the smallest\", \"fifth set to 100. A dot at 125 or beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is\", \"their mean under-delivery, with the smallest fifth set to 100. A dot at 125 or\", \"beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean\", \"under-delivery, with the smallest fifth set to 100. A dot at 125 or beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean under-delivery,\", \"with the smallest fifth set to 100. A dot at 125 or beyond would mean yes.\"] : ([\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean under-delivery, with the\", \"smallest fifth set to 100. A dot at 125 or beyond would mean yes.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 480 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 560 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25%\", \"more\"] : (containerSize()[0] + 0 * width < 640 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 720 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"] : ([\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "index_label",
+      "calculate": "format(datum.index, '.1f')"
+    }
+  ],
+  "width": "container"
+}

@@ -60,6 +60,7 @@ def load_dag_file(monkeypatch, file_name, connections=None):
 
 DAG_SETTINGS = {}
 DECORATED_FUNCTIONS = {}
+TASK_SETTINGS = {}
 
 
 class FakeAirflowFailException(Exception):
@@ -77,14 +78,19 @@ def replace_with_do_nothing(function=None, **settings):
     The settings of each @dag(...) are kept in DAG_SETTINGS by dag_id, so a
     test can read a schedule without Airflow. Each decorated function is kept
     in DECORATED_FUNCTIONS by name, so a test can run a DAG's body (which
-    defines its tasks) and then call a task's body.
+    defines its tasks) and then call a task's body. The settings of each
+    @task(...) are kept in TASK_SETTINGS by the task's function name, so a
+    test can read its pool, retries and time limit.
     """
 
-    if "dag_id" in settings:
+    is_dag = "dag_id" in settings
+    if is_dag:
         DAG_SETTINGS[settings["dag_id"]] = settings
 
     def replace(decorated):
         DECORATED_FUNCTIONS[decorated.__name__] = decorated
+        if not is_dag:
+            TASK_SETTINGS[decorated.__name__] = settings
         return do_nothing
 
     if function is None:

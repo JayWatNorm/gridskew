@@ -1,0 +1,11 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+fuel_group,unit_periods,first_runs,latest_runs,first_q1,first_median,first_q3,latest_q1,latest_median,latest_q3,first_median_exact,latest_median_exact
+bioenergy,3696,II,R1,0.000,0.780,3.328,0.000,0.751,3.327,0.7795000000000001,0.7505
+coal,2016,II,R1,0.000,0.000,0.000,0.000,0.000,0.000,0.0,0.0
+gas_turbine,26208,II,R1,0.000,0.150,1.085,0.000,0.150,1.075,0.15,0.15
+hydro,7392,II,R1,0.000,0.000,0.105,0.000,0.000,0.096,0.0,0.0
+interconnector,2688,II,R1,-1.547,0.000,0.000,-1.547,0.000,0.000,0.0,0.0
+nuclear,4704,II,R1,0.000,1.304,3.733,0.000,1.304,3.733,1.304,1.304
+other,27908,II,R1,0.000,0.033,0.288,0.000,0.038,0.292,0.033,0.038
+pumped_storage,5376,II,R1,0.000,0.000,0.100,0.000,0.000,0.100,0.0,0.0
+wind,76944,II,R1,-0.630,0.239,1.570,-0.695,0.225,1.532,0.239,0.225

@@ -1,0 +1,50 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026. Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+section,item,quintile,half_hours,days,first_date,last_date,value,result
+1,"population: window half-hours with error_api_final, a forecast, a first outturn and a known add-back",,17280,360,2025-08-22,2026-08-16,,
+1,"reading: describe only, no test, threshold or verdict; associated with, never caused by",,,,,,,"stated expectation, not a test: abs(rho) under about 0.2"
+2,"rho_abs (primary): abs(wind error, outturn with cohort curtailment add-back) with abs(error_api_final)",,17280,,,,0.007930,
+2,"rho_abs (primary): bootstrap 90% interval, high",,,,,,0.028041,
+2,"rho_abs (primary): bootstrap 90% interval, low",,,,,,-0.012829,
+2,rho_abs (primary): bootstrap draws with a value (900 of 1000 needed),,,,,,1000,available
+3,"half-hours sharing the quintile's largest abs(wind error) (value: that error, MW)",1,1,,,,208.083328,in this quintile: 1
+3,"half-hours sharing the quintile's largest abs(wind error) (value: that error, MW)",2,7,,,,435,in this quintile: 1
+3,"half-hours sharing the quintile's largest abs(wind error) (value: that error, MW)",3,3,,,,710,in this quintile: 2
+3,"half-hours sharing the quintile's largest abs(wind error) (value: that error, MW)",4,1,,,,1133.533334,in this quintile: 1
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",1,3456,,,,9.085648,abs(wind error) 0 to 208.083328 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",2,3456,,,,9.442708,abs(wind error) 208.166666 to 435 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",3,3456,,,,9.341725,abs(wind error) 435 to 710 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",4,3456,,,,9.226273,abs(wind error) 710 to 1133.533334 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): mean abs(error_api_final)",5,3456,,,,9.536458,abs(wind error) 1133.633332 to 12555.400002 MW
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): median error_api_final",1,3456,,,,-1.000000,
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): median error_api_final",2,3456,,,,-1.000000,
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): median error_api_final",3,3456,,,,-1.000000,
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): median error_api_final",4,3456,,,,0.000000,
+3,"quintile of abs(wind error, outturn with cohort curtailment add-back): median error_api_final",5,3456,,,,0.000000,
+3,"rho_signed (secondary): bootstrap 90% interval, high",,,,,,0.098489,
+3,"rho_signed (secondary): bootstrap 90% interval, low",,,,,,0.045608,
+3,rho_signed (secondary): bootstrap draws with a value (900 of 1000 needed),,,,,,1000,available
+3,"rho_signed (secondary): wind error, outturn with cohort curtailment add-back, with error_api_final; expected direction negative",,17280,,,,0.072529,
+4,"rho_abs (sensitivity): abs(wind error, delivered outturn) with abs(error_api_final)",,17280,,,,-0.039356,
+4,"rho_abs (sensitivity): bootstrap 90% interval, high",,,,,,-0.015853,
+4,"rho_abs (sensitivity): bootstrap 90% interval, low",,,,,,-0.062479,
+4,rho_abs (sensitivity): bootstrap draws with a value (900 of 1000 needed),,,,,,1000,available
+4,"rho_signed (sensitivity): bootstrap 90% interval, high",,,,,,-0.142235,
+4,"rho_signed (sensitivity): bootstrap 90% interval, low",,,,,,-0.191369,
+4,rho_signed (sensitivity): bootstrap draws with a value (900 of 1000 needed),,,,,,1000,available
+4,"rho_signed (sensitivity): wind error, delivered outturn, with error_api_final",,17280,,,,-0.167233,
+5,"clock-change dates with 46 periods, held whole (value: their window half-hours)",,46,1,,,46,
+5,"clock-change dates with 50 periods, held whole (value: their window half-hours)",,50,1,,,50,
+5,"left out, first reason 1: no error_api_final",,0,,,,,
+5,"left out, first reason 2: no first FUELHH wind outturn",,0,,,,,
+5,"left out, first reason 3: no WINDFOR issue before the half-hour",,0,,,,,
+5,"left out, first reason 4: the latest issue holds no point for the hour",,0,,,,,
+5,"left out, first reason 5: add-back unknown: a wind unit with an acceptance has a null instructed deviation",,0,,,,,
+5,"population forecast age from the source stamp (stamp to half-hour start), band 1: at most 1 h",,5756,,,,,
+5,"population forecast age from the source stamp (stamp to half-hour start), band 2: over 1 h to 2 h",,5756,,,,,
+5,"population forecast age from the source stamp (stamp to half-hour start), band 3: over 2 h to 4 h",,5766,,,,,
+5,"population forecast age from the source stamp (stamp to half-hour start), band 4: over 4 h",,2,,,,,
+5,population half-hours with a non-zero add-back,,11475,,,,,
+5,settlement dates in the window,,17280,360,2025-08-22,2026-08-16,,
+5,settlement dates with fewer than 46 population half-hours,,0,0,,,,
+5,"wind unit-periods with an acceptance and a null instructed deviation, in window half-hours with an outturn (value: unit-periods)",,,,,,0,
+5,"wind unit-periods with a null instructed deviation, with or without an acceptance, in window half-hours with an outturn (value: unit-periods)",,,,,,22,

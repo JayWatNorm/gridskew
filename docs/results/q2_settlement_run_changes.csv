@@ -1,0 +1,4 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+run_pair,matched,only_later,only_earlier,changed,moved_mwh,base_abs_mwh,changed_share,moved_share,changed_label,moved_label,pair_label
+II->SF,3083376,0,0,371795,315071.076,9347594.632,0.120580,0.033706,intermediate,material,material
+SF->R1,3083376,0,0,344397,221208.857,9493995.564,0.111695,0.023300,intermediate,material,material

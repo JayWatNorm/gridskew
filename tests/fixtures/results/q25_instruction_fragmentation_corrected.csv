@@ -1,0 +1,8 @@
+section,fuel_group,settlement_month,measure,n,under_10_minutes,under_10_minutes_pct,median_minutes
+1,other,2026-09-01,1 dispatch granularity (acceptances),400,296,74.0,5.0
+1,other,2026-09-01,"2 continuous acceptance duration, BSC (acceptances)",400,78,19.5,30.0
+2,gas_turbine,,1 dispatch granularity (acceptances),1200,30,2.5,31.0
+2,gas_turbine,,"2 continuous acceptance duration, BSC (acceptances)",1200,2,0.2,210.0
+2,other,,1 dispatch granularity (acceptances),4000,3090,77.3,5.0
+2,other,,"2 continuous acceptance duration, BSC (acceptances)",4000,844,21.1,28.0
+3,,,acceptances of units outside the cohort,9000,,,

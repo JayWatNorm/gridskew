@@ -1,0 +1,54 @@
+name: Pages
+
+# The results page: site/ with docs/results/ served at results/. A push to
+# main that changes either deploys it; so can a manual run.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs/results/**"
+  workflow_dispatch:
+
+# Naming any permission removes the defaults, so checkout's read is named.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer run waits rather than cancelling a deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up Pages
+        uses: actions/configure-pages@v6
+
+      - name: Assemble the site with its results
+        run: |
+          mkdir -p _site/results
+          cp -R site/. _site/
+          cp -R docs/results/. _site/results/
+          sed -i "s/@GRIDSKEW_COMMIT@/${GITHUB_SHA::7}/" _site/index.html
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

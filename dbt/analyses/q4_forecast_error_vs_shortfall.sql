@@ -44,6 +44,26 @@
 -- run gives the same interval. The interval resamples whole days for the
 -- correlation within a day; correlation between days is not modelled. Until
 -- the population is reached it returns counts and no result.
+--
+-- Amended 31 October 2026, before any read. Nothing in the registered test
+-- changes; informed by Q28's read (ratio 1.05, 90% interval 1.03 to 1.08);
+-- the test and its threshold do not change.
+-- - Reported first: the ratio of the top quintile's mean to the bottom's,
+--   with its interval; the verdict beside it (section 1, in position order).
+--   With a bottom mean of 0 or less the edge rule is unchanged: both means
+--   and their difference, no ratio and no interval.
+-- - Beside it: by weekday of the settlement date, Monday to Sunday, the
+--   matched-day half-hours kept and those left out for a final forecast made
+--   more than 30 minutes ahead (counts); and the half-hours sharing the top
+--   quintile's smallest error, as for the bottom.
+-- - Units: only active cohort units count (active_cohort_units): those with a
+--   PN or metered output above zero in at least one half-hour of the window,
+--   from the first half-hour with an error_final to analysis_read_until.
+--   Interconnectors (fuel type beginning INT, so INTELE by assumption) are
+--   left out. The units by status, the active units with no PN unit-period
+--   (they add nothing to the sums), and the idle unit-periods (determinable,
+--   PN 0 and metered 0) among the active units' determinable unit-periods
+--   behind the population half-hours are reported in coverage.
 
 {% set days_needed = var('shortfall_error_matched_days_needed') %}
 {% set read_until = analysis_read_until() %}
@@ -52,6 +72,11 @@
 {% set bootstrap_draws = 1000 %}
 {% set bootstrap_min_usable_draws = var('shortfall_error_bootstrap_min_usable_draws') %}
 {% set bootstrap_seed = 20261012 %}
+{% if read_until is not none %}
+    {% set cohort_window_end = "timestamptz '" ~ read_until ~ "'" %}
+{% else %}
+    {% set cohort_window_end = none %}
+{% endif %}
 
 with errors as (
     select
@@ -71,6 +96,18 @@ errors_left_out as (
     where not is_fresh
 ),
 
+-- Every cohort unit with its status in the window from the first half-hour
+-- with an error_final to the cutoff.
+cohort_units as (
+    select
+        national_grid_bm_unit,
+        fuel_type,
+        cohort_status,
+        has_row_in_window
+    from {{ active_cohort_units('(select min(period_start) from errors)', cohort_window_end) }}
+        as units
+),
+
 cohort_shortfall as (
     select
         shortfall.settlement_date,
@@ -78,8 +115,9 @@ cohort_shortfall as (
         sum(greatest(shortfall.unexplained_shortfall_mwh, 0)) as positive_shortfall_mwh,
         count(*) as unit_periods
     from {{ ref('int_shortfall_by_unit_period') }} as shortfall
-    inner join {{ ref('int_elexon__bm_unit_cohort') }} as cohort
+    inner join cohort_units as cohort
         on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
+        and cohort.cohort_status = 'active'
     where shortfall.determinability = 'determinable'
         and shortfall.unexplained_shortfall_mwh is not null
         and shortfall.period_start_utc is not null
@@ -165,6 +203,17 @@ bottom_boundary_ties as (
     where abs(error_final) = (select max(abs(error_final)) from quintiles where quintile = 1)
 ),
 
+-- The same at the top: the half-hours sharing the top quintile's smallest
+-- error, and how many of them the tie order put in the top quintile.
+top_boundary_ties as (
+    select
+        count(*) as half_hours,
+        count(*) filter (where quintile = 5) as in_top,
+        min(abs(error_final)) as boundary_abs_error_final
+    from quintiles
+    where abs(error_final) = (select min(abs(error_final)) from quintiles where quintile = 5)
+),
+
 quintile_means as (
     select
         quintile,
@@ -195,10 +244,8 @@ picks as (
     select
         draws.draw,
         picked.pick,
-        1 + mod(
-            ('x' || substr(md5('{{ bootstrap_seed }}:' || draws.draw || ':' || picked.pick), 1, 8))::bit(32)::bigint,
-            gate.eligible_days
-        ) as day_number
+        {{ bootstrap_date_number(bootstrap_seed, 'draws.draw', 'picked.pick', 'gate.eligible_days') }}
+            as day_number
     from gate
     cross join observed
     cross join generate_series(1, {{ bootstrap_draws }}) as draws (draw)
@@ -279,73 +326,86 @@ population_summary as (
     from population
 ),
 
+-- Section 1 leads with the ratio and its interval; the verdict stands beside
+-- them, then the means and the population.
 verdict_rows as (
     select
         1 as section,
-        'population: matched days ({{ days_needed }} needed)' as item,
+        1 as position,
+        'ratio, top over bottom' as item,
         null::integer as quintile,
-        population_summary.half_hours,
-        outcome.matched_days as days,
-        population_summary.first_date,
-        population_summary.last_date,
-        null::numeric as value,
-        case when outcome.is_reached then 'reached' else 'not reached' end as result
-    from outcome
-    cross join population_summary
-
-    union all
-
-    select 1, 'bottom quintile mean, MWh', null, null, null, null, null,
-        case when is_reached then round(bottom_mean, 6) end, null
+        null::bigint as half_hours,
+        null::bigint as days,
+        null::date as first_date,
+        null::date as last_date,
+        case when is_reached and bottom_mean > 0 then round(top_mean / bottom_mean, 6) end as value,
+        null::text as result
     from outcome
 
     union all
 
-    select 1, 'top quintile mean, MWh', null, null, null, null, null,
-        case when is_reached then round(top_mean, 6) end, null
+    select 1, 2, 'bootstrap 90% interval, low', null, null, null, null, null,
+        case when interval_status = 'available' then round(interval_low::numeric, 6) end, null
     from outcome
 
     union all
 
-    select 1, 'difference, top minus bottom, MWh', null, null, null, null, null,
-        case when is_reached then round(top_mean - bottom_mean, 6) end, null
+    select 1, 3, 'bootstrap 90% interval, high', null, null, null, null, null,
+        case when interval_status = 'available' then round(interval_high::numeric, 6) end, null
     from outcome
 
     union all
 
-    select 1, 'ratio, top over bottom', null, null, null, null, null,
-        case when is_reached and bottom_mean > 0 then round(top_mean / bottom_mean, 6) end, null
-    from outcome
-
-    union all
-
-    select 1, 'verdict (supported at a ratio of 1.25 or more)', null, null, null, null, null,
-        null, verdict
-    from outcome
-
-    union all
-
-    select 1, 'bootstrap draws with a ratio ({{ bootstrap_min_usable_draws }} of {{ bootstrap_draws }} needed)',
+    select 1, 4, 'bootstrap draws with a ratio ({{ bootstrap_min_usable_draws }} of {{ bootstrap_draws }} needed)',
         null, null, null, null, null,
         case when interval_status in ('available', 'unavailable') then usable_draws end, interval_status
     from outcome
 
     union all
 
-    select 1, 'bootstrap 90% interval, low', null, null, null, null, null,
-        case when interval_status = 'available' then round(interval_low::numeric, 6) end, null
+    select 1, 5, 'verdict (supported at a ratio of 1.25 or more)', null, null, null, null, null,
+        null, verdict
     from outcome
 
     union all
 
-    select 1, 'bootstrap 90% interval, high', null, null, null, null, null,
-        case when interval_status = 'available' then round(interval_high::numeric, 6) end, null
+    select 1, 6, 'bottom quintile mean, MWh', null, null, null, null, null,
+        case when is_reached then round(bottom_mean, 6) end, null
     from outcome
+
+    union all
+
+    select 1, 7, 'top quintile mean, MWh', null, null, null, null, null,
+        case when is_reached then round(top_mean, 6) end, null
+    from outcome
+
+    union all
+
+    select 1, 8, 'difference, top minus bottom, MWh', null, null, null, null, null,
+        case when is_reached then round(top_mean - bottom_mean, 6) end, null
+    from outcome
+
+    union all
+
+    select
+        1,
+        9,
+        'population: matched days ({{ days_needed }} needed)',
+        null,
+        population_summary.half_hours,
+        outcome.matched_days,
+        population_summary.first_date,
+        population_summary.last_date,
+        null,
+        case when outcome.is_reached then 'reached' else 'not reached' end
+    from outcome
+    cross join population_summary
 ),
 
 quintile_rows as (
     select
         2 as section,
+        null::integer as position,
         'quintile of abs(error_final): mean positive shortfall, MWh' as item,
         listed.quintile,
         quintile_means.half_hours,
@@ -364,11 +424,20 @@ quintile_rows as (
 
     union all
 
-    select 2, 'half-hours sharing the bottom quintile''s largest abs(error_final) (value: that error)', null,
+    select 2, null, 'half-hours sharing the bottom quintile''s largest abs(error_final) (value: that error)', null,
         case when outcome.is_reached then bottom_boundary_ties.half_hours end, null, null, null,
         case when outcome.is_reached then bottom_boundary_ties.boundary_abs_error_final end,
         case when outcome.is_reached then 'in the bottom quintile: ' || bottom_boundary_ties.in_bottom end
     from bottom_boundary_ties
+    cross join outcome
+
+    union all
+
+    select 2, null, 'half-hours sharing the top quintile''s smallest abs(error_final) (value: that error)', null,
+        case when outcome.is_reached then top_boundary_ties.half_hours end, null, null, null,
+        case when outcome.is_reached then top_boundary_ties.boundary_abs_error_final end,
+        case when outcome.is_reached then 'in the top quintile: ' || top_boundary_ties.in_top end
+    from top_boundary_ties
     cross join outcome
 ),
 
@@ -380,6 +449,7 @@ error_dates as (
 coverage_rows as (
     select
         3 as section,
+        null::integer as position,
         'settlement dates with an error_final' as item,
         null::integer as quintile,
         null::bigint as half_hours,
@@ -392,33 +462,33 @@ coverage_rows as (
 
     union all
 
-    select 3, 'half-hours with error_final left out: final forecast over '
+    select 3, null, 'half-hours with error_final left out: final forecast over '
         || {{ final_horizon_limit_seconds // 60 }} || ' minutes ahead', null, half_hours,
         null, null, null, null, null
     from errors_left_out
 
     union all
 
-    select 3, 'matched days with no half-hour whose final forecast is within '
+    select 3, null, 'matched days with no half-hour whose final forecast is within '
         || {{ final_horizon_limit_seconds // 60 }} || ' minutes', null, null,
         gate.matched_days - gate.eligible_days, null, null, null, null
     from gate
 
     union all
 
-    select 3, 'settlement dates with the cohort measure', null, null,
+    select 3, null, 'settlement dates with the cohort measure', null, null,
         count(distinct settlement_date), min(settlement_date), max(settlement_date), null, null
     from cohort_shortfall
 
     union all
 
-    select 3, 'settlement dates with both values in any half-hour', null, null,
+    select 3, null, 'settlement dates with both values in any half-hour', null, null,
         count(distinct settlement_date), min(settlement_date), max(settlement_date), null, null
     from both_values
 
     union all
 
-    select 3, 'on matched days: cohort measure without error_final', null, count(*),
+    select 3, null, 'on matched days: cohort measure without error_final', null, count(*),
         count(distinct cohort_shortfall.settlement_date), null, null, null, null
     from cohort_shortfall
     inner join matched_days
@@ -429,7 +499,7 @@ coverage_rows as (
 
     union all
 
-    select 3, 'on matched days: error_final without the cohort measure', null, count(*),
+    select 3, null, 'on matched days: error_final without the cohort measure', null, count(*),
         count(distinct matched_days.settlement_date), null, null, null, null
     from errors
     inner join matched_days
@@ -440,33 +510,218 @@ coverage_rows as (
 
     union all
 
-    select 3, 'cohort unit-periods per population half-hour: min', null, count(*), null, null, null,
+    select 3, null, 'cohort unit-periods per population half-hour: min', null, count(*), null, null, null,
         min(unit_periods), null
     from population
 
     union all
 
-    select 3, 'cohort unit-periods per population half-hour: median', null, count(*), null, null, null,
+    select 3, null, 'cohort unit-periods per population half-hour: median', null, count(*), null, null, null,
         percentile_cont(0.5) within group (order by unit_periods)::numeric, null
     from population
 
     union all
 
-    select 3, 'cohort unit-periods per population half-hour: max', null, count(*), null, null, null,
+    select 3, null, 'cohort unit-periods per population half-hour: max', null, count(*), null, null, null,
         max(unit_periods), null
     from population
 ),
 
+listed_weekdays as (
+    select
+        weekday,
+        weekday_name
+    from (
+        values
+            (1, 'Monday'), (2, 'Tuesday'), (3, 'Wednesday'), (4, 'Thursday'),
+            (5, 'Friday'), (6, 'Saturday'), (7, 'Sunday')
+    ) as listed (weekday, weekday_name)
+),
+
+matched_day_half_hours as (
+    select
+        both_values.settlement_date,
+        both_values.is_fresh
+    from both_values
+    inner join matched_days
+        on both_values.settlement_date = matched_days.settlement_date
+),
+
+-- By ISO weekday of the settlement date, every weekday listed. Counts only.
+stale_final_rows as (
+    select
+        4 as section,
+        listed_weekdays.weekday as position,
+        'matched-day half-hours kept, final forecast at most '
+            || {{ final_horizon_limit_seconds // 60 }} || ' minutes ahead: settlement date on a '
+            || listed_weekdays.weekday_name as item,
+        null::integer as quintile,
+        count(matched_day_half_hours.settlement_date) as half_hours,
+        null::bigint as days,
+        null::date as first_date,
+        null::date as last_date,
+        null::numeric as value,
+        null::text as result
+    from listed_weekdays
+    left join matched_day_half_hours
+        on extract(isodow from matched_day_half_hours.settlement_date) = listed_weekdays.weekday
+        and matched_day_half_hours.is_fresh
+    group by listed_weekdays.weekday, listed_weekdays.weekday_name
+
+    union all
+
+    select
+        4,
+        listed_weekdays.weekday,
+        'matched-day half-hours left out, final forecast over '
+            || {{ final_horizon_limit_seconds // 60 }} || ' minutes ahead: settlement date on a '
+            || listed_weekdays.weekday_name,
+        null,
+        count(matched_day_half_hours.settlement_date),
+        null,
+        null,
+        null,
+        null,
+        null
+    from listed_weekdays
+    left join matched_day_half_hours
+        on extract(isodow from matched_day_half_hours.settlement_date) = listed_weekdays.weekday
+        and not matched_day_half_hours.is_fresh
+    group by listed_weekdays.weekday, listed_weekdays.weekday_name
+),
+
+-- The active units' determinable unit-periods behind the population
+-- half-hours, and the idle ones among them: PN 0 and metered 0, both exact.
+population_unit_periods as (
+    select
+        count(*) filter (where shortfall.determinability = 'determinable')
+            as determinable_unit_periods,
+        count(*) filter (
+            where shortfall.determinability = 'determinable'
+                and shortfall.pn_mwh = 0
+                and shortfall.metered_mwh = 0
+        ) as idle_unit_periods
+    from {{ ref('int_shortfall_by_unit_period') }} as shortfall
+    inner join cohort_units as cohort
+        on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
+        and cohort.cohort_status = 'active'
+    inner join population
+        on shortfall.period_start_utc = population.period_start
+),
+
+-- Active units with no unit-period in the shortfall table (no PN) in the
+-- window: active on metered output alone, they add nothing to the sums.
+active_units_without_pn as (
+    select count(*) as units
+    from cohort_units as cohort
+    where cohort.cohort_status = 'active'
+        and not exists (
+            select 1
+            from {{ ref('int_shortfall_by_unit_period') }} as shortfall
+            where shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
+                and {{ active_cohort_window_test('shortfall', '(select min(period_start) from errors)', cohort_window_end) }}
+        )
+),
+
+-- Counts of units and unit-periods, and the idle share, all shown before the
+-- gate.
+cohort_rows as (
+    select
+        5 as section,
+        1 as position,
+        'cohort units: active in the window (value: units)' as item,
+        null::integer as quintile,
+        null::bigint as half_hours,
+        null::bigint as days,
+        null::date as first_date,
+        null::date as last_date,
+        count(*) filter (where cohort_status = 'active')::numeric as value,
+        null::text as result
+    from cohort_units
+
+    union all
+
+    select 5, 2, 'cohort units: interconnectors, fuel type beginning INT, left out (value: units)',
+        null, null, null, null, null,
+        count(*) filter (where cohort_status = 'interconnector'), null
+    from cohort_units
+
+    union all
+
+    select 5, 3,
+        'cohort units: interconnectors with fuel type INTELE, an interconnector by assumption (value: units)',
+        null, null, null, null, null,
+        count(*) filter (where cohort_status = 'interconnector' and fuel_type = 'INTELE'), null
+    from cohort_units
+
+    union all
+
+    select 5, 4, 'cohort units: inactive in the window, left out (value: units)',
+        null, null, null, null, null,
+        count(*) filter (where cohort_status = 'inactive'), null
+    from cohort_units
+
+    union all
+
+    select 5, 5, 'cohort units: inactive with no row in the window (value: units)',
+        null, null, null, null, null,
+        count(*) filter (where cohort_status = 'inactive' and not has_row_in_window), null
+    from cohort_units
+
+    union all
+
+    select 5, 6,
+        'active units with no PN unit-period in the window, adding nothing to the sums (value: units)',
+        null, null, null, null, null, units, null
+    from active_units_without_pn
+
+    union all
+
+    select 5, 7,
+        'idle unit-periods behind the population half-hours: determinable, PN 0 and metered 0 (value: unit-periods)',
+        null, null, null, null, null, idle_unit_periods, null
+    from population_unit_periods
+
+    union all
+
+    select 5, 8,
+        'determinable unit-periods of active units behind the population half-hours (value: unit-periods)',
+        null, null, null, null, null, determinable_unit_periods, null
+    from population_unit_periods
+
+    union all
+
+    select 5, 9, 'idle share of those determinable unit-periods',
+        null, null, null, null, null,
+        round(
+            population_unit_periods.idle_unit_periods::numeric
+                / nullif(population_unit_periods.determinable_unit_periods, 0),
+            6
+        ),
+        null
+    from population_unit_periods
+),
+
 all_rows as (
-    select * from verdict_rows
+    select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
+    from verdict_rows
     union all
-    select * from quintile_rows
+    select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
+    from quintile_rows
     union all
-    select * from coverage_rows
+    select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
+    from coverage_rows
+    union all
+    select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
+    from stale_final_rows
+    union all
+    select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
+    from cohort_rows
 )
 
 select
     section,
+    position,
     item,
     quintile,
     half_hours,
@@ -476,4 +731,4 @@ select
     value,
     result
 from all_rows
-order by section, item, quintile
+order by section, position, item, quintile
