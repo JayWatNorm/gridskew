@@ -54,6 +54,11 @@ published.
   negative. A poll made after the half-hour starts is never a forecast of it.
   Horizons are compared in exact seconds, so this holds to the fraction of a
   second.
+- **24-hour and 4-hour forecasts:** the counted poll nearest 24 hours and 4
+  hours ahead, null when none is within half an hour of it; at equal
+  distance the earlier poll is used. `horizon_24h_seconds` and
+  `horizon_4h_seconds` hold the exact horizon of that poll in seconds, so
+  its poll time is the half-hour's start minus that horizon.
 - **Drift:** final forecast minus first forecast, in gCO2/kWh.
 - **Complete trajectory:** at least 90 counted slots, a first horizon of at
   least 47 hours and a final horizon of at most half an hour. The poll that
@@ -87,9 +92,13 @@ forecast.
   reaches 2,880 and at least three slot polls are stored after the cutoff, so
   a stall that runs past it is settled; before then it returns the count and
   no result.
-  `dbt/analyses/q1_forecast_drift_splits.sql` runs in the same look. All
-  three take the `analysis_read_until` variable, the last half-hour start
-  they read, so the look can be repeated on the same half-hours.
+  `dbt/analyses/q1_forecast_drift_splits.sql` runs in the same look, and so
+  does `dbt/analyses/q1_forecast_drift_beside.sql`, behind the same gate: the
+  mean drift with a 90% day-block bootstrap interval and the correlation of
+  successive revisions within a half-hour, described beside the verdict and
+  not called pre-registered. All four take the `analysis_read_until`
+  variable, the last half-hour start they read, so the look can be repeated
+  on the same half-hours.
 
 ## Where the models run
 

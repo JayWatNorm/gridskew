@@ -78,6 +78,16 @@ models:
         description: Horizon of the final forecast, rounded to four places.
       - name: final_horizon_seconds
         description: Exact horizon of the final forecast, in seconds; limits are tested on this.
+      - name: horizon_24h_seconds
+        description: >
+          Exact seconds from the pick's poll to the start of the half-hour;
+          null when there is no pick. The pick is the poll that gives
+          forecast_24h.
+      - name: horizon_4h_seconds
+        description: >
+          Exact seconds from the pick's poll to the start of the half-hour;
+          null when there is no pick. The pick is the poll that gives
+          forecast_4h.
       - name: first_forecast
         description: Forecast of the counted poll with the largest horizon.
       - name: first_intensity_index
@@ -153,6 +163,14 @@ models:
         description: Final archived forecast before the half-hour began.
       - name: final_horizon_seconds
         description: How far ahead the final forecast was made, in seconds.
+      - name: horizon_24h_seconds
+        description: >
+          Exact seconds from the pick's poll to the start of the half-hour;
+          null when there is no pick (forecast_24h's poll).
+      - name: horizon_4h_seconds
+        description: >
+          Exact seconds from the pick's poll to the start of the half-hour;
+          null when there is no pick (forecast_4h's poll).
       - name: api_final_forecast
         description: The final forecast the source reports beside the outturn.
       - name: error_24h

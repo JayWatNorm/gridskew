@@ -11,15 +11,42 @@
 -- elapsed time (first to last poll's slot plus 30 minutes), the share of
 -- slot polls inside a stall, stalls cut at the window's edges, partial polls
 -- and how many fall inside a stall, and stalls by the UTC block of their
--- first poll (a split informed by the stalls seen before registration).
--- A stall's time block is that of its first poll, inside the window or not.
--- Read once, when the window holds forecast_stalls_days_needed days and at
--- least three slot polls (one fewer than the run of four) are stored after
--- analysis_read_until, so a stall running past the cutoff is settled; polls
--- after the cutoff are never counted.
--- Until then only section 1 has values. Section 5 repeats sections 2 and 3
--- for the stalls seen before registration, labelled exploratory. No forecast
--- value is read.
+-- first poll. A stall's time block is that of its first poll, inside the
+-- window or not. Read once, when the window holds forecast_stalls_days_needed
+-- days and at least three slot polls (one fewer than the run of four) are
+-- stored after analysis_read_until, so a stall running past the cutoff is
+-- settled; polls after the cutoff are never counted.
+--
+-- Amended 31 October 2026, before the window opened:
+-- - Partial poll. A poll is partial when it holds fewer half-hours than a
+--   full poll on its schedule (forecast_poll_schedules): 97 on the schedule
+--   that polled on the half-hour, up to and including the 10:30 poll of
+--   10 September 2026, and 96 on the :05 and :35 schedule from 11:05 that
+--   day, in force when the window opens. The model's fixed 96-row flag is
+--   not read.
+-- - Schedule change. Each schedule with slot polls in a window is reported
+--   with its first and last slot poll, its full count and its basis. A
+--   schedule that appears later is added to forecast_poll_schedules, with its
+--   full count fixed from its own polls' row counts before the read, and the
+--   result says so. Beside them, before the read, the slot polls in the
+--   window by minute past their slot (UTC), so a change shows without a stall
+--   being counted.
+-- - Run lengths, also reported: runs of consecutive unchanged slot polls
+--   (Q1's test; partial polls count; a slot with no poll does not end a run),
+--   each in the schedule of its first poll, inside the window or not, in
+--   bands of 1, 2, 3, 4-5, 6-11 and 12 or more by the run's polls inside the
+--   window, with the runs cut at the window's start or cutoff.
+-- - Confirmed freezes, reported apart: stalls holding at least one partial
+--   poll inside the window, with their number and median and longest
+--   durations on both measures. The other stalls are not called freezes.
+-- - Time of day: the split is informed by the long freezes of August and
+--   September 2026 and the stalls of 1 to 24 October 2026.
+-- - The record before the window: the stalls, partial polls by schedule,
+--   each schedule's first and last slot poll, and the confirmed freezes
+--   among the slot polls from forecast_stalls_exploratory_from (17 August
+--   2026) to forecast_stalls_exploratory_until (31 October 2026 23:30 UTC),
+--   exploratory and not part of the result, shown beside it at the read.
+-- Until the read only section 1 has values. No forecast value is read.
 
 {% set read_until = analysis_read_until() %}
 {% set windows = [
@@ -34,23 +61,70 @@
         'until': var('forecast_stalls_exploratory_until'),
     },
 ] %}
+{% set run_bands = [
+    {'position': 1, 'label': '1 poll', 'shortest': 1},
+    {'position': 2, 'label': '2 polls', 'shortest': 2},
+    {'position': 3, 'label': '3 polls', 'shortest': 3},
+    {'position': 4, 'label': '4-5 polls', 'shortest': 4},
+    {'position': 5, 'label': '6-11 polls', 'shortest': 6},
+    {'position': 6, 'label': '12 or more polls', 'shortest': 12},
+] %}
 
 with slot_polls as (
-    select distinct poll_slot, is_partial_poll, is_no_change_poll
+    select distinct
+        poll_slot,
+        retrieved_at,
+        poll_row_count,
+        is_unchanged_from_previous_slot,
+        is_no_change_poll
     from {{ ref('int_carbon_forecast__revisions') }}
     where is_first_poll_in_slot
 ),
 
--- Each stall shares a run key: the number of changed polls before it.
+listed_schedules as (
+    select
+        schedule_order,
+        schedule,
+        full_poll_rows,
+        basis
+    from (
+        values
+{%- for schedule in forecast_poll_schedules() %}
+            ({{ loop.index }}, '{{ schedule.label | replace("'", "''") }}', {{ schedule.full_poll_rows }}, '{{ schedule.basis | replace("'", "''") }}')
+                {{- ',' if not loop.last }}
+{%- endfor %}
+    ) as listed (schedule_order, schedule, full_poll_rows, basis)
+),
+
+-- Each slot poll's schedule, and whether it is partial on that schedule.
+scheduled_polls as (
+    select
+        poll_slot,
+        retrieved_at,
+        is_unchanged_from_previous_slot,
+        is_no_change_poll,
+        {{ forecast_poll_schedule('retrieved_at') }} as schedule,
+        poll_row_count < {{ forecast_schedule_full_poll_rows('retrieved_at') }} as is_partial_poll
+    from slot_polls
+),
+
+-- Each stall shares a run key: the number of changed polls before it. Each
+-- run of unchanged polls shares one too.
 numbered_polls as (
     select
         poll_slot,
+        retrieved_at,
+        schedule,
         is_partial_poll,
+        is_unchanged_from_previous_slot,
         is_no_change_poll,
         count(*) filter (where not is_no_change_poll) over (
             order by poll_slot rows unbounded preceding
-        ) as run_key
-    from slot_polls
+        ) as run_key,
+        count(*) filter (where not is_unchanged_from_previous_slot) over (
+            order by poll_slot rows unbounded preceding
+        ) as unchanged_run_key
+    from scheduled_polls
 ),
 
 whole_stalls as (
@@ -60,9 +134,29 @@ whole_stalls as (
     group by run_key
 ),
 
+-- A run belongs to the schedule of its first poll, inside the window or not.
+whole_unchanged_runs as (
+    select
+        unchanged_run_key,
+        min(poll_slot) as first_slot,
+        max(poll_slot) as last_slot,
+        (array_agg(schedule order by poll_slot))[1] as schedule
+    from numbered_polls
+    where is_unchanged_from_previous_slot
+    group by unchanged_run_key
+),
+
 {% for window in windows %}
 {{ window.name }}_polls as (
-    select *
+    select
+        poll_slot,
+        retrieved_at,
+        schedule,
+        is_partial_poll,
+        is_unchanged_from_previous_slot,
+        is_no_change_poll,
+        run_key,
+        unchanged_run_key
     from numbered_polls
     where poll_slot >= timestamptz '{{ window.from }}'
 {% if window.until is not none %}
@@ -92,7 +186,13 @@ whole_stalls as (
 
 {{ window.name }}_stall_durations as (
     select
-        *,
+        run_key,
+        polls,
+        partial_polls,
+        stall_first_slot,
+        is_cut_at_start,
+        is_cut_at_end,
+        partial_polls > 0 as is_confirmed_freeze,
         polls * 30 as poll_minutes,
         (extract(epoch from last_slot - first_slot) / 60)::integer + 30 as elapsed_minutes
     from {{ window.name }}_stalls
@@ -116,7 +216,39 @@ whole_stalls as (
         (select count(*) from {{ window.name }}_stall_durations where is_cut_at_start)
             as cut_at_start,
         (select count(*) from {{ window.name }}_stall_durations where is_cut_at_end)
-            as cut_at_end
+            as cut_at_end,
+        (select count(*) from {{ window.name }}_stall_durations where is_confirmed_freeze)
+            as confirmed_freezes,
+        (select percentile_cont(0.5) within group (order by poll_minutes)
+            from {{ window.name }}_stall_durations where is_confirmed_freeze)
+            as confirmed_median_poll_minutes,
+        (select max(poll_minutes) from {{ window.name }}_stall_durations where is_confirmed_freeze)
+            as confirmed_longest_poll_minutes,
+        (select percentile_cont(0.5) within group (order by elapsed_minutes)
+            from {{ window.name }}_stall_durations where is_confirmed_freeze)
+            as confirmed_median_elapsed_minutes,
+        (select max(elapsed_minutes) from {{ window.name }}_stall_durations where is_confirmed_freeze)
+            as confirmed_longest_elapsed_minutes
+),
+
+{{ window.name }}_schedules as (
+    select
+        listed_schedules.schedule_order,
+        listed_schedules.schedule,
+        listed_schedules.full_poll_rows,
+        listed_schedules.basis,
+        count(polls.poll_slot) as slot_polls,
+        count(*) filter (where polls.is_partial_poll) as partial_polls,
+        min(polls.retrieved_at) as first_poll,
+        max(polls.retrieved_at) as last_poll
+    from listed_schedules
+    left join {{ window.name }}_polls as polls
+        on listed_schedules.schedule = polls.schedule
+    group by
+        listed_schedules.schedule_order,
+        listed_schedules.schedule,
+        listed_schedules.full_poll_rows,
+        listed_schedules.basis
 ),
 
 {% endfor %}
@@ -131,7 +263,9 @@ result_window as (
 
 result_coverage as (
     select
-        result_window.*,
+        result_window.first_slot,
+        result_window.last_slot,
+        result_window.slot_polls,
         coalesce(
             floor(
                 extract(epoch from result_window.last_slot + interval '30 minutes'
@@ -184,6 +318,80 @@ result_blocks as (
     group by blocks.first_hour, blocks.label
 ),
 
+-- Runs of unchanged polls with a poll in the window, banded by their polls
+-- inside it.
+result_runs as (
+    select
+        polls.unchanged_run_key,
+        count(*) as polls_in_window,
+        min(whole.schedule) as schedule,
+        min(whole.first_slot) < timestamptz '{{ windows[0].from }}' as is_cut_at_start,
+{% if read_until is not none %}
+        max(whole.last_slot) > timestamptz '{{ read_until }}' as is_cut_at_end
+{% else %}
+        false as is_cut_at_end
+{% endif %}
+    from result_polls as polls
+    inner join whole_unchanged_runs as whole
+        on polls.unchanged_run_key = whole.unchanged_run_key
+    where polls.is_unchanged_from_previous_slot
+    group by polls.unchanged_run_key
+),
+
+result_banded_runs as (
+    select
+        schedule,
+        case
+{%- for band in run_bands | reverse %}
+            when polls_in_window >= {{ band.shortest }} then '{{ band.label }}'
+{%- endfor %}
+        end as band,
+        is_cut_at_start,
+        is_cut_at_end
+    from result_runs
+),
+
+listed_bands as (
+    select
+        band_position,
+        band
+    from (
+        values
+{%- for band in run_bands %}
+            ({{ band.position }}, '{{ band.label }}'){{ ',' if not loop.last }}
+{%- endfor %}
+    ) as listed (band_position, band)
+),
+
+result_band_counts as (
+    select
+        listed_schedules.schedule_order,
+        listed_schedules.schedule,
+        listed_bands.band_position,
+        listed_bands.band,
+        count(runs.band) as runs,
+        count(*) filter (where runs.is_cut_at_start) as cut_at_start,
+        count(*) filter (where runs.is_cut_at_end) as cut_at_end
+    from listed_schedules
+    cross join listed_bands
+    left join result_banded_runs as runs
+        on listed_schedules.schedule = runs.schedule
+        and listed_bands.band = runs.band
+    group by
+        listed_schedules.schedule_order,
+        listed_schedules.schedule,
+        listed_bands.band_position,
+        listed_bands.band
+),
+
+result_minutes_past_slot as (
+    select
+        floor(extract(epoch from retrieved_at - poll_slot) / 60)::integer as minutes_past_slot,
+        count(*) as slot_polls
+    from result_polls
+    group by floor(extract(epoch from retrieved_at - poll_slot) / 60)::integer
+),
+
 output_rows as (
     select 1 as section, 1 as position, 'window start' as item,
         null::numeric as value, '{{ windows[0].from }}' as detail, false as is_gated
@@ -212,70 +420,129 @@ output_rows as (
     select 1, 8, 'read possible', null,
         case when is_reached then 'yes' else 'no' end, false
     from gate
+    union all
+    select 1, 9 + minutes_past_slot,
+        'slot polls made ' || minutes_past_slot || ' minutes past their slot (UTC)',
+        slot_polls, null, false
+    from result_minutes_past_slot
 {% for window in windows %}
-{% set section = 2 if window.name == 'result' else 5 %}
-{% set gated = 'true' if window.name == 'result' else 'false' %}
-{% set label = '' if window.name == 'result' else 'exploratory, seen before registration: ' %}
+{% set is_result = window.name == 'result' %}
+{% set stall_section = 2 if is_result else 5 %}
+{% set partial_section = 3 if is_result else 5 %}
+{% set partial_offset = 0 if is_result else 20 %}
+{% set label = '' if is_result else 'exploratory and not part of the result: ' %}
     union all
-    select {{ section }}, 1, '{{ label }}stalls', stalls, null, {{ gated }}
+    select {{ stall_section }}, 1, '{{ label }}stalls', stalls, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section }}, 2, '{{ label }}median duration, poll-equivalent minutes',
-        median_poll_minutes::numeric, null, {{ gated }}
+    select {{ stall_section }}, 2, '{{ label }}median duration, poll-equivalent minutes',
+        median_poll_minutes::numeric, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section }}, 3, '{{ label }}longest duration, poll-equivalent minutes',
-        longest_poll_minutes, null, {{ gated }}
+    select {{ stall_section }}, 3, '{{ label }}longest duration, poll-equivalent minutes',
+        longest_poll_minutes, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section }}, 4, '{{ label }}median duration, elapsed minutes',
-        median_elapsed_minutes::numeric, null, {{ gated }}
+    select {{ stall_section }}, 4, '{{ label }}median duration, elapsed minutes',
+        median_elapsed_minutes::numeric, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section }}, 5, '{{ label }}longest duration, elapsed minutes',
-        longest_elapsed_minutes, null, {{ gated }}
+    select {{ stall_section }}, 5, '{{ label }}longest duration, elapsed minutes',
+        longest_elapsed_minutes, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section }}, 6, '{{ label }}share of slot polls inside a stall',
-        round(stall_polls::numeric / nullif(slot_polls, 0), 6), null, {{ gated }}
+    select {{ stall_section }}, 6, '{{ label }}share of slot polls inside a stall',
+        round(stall_polls::numeric / nullif(slot_polls, 0), 6), null, true
     from {{ window.name }}_summary
     union all
-    select {{ section }}, 7, '{{ label }}stalls cut at the window start',
-        cut_at_start, null, {{ gated }}
+    select {{ stall_section }}, 7, '{{ label }}stalls cut at the window start',
+        cut_at_start, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section }}, 8, '{{ label }}stalls cut at the window end',
-        cut_at_end, null, {{ gated }}
+    select {{ stall_section }}, 8, '{{ label }}stalls cut at the window end',
+        cut_at_end, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section + 1 if window.name == 'result' else section }},
-        {{ 1 if window.name == 'result' else 9 }}, '{{ label }}partial polls',
-        partial_polls, null, {{ gated }}
+    select {{ stall_section }}, 9,
+        '{{ label }}confirmed freezes: stalls holding a partial poll inside the window',
+        confirmed_freezes, null, true
     from {{ window.name }}_summary
     union all
-    select {{ section + 1 if window.name == 'result' else section }},
-        {{ 2 if window.name == 'result' else 10 }},
+    select {{ stall_section }}, 10,
+        '{{ label }}confirmed freezes: median duration, poll-equivalent minutes',
+        confirmed_median_poll_minutes::numeric, null, true
+    from {{ window.name }}_summary
+    union all
+    select {{ stall_section }}, 11,
+        '{{ label }}confirmed freezes: longest duration, poll-equivalent minutes',
+        confirmed_longest_poll_minutes, null, true
+    from {{ window.name }}_summary
+    union all
+    select {{ stall_section }}, 12,
+        '{{ label }}confirmed freezes: median duration, elapsed minutes',
+        confirmed_median_elapsed_minutes::numeric, null, true
+    from {{ window.name }}_summary
+    union all
+    select {{ stall_section }}, 13,
+        '{{ label }}confirmed freezes: longest duration, elapsed minutes',
+        confirmed_longest_elapsed_minutes, null, true
+    from {{ window.name }}_summary
+    union all
+    select {{ partial_section }}, {{ partial_offset }} + 1, '{{ label }}partial polls',
+        partial_polls, null, true
+    from {{ window.name }}_summary
+    union all
+    select {{ partial_section }}, {{ partial_offset }} + 2,
         '{{ label }}share of slot polls that are partial',
-        round(partial_polls::numeric / nullif(slot_polls, 0), 6), null, {{ gated }}
+        round(partial_polls::numeric / nullif(slot_polls, 0), 6), null, true
     from {{ window.name }}_summary
     union all
-    select {{ section + 1 if window.name == 'result' else section }},
-        {{ 3 if window.name == 'result' else 11 }}, '{{ label }}partial polls inside a stall',
-        partial_polls_in_stalls, null, {{ gated }}
+    select {{ partial_section }}, {{ partial_offset }} + 3, '{{ label }}partial polls inside a stall',
+        partial_polls_in_stalls, null, true
     from {{ window.name }}_summary
+    union all
+    select {{ partial_section }}, {{ partial_offset }} + 3 + schedule_order,
+        '{{ label }}partial polls, schedule ' || schedule
+            || ' (fewer than ' || full_poll_rows || ' half-hours)',
+        partial_polls, null, true
+    from {{ window.name }}_schedules
+{% if not is_result %}
+    union all
+    select 5, 40, '{{ label }}slot polls', slot_polls, null, true
+    from {{ window.name }}_summary
+{% endif %}
+    union all
+    select {{ 7 if is_result else 5 }}, {{ 0 if is_result else 40 }} + schedule_order,
+        '{{ label }}capture schedule ' || schedule,
+        slot_polls,
+        'first slot poll ' || to_char(first_poll at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS')
+            || ' UTC; last slot poll '
+            || to_char(last_poll at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS')
+            || ' UTC; full poll ' || full_poll_rows || ' half-hours; basis: ' || basis,
+        true
+    from {{ window.name }}_schedules
+    where slot_polls > 0
 {% endfor %}
     union all
     select 4, row_number() over (order by label)::int,
-        'stalls starting ' || label || ' (split informed by the exploratory stalls)',
+        'stalls starting ' || label || ' (split informed by the long freezes of August and '
+            || 'September 2026 and the stalls of 1 to 24 October 2026)',
         stalls, null, true
     from result_blocks
+    union all
+    select 6, schedule_order * 10 + band_position,
+        'runs of unchanged slot polls, schedule ' || schedule || ': ' || band || ' in the window',
+        runs,
+        'cut at the window start: ' || cut_at_start || '; cut at the window end: ' || cut_at_end,
+        true
+    from result_band_counts
 )
 
 select
     output_rows.section,
     output_rows.item,
     case when output_rows.is_gated and not gate.is_reached then null else output_rows.value end as value,
-    output_rows.detail
+    case when output_rows.is_gated and not gate.is_reached then null else output_rows.detail end as detail
 from output_rows
 cross join gate
 order by output_rows.section, output_rows.position

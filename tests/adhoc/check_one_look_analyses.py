@@ -1,4 +1,4 @@
-"""Check the one-look analyses (Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29, Q30) on worked rows.
+"""Check the one-look analyses (Q1, Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29, Q30) on worked rows.
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -12,9 +12,11 @@ Run from the repository root with the dbt environment set, for example:
 """
 
 import hashlib
+import math
 import os
-from datetime import date, datetime, timezone
-from decimal import Decimal
+from datetime import date, datetime, timedelta, timezone
+from decimal import ROUND_HALF_UP, Decimal
+from fractions import Fraction
 
 import psycopg
 
@@ -62,19 +64,511 @@ NOT_REACHED_VARS = {
 BOOTSTRAP_SEED = 20261012
 BOOTSTRAP_DRAWS = 1000
 
-# Q10's rows: (period_start UTC, complete trajectory, error_24h, error_4h, error_final).
-# Local (Europe/London) dates in summer time are an hour ahead of UTC.
+# Cases on the project's own values of the rule boundaries that are vars (the
+# part not seen after 2026-09-10 05:30 UTC, the poll schedule switch at slot
+# 11:00 that day, Q27's record to 2026-10-31 23:30 UTC and its window from
+# 1 November), with a cutoff later than all of them, so a mistyped var fails.
+PROJECT_VALUES_VARS = {
+    "analysis_read_until": "2026-11-02 00:00:00+00",
+    "forecast_drift_half_hours_needed": 1,
+    "forecast_stalls_days_needed": 1,
+}
+# Slot polls after that cutoff, (slot, first poll in its slot): three slots
+# open the forecast gates; without the last, two do not.
+PROJECT_VALUES_LOOK_AHEAD = (
+    ("2026-11-02 00:30+00", True),
+    ("2026-11-02 01:00+00", True),
+    ("2026-11-02 01:00+00", False),
+    ("2026-11-02 01:30+00", True),
+)
+
+
+def project_values_look_ahead(gate_open=True):
+    """The look-ahead slot polls as SQL values: (poll_slot, is_first_poll_in_slot)."""
+
+    polls = PROJECT_VALUES_LOOK_AHEAD
+    if not gate_open:
+        polls = PROJECT_VALUES_LOOK_AHEAD[:-1]
+    rows = []
+    for poll_slot, is_first in polls:
+        rows.append(f"('{poll_slot}', {str(is_first).lower()})")
+    return ", ".join(rows)
+
+
+# Q1's verdict on drift rows: (period_start UTC, drift, complete, drift as
+# published, complete as published). Each case is one insert.
+Q1_VERDICT = "q1_forecast_drift_verdict"
+Q1_VERDICT_FIXTURES = """
+create temporary table synthetic_drifts (
+    period_start timestamptz,
+    drift integer,
+    has_complete_trajectory boolean,
+    as_published_drift integer,
+    as_published_has_complete_trajectory boolean
+) on commit drop;
+{drift_rows};
+create temporary table synthetic_slot_polls (
+    poll_slot timestamptz,
+    is_first_poll_in_slot boolean
+) on commit drop;
+insert into synthetic_slot_polls values {look_ahead_polls};
+"""
+Q1_VERDICT_TABLES = {
+    "int_carbon_error_by_period": "pg_temp.synthetic_drifts",
+    "int_carbon_forecast__revisions": "pg_temp.synthetic_slot_polls",
+}
+
+# The exact half weight: Monday 14 and Tuesday 15 September 2026 (UTC), so the
+# span holds 48 half-hours of each. Monday's four population half-hours (-3 at
+# 00:00, 06:00 and 12:00, 0 at 18:00) and Tuesday's one (+5 at 23:30, 00:30
+# on Wednesday in London) weigh 48 / 4 against 48 / 1: S x P / N gives 48 and
+# 192, total 384. In ascending order the cumulative weight reaches 192, half,
+# at the 0, so the weighted median is the mean of 0 and +5, 2.5. Weighted
+# positive share 192 / 336 = 4 / 7 (counting the 0's weight it would be 1 / 2):
+# supported. Unweighted: median -3, positive share 1 / 4: contradicted.
+Q1_EXACT_HALF_ROWS = """
+insert into synthetic_drifts values
+    ('2026-09-14 00:00+00', -3, true, -3, true),
+    ('2026-09-14 06:00+00', -3, true, -3, true),
+    ('2026-09-14 12:00+00', -3, true, -3, true),
+    ('2026-09-14 18:00+00', 0, true, 0, true),
+    ('2026-09-15 23:30+00', 5, true, 5, true)"""
+CONTRADICTED = "contradicted: downward drift"
+SUPPORTED = "supported: upward drift"
+Q1_EXACT_HALF_EXPECTED = {
+    (): dict(
+        complete_half_hours=5,
+        first_half_hour="2026-09-14 00:00:00+00:00",
+        last_half_hour="2026-09-15 23:30:00+00:00",
+        half_hours_needed=1,
+        population_is_reached=True,
+        reported_verdict=CONTRADICTED,
+        median_drift=-3.0,
+        positive_share="0.250000",
+        as_published_half_hours=5,
+        as_published_median_drift=-3.0,
+        as_published_positive_share="0.250000",
+        as_published_verdict=CONTRADICTED,
+        weekday_reweighted_median_drift=2.5,
+        weekday_reweighted_positive_share="0.571429",
+        weekday_reweighted_verdict=SUPPORTED,
+        part_not_seen_half_hours=5,
+        part_not_seen_median_drift=-3.0,
+        part_not_seen_positive_share="0.250000",
+        part_not_seen_verdict=CONTRADICTED,
+    )
+}
+
+# Every threshold on its boundary: 20 consecutive half-hours on Friday
+# 11 September 2026 (one UTC weekday, so every weight is equal, and all after
+# 2026-09-10 05:30 UTC). Drifts nine -1 and eleven +2: median 2, positive share
+# 11 / 20 = 0.55, supported. As published nine +1 and eleven -2: median -2,
+# share 9 / 20 = 0.45, contradicted. The two differ, so no direction is
+# reported.
+Q1_THRESHOLD_ROWS = """
+insert into synthetic_drifts
+select
+    timestamptz '2026-09-11 00:00+00' + (number - 1) * interval '30 minutes',
+    case when number <= 9 then -1 else 2 end,
+    true,
+    case when number <= 9 then 1 else -2 end,
+    true
+from generate_series(1, 20) as numbers (number)"""
+Q1_THRESHOLD_EXPECTED = {
+    (): dict(
+        complete_half_hours=20,
+        population_is_reached=True,
+        reported_verdict="not robust to frozen polls: no directional verdict",
+        median_drift=2.0,
+        positive_share="0.550000",
+        as_published_median_drift=-2.0,
+        as_published_positive_share="0.450000",
+        as_published_verdict=CONTRADICTED,
+        weekday_reweighted_median_drift=2.0,
+        weekday_reweighted_positive_share="0.550000",
+        weekday_reweighted_verdict=SUPPORTED,
+        part_not_seen_half_hours=20,
+        part_not_seen_median_drift=2.0,
+        part_not_seen_positive_share="0.550000",
+        part_not_seen_verdict=SUPPORTED,
+    )
+}
+# The same rows with two slot polls after the cutoff: only counts.
+Q1_VERDICT_GATED = (
+    "median_drift",
+    "positive_share",
+    "as_published_half_hours",
+    "as_published_median_drift",
+    "as_published_positive_share",
+    "as_published_verdict",
+    "weekday_reweighted_median_drift",
+    "weekday_reweighted_positive_share",
+    "weekday_reweighted_verdict",
+    "part_not_seen_median_drift",
+    "part_not_seen_positive_share",
+    "part_not_seen_verdict",
+)
+Q1_THRESHOLD_NOT_REACHED_EXPECTED = {
+    (): dict(
+        complete_half_hours=20,
+        population_is_reached=False,
+        reported_verdict="population not reached: no result",
+        part_not_seen_half_hours=20,
+    )
+}
+
+# The part not seen starts after 2026-09-10 05:30 UTC, the project's value:
+# -3 at 04:30, 05:00 and 05:30 (seen) and +3 at 06:00 and 06:30 (not seen).
+# All five: median -3, share 2 / 5, contradicted. The part not seen: two, median
+# 3, share 1, supported; the reported verdict stays the main one.
+Q1_PART_NOT_SEEN_ROWS = """
+insert into synthetic_drifts values
+    ('2026-09-10 04:30+00', -3, true, -3, true),
+    ('2026-09-10 05:00+00', -3, true, -3, true),
+    ('2026-09-10 05:30+00', -3, true, -3, true),
+    ('2026-09-10 06:00+00', 3, true, 3, true),
+    ('2026-09-10 06:30+00', 3, true, 3, true)"""
+Q1_PART_NOT_SEEN_EXPECTED = {
+    (): dict(
+        complete_half_hours=5,
+        reported_verdict=CONTRADICTED,
+        median_drift=-3.0,
+        positive_share="0.400000",
+        weekday_reweighted_verdict=CONTRADICTED,
+        part_not_seen_half_hours=2,
+        part_not_seen_median_drift=3.0,
+        part_not_seen_positive_share="1.000000",
+        part_not_seen_verdict=SUPPORTED,
+    )
+}
+
+
+def q1_verdict_fixtures(drift_rows, gate_open=True):
+    return Q1_VERDICT_FIXTURES.format(
+        drift_rows=drift_rows,
+        look_ahead_polls=project_values_look_ahead(gate_open),
+    )
+
+
+# Q1's beside analysis on half-hours given as (period_start UTC, drift, polls),
+# each poll (horizon seconds, forecast, counted). Every poll is the first of
+# its slot; the look-ahead polls follow them.
+Q1_BESIDE = "q1_forecast_drift_beside"
+Q1_SEED = "q1-2026-10-31"
+Q1_BESIDE_FIXTURES = """
+create temporary table synthetic_beside_drifts (
+    period_start timestamptz,
+    drift integer,
+    has_complete_trajectory boolean
+) on commit drop;
+insert into synthetic_beside_drifts values {drift_rows};
+create temporary table synthetic_beside_revisions (
+    period_start timestamptz,
+    horizon_seconds numeric,
+    forecast integer,
+    is_counted_poll boolean,
+    is_first_poll_in_slot boolean,
+    poll_slot timestamptz
+) on commit drop;
+insert into synthetic_beside_revisions values {poll_rows};
+"""
+Q1_BESIDE_TABLES = {
+    "int_carbon_error_by_period": "pg_temp.synthetic_beside_drifts",
+    "int_carbon_forecast__revisions": "pg_temp.synthetic_beside_revisions",
+}
+
+
+def q1_beside_fixtures(half_hours, gate_open=True):
+    drift_rows = []
+    poll_rows = []
+    for period_start, drift, polls in half_hours:
+        drift_rows.append(f"('{period_start}', {drift}, true)")
+        for horizon_seconds, forecast, is_counted in polls:
+            poll_rows.append(
+                f"('{period_start}', {horizon_seconds}, {forecast}, "
+                f"{str(is_counted).lower()}, true, null)"
+            )
+    polls = PROJECT_VALUES_LOOK_AHEAD
+    if not gate_open:
+        polls = PROJECT_VALUES_LOOK_AHEAD[:-1]
+    for poll_slot, is_first in polls:
+        poll_rows.append(
+            f"(null, null, null, false, {str(is_first).lower()}, '{poll_slot}')"
+        )
+    return Q1_BESIDE_FIXTURES.format(
+        drift_rows=", ".join(drift_rows), poll_rows=",\n    ".join(poll_rows)
+    )
+
+
+def one_change_half_hour(period_start, drift):
+    """A half-hour whose two counted polls differ by its drift: one change, no pair."""
+
+    return (period_start, drift, ((3600, 100, True), (1800, 100 + drift, True)))
+
+
+# Forecasts 100, 101, 100, 101, 100 in descending horizon: changes +1, -1, +1,
+# -1, pairs (1, -1), (-1, 1), (1, -1), r = -1 exactly. Its drift is 0, and it
+# reads the same reversed.
+Q1_ALTERNATING = (
+    (
+        "2026-09-20 12:00+00",
+        0,
+        (
+            (7200, 100, True),
+            (5400, 101, True),
+            (3600, 100, True),
+            (1800, 101, True),
+            (0, 100, True),
+        ),
+    ),
+)
+# Two half-hours on one UTC date, 12 September 2026; the second starts at
+# 23:30 UTC, 13 September in London. The first: 100, 102, 102, 101 (changes
+# +2, 0, -1, drift +1), then a poll inside the half-hour, never used. The
+# second: 200, 200, 203, 205 (changes 0, +3, +2, drift +5), with a first poll
+# of its slot that is not counted between them. Pairs (2, 0), (0, -1), (0, 3),
+# (3, 2): n 4, sums x 5, y 4, xy 6, x^2 13, y^2 14, so r = (4 x 6 - 5 x 4) /
+# sqrt((4 x 13 - 25)(4 x 14 - 16)) = 4 / sqrt(1080) = 0.121716. Without the
+# zeros the pairs are (2, -1) and (3, 2): r = 1. Two of six changes are 0. One
+# date, so every draw repeats the population.
+Q1_ZEROS_KEPT = (
+    (
+        "2026-09-12 10:00+00",
+        1,
+        (
+            (7200, 100, True),
+            (5400, 102, True),
+            (3600, 102, True),
+            (1800, 101, True),
+            (-1, 90, True),
+        ),
+    ),
+    (
+        "2026-09-12 23:30+00",
+        5,
+        (
+            (7200, 200, True),
+            (5400, 200, True),
+            (4500, 250, False),
+            (3600, 203, True),
+            (1800, 205, True),
+        ),
+    ),
+)
+Q1_ZEROS_KEPT_PAIRS = ((2, 0), (0, -1), (0, 3), (3, 2))
+# Two dates holding -2 and 4 in equal numbers: every draw's mean is -2, 1 or
+# 4, and each end holds over 5% of the draws (238 and 247 with this seed), so
+# the interval is exactly -2 to 4. No half-hour has two changes, so there is
+# no pair and no r in any draw.
+Q1_TWO_DATES = (
+    one_change_half_hour("2026-09-21 10:00+00", -2),
+    one_change_half_hour("2026-09-21 11:00+00", -2),
+    one_change_half_hour("2026-09-22 10:00+00", 4),
+    one_change_half_hour("2026-09-22 11:00+00", 4),
+)
+# Three dates, the last with two half-hours: the interval comes from the
+# independent model of the picks and of percentile_cont below.
+Q1_THREE_DATES = (
+    one_change_half_hour("2026-09-23 12:00+00", 0),
+    one_change_half_hour("2026-09-24 12:00+00", 3),
+    one_change_half_hour("2026-09-25 12:00+00", 6),
+    one_change_half_hour("2026-09-25 13:00+00", 9),
+)
+
+
+def twelve_dates():
+    """Twelve dates from 26 September 2026, one half-hour each, drifts 1, 2,
+    4, ... 2048: almost every draw has its own mean, so the interval moves
+    with any change to the picks."""
+
+    half_hours = []
+    for number in range(12):
+        utc_date = date(2026, 9, 26) + timedelta(days=number)
+        half_hours.append(one_change_half_hour(f"{utc_date} 12:00+00", 2**number))
+    return tuple(half_hours)
+
+
+Q1_TWELVE_DATES = twelve_dates()
+
+POPULATION_ROW = (1, "population: complete half-hours (1 needed)", None)
+UTC_DATES_ROW = (1, "UTC dates of the population", None)
+READ_POSSIBLE_ROW = (1, "read possible", None)
+MEAN_ROW = (2, "mean drift, gCO2/kWh", None)
+R_ROW = (3, "Pearson's r of consecutive changes within a half-hour", None)
+PAIRS_ROW = (3, "pairs of consecutive changes within a half-hour", None)
+CHANGES_ROW = (3, "changes between consecutive counted polls", None)
+ZERO_SHARE_ROW = (3, "share of changes equal to 0", None)
+SUM_CHECK_ROW = (
+    3,
+    "population half-hours whose changes do not sum to their drift (expected 0)",
+    None,
+)
+READING_ROW = (4, "reading", None)
+MEAN_LABEL = (
+    "not called pre-registered: an exploration on 11 September 2026 computed a "
+    "near preview"
+)
+R_LABEL = (
+    "not called pre-registered: a published analysis (gridcast) reports "
+    "negative values on overlapping dates"
+)
+INTERVAL_UNAVAILABLE = (
+    "; interval unavailable: fewer than 900 of 1000 draws have a value"
+)
+READING = (
+    "Q1 shows the usual direction of change, not whether the forecast is efficient."
+)
+
+
+def interval_cells(value, low, high, draws_with_value=1000):
+    return dict(
+        value=value,
+        interval_low=low,
+        interval_high=high,
+        draws_with_value=draws_with_value,
+    )
+
+
+Q1_ALTERNATING_EXPECTED = {
+    POPULATION_ROW: dict(n=1),
+    UTC_DATES_ROW: dict(n=1),
+    READ_POSSIBLE_ROW: dict(detail="yes"),
+    MEAN_ROW: dict(
+        n=1, detail=MEAN_LABEL, **interval_cells("0.000000", "0.000000", "0.000000")
+    ),
+    R_ROW: dict(
+        n=3, detail=R_LABEL, **interval_cells("-1.000000", "-1.000000", "-1.000000")
+    ),
+    PAIRS_ROW: dict(n=3),
+    CHANGES_ROW: dict(n=4),
+    ZERO_SHARE_ROW: dict(n=4, value="0.000000"),
+    SUM_CHECK_ROW: dict(n=0),
+    READING_ROW: dict(detail=READING),
+}
+Q1_ZEROS_KEPT_EXPECTED = {
+    POPULATION_ROW: dict(n=2),
+    UTC_DATES_ROW: dict(n=1),
+    MEAN_ROW: dict(n=2, **interval_cells("3.000000", "3.000000", "3.000000")),
+    R_ROW: dict(n=4, **interval_cells("0.121716", "0.121716", "0.121716")),
+    PAIRS_ROW: dict(n=4),
+    CHANGES_ROW: dict(n=6),
+    ZERO_SHARE_ROW: dict(n=6, value="0.333333"),
+    SUM_CHECK_ROW: dict(n=0),
+}
+Q1_TWO_DATES_EXPECTED = {
+    POPULATION_ROW: dict(n=4),
+    UTC_DATES_ROW: dict(n=2),
+    MEAN_ROW: dict(n=4, **interval_cells("1.000000", "-2.000000", "4.000000")),
+    R_ROW: dict(
+        n=0,
+        detail=R_LABEL + INTERVAL_UNAVAILABLE,
+        **interval_cells(None, None, None, 0),
+    ),
+    PAIRS_ROW: dict(n=0),
+    CHANGES_ROW: dict(n=4),
+    ZERO_SHARE_ROW: dict(n=4, value="0.000000"),
+    SUM_CHECK_ROW: dict(n=0),
+}
+Q1_TWO_DATES_EARLY_EXPECTED = {
+    POPULATION_ROW: dict(n=4),
+    UTC_DATES_ROW: dict(n=2),
+    READ_POSSIBLE_ROW: dict(detail="no"),
+    MEAN_ROW: dict(n=4, detail=MEAN_LABEL),
+    R_ROW: dict(n=0, detail=R_LABEL),
+    PAIRS_ROW: dict(n=0),
+    CHANGES_ROW: dict(n=4),
+    ZERO_SHARE_ROW: dict(n=4),
+    SUM_CHECK_ROW: dict(n=0),
+}
+Q1_BESIDE_GATED = (
+    {1, 2, 3, 4},
+    ("value", "interval_low", "interval_high", "draws_with_value"),
+)
+
+
+def drift_values_by_date(half_hours):
+    """Each UTC date's drifts, dates in ascending order."""
+
+    by_date = {}
+    for period_start, drift, _polls in half_hours:
+        utc_date = period_start[:10]
+        if utc_date not in by_date:
+            by_date[utc_date] = []
+        by_date[utc_date].append(drift)
+    values = []
+    for utc_date in sorted(by_date):
+        values.append(by_date[utc_date])
+    return values
+
+
+def q1_model_mean_expected(half_hours):
+    """The mean row with its interval from the independent model."""
+
+    date_values = drift_values_by_date(half_hours)
+    draws = draw_statistics(date_values, Q1_SEED, mean_of)
+    population_values = []
+    for values in date_values:
+        population_values += values
+    return {
+        MEAN_ROW: dict(
+            n=len(population_values),
+            **interval_cells(
+                six_decimals(mean_of(population_values)),
+                six_decimals(percentile_cont(draws, Fraction(1, 20))),
+                six_decimals(percentile_cont(draws, Fraction(19, 20))),
+            ),
+        )
+    }
+
+
+# Q10's rows: (period_start UTC, complete trajectory, error_24h, error_4h,
+# error_final, error_api_final, and the exact horizons of the 24-hour, 4-hour
+# and final picks in seconds). Every actual is 200. Local (Europe/London)
+# dates in summer time are an hour ahead of UTC.
+#
+# On the common sample the 24-hour picks are 86,398.5 seconds ahead (the
+# usual pick, polled 1.5 seconds after the half-hour), 88,198.5 (a fall-back),
+# exactly 86,400.0 (not a fall-back), 86,400.1 (a fall-back) and 86,398.5:
+# shortest 86,398.5, median 86,400, longest 88,198.5, two fall-backs. The
+# 4-hour picks: 14,398.5 three times, 14,399 and 16,198.5 (one fall-back).
+# The final picks: 1,798.5 four times and 0.1. Every pick is on the
+# half-hour schedule.
 Q10_ROWS = """
-    ('2026-08-28 10:00+00', true, 10, -4, 2),       -- Friday: weekday
-    ('2026-08-30 23:30+00', true, -6, 3, -1),       -- Monday 31 August locally: bank holiday (Sunday in UTC)
-    ('2026-08-29 12:00+00', true, 4, 4, 4),         -- Saturday: weekend
-    ('2026-08-28 23:30+00', true, 2, -2, 0),        -- Saturday locally: weekend (Friday in UTC)
-    ('2026-08-28 11:00+00', true, null, 5, 1),      -- no 24-hour forecast: dropped
-    ('2026-08-28 12:00+00', true, 3, null, null),   -- no 4-hour or final forecast: dropped
-    ('2026-08-28 13:00+00', false, 100, 100, 100),  -- incomplete trajectory: not in Q1's population
-    ('2026-08-16 12:00+00', true, 100, 100, 100),   -- before the population starts
-    ('2026-09-05 00:30+00', true, 100, 100, 100),   -- after analysis_read_until
-    ('2026-09-05 00:00+00', true, 0, 8, -3)         -- at analysis_read_until; Saturday: weekend
+    ('2026-08-28 10:00+00', true, 10, -4, 2, 3, 86398.5, 14398.5, 1798.5),       -- Friday: weekday
+    ('2026-08-30 23:30+00', true, -6, 3, -1, -2, 88198.5, 14398.5, 1798.5),      -- Monday 31 August locally: bank holiday (Sunday in UTC)
+    ('2026-08-29 12:00+00', true, 4, 4, 4, null, 86400.0, 14399, 0.1),           -- Saturday: weekend
+    ('2026-08-28 23:30+00', true, 2, -2, 0, 1, 86400.1, 16198.5, 1798.5),        -- Saturday locally: weekend (Friday in UTC)
+    ('2026-08-28 11:00+00', true, null, 5, 1, 50, null, 14398.5, 1798.5),        -- no 24-hour forecast: dropped
+    ('2026-08-28 12:00+00', true, 3, null, null, 50, 86398.5, null, null),       -- no 4-hour or final forecast: dropped
+    ('2026-08-28 13:00+00', false, 100, 100, 100, 50, 86398.5, 14398.5, 1798.5), -- incomplete trajectory: not in Q1's population
+    ('2026-08-16 12:00+00', true, 100, 100, 100, 50, 86398.5, 14398.5, 1798.5),  -- before the population starts
+    ('2026-09-05 00:30+00', true, 100, 100, 100, 50, 86398.5, 14398.5, 1798.5),  -- after analysis_read_until
+    ('2026-09-05 00:00+00', true, 0, 8, -3, -6, 86398.5, 14398.5, 1798.5)        -- at analysis_read_until; Saturday: weekend
+"""
+
+# The outturn of the reference half-hours (UTC); each target's actual is 200.
+# Persistence reads the half-hour that ended at or before the pick's poll:
+# the 12:00 target on 29 August has its 24-hour pick polled at exactly 12:00:00
+# on the 28th (half-hour 11:30) and its final pick at 11:59:59.9 (half-hour
+# 11:00). The day before is the half-hour 24 hours earlier.
+#   persistence, 24 hours: 10, +4, -5, +1 (the 86,400.1 pick's half-hour, 22:30
+#     on 27 August, has no outturn and is left out): MAE 20 / 4, bias 10 / 4
+#   persistence, 4 hours: 6, -3, 8, -2, 0: MAE 19 / 5, bias 9 / 5
+#   persistence, half an hour: 2, 3, 0, -1, -4: MAE 10 / 5, bias 0
+#   day before: 5, 0, 7, -10 (5 September's half-hour 24 hours earlier has
+#     none): MAE 22 / 4, bias 2 / 4
+Q10_OUTTURN_ROWS = """
+insert into synthetic_q10_outturn values
+    ('2026-08-27 09:30+00', 190), ('2026-08-29 22:30+00', 205),
+    ('2026-08-28 11:30+00', 196), ('2026-09-03 23:30+00', 199),
+    ('2026-08-28 05:30+00', 194), ('2026-08-30 19:00+00', 202),
+    ('2026-08-29 07:30+00', 203), ('2026-08-28 18:30+00', 192),
+    ('2026-09-04 19:30+00', 200),
+    ('2026-08-28 09:00+00', 198), ('2026-08-30 22:30+00', 201),
+    ('2026-08-29 11:00+00', 197), ('2026-08-28 22:30+00', 200),
+    ('2026-09-04 23:00+00', 204),
+    ('2026-08-27 10:00+00', 195), ('2026-08-29 23:30+00', 210),
+    ('2026-08-28 12:00+00', 200), ('2026-08-27 23:30+00', 193);
 """
 
 # Slot polls after analysis_read_until (5 September 00:00): three settle a
@@ -89,26 +583,88 @@ Q10_LOOK_AHEAD_POLLS = """
 """
 THIRD_POLL_AFTER_CUTOFF = ",\n    ('2026-09-05 02:00+00', true)"
 
-Q10_FIXTURES = f"""
+Q10_FIXTURES = """
 create temporary table synthetic_carbon_error (
     period_start timestamptz,
     has_complete_trajectory boolean,
     error_24h numeric,
     error_4h numeric,
-    error_final numeric
+    error_final numeric,
+    error_api_final numeric,
+    horizon_24h_seconds numeric,
+    horizon_4h_seconds numeric,
+    final_horizon_seconds numeric,
+    actual numeric default 200
 ) on commit drop;
-insert into synthetic_carbon_error values {Q10_ROWS};
+insert into synthetic_carbon_error (
+    period_start, has_complete_trajectory, error_24h, error_4h, error_final,
+    error_api_final, horizon_24h_seconds, horizon_4h_seconds, final_horizon_seconds
+) values {error_rows};
+create temporary table synthetic_q10_outturn (
+    period_start timestamptz,
+    actual numeric
+) on commit drop;
+{outturn_rows}
 create temporary table synthetic_slot_polls (
     poll_slot timestamptz,
     is_first_poll_in_slot boolean
 ) on commit drop;
-insert into synthetic_slot_polls values {{look_ahead_polls}};
+insert into synthetic_slot_polls values {look_ahead_polls};
 """
 
 
-def q10_fixtures(third_poll=THIRD_POLL_AFTER_CUTOFF):
+def q10_fixtures(
+    third_poll=THIRD_POLL_AFTER_CUTOFF,
+    error_rows=Q10_ROWS,
+    outturn_rows=Q10_OUTTURN_ROWS,
+):
     polls = Q10_LOOK_AHEAD_POLLS.format(third_poll=third_poll)
-    return Q10_FIXTURES.format(look_ahead_polls=polls)
+    return Q10_FIXTURES.format(
+        error_rows=error_rows, outturn_rows=outturn_rows, look_ahead_polls=polls
+    )
+
+
+# Twelve settlement dates, 18 to 29 August 2026, one common-sample half-hour
+# each at 12:00 UTC: 24-hour errors 1, 2, 4, ... 2048 (MAE and bias 4,095 /
+# 12), 4-hour errors 0 to 11 (66 / 12) and final errors 0, -1, 2, -3, ... -11
+# (MAE 66 / 12, bias -6 / 12). Almost every draw has its own 24-hour figures,
+# so the intervals move with any change to the picks.
+def q10_twelve_dates_rows():
+    rows = []
+    for number in range(12):
+        period_start = date(2026, 8, 18) + timedelta(days=number)
+        final_error = number if number % 2 == 0 else -number
+        rows.append(
+            f"('{period_start} 12:00+00', true, {2**number}, {number}, {final_error}, "
+            "null, 86398.5, 14398.5, 1798.5)"
+        )
+    return ",\n    ".join(rows)
+
+
+# On the project's own boundaries, cutoff 2 November 2026: 05:30 on 10
+# September is seen and 06:00 is not; the 24-hour pick polled at 10:30:00.7
+# that day ran on the half-hour schedule and the one at 11:05 on :05 and :35;
+# the target at 12:00 UTC on 25 October has its day-before half-hour at 12:00
+# UTC on the 24th (13:00 BST; 12:00 BST, 11:00 UTC, holds another value).
+Q10_PROJECT_VALUES_ROWS = """
+    ('2026-09-10 05:30+00', true, 1, 1, 1, 1, 86398.5, 14398.5, 1798.5),
+    ('2026-09-10 06:00+00', true, 3, -5, 2, 2, 86398.5, 14398.5, 1798.5),
+    ('2026-09-11 10:30+00', true, -1, 4, 0, 0, 86399.3, 14100, 1500),
+    ('2026-09-11 11:00+00', true, 5, 0, -2, 3, 86100, 14100, 1500),
+    ('2026-10-25 12:00+00', true, 2, 2, 2, 4, 86100, 14100, 1500)
+"""
+Q10_PROJECT_VALUES_OUTTURN_ROWS = """
+insert into synthetic_q10_outturn values
+    ('2026-10-24 12:00+00', 190), ('2026-10-24 11:00+00', 230);
+"""
+
+
+def q10_project_values_fixtures(gate_open=True):
+    return Q10_FIXTURES.format(
+        error_rows=Q10_PROJECT_VALUES_ROWS,
+        outturn_rows=Q10_PROJECT_VALUES_OUTTURN_ROWS,
+        look_ahead_polls=project_values_look_ahead(gate_open),
+    )
 
 
 # Q4's days, settlement dates in summer time: A 1 September and B 2 September
@@ -129,6 +685,32 @@ def q10_fixtures(third_poll=THIRD_POLL_AFTER_CUTOFF):
 # A's second half-hour. A U1 value at 12:15 UTC on A matches no error row.
 # B47 holds only a null U1 value and B48 nothing, so B has 46 half-hours with
 # both values.
+#
+# The active cohort's window runs from A's first half-hour (23:00 UTC on 31
+# August) to analysis_read_until (00:00 UTC on 5 September), both included.
+# U1, U2, U4 and U5 each have a PN above 0 in it: active, so every value
+# above stays as it is. The other cohort units:
+#   IE1 (INTELE) and IF1 (INTFR): interconnectors whatever they did; each
+#     has 100 MWh in a top-quintile half-hour that must not count;
+#   IM1 only imports (PN 0, metered -2, and 0 in another half-hour): inactive;
+#   P1 has a PN of 3 in the window's first half-hour only, a row the
+#     shortfall table cannot judge: active;
+#   M1 has no PN, and metered 0 then 2 (first and latest run) at the window's
+#     last half-hour: active, with no PN unit-period;
+#   F1 has PN 0 and metered 3 then 0: active on its first run;
+#   BW1 is active only half an hour before the window, AW1 only half an hour
+#     after the cutoff, and NR1 has no row: all inactive, none with a row in
+#     the window;
+#   EP1 and OP1 are active on a PN in the window; EP1's only shortfall row is
+#     at the cutoff, OP1's only one half an hour before the window, neither
+#     determinable.
+# Nine active units, two interconnectors (one INTELE), four inactive (three
+# with no row in the window); M1 and OP1 have no PN unit-period in the window.
+#
+# Idle unit-periods behind the population half-hours: U5's (PN 0 and metered
+# 0) is idle; U2's at A's third half-hour (PN 0, metered 1) is not, nor is
+# U4's (PN 0 and metered 0 but not determinable). 94 half-hours of U1 and U2
+# and U5's one make 189 determinable unit-periods: an idle share of 1 / 189.
 Q4_FIXTURES = """
 create temporary table synthetic_carbon_error (
     period_start timestamptz,
@@ -140,11 +722,63 @@ create temporary table synthetic_shortfall (
     settlement_date date,
     period_start_utc timestamptz,
     unexplained_shortfall_mwh numeric,
-    determinability text
+    determinability text,
+    pn_mwh numeric default 1,
+    metered_mwh numeric default 1
 ) on commit drop;
-create temporary table synthetic_cohort (national_grid_bm_unit text) on commit drop;
+create temporary table synthetic_cohort (
+    national_grid_bm_unit text,
+    elexon_bm_unit text,
+    fuel_type text,
+    fuel_group text
+) on commit drop;
+create temporary table synthetic_pn_periods (
+    national_grid_bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    pn_mwh numeric,
+    mapping_status text
+) on commit drop;
+create temporary table synthetic_metered_periods (
+    bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    first_quantity_mwh numeric,
+    latest_quantity_mwh numeric,
+    mapping_status text,
+    mapped_national_grid_bm_unit text
+) on commit drop;
 
-insert into synthetic_cohort values ('U1'), ('U2'), ('U4'), ('U5');
+insert into synthetic_cohort values
+    ('U1', 'E_U1', 'CCGT', 'gas'), ('U2', 'E_U2', 'CCGT', 'gas'),
+    ('U4', 'E_U4', 'CCGT', 'gas'), ('U5', 'E_U5', 'WIND', 'wind'),
+    ('IE1', 'E_IE1', 'INTELE', 'unclassified'), ('IF1', 'E_IF1', 'INTFR', 'interconnector'),
+    ('IM1', 'E_IM1', 'PS', 'pumped storage'), ('P1', 'E_P1', 'OCGT', 'gas'),
+    ('M1', 'E_M1', 'BIOMASS', 'biomass'), ('F1', 'E_F1', 'NPSHYD', 'hydro'),
+    ('BW1', 'E_BW1', 'CCGT', 'gas'), ('AW1', 'E_AW1', 'CCGT', 'gas'),
+    ('NR1', 'E_NR1', 'CCGT', 'gas'), ('EP1', 'E_EP1', 'CCGT', 'gas'),
+    ('OP1', 'E_OP1', 'CCGT', 'gas');
+
+insert into synthetic_pn_periods values
+    ('U1', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('U2', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('U4', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('U5', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
+    ('IE1', '2026-09-01', '2026-09-01 01:30+00', 5, 'mapped'),
+    ('IF1', '2026-09-01', '2026-09-01 01:30+00', 5, 'mapped'),
+    ('IM1', '2026-09-03', '2026-09-03 03:30+00', 0, 'mapped'),
+    ('P1', '2026-09-01', '2026-08-31 23:00+00', 3, 'mapped'),
+    ('F1', '2026-09-03', '2026-09-03 03:30+00', 0, 'mapped'),
+    ('BW1', '2026-08-31', '2026-08-31 22:30+00', 4, 'mapped'),
+    ('AW1', '2026-09-05', '2026-09-05 00:30+00', 4, 'mapped'),
+    ('EP1', '2026-09-01', '2026-09-01 01:00+00', 2, 'mapped'),
+    ('OP1', '2026-09-01', '2026-09-01 01:00+00', 2, 'mapped');
+
+insert into synthetic_metered_periods values
+    ('E_M1', '2026-09-05', '2026-09-05 00:00+00', 0, 2, 'mapped', 'M1'),
+    ('E_F1', '2026-09-03', '2026-09-03 03:30+00', 3, 0, 'mapped', 'F1'),
+    ('E_IM1', '2026-09-03', '2026-09-03 03:30+00', -2, -2, 'mapped', 'IM1'),
+    ('E_IM1', '2026-09-03', '2026-09-03 04:00+00', 0, 0, 'mapped', 'IM1');
 
 create temporary table synthetic_periods on commit drop as
 select
@@ -170,7 +804,11 @@ cross join generate_series(1, 48) as periods (period);
 insert into synthetic_carbon_error
 select
     period_start,
-    case when period % 2 = 1 then period else -period end,
+    case
+        when settlement_date = date '2026-09-02' and period = 39 then {b39_error}
+        when period % 2 = 1 then period
+        else -period
+    end,
     case
         when settlement_date = date '2026-09-03' and period = 1 then 1801
         when settlement_date = date '2026-08-31' then 1801
@@ -204,7 +842,38 @@ select 'U5', settlement_date, period_start, 0, 'determinable'
 from synthetic_periods
 where settlement_date = date '2026-09-01' and period = 2
 union all
-select 'U1', date '2026-09-01', timestamptz '2026-09-01 12:15:00+00', 5, 'determinable';
+select 'U1', date '2026-09-01', timestamptz '2026-09-01 12:15:00+00', 5, 'determinable'
+union all
+select 'IE1', settlement_date, period_start, 100, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-01' and period = 40
+union all
+select 'IF1', settlement_date, period_start, 100, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-02' and period = 40
+union all
+select 'P1', settlement_date, period_start, null, 'pn_incomplete'
+from synthetic_periods
+where settlement_date = date '2026-09-01' and period = 1
+union all
+select 'F1', settlement_date, period_start, 0, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-03' and period = 10
+union all
+select 'IM1', settlement_date, period_start, 2, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-03' and period = 10
+union all
+select 'EP1', date '2026-09-05', timestamptz '2026-09-05 00:00:00+00', null, 'no_metered_value'
+union all
+select 'OP1', date '2026-08-31', timestamptz '2026-08-31 22:30:00+00', null, 'no_metered_value';
+
+update synthetic_shortfall set pn_mwh = 0, metered_mwh = 0
+where national_grid_bm_unit in ('U4', 'U5', 'F1');
+update synthetic_shortfall set pn_mwh = 0
+where national_grid_bm_unit = 'U2' and period_start_utc = timestamptz '2026-09-01 00:00+00';
+update synthetic_shortfall set pn_mwh = 0, metered_mwh = -2
+where national_grid_bm_unit = 'IM1';
 
 create temporary table synthetic_slot_polls (
     poll_slot timestamptz,
@@ -216,12 +885,15 @@ insert into synthetic_slot_polls values
 
 Q10_TABLES = {
     "int_carbon_error_by_period": "pg_temp.synthetic_carbon_error",
+    "int_carbon_outturn__latest": "pg_temp.synthetic_q10_outturn",
     "int_carbon_forecast__revisions": "pg_temp.synthetic_slot_polls",
 }
 Q4_TABLES = {
     "int_carbon_error_by_period": "pg_temp.synthetic_carbon_error",
     "int_shortfall_by_unit_period": "pg_temp.synthetic_shortfall",
     "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+    "int_elexon__pn_period_mapped": "pg_temp.synthetic_pn_periods",
+    "int_elexon__b1610_period_mapped": "pg_temp.synthetic_metered_periods",
     "int_carbon_forecast__revisions": "pg_temp.synthetic_slot_polls",
 }
 
@@ -229,11 +901,53 @@ FIRST = "2026-08-28 10:00:00+00:00"
 LAST = "2026-09-05 00:00:00+00:00"
 Q1_POPULATION = (1, "Q1 one-look half-hours (7 needed)", None)
 ACCURACY = "accuracy on the common sample"
+ABOUT_24_HOURS = "about 24 hours"
+ABOUT_4_HOURS = "about 4 hours"
+ABOUT_HALF_AN_HOUR = "about half an hour"
+LEAD_TIMES = (ABOUT_24_HOURS, ABOUT_4_HOURS, ABOUT_HALF_AN_HOUR)
+WEEKDAY = "settlement date: weekday"
+WEEKEND = "settlement date: weekend"
+BANK_HOLIDAY = "settlement date: bank holiday"
+FALL_BACKS = "fall-back picks: made more than the lead time ahead"
+SCHEDULE = "picks made on the capture schedule: {}"
+PERSISTENCE = (
+    "reference, persistence: outturn of the latest half-hour ended at or "
+    "before the pick's poll"
+)
+PERSISTENCE_LEFT_OUT = (
+    "reference, persistence: left out, no outturn for the reference half-hour"
+)
+DAY_BEFORE = "reference, the same half-hour the day before: outturn 24 hours earlier"
+DAY_BEFORE_LEFT_OUT = (
+    "reference, the same half-hour the day before: left out, no outturn for "
+    "the reference half-hour"
+)
+API_FINAL = "consistency check: error_api_final on the common sample"
+API_FINAL_LEFT_OUT = "consistency check: left out, no error_api_final"
+PART_NOT_SEEN = "the part not seen"
+REFERENCE_LABEL = "context, not a test; outturn as later stored"
+DAY_BEFORE_LABEL = (
+    "context, not a test; outturn as later stored; at the 24-hour lead time "
+    "this half-hour ends 25 to 30 minutes after the forecast is made, 55 to 60 "
+    "for a fall-back pick"
+)
+API_FINAL_LABEL = (
+    "the API's stored final forecast: its timing is not documented, and its "
+    "error on part of this period was seen before 31 October 2026"
+)
+PART_NOT_SEEN_LABEL = (
+    "the part not seen: half-hours after 10 September 2026 05:30 UTC; it never "
+    "changes the result"
+)
+Q10_SEED = "q10-2026-10-31"
+Q10_INTERVAL_UNAVAILABLE = (
+    "interval unavailable: fewer than 900 of 1000 draws have a value"
+)
 
 # (section, item, horizon) -> {column: expected}. The common sample is the
 # five rows with all three errors: 24 hours 10, -6, 4, 2, 0; 4 hours
 # -4, 3, 4, -2, 8; final 2, -1, 4, 0, -3.
-Q10_EXPECTED = {
+Q10_OBSERVED_EXPECTED = {
     Q1_POPULATION: dict(
         half_hours=7,
         first_half_hour=FIRST,
@@ -243,70 +957,275 @@ Q10_EXPECTED = {
     (1, "common sample: all three horizons", None): dict(
         half_hours=5, first_half_hour=FIRST, last_half_hour=LAST
     ),
-    (1, "with a forecast at this horizon", "24 hours"): dict(half_hours=6),
-    (1, "with a forecast at this horizon", "4 hours"): dict(half_hours=6),
-    (1, "with a forecast at this horizon", "final"): dict(half_hours=6),
-    (1, "dropped: no forecast at this horizon", "24 hours"): dict(
+    (1, "with a forecast at this horizon", ABOUT_24_HOURS): dict(half_hours=6),
+    (1, "with a forecast at this horizon", ABOUT_4_HOURS): dict(half_hours=6),
+    (1, "with a forecast at this horizon", ABOUT_HALF_AN_HOUR): dict(half_hours=6),
+    (1, "dropped: no forecast at this horizon", ABOUT_24_HOURS): dict(
         half_hours=1,
         first_half_hour="2026-08-28 11:00:00+00:00",
         last_half_hour="2026-08-28 11:00:00+00:00",
     ),
-    (1, "dropped: no forecast at this horizon", "4 hours"): dict(
+    (1, "dropped: no forecast at this horizon", ABOUT_4_HOURS): dict(
         half_hours=1, first_half_hour="2026-08-28 12:00:00+00:00"
     ),
-    (1, "dropped: no forecast at this horizon", "final"): dict(
+    (1, "dropped: no forecast at this horizon", ABOUT_HALF_AN_HOUR): dict(
         half_hours=1, first_half_hour="2026-08-28 12:00:00+00:00"
     ),
+    # 88,198.5 and 86,400.1 seconds; 16,198.5; the final pick has none.
+    (1, FALL_BACKS, ABOUT_24_HOURS): dict(half_hours=2, detail=None),
+    (1, FALL_BACKS, ABOUT_4_HOURS): dict(half_hours=1, detail=None),
+    (1, FALL_BACKS, ABOUT_HALF_AN_HOUR): dict(half_hours=None, detail="not applicable"),
+    (1, SCHEDULE.format("on the half-hour"), ABOUT_24_HOURS): dict(half_hours=5),
+    (1, SCHEDULE.format("on the half-hour"), ABOUT_4_HOURS): dict(half_hours=5),
+    (1, SCHEDULE.format("on the half-hour"), ABOUT_HALF_AN_HOUR): dict(half_hours=5),
+    (1, SCHEDULE.format(":05 and :35"), ABOUT_24_HOURS): dict(half_hours=0),
+    (1, SCHEDULE.format(":05 and :35"), ABOUT_4_HOURS): dict(half_hours=0),
+    (1, SCHEDULE.format(":05 and :35"), ABOUT_HALF_AN_HOUR): dict(half_hours=0),
     # 24 hours: 22 / 5 and 10 / 5; 4 hours: 21 / 5 and 9 / 5; final: 10 / 5 and 2 / 5.
-    (2, ACCURACY, "24 hours"): dict(
-        half_hours=5, mean_absolute_error="4.400", bias="2.000"
+    (2, ACCURACY, ABOUT_24_HOURS): dict(
+        half_hours=5,
+        mean_absolute_error="4.400",
+        bias="2.000",
+        shortest_horizon_seconds="86398.500",
+        median_horizon_seconds="86400.000",
+        longest_horizon_seconds="88198.500",
     ),
-    (2, ACCURACY, "4 hours"): dict(
-        half_hours=5, mean_absolute_error="4.200", bias="1.800"
+    (2, ACCURACY, ABOUT_4_HOURS): dict(
+        half_hours=5,
+        mean_absolute_error="4.200",
+        bias="1.800",
+        shortest_horizon_seconds="14398.500",
+        median_horizon_seconds="14398.500",
+        longest_horizon_seconds="16198.500",
     ),
-    (2, ACCURACY, "final"): dict(
-        half_hours=5, mean_absolute_error="2.000", bias="0.400"
+    (2, ACCURACY, ABOUT_HALF_AN_HOUR): dict(
+        half_hours=5,
+        mean_absolute_error="2.000",
+        bias="0.400",
+        shortest_horizon_seconds="0.100",
+        median_horizon_seconds="1798.500",
+        longest_horizon_seconds="1798.500",
     ),
     # Weekday: the Friday 10:00 row only.
-    (3, "settlement date: weekday", "24 hours"): dict(
+    (3, WEEKDAY, ABOUT_24_HOURS): dict(
         half_hours=1, mean_absolute_error="10.000", bias="10.000"
     ),
-    (3, "settlement date: weekday", "4 hours"): dict(
+    (3, WEEKDAY, ABOUT_4_HOURS): dict(
         half_hours=1, mean_absolute_error="4.000", bias="-4.000"
     ),
-    (3, "settlement date: weekday", "final"): dict(
+    (3, WEEKDAY, ABOUT_HALF_AN_HOUR): dict(
         half_hours=1, mean_absolute_error="2.000", bias="2.000"
     ),
     # Weekend: 24 hours 4, 2, 0; 4 hours 4, -2, 8 (14 / 3, 10 / 3); final 4, 0, -3 (7 / 3, 1 / 3).
-    (3, "settlement date: weekend", "24 hours"): dict(
+    (3, WEEKEND, ABOUT_24_HOURS): dict(
         half_hours=3, mean_absolute_error="2.000", bias="2.000"
     ),
-    (3, "settlement date: weekend", "4 hours"): dict(
+    (3, WEEKEND, ABOUT_4_HOURS): dict(
         half_hours=3, mean_absolute_error="4.667", bias="3.333"
     ),
-    (3, "settlement date: weekend", "final"): dict(
+    (3, WEEKEND, ABOUT_HALF_AN_HOUR): dict(
         half_hours=3, mean_absolute_error="2.333", bias="0.333"
     ),
-    (3, "settlement date: bank holiday", "24 hours"): dict(
+    (3, BANK_HOLIDAY, ABOUT_24_HOURS): dict(
         half_hours=1, mean_absolute_error="6.000", bias="-6.000"
     ),
-    (3, "settlement date: bank holiday", "4 hours"): dict(
+    (3, BANK_HOLIDAY, ABOUT_4_HOURS): dict(
         half_hours=1, mean_absolute_error="3.000", bias="3.000"
     ),
-    (3, "settlement date: bank holiday", "final"): dict(
+    (3, BANK_HOLIDAY, ABOUT_HALF_AN_HOUR): dict(
         half_hours=1, mean_absolute_error="1.000", bias="-1.000"
     ),
+    # The references and the check, as worked beside the outturn rows.
+    (4, PERSISTENCE, ABOUT_24_HOURS): dict(
+        half_hours=4, mean_absolute_error="5.000", bias="2.500"
+    ),
+    (4, PERSISTENCE, ABOUT_4_HOURS): dict(
+        half_hours=5, mean_absolute_error="3.800", bias="1.800"
+    ),
+    (4, PERSISTENCE, ABOUT_HALF_AN_HOUR): dict(
+        half_hours=5, mean_absolute_error="2.000", bias="0.000"
+    ),
+    (4, PERSISTENCE_LEFT_OUT, ABOUT_24_HOURS): dict(half_hours=1),
+    (4, PERSISTENCE_LEFT_OUT, ABOUT_4_HOURS): dict(half_hours=0),
+    (4, PERSISTENCE_LEFT_OUT, ABOUT_HALF_AN_HOUR): dict(half_hours=0),
+    (4, DAY_BEFORE, None): dict(
+        half_hours=4, mean_absolute_error="5.500", bias="0.500"
+    ),
+    (4, DAY_BEFORE_LEFT_OUT, None): dict(half_hours=1),
+    # The API final on the common sample: 3, -2, 1, -6 (the 12:00 row on 29
+    # August has none); the dropped rows' 50s are not on the sample.
+    (5, API_FINAL, None): dict(
+        half_hours=4, mean_absolute_error="3.000", bias="-1.000"
+    ),
+    (5, API_FINAL_LEFT_OUT, None): dict(half_hours=1),
+    # Every common-sample half-hour is before 10 September 05:30 UTC.
+    (6, PART_NOT_SEEN, ABOUT_24_HOURS): dict(
+        half_hours=0, mean_absolute_error=None, bias=None
+    ),
+    (6, PART_NOT_SEEN, ABOUT_4_HOURS): dict(half_hours=0, mean_absolute_error=None),
+    (6, PART_NOT_SEEN, ABOUT_HALF_AN_HOUR): dict(
+        half_hours=0, mean_absolute_error=None
+    ),
+}
+
+# Each bootstrap cell's errors by settlement date, for the independent model
+# of the interval: 28 and 29 August (Friday and Saturday), 31 August (bank
+# holiday) and 5 September (Saturday). The half-hour at 23:30 UTC on the 28th
+# is on the 29th.
+Q10_CELL_ERRORS = {
+    (2, ACCURACY, ABOUT_24_HOURS): ([10], [4, 2], [-6], [0]),
+    (2, ACCURACY, ABOUT_4_HOURS): ([-4], [4, -2], [3], [8]),
+    (2, ACCURACY, ABOUT_HALF_AN_HOUR): ([2], [4, 0], [-1], [-3]),
+    (3, WEEKDAY, ABOUT_24_HOURS): ([10], [], [], []),
+    (3, WEEKDAY, ABOUT_4_HOURS): ([-4], [], [], []),
+    (3, WEEKDAY, ABOUT_HALF_AN_HOUR): ([2], [], [], []),
+    (3, WEEKEND, ABOUT_24_HOURS): ([], [4, 2], [], [0]),
+    (3, WEEKEND, ABOUT_4_HOURS): ([], [4, -2], [], [8]),
+    (3, WEEKEND, ABOUT_HALF_AN_HOUR): ([], [4, 0], [], [-3]),
+    (3, BANK_HOLIDAY, ABOUT_24_HOURS): ([], [], [-6], []),
+    (3, BANK_HOLIDAY, ABOUT_4_HOURS): ([], [], [3], []),
+    (3, BANK_HOLIDAY, ABOUT_HALF_AN_HOUR): ([], [], [-1], []),
+    (4, PERSISTENCE, ABOUT_24_HOURS): ([10], [4], [-5], [1]),
+    (4, PERSISTENCE, ABOUT_4_HOURS): ([6], [-3, 8], [-2], [0]),
+    (4, PERSISTENCE, ABOUT_HALF_AN_HOUR): ([2], [3, 0], [-1], [-4]),
+    (4, DAY_BEFORE, None): ([5], [0, 7], [-10], []),
+    (5, API_FINAL, None): ([3], [1], [-2], [-6]),
+    (6, PART_NOT_SEEN, ABOUT_24_HOURS): ([], [], [], []),
+    (6, PART_NOT_SEEN, ABOUT_4_HOURS): ([], [], [], []),
+    (6, PART_NOT_SEEN, ABOUT_HALF_AN_HOUR): ([], [], [], []),
+}
+Q10_LABELS = {
+    4: REFERENCE_LABEL,
+    5: API_FINAL_LABEL,
+    6: PART_NOT_SEEN_LABEL,
+}
+Q10_DAY_BEFORE_LABELS = {(4, DAY_BEFORE, None): DAY_BEFORE_LABEL}
+
+Q10_TWELVE_DATES_EXPECTED = {
+    (2, ACCURACY, ABOUT_24_HOURS): dict(
+        half_hours=12, mean_absolute_error="341.250", bias="341.250"
+    ),
+    (2, ACCURACY, ABOUT_4_HOURS): dict(
+        half_hours=12, mean_absolute_error="5.500", bias="5.500"
+    ),
+    (2, ACCURACY, ABOUT_HALF_AN_HOUR): dict(
+        half_hours=12, mean_absolute_error="5.500", bias="-0.500"
+    ),
+}
+
+
+def q10_twelve_dates_cell_errors():
+    by_lead_time = {ABOUT_24_HOURS: [], ABOUT_4_HOURS: [], ABOUT_HALF_AN_HOUR: []}
+    for number in range(12):
+        final_error = number if number % 2 == 0 else -number
+        by_lead_time[ABOUT_24_HOURS].append([2**number])
+        by_lead_time[ABOUT_4_HOURS].append([number])
+        by_lead_time[ABOUT_HALF_AN_HOUR].append([final_error])
+    cell_errors = {}
+    for lead_time, errors_by_date in by_lead_time.items():
+        cell_errors[(2, ACCURACY, lead_time)] = tuple(errors_by_date)
+    return cell_errors
+
+
+# Project values: the part not seen holds 06:00 on 10 September, 11 September
+# 10:30 and 11:00, and 25 October 12:00: 24 hours 3, -1, 5, 2 (MAE 11 / 4,
+# bias 9 / 4); 4 hours -5, 4, 0, 2 (11 / 4, 1 / 4); final 2, 0, -2, 2 (6 / 4,
+# 2 / 4). The 24-hour picks polled 10:30:00.7 and earlier ran on the
+# half-hour (three), the others at :05 and :35 (two); the 4-hour and final
+# picks of 10 September's two half-hours ran on the half-hour. 25 October's
+# day before is 200 - 190.
+Q10_PROJECT_VALUES_EXPECTED = {
+    (1, SCHEDULE.format("on the half-hour"), ABOUT_24_HOURS): dict(half_hours=3),
+    (1, SCHEDULE.format(":05 and :35"), ABOUT_24_HOURS): dict(half_hours=2),
+    (1, SCHEDULE.format("on the half-hour"), ABOUT_4_HOURS): dict(half_hours=2),
+    (1, SCHEDULE.format(":05 and :35"), ABOUT_4_HOURS): dict(half_hours=3),
+    (1, SCHEDULE.format("on the half-hour"), ABOUT_HALF_AN_HOUR): dict(half_hours=2),
+    (1, SCHEDULE.format(":05 and :35"), ABOUT_HALF_AN_HOUR): dict(half_hours=3),
+    (1, FALL_BACKS, ABOUT_24_HOURS): dict(half_hours=0),
+    (6, PART_NOT_SEEN, ABOUT_24_HOURS): dict(
+        half_hours=4, mean_absolute_error="2.750", bias="2.250"
+    ),
+    (6, PART_NOT_SEEN, ABOUT_4_HOURS): dict(
+        half_hours=4, mean_absolute_error="2.750", bias="0.250"
+    ),
+    (6, PART_NOT_SEEN, ABOUT_HALF_AN_HOUR): dict(
+        half_hours=4, mean_absolute_error="1.500", bias="0.500"
+    ),
+    (4, DAY_BEFORE, None): dict(
+        half_hours=1, mean_absolute_error="10.000", bias="10.000"
+    ),
+    (4, DAY_BEFORE_LEFT_OUT, None): dict(half_hours=4),
 }
 
 Q10_NOT_REACHED_EXPECTED = {
     (1, "Q1 one-look half-hours (8 needed)", None): dict(
         half_hours=7, population_is_reached=False
     ),
-    (2, ACCURACY, "24 hours"): dict(half_hours=5, mean_absolute_error=None, bias=None),
-    (3, "settlement date: weekend", "4 hours"): dict(
+    (2, ACCURACY, ABOUT_24_HOURS): dict(
+        half_hours=5, mean_absolute_error=None, bias=None
+    ),
+    (3, WEEKEND, ABOUT_4_HOURS): dict(
         half_hours=3, mean_absolute_error=None, bias=None
     ),
+    (1, FALL_BACKS, ABOUT_24_HOURS): dict(half_hours=2),
+    (1, SCHEDULE.format("on the half-hour"), ABOUT_4_HOURS): dict(half_hours=5),
+    (4, PERSISTENCE, ABOUT_24_HOURS): dict(half_hours=4),
+    (4, PERSISTENCE_LEFT_OUT, ABOUT_24_HOURS): dict(half_hours=1),
+    (4, DAY_BEFORE_LEFT_OUT, None): dict(half_hours=1),
+    (5, API_FINAL_LEFT_OUT, None): dict(half_hours=1),
 }
+
+
+def q10_interval_cells(errors_by_date, label=None):
+    """A cell's interval columns and detail from the independent model.
+
+    errors_by_date lists the cell's errors on each common-sample settlement
+    date, dates in ascending order. A draw that picks none of them has no
+    value; under 900 draws with a value the interval is unavailable.
+    """
+
+    absolute_errors = draw_statistics(errors_by_date, Q10_SEED, mean_absolute_of)
+    errors = draw_statistics(errors_by_date, Q10_SEED, mean_of)
+    draws_with_value = len(errors)
+    notes = []
+    if label is not None:
+        notes.append(label)
+    if draws_with_value < 900:
+        notes.append(Q10_INTERVAL_UNAVAILABLE)
+        return dict(
+            draws_with_value=draws_with_value,
+            mae_interval_low=None,
+            mae_interval_high=None,
+            bias_interval_low=None,
+            bias_interval_high=None,
+            detail="; ".join(notes) or None,
+        )
+    return dict(
+        draws_with_value=draws_with_value,
+        mae_interval_low=three_decimals(
+            percentile_cont(absolute_errors, Fraction(1, 20))
+        ),
+        mae_interval_high=three_decimals(
+            percentile_cont(absolute_errors, Fraction(19, 20))
+        ),
+        bias_interval_low=three_decimals(percentile_cont(errors, Fraction(1, 20))),
+        bias_interval_high=three_decimals(percentile_cont(errors, Fraction(19, 20))),
+        detail="; ".join(notes) or None,
+    )
+
+
+def with_model_intervals(observed, cell_errors, labels):
+    """The observed expectations with each bootstrap cell's interval added."""
+
+    expected = dict(observed)
+    for cell, errors_by_date in cell_errors.items():
+        section, _item, _horizon = cell
+        label = labels.get(cell, Q10_LABELS.get(section))
+        columns = dict(expected.get(cell, {}))
+        columns.update(q10_interval_cells(errors_by_date, label))
+        expected[cell] = columns
+    return expected
+
 
 POPULATION = (1, "population: matched days (2 needed)", None)
 LEFT_OUT = (
@@ -332,6 +1251,115 @@ Q4_BOTTOM_TIES = (
     "half-hours sharing the bottom quintile's largest abs(error_final) "
     "(value: that error)"
 )
+Q4_TOP_TIES = (
+    "half-hours sharing the top quintile's smallest abs(error_final) "
+    "(value: that error)"
+)
+# Section 1 leads with the ratio and its interval, then the verdict.
+Q4_SECTION_ONE_ORDER = (
+    RATIO,
+    LOW,
+    HIGH,
+    DRAWS,
+    VERDICT,
+    BOTTOM,
+    TOP,
+    DIFFERENCE,
+    POPULATION,
+)
+WEEKDAY_NAMES = (
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+)
+
+
+def stale_finals_key(weekday_name, kept):
+    if kept:
+        return (
+            4,
+            "matched-day half-hours kept, final forecast at most 30 minutes ahead: "
+            f"settlement date on a {weekday_name}",
+            None,
+        )
+    return (
+        4,
+        "matched-day half-hours left out, final forecast over 30 minutes ahead: "
+        f"settlement date on a {weekday_name}",
+        None,
+    )
+
+
+def stale_finals_expected(kept_by_weekday, left_out_by_weekday):
+    """Every weekday's kept and left-out rows; weekdays not named hold 0."""
+
+    expected = {}
+    for weekday_name in WEEKDAY_NAMES:
+        expected[stale_finals_key(weekday_name, kept=True)] = dict(
+            half_hours=kept_by_weekday.get(weekday_name, 0)
+        )
+        expected[stale_finals_key(weekday_name, kept=False)] = dict(
+            half_hours=left_out_by_weekday.get(weekday_name, 0)
+        )
+    return expected
+
+
+ACTIVE_UNITS = (5, "cohort units: active in the window (value: units)", None)
+INTERCONNECTOR_UNITS = (
+    5,
+    "cohort units: interconnectors, fuel type beginning INT, left out (value: units)",
+    None,
+)
+INTELE_UNITS = (
+    5,
+    "cohort units: interconnectors with fuel type INTELE, an interconnector by "
+    "assumption (value: units)",
+    None,
+)
+INACTIVE_UNITS = (
+    5,
+    "cohort units: inactive in the window, left out (value: units)",
+    None,
+)
+NO_ROW_UNITS = (
+    5,
+    "cohort units: inactive with no row in the window (value: units)",
+    None,
+)
+NO_PN_UNITS = (
+    5,
+    "active units with no PN unit-period in the window, adding nothing to the sums "
+    "(value: units)",
+    None,
+)
+IDLE_UNIT_PERIODS = (
+    5,
+    "idle unit-periods behind the population half-hours: determinable, PN 0 and "
+    "metered 0 (value: unit-periods)",
+    None,
+)
+DETERMINABLE_UNIT_PERIODS = (
+    5,
+    "determinable unit-periods of active units behind the population half-hours "
+    "(value: unit-periods)",
+    None,
+)
+IDLE_SHARE = (5, "idle share of those determinable unit-periods", None)
+Q4_COHORT_EXPECTED = {
+    ACTIVE_UNITS: dict(value="9"),
+    INTERCONNECTOR_UNITS: dict(value="2"),
+    INTELE_UNITS: dict(value="1"),
+    INACTIVE_UNITS: dict(value="4"),
+    NO_ROW_UNITS: dict(value="3"),
+    NO_PN_UNITS: dict(value="2"),
+    IDLE_UNIT_PERIODS: dict(value="1"),
+    DETERMINABLE_UNIT_PERIODS: dict(value="189"),
+    IDLE_SHARE: dict(value="0.005291"),
+}
 
 # Q4 with A's and B's first ten half-hours at 1 except A10 at 3; 11 to 38 at
 # 1; 39 onwards at 1.25. A10 and B10 share an error of 10 at the edge of
@@ -347,22 +1375,33 @@ Q4_BOTTOM_TIES = (
 # all 1.25: 1.25. A-twice draws are about a quarter, so the 5th percentile is
 # 1.041667 and the 95th 1.25. (An independent model of the tie order and the
 # picks gives the same values.)
+#
+# A39 and B39 share the top quintile's smallest error, 39, and both are in
+# it. Every matched-day half-hour is fresh: 48 on Tuesday 1 September and 46
+# on Wednesday 2 September (the first two of each date start on the UTC day
+# before).
 Q4_EXPECTED = {
     POPULATION: dict(
+        position=9,
         half_hours=94,
         days=2,
         first_date="2026-09-01",
         last_date="2026-09-02",
         result="reached",
     ),
-    BOTTOM: dict(value="1.000000"),
-    TOP: dict(value="1.250000"),
-    DIFFERENCE: dict(value="0.250000"),
-    RATIO: dict(value="1.250000"),
-    VERDICT: dict(result="supported"),
-    DRAWS: dict(value="1000", result="available"),
-    LOW: dict(value="1.041667"),
-    HIGH: dict(value="1.250000"),
+    BOTTOM: dict(position=6, value="1.000000"),
+    TOP: dict(position=7, value="1.250000"),
+    DIFFERENCE: dict(position=8, value="0.250000"),
+    RATIO: dict(position=1, value="1.250000"),
+    VERDICT: dict(position=5, result="supported"),
+    DRAWS: dict(position=4, value="1000", result="available"),
+    LOW: dict(position=2, value="1.041667"),
+    HIGH: dict(position=3, value="1.250000"),
+    (2, Q4_TOP_TIES, None): dict(
+        half_hours=2, value="39", result="in the top quintile: 2"
+    ),
+    **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {}),
+    **Q4_COHORT_EXPECTED,
     (2, QUINTILE, 1): dict(
         half_hours=19, value="1.000000", result="abs(error_final) 1 to 10"
     ),
@@ -443,11 +1482,40 @@ Q4_NOT_REACHED_EXPECTED = {
     VERDICT: dict(result="population not reached: no result"),
     DRAWS: dict(value=None, result=None),
     (2, QUINTILE, 1): dict(half_hours=19),
+    (2, Q4_TOP_TIES, None): dict(half_hours=None, value=None, result=None),
+    **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {}),
+    ACTIVE_UNITS: dict(value="9"),
+    NO_PN_UNITS: dict(value="2"),
+    IDLE_UNIT_PERIODS: dict(value="1"),
+    DETERMINABLE_UNIT_PERIODS: dict(value="189"),
+    IDLE_SHARE: dict(value="0.005291"),
+}
+
+# B39's error at 38: A38, B38 and B39 share the top quintile's smallest
+# error, 38, at positions 75 to 77 of 94, and only the 77th is in it.
+Q4_TOP_TIE_SPLIT_EXPECTED = {
+    (2, Q4_TOP_TIES, None): dict(
+        half_hours=3, value="38", result="in the top quintile: 1"
+    ),
 }
 
 # Before its population each analysis shows counts only: these columns are
 # null in every row of these sections.
-Q10_GATED = ({2, 3}, ("mean_absolute_error", "bias"))
+Q10_GATED = (
+    {1, 2, 3, 4, 5, 6},
+    (
+        "mean_absolute_error",
+        "bias",
+        "mae_interval_low",
+        "mae_interval_high",
+        "bias_interval_low",
+        "bias_interval_high",
+        "draws_with_value",
+        "shortest_horizon_seconds",
+        "median_horizon_seconds",
+        "longest_horizon_seconds",
+    ),
+)
 Q4_GATED = ({1, 2}, ("value",))
 Q4_QUINTILES_GATED = ({2}, ("result",))
 Q2RF_GATED = (
@@ -723,14 +1791,26 @@ Q25_EXPECTED = {
 # one stall of 4 polls (120 minutes either way; 1.000000 of its 4 slot polls),
 # none partial; the stall starts at the window's start and ends at its end, so
 # it is not cut.
+#
+# Every poll here ran on the half-hour schedule, 1.5 seconds after its slot: a
+# full poll holds 97 half-hours and a partial one 50, and every poll of a stall
+# repeats the one before, so the runs of unchanged polls are the stalls. B,
+# with its partial poll inside the window, is the one confirmed freeze. By the
+# polls inside the window, A's run is in the 3-poll band (cut at the start), B's
+# in 4-5 and C's in 2 (cut at the end), all on the half-hour schedule.
 Q27_FIXTURES = """
 create temporary table synthetic_revisions (
     poll_slot timestamptz,
     is_first_poll_in_slot boolean,
     is_partial_poll boolean,
-    is_no_change_poll boolean
+    is_no_change_poll boolean,
+    retrieved_at timestamptz,
+    poll_row_count integer,
+    is_unchanged_from_previous_slot boolean
 ) on commit drop;
-insert into synthetic_revisions values
+insert into synthetic_revisions (
+    poll_slot, is_first_poll_in_slot, is_partial_poll, is_no_change_poll
+) values
     ('2026-08-25 05:00+00', true, false, true),
     ('2026-08-25 05:30+00', true, false, true),
     ('2026-08-25 06:00+00', true, false, true),
@@ -753,6 +1833,10 @@ insert into synthetic_revisions values
     ('2026-09-05 00:00+00', true, false, true),
     ('2026-09-05 00:30+00', true, false, true)
     {after_cutoff_rows};
+update synthetic_revisions set
+    retrieved_at = poll_slot + interval '1.5 seconds',
+    poll_row_count = case when is_partial_poll then 50 else 97 end,
+    is_unchanged_from_previous_slot = is_no_change_poll;
 """
 # After the cutoff: 00:30 above, then 01:00 and the changed 02:00 poll make
 # three slot polls, enough to settle stall C. Without 01:00 the last poll is
@@ -763,8 +1847,78 @@ Q27_SETTLED_ROWS = (
 )
 Q27_GAP_ROWS = ",\n    ('2026-09-05 02:00+00', true, false, false)"
 Q27_TABLES = {"int_carbon_forecast__revisions": "pg_temp.synthetic_revisions"}
-EXPLORATORY = "exploratory, seen before registration: "
-BLOCK = "stalls starting {} UTC (split informed by the exploratory stalls)"
+EXPLORATORY = "exploratory and not part of the result: "
+BLOCK = (
+    "stalls starting {} UTC (split informed by the long freezes of August and "
+    "September 2026 and the stalls of 1 to 24 October 2026)"
+)
+ON_THE_HALF_HOUR = "on the half-hour"
+FIVE_AND_THIRTY_FIVE = ":05 and :35"
+ON_THE_HALF_HOUR_BASIS = "decision 016, note of 25 October 2026"
+FIVE_AND_THIRTY_FIVE_BASIS = "the reading rule"
+CONFIRMED_FREEZES = "confirmed freezes: stalls holding a partial poll inside the window"
+CONFIRMED_MEDIAN_POLLS = "confirmed freezes: median duration, poll-equivalent minutes"
+CONFIRMED_LONGEST_POLLS = "confirmed freezes: longest duration, poll-equivalent minutes"
+CONFIRMED_MEDIAN_ELAPSED = "confirmed freezes: median duration, elapsed minutes"
+CONFIRMED_LONGEST_ELAPSED = "confirmed freezes: longest duration, elapsed minutes"
+RUN_BANDS = (
+    "1 poll",
+    "2 polls",
+    "3 polls",
+    "4-5 polls",
+    "6-11 polls",
+    "12 or more polls",
+)
+
+
+def minutes_past_slot_key(minutes):
+    return (1, f"slot polls made {minutes} minutes past their slot (UTC)", None)
+
+
+def partial_by_schedule_key(section, prefix, schedule, full_poll_rows):
+    return (
+        section,
+        f"{prefix}partial polls, schedule {schedule} "
+        f"(fewer than {full_poll_rows} half-hours)",
+        None,
+    )
+
+
+def capture_schedule_key(section, prefix, schedule):
+    return (section, f"{prefix}capture schedule {schedule}", None)
+
+
+def capture_schedule_detail(first_poll, last_poll, full_poll_rows, basis):
+    return (
+        f"first slot poll {first_poll} UTC; last slot poll {last_poll} UTC; "
+        f"full poll {full_poll_rows} half-hours; basis: {basis}"
+    )
+
+
+def run_band_cells(schedule, band, runs, cut_at_start=0, cut_at_end=0):
+    key = (
+        6,
+        f"runs of unchanged slot polls, schedule {schedule}: {band} in the window",
+        None,
+    )
+    detail = (
+        f"cut at the window start: {cut_at_start}; cut at the window end: {cut_at_end}"
+    )
+    return {key: dict(value=str(runs), detail=detail)}
+
+
+def run_bands_expected(runs_by_schedule_and_band):
+    """Every schedule's every band; a band not named has no run."""
+
+    expected = {}
+    for schedule in (ON_THE_HALF_HOUR, FIVE_AND_THIRTY_FIVE):
+        for band in RUN_BANDS:
+            cells = runs_by_schedule_and_band.get((schedule, band), (0, 0, 0))
+            runs, cut_at_start, cut_at_end = cells
+            expected.update(
+                run_band_cells(schedule, band, runs, cut_at_start, cut_at_end)
+            )
+    return expected
 
 
 def q27_fixtures(after_cutoff_rows=Q27_SETTLED_ROWS):
@@ -798,6 +1952,23 @@ Q27_EXPLORATORY_EXPECTED = {
         value="0.000000"
     ),
     (5, f"{EXPLORATORY}partial polls inside a stall", None): dict(value="0"),
+    (5, f"{EXPLORATORY}slot polls", None): dict(value="4"),
+    (5, f"{EXPLORATORY}{CONFIRMED_FREEZES}", None): dict(value="0"),
+    (5, f"{EXPLORATORY}{CONFIRMED_MEDIAN_POLLS}", None): dict(value=None),
+    (5, f"{EXPLORATORY}{CONFIRMED_LONGEST_POLLS}", None): dict(value=None),
+    (5, f"{EXPLORATORY}{CONFIRMED_MEDIAN_ELAPSED}", None): dict(value=None),
+    (5, f"{EXPLORATORY}{CONFIRMED_LONGEST_ELAPSED}", None): dict(value=None),
+    partial_by_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR, 97): dict(value="0"),
+    partial_by_schedule_key(5, EXPLORATORY, FIVE_AND_THIRTY_FIVE, 96): dict(value="0"),
+    capture_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR): dict(
+        value="4",
+        detail=capture_schedule_detail(
+            "2026-08-25 05:00:01.500",
+            "2026-08-25 06:30:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
 }
 Q27_EXPECTED = {
     **Q27_WINDOW_EXPECTED,
@@ -806,6 +1977,7 @@ Q27_EXPECTED = {
         detail="yes"
     ),
     (1, "read possible", None): dict(detail="yes"),
+    minutes_past_slot_key(0): dict(value="12"),
     (2, "stalls", None): dict(value="3"),
     (2, "median duration, poll-equivalent minutes", None): dict(value="90"),
     (2, "longest duration, poll-equivalent minutes", None): dict(value="120"),
@@ -814,23 +1986,289 @@ Q27_EXPECTED = {
     (2, "share of slot polls inside a stall", None): dict(value="0.750000"),
     (2, "stalls cut at the window start", None): dict(value="1"),
     (2, "stalls cut at the window end", None): dict(value="1"),
+    (2, CONFIRMED_FREEZES, None): dict(value="1"),
+    (2, CONFIRMED_MEDIAN_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_LONGEST_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_MEDIAN_ELAPSED, None): dict(value="150"),
+    (2, CONFIRMED_LONGEST_ELAPSED, None): dict(value="150"),
     (3, "partial polls", None): dict(value="2"),
     (3, "share of slot polls that are partial", None): dict(value="0.166667"),
     (3, "partial polls inside a stall", None): dict(value="1"),
+    partial_by_schedule_key(3, "", ON_THE_HALF_HOUR, 97): dict(value="2"),
+    partial_by_schedule_key(3, "", FIVE_AND_THIRTY_FIVE, 96): dict(value="0"),
     (4, BLOCK.format("00:00-05:59"), None): dict(value="0"),
     (4, BLOCK.format("06:00-11:59"), None): dict(value="0"),
     (4, BLOCK.format("12:00-17:59"), None): dict(value="1"),
     (4, BLOCK.format("18:00-23:59"), None): dict(value="2"),
     **Q27_EXPLORATORY_EXPECTED,
+    **run_bands_expected(
+        {
+            (ON_THE_HALF_HOUR, "2 polls"): (1, 0, 1),
+            (ON_THE_HALF_HOUR, "3 polls"): (1, 1, 0),
+            (ON_THE_HALF_HOUR, "4-5 polls"): (1, 0, 0),
+        }
+    ),
+    capture_schedule_key(7, "", ON_THE_HALF_HOUR): dict(
+        value="12",
+        detail=capture_schedule_detail(
+            "2026-09-01 00:00:01.500",
+            "2026-09-05 00:00:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
 }
-Q27_GATED = ({2, 3, 4}, ("value",))
+Q27_GATED = ({2, 3, 4, 5, 6, 7}, ("value", "detail"))
 # Not reached on days (5 needed), and, with the look-ahead row removed, not
-# reached on the look-ahead: either way only sections 1 and 5 have values.
+# reached on the look-ahead: either way only section 1 has values; the
+# record before the window waits for the gate too.
 Q27_NOT_REACHED_EXPECTED = {
     **Q27_WINDOW_EXPECTED,
     (1, "days covered (5 needed)", None): dict(value="4"),
     (1, "read possible", None): dict(detail="no"),
-    **Q27_EXPLORATORY_EXPECTED,
+    minutes_past_slot_key(0): dict(value="12"),
+}
+
+# The schedule change inside a window, on the project's schedules: window
+# from 9 September 2026 00:00 to a cutoff at 12 September 00:00 UTC, the
+# record before it 8 September 00:00 to 21:30. Slot polls ran 1.5 seconds
+# after their slot until the 10:30 slot on 10 September (polled at
+# 10:30:00.7), and at :05 and :35 from 11:05 that day. Each segment is a first
+# slot and one letter per consecutive slot: c a changed poll, u an unchanged
+# one; four or more unchanged in a row are a stall.
+Q27_SCHEDULE_VARS = {
+    "analysis_read_until": "2026-09-12 00:00:00+00",
+    "forecast_stalls_from": "2026-09-09 00:00:00+00",
+    "forecast_stalls_days_needed": 1,
+    "forecast_stalls_exploratory_from": "2026-09-08 00:00:00+00",
+    "forecast_stalls_exploratory_until": "2026-09-08 21:30:00+00",
+}
+Q27_SCHEDULE_SEGMENTS = (
+    # The record: two changed polls.
+    ("2026-09-08 20:00", "cc"),
+    # A run of 6 from 23:00 on the 8th, 2 of its polls before the window; then
+    # runs of 1, 2, 3, 4, 5, 6, 11 and 12 polls, each after a changed poll.
+    (
+        "2026-09-08 22:30",
+        "c"
+        + "u" * 6
+        + "c"
+        + "u"
+        + "c"
+        + "u" * 2
+        + "c"
+        + "u" * 3
+        + "c"
+        + "u" * 4
+        + "c"
+        + "u" * 5
+        + "c"
+        + "u" * 6
+        + "c"
+        + "u" * 11
+        + "c"
+        + "u" * 12
+        + "c",
+    ),
+    # A run of 4 across the schedule change: 09:30, 10:00, 10:30:00.7 and 11:05.
+    ("2026-09-10 09:00", "c" + "u" * 4 + "c"),
+    # A run of 5 from 23:05 on the 11th, 2 of its polls after the cutoff.
+    ("2026-09-11 22:30", "c" + "u" * 5 + "c"),
+)
+SCHEDULE_SWITCH_SLOT = datetime(2026, 9, 10, 11, 0, tzinfo=timezone.utc)
+LAST_HALF_HOUR_SCHEDULE_SLOT = datetime(2026, 9, 10, 10, 30, tzinfo=timezone.utc)
+# Row counts other than a full poll's (97 on the half-hour, 96 at :05 and
+# :35): the run of 6's partial poll, before the window; and 96-row polls on
+# 9 September and at 10:30:00.7 on 10 September, partial on the half-hour
+# schedule though the model's flag (fewer than 96 rows) is false.
+Q27_SCHEDULE_ROW_COUNTS = {
+    datetime(2026, 9, 8, 23, 0, tzinfo=timezone.utc): 60,
+    datetime(2026, 9, 9, 3, 0, tzinfo=timezone.utc): 96,
+    LAST_HALF_HOUR_SCHEDULE_SLOT: 96,
+}
+
+
+def unchanged_run_lengths(letters):
+    """For each slot, the length of the run of unchanged polls it is in (0 if changed)."""
+
+    lengths = [0] * len(letters)
+    run_start = None
+    for index, letter in enumerate(letters + "c"):
+        if letter == "u":
+            if run_start is None:
+                run_start = index
+            continue
+        if run_start is None:
+            continue
+        for position in range(run_start, index):
+            lengths[position] = index - run_start
+        run_start = None
+    return lengths
+
+
+def schedule_window_retrieved_at(slot):
+    if slot >= SCHEDULE_SWITCH_SLOT:
+        return slot + timedelta(minutes=5)
+    if slot == LAST_HALF_HOUR_SCHEDULE_SLOT:
+        return slot + timedelta(seconds=0.7)
+    return slot + timedelta(seconds=1.5)
+
+
+def q27_schedule_window_rows():
+    rows = []
+    for first_slot, letters in Q27_SCHEDULE_SEGMENTS:
+        start = datetime.fromisoformat(f"{first_slot}+00:00")
+        run_lengths = unchanged_run_lengths(letters)
+        for offset, letter in enumerate(letters):
+            slot = start + timedelta(minutes=30 * offset)
+            full_poll_rows = 96 if slot >= SCHEDULE_SWITCH_SLOT else 97
+            row_count = Q27_SCHEDULE_ROW_COUNTS.get(slot, full_poll_rows)
+            is_unchanged = letter == "u"
+            is_no_change = run_lengths[offset] >= 4
+            rows.append(
+                f"('{slot.isoformat()}', true, {str(row_count < 96).lower()}, "
+                f"{str(is_no_change).lower()}, "
+                f"'{schedule_window_retrieved_at(slot).isoformat()}', {row_count}, "
+                f"{str(is_unchanged).lower()})"
+            )
+    return ",\n    ".join(rows)
+
+
+Q27_FULL_FIXTURES = """
+create temporary table synthetic_revisions (
+    poll_slot timestamptz,
+    is_first_poll_in_slot boolean,
+    is_partial_poll boolean,
+    is_no_change_poll boolean,
+    retrieved_at timestamptz,
+    poll_row_count integer,
+    is_unchanged_from_previous_slot boolean
+) on commit drop;
+insert into synthetic_revisions values
+    {rows};
+"""
+
+# In the window: 48 slot polls on the 9th, 15 on the 10th, 3 on the 11th and
+# the one at the cutoff, 67, in 145 slots. Stalls (polls in the window): the
+# run of 6 (4, cut at the start), 4, 5, 6, 11, 12, the run across the change
+# (4) and the run of 5 (3, cut at the end): poll-equivalent and elapsed
+# minutes 120, 120, 150, 180, 330, 360, 120, 90, median 135. 49 stall polls
+# of 67. Partial by schedule: the 96-row polls of 9 and 10 September; only the
+# second is in a stall, the run across the change, which is the one confirmed
+# freeze (the run of 6's partial poll is before the window). Runs by their
+# first poll's schedule: on the half-hour 1, 2, 3, then 4-5 four times (the
+# run of 6 cut at the start, 4, 5 and the run across the change), 6-11 twice
+# and 12 once; at :05 and :35 the run of 5, in the 3-poll band, cut at the end.
+Q27_SCHEDULE_EXPECTED = {
+    (1, "slot polls", None): dict(value="67"),
+    (1, "slots with no poll", None): dict(value="78"),
+    (1, "days covered (1 needed)", None): dict(value="3"),
+    (1, "read possible", None): dict(detail="yes"),
+    minutes_past_slot_key(0): dict(value="61"),
+    minutes_past_slot_key(5): dict(value="6"),
+    (2, "stalls", None): dict(value="8"),
+    (2, "median duration, poll-equivalent minutes", None): dict(value="135"),
+    (2, "longest duration, poll-equivalent minutes", None): dict(value="360"),
+    (2, "median duration, elapsed minutes", None): dict(value="135"),
+    (2, "longest duration, elapsed minutes", None): dict(value="360"),
+    (2, "share of slot polls inside a stall", None): dict(value="0.731343"),
+    (2, "stalls cut at the window start", None): dict(value="1"),
+    (2, "stalls cut at the window end", None): dict(value="1"),
+    (2, CONFIRMED_FREEZES, None): dict(value="1"),
+    (2, CONFIRMED_MEDIAN_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_LONGEST_POLLS, None): dict(value="120"),
+    (2, CONFIRMED_MEDIAN_ELAPSED, None): dict(value="120"),
+    (2, CONFIRMED_LONGEST_ELAPSED, None): dict(value="120"),
+    (3, "partial polls", None): dict(value="2"),
+    (3, "share of slot polls that are partial", None): dict(value="0.029851"),
+    (3, "partial polls inside a stall", None): dict(value="1"),
+    partial_by_schedule_key(3, "", ON_THE_HALF_HOUR, 97): dict(value="2"),
+    partial_by_schedule_key(3, "", FIVE_AND_THIRTY_FIVE, 96): dict(value="0"),
+    (4, BLOCK.format("00:00-05:59"), None): dict(value="0"),
+    (4, BLOCK.format("06:00-11:59"), None): dict(value="3"),
+    (4, BLOCK.format("12:00-17:59"), None): dict(value="2"),
+    (4, BLOCK.format("18:00-23:59"), None): dict(value="3"),
+    **run_bands_expected(
+        {
+            (ON_THE_HALF_HOUR, "1 poll"): (1, 0, 0),
+            (ON_THE_HALF_HOUR, "2 polls"): (1, 0, 0),
+            (ON_THE_HALF_HOUR, "3 polls"): (1, 0, 0),
+            (ON_THE_HALF_HOUR, "4-5 polls"): (4, 1, 0),
+            (ON_THE_HALF_HOUR, "6-11 polls"): (2, 0, 0),
+            (ON_THE_HALF_HOUR, "12 or more polls"): (1, 0, 0),
+            (FIVE_AND_THIRTY_FIVE, "3 polls"): (1, 0, 1),
+        }
+    ),
+    capture_schedule_key(7, "", ON_THE_HALF_HOUR): dict(
+        value="61",
+        detail=capture_schedule_detail(
+            "2026-09-09 00:00:01.500",
+            "2026-09-10 10:30:00.700",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
+    capture_schedule_key(7, "", FIVE_AND_THIRTY_FIVE): dict(
+        value="6",
+        detail=capture_schedule_detail(
+            "2026-09-10 11:05:00.000",
+            "2026-09-12 00:05:00.000",
+            96,
+            FIVE_AND_THIRTY_FIVE_BASIS,
+        ),
+    ),
+    (5, f"{EXPLORATORY}slot polls", None): dict(value="2"),
+    (5, f"{EXPLORATORY}stalls", None): dict(value="0"),
+    capture_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR): dict(
+        value="2",
+        detail=capture_schedule_detail(
+            "2026-09-08 20:00:01.500",
+            "2026-09-08 20:30:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
+}
+
+# The record's ends and the window's start on the project's values: slot
+# polls at 23:30 on 16 August (not in the record), 00:00 on 17 August and
+# 23:35 on 31 October (slot 23:30, in it), 00:05 on 1 November (in the window,
+# not the record), then 23:35 that day and 00:05 on 2 November (the cutoff's
+# slot), and three after the cutoff.
+Q27_PROJECT_VALUES_ROWS = """
+    ('2026-08-16 23:30+00', true, false, false, '2026-08-16 23:30:01.5+00', 97, false),
+    ('2026-08-17 00:00+00', true, false, false, '2026-08-17 00:00:01.5+00', 97, false),
+    ('2026-10-31 23:30+00', true, false, false, '2026-10-31 23:35+00', 96, false),
+    ('2026-11-01 00:00+00', true, false, false, '2026-11-01 00:05+00', 96, false),
+    ('2026-11-01 23:30+00', true, false, false, '2026-11-01 23:35+00', 96, false),
+    ('2026-11-02 00:00+00', true, false, false, '2026-11-02 00:05+00', 96, false),
+    ('2026-11-02 00:30+00', true, false, false, '2026-11-02 00:35+00', 96, false),
+    ('2026-11-02 01:00+00', true, false, false, '2026-11-02 01:05+00', 96, false),
+    ('2026-11-02 01:30+00', true, false, false, '2026-11-02 01:35+00', 96, false)"""
+Q27_PROJECT_VALUES_EXPECTED = {
+    (1, "window start", None): dict(detail="2026-11-01 00:00:00+00"),
+    (1, "slot polls", None): dict(value="3"),
+    (1, "days covered (1 needed)", None): dict(value="1"),
+    (1, "read possible", None): dict(detail="yes"),
+    (5, f"{EXPLORATORY}slot polls", None): dict(value="2"),
+    capture_schedule_key(5, EXPLORATORY, ON_THE_HALF_HOUR): dict(
+        value="1",
+        detail=capture_schedule_detail(
+            "2026-08-17 00:00:01.500",
+            "2026-08-17 00:00:01.500",
+            97,
+            ON_THE_HALF_HOUR_BASIS,
+        ),
+    ),
+    capture_schedule_key(5, EXPLORATORY, FIVE_AND_THIRTY_FIVE): dict(
+        value="1",
+        detail=capture_schedule_detail(
+            "2026-10-31 23:35:00.000",
+            "2026-10-31 23:35:00.000",
+            96,
+            FIVE_AND_THIRTY_FIVE_BASIS,
+        ),
+    ),
 }
 Q27_NO_LOOK_AHEAD_EXPECTED = {
     (1, "slot polls stored after analysis_read_until (3 needed)", None): dict(
@@ -1727,13 +3165,16 @@ def q30_empty_expected():
 SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
-def q4_fixtures(a_bottom, b_bottom, a_tenth, stale_b_half_hours=0, extra_days=""):
+def q4_fixtures(
+    a_bottom, b_bottom, a_tenth, stale_b_half_hours=0, extra_days="", b39_error=39
+):
     return Q4_FIXTURES.format(
         a_bottom=a_bottom,
         b_bottom=b_bottom,
         a_tenth=a_tenth,
         stale_b_half_hours=stale_b_half_hours,
         extra_days=extra_days,
+        b39_error=b39_error,
     )
 
 
@@ -1791,6 +3232,107 @@ def draws_without_day_one(days, seed):
         if 1 not in picks:
             count += 1
     return count
+
+
+# The contract's worked picks (computed on 31 October 2026 with .NET MD5): the
+# first 8 hex digits of md5('<seed>:1:1'), and with two dates the draws that
+# take the first date twice, one of each and the second twice.
+KNOWN_PICKS = (
+    ("q1-2026-10-31", "a14b7f81", (238, 515, 247)),
+    ("q10-2026-10-31", "d5825519", (263, 473, 264)),
+)
+
+
+def two_date_draw_counts(seed):
+    first_twice = 0
+    one_each = 0
+    second_twice = 0
+    for draw in range(1, BOOTSTRAP_DRAWS + 1):
+        first_pick = picked_day(draw, 1, 2, seed)
+        second_pick = picked_day(draw, 2, 2, seed)
+        if first_pick == second_pick == 1:
+            first_twice += 1
+        elif first_pick == second_pick == 2:
+            second_twice += 1
+        else:
+            one_each += 1
+    return (first_twice, one_each, second_twice)
+
+
+def known_pick_mismatches():
+    """picked_day agrees with the contract's worked picks."""
+
+    found = []
+    for seed, first_hex, counts in KNOWN_PICKS:
+        digest = hashlib.md5(f"{seed}:1:1".encode()).hexdigest()
+        if digest[:8] != first_hex:
+            found.append(f"picks {seed}: md5 begins {digest[:8]}, expected {first_hex}")
+        if picked_day(1, 1, 2, seed) != 2:
+            found.append(
+                f"picks {seed}: draw 1's first pick of two dates is not date 2"
+            )
+        if two_date_draw_counts(seed) != counts:
+            found.append(
+                f"picks {seed}: two-date draws {two_date_draw_counts(seed)}, "
+                f"expected {counts}"
+            )
+    return found
+
+
+def draw_statistics(date_values, seed, statistic):
+    """Each bootstrap draw's statistic over the values of the dates it picks.
+
+    date_values lists each date's half-hour values, dates in ascending order;
+    a draw takes as many dates as there are, with replacement. A draw that
+    picks no value has no statistic and is left out.
+    """
+
+    dates = len(date_values)
+    statistics = []
+    for draw in range(1, BOOTSTRAP_DRAWS + 1):
+        picked_values = []
+        for pick in range(1, dates + 1):
+            picked_values += date_values[picked_day(draw, pick, dates, seed) - 1]
+        if not picked_values:
+            continue
+        statistics.append(statistic(picked_values))
+    return statistics
+
+
+def mean_of(values):
+    return Fraction(sum(values), len(values))
+
+
+def mean_absolute_of(values):
+    total = 0
+    for value in values:
+        total += abs(value)
+    return Fraction(total, len(values))
+
+
+def percentile_cont(values, fraction):
+    """PostgreSQL's percentile_cont: linear between the two nearest ranks."""
+
+    ordered = sorted(values)
+    position = fraction * (len(ordered) - 1)
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
+
+
+def rounded(value, places):
+    """An exact value as round(numeric, places) shows it: half away from zero."""
+
+    exact = Decimal(value.numerator) / Decimal(value.denominator)
+    return str(exact.quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP))
+
+
+def six_decimals(value):
+    return rounded(value, 6)
+
+
+def three_decimals(value):
+    return rounded(value, 3)
 
 
 def on_fixtures(manifest, analysis, tables):
@@ -1874,6 +3416,9 @@ def mismatches(title, run, expected):
             found.append(f"{title}: no row {key}")
             continue
         for column, value in columns.items():
+            if column not in rows[key]:
+                found.append(f"{title}: {key} has no column {column}")
+                continue
             actual = rows[key][column]
             if actual != value:
                 found.append(
@@ -1895,6 +3440,21 @@ def unexpected_rows(title, run, expected):
     return found
 
 
+def section_order_mismatches(title, run, section, expected_keys):
+    """The section's rows come out in the expected order."""
+
+    rows, error = run
+    if error is not None:
+        return []
+    found_keys = []
+    for key in rows:
+        if key[0] == section:
+            found_keys.append(key)
+    if found_keys != list(expected_keys):
+        return [f"{title}: section {section} comes out as {found_keys}"]
+    return []
+
+
 def gated_values_left_null(title, run, gated):
     """Every gated column is null in every row of the gated sections."""
 
@@ -1907,9 +3467,31 @@ def gated_values_left_null(title, run, gated):
         if cells["section"] not in sections:
             continue
         for column in columns:
+            if column not in cells:
+                found.append(f"{title}: {key} has no column {column}")
+                continue
             if cells[column] is not None:
                 found.append(
                     f"{title}: {key} {column} is {cells[column]!r} before the population"
+                )
+    return found
+
+
+def columns_left_null(title, run, columns):
+    """Every listed column is null in every row."""
+
+    rows, error = run
+    if error is not None:
+        return []
+    found = []
+    for key, cells in rows.items():
+        for column in columns:
+            if column not in cells:
+                found.append(f"{title}: {key} has no column {column}")
+                continue
+            if cells[column] is not None:
+                found.append(
+                    f"{title}: {key} {column} is {cells[column]!r} before the gate"
                 )
     return found
 
@@ -1919,14 +3501,135 @@ def run_analysis(conn, fixtures, manifest, analysis, tables, time_zone):
     return run_on_fixtures(conn, fixtures, query, time_zone)
 
 
+def run_one_row_analysis(conn, fixtures, manifest, analysis, tables, time_zone):
+    """An analysis that returns one row, keyed by the empty tuple."""
+
+    query = on_fixtures(manifest, analysis, tables)
+    return run_on_fixtures(conn, fixtures, query, time_zone, key_columns=())
+
+
+def q1_verdict_mismatches(conn, project_values, time_zone):
+    title = f"[{time_zone}] Q1 verdict"
+    found = []
+    cases = (
+        ("exact half weight", Q1_EXACT_HALF_ROWS, Q1_EXACT_HALF_EXPECTED),
+        ("thresholds", Q1_THRESHOLD_ROWS, Q1_THRESHOLD_EXPECTED),
+        ("part not seen", Q1_PART_NOT_SEEN_ROWS, Q1_PART_NOT_SEEN_EXPECTED),
+    )
+    for case_name, drift_rows, expected in cases:
+        run = run_one_row_analysis(
+            conn,
+            q1_verdict_fixtures(drift_rows),
+            project_values,
+            Q1_VERDICT,
+            Q1_VERDICT_TABLES,
+            time_zone,
+        )
+        found += mismatches(f"{title} {case_name}", run, expected)
+        second_run = run_one_row_analysis(
+            conn,
+            q1_verdict_fixtures(drift_rows),
+            project_values,
+            Q1_VERDICT,
+            Q1_VERDICT_TABLES,
+            time_zone,
+        )
+        if second_run != run:
+            found.append(f"{title} {case_name}: a second run gives different rows")
+
+    early_run = run_one_row_analysis(
+        conn,
+        q1_verdict_fixtures(Q1_THRESHOLD_ROWS, gate_open=False),
+        project_values,
+        Q1_VERDICT,
+        Q1_VERDICT_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} early", early_run, Q1_THRESHOLD_NOT_REACHED_EXPECTED)
+    found += columns_left_null(f"{title} early", early_run, Q1_VERDICT_GATED)
+    return found
+
+
+def postgres_correlation(conn, pairs):
+    """PostgreSQL's corr() over the pairs, to six decimals, as text."""
+
+    rows = []
+    for earlier, later in pairs:
+        rows.append(f"({earlier}, {later})")
+    with conn.cursor() as cursor:
+        cursor.execute(
+            f"select round(corr(earlier, later)::numeric, 6)::text "
+            f"from (values {', '.join(rows)}) as pairs (earlier, later)"
+        )
+        (correlation,) = cursor.fetchone()
+    conn.rollback()
+    return correlation
+
+
+def q1_beside_mismatches(conn, project_values, time_zone):
+    title = f"[{time_zone}] Q1 beside"
+    found = []
+    three_dates_expected = q1_model_mean_expected(Q1_THREE_DATES)
+    twelve_dates_expected = q1_model_mean_expected(Q1_TWELVE_DATES)
+    cases = (
+        ("alternating revisions", Q1_ALTERNATING, Q1_ALTERNATING_EXPECTED),
+        ("zeros kept", Q1_ZEROS_KEPT, Q1_ZEROS_KEPT_EXPECTED),
+        ("two dates", Q1_TWO_DATES, Q1_TWO_DATES_EXPECTED),
+        ("three dates", Q1_THREE_DATES, three_dates_expected),
+        ("twelve dates", Q1_TWELVE_DATES, twelve_dates_expected),
+    )
+    for case_name, half_hours, expected in cases:
+        run = run_analysis(
+            conn,
+            q1_beside_fixtures(half_hours),
+            project_values,
+            Q1_BESIDE,
+            Q1_BESIDE_TABLES,
+            time_zone,
+        )
+        found += mismatches(f"{title} {case_name}", run, expected)
+        second_run = run_analysis(
+            conn,
+            q1_beside_fixtures(half_hours),
+            project_values,
+            Q1_BESIDE,
+            Q1_BESIDE_TABLES,
+            time_zone,
+        )
+        if second_run != run:
+            found.append(f"{title} {case_name}: a second run gives different rows")
+
+    correlation = postgres_correlation(conn, Q1_ZEROS_KEPT_PAIRS)
+    if correlation != Q1_ZEROS_KEPT_EXPECTED[R_ROW]["value"]:
+        found.append(f"{title}: corr() of the zeros-kept pairs is {correlation}")
+
+    early_run = run_analysis(
+        conn,
+        q1_beside_fixtures(Q1_TWO_DATES, gate_open=False),
+        project_values,
+        Q1_BESIDE,
+        Q1_BESIDE_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} early", early_run, Q1_TWO_DATES_EARLY_EXPECTED)
+    found += gated_values_left_null(f"{title} early", early_run, Q1_BESIDE_GATED)
+    return found
+
+
 def q10_mismatches(conn, reached, not_reached, time_zone):
     title = f"[{time_zone}] Q10"
+    expected = with_model_intervals(
+        Q10_OBSERVED_EXPECTED, Q10_CELL_ERRORS, Q10_DAY_BEFORE_LABELS
+    )
     main_run = run_analysis(conn, q10_fixtures(), reached, Q10, Q10_TABLES, time_zone)
     early_run = run_analysis(
         conn, q10_fixtures(), not_reached, Q10, Q10_TABLES, time_zone
     )
-    found = mismatches(title, main_run, Q10_EXPECTED)
-    found += unexpected_rows(title, main_run, Q10_EXPECTED)
+    found = mismatches(title, main_run, expected)
+    found += unexpected_rows(title, main_run, expected)
+    second_run = run_analysis(conn, q10_fixtures(), reached, Q10, Q10_TABLES, time_zone)
+    if second_run != main_run:
+        found.append(f"{title}: a second run gives different rows")
     found += mismatches(f"{title} early", early_run, Q10_NOT_REACHED_EXPECTED)
     found += gated_values_left_null(f"{title} early", early_run, Q10_GATED)
 
@@ -1936,6 +3639,40 @@ def q10_mismatches(conn, reached, not_reached, time_zone):
     found += gated_values_left_null(
         f"{title} two polls after the cutoff", short_look_ahead_run, Q10_GATED
     )
+
+    twelve_dates_run = run_analysis(
+        conn,
+        q10_fixtures(error_rows=q10_twelve_dates_rows(), outturn_rows=""),
+        reached,
+        Q10,
+        Q10_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} twelve dates",
+        twelve_dates_run,
+        with_model_intervals(
+            Q10_TWELVE_DATES_EXPECTED, q10_twelve_dates_cell_errors(), {}
+        ),
+    )
+    return found
+
+
+def q10_project_values_mismatches(conn, project_values, time_zone):
+    title = f"[{time_zone}] Q10 project values"
+    run = run_analysis(
+        conn, q10_project_values_fixtures(), project_values, Q10, Q10_TABLES, time_zone
+    )
+    found = mismatches(title, run, Q10_PROJECT_VALUES_EXPECTED)
+    early_run = run_analysis(
+        conn,
+        q10_project_values_fixtures(gate_open=False),
+        project_values,
+        Q10,
+        Q10_TABLES,
+        time_zone,
+    )
+    found += gated_values_left_null(f"{title} early", early_run, Q10_GATED)
     return found
 
 
@@ -1947,11 +3684,17 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     )
     found = mismatches(title, main_run, Q4_EXPECTED)
     found += unexpected_rows(title, main_run, Q4_EXPECTED)
+    found += section_order_mismatches(title, main_run, 1, Q4_SECTION_ONE_ORDER)
     second_run = run_analysis(
         conn, q4_fixtures(1, 1, 3), reached, Q4, Q4_TABLES, time_zone
     )
     if second_run != main_run:
         found.append(f"{title}: a second run gives different rows")
+
+    top_tie_run = run_analysis(
+        conn, q4_fixtures(1, 1, 3, b39_error=38), reached, Q4, Q4_TABLES, time_zone
+    )
+    found += mismatches(f"{title} top-edge tie", top_tie_run, Q4_TOP_TIE_SPLIT_EXPECTED)
 
     unavailable_expected = dict(Q4_UNAVAILABLE_EXPECTED)
     unavailable_expected[DRAWS] = dict(value=str(usable_draws), result="unavailable")
@@ -2002,7 +3745,11 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
     found += mismatches(
         f"{title} stale forecasts on a matched day",
         stale_run,
-        {POPULATION: dict(days=2, half_hours=91), LEFT_OUT: dict(half_hours=4)},
+        {
+            POPULATION: dict(days=2, half_hours=91),
+            LEFT_OUT: dict(half_hours=4),
+            **stale_finals_expected({"Tuesday": 48, "Wednesday": 43}, {"Wednesday": 3}),
+        },
     )
 
     all_stale_day_run = run_analysis(
@@ -2021,6 +3768,8 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
             NO_FRESH_DAYS: dict(days=1),
             LOW: Q4_EXPECTED[LOW],
             HIGH: Q4_EXPECTED[HIGH],
+            # Monday 31 August: its first two half-hours start on Sunday in UTC.
+            **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {"Monday": 48}),
         },
     )
     return found
@@ -2084,6 +3833,26 @@ def q27_mismatches(conn, reached, not_reached, time_zone):
         f"{title} no look-ahead", no_look_ahead_run, Q27_GATED
     )
     return found
+
+
+def q27_schedule_change_mismatches(conn, schedule_window, time_zone):
+    title = f"[{time_zone}] Q27 schedule change"
+    fixtures = Q27_FULL_FIXTURES.format(rows=q27_schedule_window_rows())
+    run = run_analysis(conn, fixtures, schedule_window, Q27, Q27_TABLES, time_zone)
+    found = mismatches(title, run, Q27_SCHEDULE_EXPECTED)
+    second_run = run_analysis(
+        conn, fixtures, schedule_window, Q27, Q27_TABLES, time_zone
+    )
+    if second_run != run:
+        found.append(f"{title}: a second run gives different rows")
+    return found
+
+
+def q27_project_values_mismatches(conn, project_values, time_zone):
+    title = f"[{time_zone}] Q27 project values"
+    fixtures = Q27_FULL_FIXTURES.format(rows=Q27_PROJECT_VALUES_ROWS)
+    run = run_analysis(conn, fixtures, project_values, Q27, Q27_TABLES, time_zone)
+    return mismatches(title, run, Q27_PROJECT_VALUES_EXPECTED)
 
 
 def q8_q28_mismatches(conn, reached, boundary, time_zone):
@@ -2270,23 +4039,29 @@ def q30_mismatches(conn, reached, boundary, time_zone):
     return found
 
 
-def check_all(reached, not_reached, boundary):
+def check_all(reached, not_reached, boundary, project_values, schedule_window):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
-    reached, not_reached and boundary are manifests compiled with REACHED_VARS,
-    NOT_REACHED_VARS and boundary_vars(). Each case runs in a UTC session and
-    in a Europe/London one.
+    reached, not_reached, boundary, project_values and schedule_window are
+    manifests compiled with REACHED_VARS, NOT_REACHED_VARS, boundary_vars(),
+    PROJECT_VALUES_VARS and Q27_SCHEDULE_VARS. Each case runs in a UTC
+    session and in a Europe/London one.
     """
 
     conn = disposable_connection()
-    found = []
+    found = known_pick_mismatches()
     try:
         for time_zone in SESSION_TIME_ZONES:
+            found += q1_verdict_mismatches(conn, project_values, time_zone)
+            found += q1_beside_mismatches(conn, project_values, time_zone)
             found += q10_mismatches(conn, reached, not_reached, time_zone)
+            found += q10_project_values_mismatches(conn, project_values, time_zone)
             found += q4_mismatches(conn, reached, not_reached, boundary, time_zone)
             found += q2rf_mismatches(conn, reached, not_reached, time_zone)
             found += q25_mismatches(conn, reached, time_zone)
             found += q27_mismatches(conn, reached, not_reached, time_zone)
+            found += q27_schedule_change_mismatches(conn, schedule_window, time_zone)
+            found += q27_project_values_mismatches(conn, project_values, time_zone)
             found += q8_q28_mismatches(conn, reached, boundary, time_zone)
             found += q29_mismatches(conn, reached, time_zone)
             found += q30_mismatches(conn, reached, boundary, time_zone)
@@ -2321,6 +4096,8 @@ def main():
         compile_analyses(REACHED_VARS, also_compiled=(WIND_ERROR_MODEL,)),
         compile_analyses(NOT_REACHED_VARS),
         compile_analyses(boundary_vars()),
+        compile_analyses(PROJECT_VALUES_VARS),
+        compile_analyses(Q27_SCHEDULE_VARS),
     )
     for mismatch in found:
         print(mismatch)
@@ -2329,8 +4106,8 @@ def main():
             f"{len(found)} one-look analysis cells differ from the worked values"
         )
     print(
-        "One-look analyses: Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29 and Q30 match "
-        "every worked value"
+        "One-look analyses: Q1, Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29 and Q30 "
+        "match every worked value"
     )
 
 
