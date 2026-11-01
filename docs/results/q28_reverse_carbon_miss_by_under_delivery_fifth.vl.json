@@ -1,0 +1,324 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "interval_high": "number",
+        "interval_low": "number",
+        "mean_error": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv"
+  },
+  "description": "Exploratory: the more units fell short, the dirtier carbon came out than forecast",
+  "height": 220,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": 0
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "name": "zero line",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean carbon miss",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781"
+            ]
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "field": "interval_low",
+          "scale": {
+            "domain": [
+              -5,
+              3
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "interval_high"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Least under-delivery|0.4\u20131.1 GW",
+            "1.1\u20131.4 GW",
+            "1.4\u20131.6 GW",
+            "1.6\u20131.9 GW",
+            "Most under-delivery|1.9\u20135.2 GW"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "strokeWidth": 2,
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"90% range\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean carbon miss",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean carbon miss",
+              "90% range"
+            ],
+            "range": [
+              "circle",
+              "M-1,0H1"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Mean carbon miss",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781"
+            ]
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "under_delivery",
+            "title": "Under-delivery",
+            "type": "nominal"
+          },
+          {
+            "field": "half_hours",
+            "format": ",",
+            "title": "Half-hours",
+            "type": "quantitative"
+          },
+          {
+            "field": "mean_label",
+            "title": "Mean carbon miss, g/kWh",
+            "type": "nominal"
+          },
+          {
+            "field": "interval_low",
+            "format": "+.1f",
+            "title": "90% range from",
+            "type": "quantitative"
+          },
+          {
+            "field": "interval_high",
+            "format": "+.1f",
+            "title": "90% range to",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Mean carbon miss, g CO2/kWh",
+              "cleaner than forecast \u2190",
+              "\u2192 dirtier than forecast"
+            ]
+          },
+          "field": "mean_error",
+          "scale": {
+            "domain": [
+              -5,
+              3
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Least under-delivery|0.4\u20131.1 GW",
+            "1.1\u20131.4 GW",
+            "1.4\u20131.6 GW",
+            "1.6\u20131.9 GW",
+            "Most under-delivery|1.9\u20135.2 GW"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "filled": false,
+        "opacity": 1,
+        "size": 80,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"Mean carbon miss\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "mean_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "interval_high",
+          "scale": {
+            "domain": [
+              -5,
+              3
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Least under-delivery|0.4\u20131.1 GW",
+            "1.1\u20131.4 GW",
+            "1.4\u20131.6 GW",
+            "1.6\u20131.9 GW",
+            "Most under-delivery|1.9\u20135.2 GW"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": "left",
+        "baseline": "middle",
+        "dx": 4,
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fifth of Q28's half-hours, 22 Aug 2025 \u2013\", \"16 Aug 2026, least under-delivery first, with its\", \"range as mean power over the half-hour. The dot is the\", \"mean carbon miss, the line its 90% range.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fifth of Q28's half-hours, 22 Aug 2025 \u2013 16 Aug\", \"2026, least under-delivery first, with its range as mean power\", \"over the half-hour. The dot is the mean carbon miss, the line its\", \"90% range.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fifth of Q28's half-hours, 22 Aug 2025 \u2013 16 Aug 2026, least\", \"under-delivery first, with its range as mean power over the half-hour. The dot\", \"is the mean carbon miss, the line its 90% range.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fifth of Q28's half-hours, 22 Aug 2025 \u2013 16 Aug 2026, least under-delivery\", \"first, with its range as mean power over the half-hour. The dot is the mean carbon miss, the\", \"line its 90% range.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fifth of Q28's half-hours, 22 Aug 2025 \u2013 16 Aug 2026, least under-delivery first, with its\", \"range as mean power over the half-hour. The dot is the mean carbon miss, the line its 90% range.\"] : ([\"Each row is a fifth of Q28's half-hours, 22 Aug 2025 \u2013 16 Aug 2026, least under-delivery first, with its range as mean\", \"power over the half-hour. The dot is the mean carbon miss, the line its 90% range.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Exploratory: the more units fell short, the\", \"dirtier carbon came out than forecast\"] : (containerSize()[0] + 0 * width < 480 ? [\"Exploratory: the more units fell short, the dirtier\", \"carbon came out than forecast\"] : (containerSize()[0] + 0 * width < 560 ? [\"Exploratory: the more units fell short, the dirtier carbon came out\", \"than forecast\"] : (containerSize()[0] + 0 * width < 640 ? [\"Exploratory: the more units fell short, the dirtier carbon came out than forecast\"] : (containerSize()[0] + 0 * width < 720 ? [\"Exploratory: the more units fell short, the dirtier carbon came out than forecast\"] : ([\"Exploratory: the more units fell short, the dirtier carbon came out than forecast\"])))))"
+    }
+  },
+  "width": "container"
+}

@@ -23,6 +23,7 @@ from scripts.readme_charts import (
     NEUTRAL_MARK_COLOUR,
     PALE_KEY_COLOUR,
     Q2_WEEK,
+    Q28_REVERSE_FIFTH_ITEM,
     SPLIT_GREYS,
     SPLIT_THREE_SCHEME,
     SPLIT_TWO_SCHEME,
@@ -140,6 +141,36 @@ NEW_SAVED_OUTPUTS = {
         "C,80,2,4000.000",
         "E,30,1,500.000",
         "V,20,3,10000.000",
+    ],
+    # The reverse cut: 225 MWh is 0.45 GW, a half rounded up; fifth 2's mean
+    # rounds to zero from below, fifth 3's (0.05) is a half rounded up.
+    "q28_reverse_exploratory.csv": [
+        "section,line,item,fifth,half_hours,days,first_date,last_date,"
+        "under_delivery_from_mwh,under_delivery_to_mwh,value,interval_low,"
+        "interval_high,usable_draws,share_dirtier,share_equal,mean_abs_error,result",
+        '1,1,"read 1 November 2026, every check matched Q28",,500,100,'
+        "2025-09-01,2026-07-31,,,,,,,,,,matches Q28",
+        f'2,1,"{Q28_REVERSE_FIFTH_ITEM}",1,100,,,,225.000000,500.000000,'
+        "-3.000000,-4.000000,-2.000000,1000,0.300000,0.040000,9.000000,"
+        "interval available",
+        f'2,1,"{Q28_REVERSE_FIFTH_ITEM}",2,100,,,,500.100000,650.000000,'
+        "-0.040000,-0.500000,0.400000,1000,0.400000,0.040000,9.000000,"
+        "interval available",
+        f'2,1,"{Q28_REVERSE_FIFTH_ITEM}",3,100,,,,650.100000,800.000000,'
+        "0.050000,-0.300000,0.400000,1000,0.500000,0.040000,9.000000,"
+        "interval available",
+        f'2,1,"{Q28_REVERSE_FIFTH_ITEM}",4,100,,,,800.100000,1000.000000,'
+        "1.240000,0.500000,2.000000,1000,0.500000,0.040000,9.000000,"
+        "interval available",
+        f'2,1,"{Q28_REVERSE_FIFTH_ITEM}",5,100,,,,1000.100000,3000.000000,'
+        "2.000000,1.000000,3.000000,1000,0.600000,0.040000,9.000000,"
+        "interval available",
+        "2,2,all population half-hours,,500,,,,225.000000,3000.000000,0.050000,"
+        ",,,0.460000,0.040000,9.000000,",
+        '3,1,"difference, top fifth minus bottom fifth",,,,,,,,5.000000,'
+        "4.000000,6.000000,1000,,,,interval available",
+        '3,2,"least-squares slope, gCO2/kWh per GW",,500,,,,,,3.000000,'
+        "2.000000,4.000000,1000,,,,interval available",
     ],
 }
 
@@ -281,6 +312,17 @@ EXPECTED_CHART_CSVS = {
     "4,7–12 g,7–12 g,100,530.000000,106.0000,,\n"
     '5,Largest misses|12 g and up,"Largest misses, 12 g and up",100,'
     "550.000000,110.0000,101.0000,120.0000\n",
+    # GW is MWh per half-hour x 2 / 1,000: 225 MWh is 0.45, so 0.5.
+    "q28_reverse_carbon_miss_by_under_delivery_fifth.csv": BMRS_AND_CARBON_LINE
+    + "fifth,label,under_delivery,half_hours,mean_error,mean_label,interval_low,"
+    "interval_high\n"
+    '1,Least under-delivery|0.5–1.0 GW,"Least under-delivery, 0.5–1.0 GW",100,'
+    "-3.000000,−3.0,-4.000000,-2.000000\n"
+    "2,1.0–1.3 GW,1.0–1.3 GW,100,-0.040000,0.0,-0.500000,0.400000\n"
+    "3,1.3–1.6 GW,1.3–1.6 GW,100,0.050000,+0.1,-0.300000,0.400000\n"
+    "4,1.6–2.0 GW,1.6–2.0 GW,100,1.240000,+1.2,0.500000,2.000000\n"
+    '5,Most under-delivery|2.0–6.0 GW,"Most under-delivery, 2.0–6.0 GW",100,'
+    "2.000000,+2.0,1.000000,3.000000\n",
     "q30_rank_correlations.csv": BMRS_AND_CARBON_LINE + "label,measure,rho,low,high\n"
     "Size of misses|turned-down wind added back,"
     '"Size of the two misses, with turned-down wind added back",'
@@ -318,6 +360,10 @@ WRITTEN_FILES = [
     "q25_short_instructions_by_fuel_group.csv",
     "q25_short_instructions_by_fuel_group.png",
     "q25_short_instructions_by_fuel_group.vl.json",
+    "q28_reverse_carbon_miss_by_under_delivery_fifth.csv",
+    "q28_reverse_carbon_miss_by_under_delivery_fifth.png",
+    "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json",
+    "q28_reverse_exploratory.csv",
     "q28_shortfall_index_by_miss_fifth.csv",
     "q28_shortfall_index_by_miss_fifth.png",
     "q28_shortfall_index_by_miss_fifth.vl.json",
@@ -1143,6 +1189,8 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q25_instruction_fragmentation.csv": BMRS_LINE,
         "q25_instruction_fragmentation_corrected.csv": BMRS_LINE,
         "q25_short_instructions_by_fuel_group.csv": BMRS_LINE,
+        "q28_reverse_carbon_miss_by_under_delivery_fifth.csv": BMRS_AND_CARBON_LINE,
+        "q28_reverse_exploratory.csv": BMRS_AND_CARBON_LINE,
         "q28_shortfall_index_by_miss_fifth.csv": BMRS_AND_CARBON_LINE,
         "q29_final_forecast_error_by_month_and_block.csv": CARBON_LINE,
         "q2_changes_by_unit_prefix.csv": BMRS_LINE,
@@ -1191,6 +1239,9 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
         "q25_short_instructions_by_fuel_group.vl.json": (
             "results/q25_short_instructions_by_fuel_group.csv"
         ),
+        "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json": (
+            "results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv"
+        ),
         "q28_shortfall_index_by_miss_fifth.vl.json": (
             "results/q28_shortfall_index_by_miss_fifth.csv"
         ),
@@ -1223,6 +1274,7 @@ def test_every_fixed_axis_spans_its_whole_scale(written):
         "q23_typical_gap_by_fuel_group.vl.json": [[0, 12]],
         "q24_flagged_share_by_fuel_group.vl.json": [[0, 100]],
         "q25_short_instructions_by_fuel_group.vl.json": [[0.01, 100]],
+        "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json": [[-5, 3]],
         "q28_shortfall_index_by_miss_fifth.vl.json": [[95, 130]],
         "q2_moved_energy_by_unit_type.vl.json": [[0, 100]],
         "q30_rank_correlations.vl.json": [[-0.3, 0.3]],
@@ -1436,6 +1488,89 @@ def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
     )
     assert reverse in article
     assert "<!-- Q28-REVERSE-EXPLORATORY -->" in article
+
+
+def signed_tenths(value):
+    """A saved value to one decimal, halves up, with its sign, as the page
+    states it."""
+    rounded = Decimal(value).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    if rounded > 0:
+        return f"+{rounded}"
+    return str(rounded)
+
+
+def test_the_q28_reverse_chart_reads_its_range_from_its_saved_output(written):
+    # The fixture's read runs 1 September 2025 to 31 July 2026.
+    assert "fifth of Q28's half-hours, 1 Sep 2025 – 31 Jul 2026, least" in (
+        reading_line(written, "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json")
+    )
+
+
+def test_a_q28_reverse_range_past_the_fixed_scale_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    reverse = saved / "q28_reverse_exploratory.csv"
+    text = reverse.read_text(encoding="utf-8")
+    reverse.write_text(
+        text.replace("2.000000,1.000000,3.000000", "2.000000,1.000000,3.100000"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="runs past the scale"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
+    rows = saved_output_rows("q28_reverse_exploratory.csv")
+    slope = [row for row in rows if row["section"] == "3" and row["line"] == "2"][0]
+    read = [row for row in rows if row["section"] == "1"][0]
+    dates = output_date_range(rows)
+    page = PAGE.read_text(encoding="utf-8")
+    block = page.split('<section class="exploratory"', 1)[1].split("</section>", 1)[0]
+
+    assert '<h4 id="q28-reverse-title">Exploratory: the reverse direction</h4>' in block
+    assert (
+        "<p>Sorting the same half-hours by how much units under-delivered instead: "
+        "the more they fell short, the dirtier carbon came out than forecast, about "
+        f"{signed_tenths(slope['value'])} g/kWh for each extra GW of under-delivery "
+        f"(90% range {signed_tenths(slope['interval_low'])} to "
+        f"{signed_tenths(slope['interval_high'])}).</p>" in block
+    )
+    assert (
+        f"<figcaption>Q28's {int(read['half_hours']):,} half-hours, {dates};" in block
+    )
+    assert (
+        '<p class="note">Exploratory: asked after Q28 was read, so not '
+        "pre-registered. It shows association, not cause, and does not hold time "
+        "of day fixed; Q31 and Q32 test this direction on new data.</p>" in block
+    )
+    assert read["result"] == "matches Q28"
+
+
+def test_q28s_reverse_chart_shows_each_fifths_gw_range_and_miss():
+    # The committed chart data against the committed saved output: GW is MWh
+    # per half-hour x 2 / 1,000, one decimal; the miss to one decimal.
+    saved = saved_output_rows("q28_reverse_exploratory.csv")
+    fifths = [row for row in saved if row["item"] == Q28_REVERSE_FIFTH_ITEM]
+    chart = saved_output_rows("q28_reverse_carbon_miss_by_under_delivery_fifth.csv")
+    gigawatts_per_mwh = Decimal(2) / Decimal(1000)
+
+    assert len(chart) == len(fifths) == 5
+    for saved_row, chart_row in zip(fifths, chart, strict=True):
+        low = Decimal(saved_row["under_delivery_from_mwh"]) * gigawatts_per_mwh
+        high = Decimal(saved_row["under_delivery_to_mwh"]) * gigawatts_per_mwh
+        tenth = Decimal("0.1")
+        gigawatt_range = (
+            f"{low.quantize(tenth, rounding=ROUND_HALF_UP)}–"
+            f"{high.quantize(tenth, rounding=ROUND_HALF_UP)} GW"
+        )
+        assert chart_row["label"].endswith(gigawatt_range)
+        assert chart_row["mean_error"] == saved_row["value"]
+        expected_label = signed_tenths(saved_row["value"])
+        if expected_label == "-0.0":
+            expected_label = "0.0"
+        assert chart_row["mean_label"].replace("−", "-") == expected_label
+        assert chart_row["interval_low"] == saved_row["interval_low"]
+        assert chart_row["interval_high"] == saved_row["interval_high"]
 
 
 def test_q23s_answer_says_how_far_units_strayed_not_why():
@@ -1812,6 +1947,7 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q29_error_by_time_of_day.vl.json",
         "results/q29_error_by_month.vl.json",
         "results/q28_shortfall_index_by_miss_fifth.vl.json",
+        "results/q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json",
         "results/q30_rank_correlations.vl.json",
         "results/q2_moved_energy_by_unit_type.vl.json",
     ]

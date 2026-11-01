@@ -1,0 +1,7 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026. Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+fifth,label,under_delivery,half_hours,mean_error,mean_label,interval_low,interval_high
+1,Least under-delivery|0.4–1.1 GW,"Least under-delivery, 0.4–1.1 GW",3456,-2.942998,−2.9,-3.950536,-2.112993
+2,1.1–1.4 GW,1.1–1.4 GW,3456,-1.553530,−1.6,-2.150858,-0.791077
+3,1.4–1.6 GW,1.4–1.6 GW,3456,-0.028646,0.0,-0.602496,0.583481
+4,1.6–1.9 GW,1.6–1.9 GW,3455,0.529378,+0.5,-0.119345,1.066744
+5,Most under-delivery|1.9–5.2 GW,"Most under-delivery, 1.9–5.2 GW",3455,0.923010,+0.9,0.285297,1.626266

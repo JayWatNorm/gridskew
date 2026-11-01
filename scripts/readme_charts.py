@@ -62,6 +62,7 @@ Q24_RESULT = "q24_system_action_share.csv"
 Q25_RESULT = "q25_instruction_fragmentation.csv"
 Q25_CORRECTED_RESULT = "q25_instruction_fragmentation_corrected.csv"
 Q8_Q28_RESULT = "q8_q28_history.csv"
+Q28_REVERSE_RESULT = "q28_reverse_exploratory.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
 SPEC_DATA_FOLDER = "results"
@@ -205,6 +206,19 @@ Q28_NEEDED_INDEX = 125
 # Only the largest fifth's index has an interval.
 Q28_RANGE_KEY = "90% range (largest fifth)"
 
+# Q28 reverse cut (exploratory): the same half-hours sorted by under-delivery.
+Q28_REVERSE_FIFTH_ITEM = (
+    "fifth of under-delivery: mean signed carbon error, gCO2/kWh (actual minus "
+    "stored forecast; positive: dirtier)"
+)
+Q28_REVERSE_MISS_KEY = "Mean carbon miss"
+Q28_REVERSE_RANGE_KEY = "90% range"
+# A fixed scale, so a phone keeps room for the points; a value past it is
+# refused, not clipped.
+Q28_REVERSE_DOMAIN = [-5, 3]
+# Under-delivery in a half-hour, MWh, as mean power over it, GW.
+GIGAWATTS_PER_MWH_PER_HALF_HOUR = Decimal(2) / Decimal(1000)
+
 Q29_BLOCKS = {
     "UTC block 00:00-05:59": "Night|00:00–05:59",
     "UTC block 06:00-11:59": "Morning|06:00–11:59",
@@ -292,6 +306,9 @@ Q25_TITLE = (
     "instructions than power stations"
 )
 Q28_TITLE = "Bigger carbon misses came with slightly more under-delivery, not 25% more"
+Q28_REVERSE_TITLE = (
+    "Exploratory: the more units fell short, the dirtier carbon came out than forecast"
+)
 Q29_TIME_TITLE = "Afternoons came out dirtier than forecast, evenings cleaner"
 Q29_MONTH_TITLE = (
     "Winter months came out cleaner than forecast, April to July slightly dirtier"
@@ -342,6 +359,11 @@ Q28_READING = (
     "Each row is a fifth of the half-hours, smallest carbon misses first; the "
     "dot is their mean under-delivery, with the smallest fifth set to 100. A "
     "dot at 125 or beyond would mean yes."
+)
+Q28_REVERSE_READING = (
+    "Each row is a fifth of Q28's half-hours, {dates}, least under-delivery "
+    "first, with its range as mean power over the half-hour. The dot is the "
+    "mean carbon miss, the line its 90% range."
 )
 Q29_TIME_READING = "Each bar is the mean miss in a six-hour block of the day."
 Q29_MONTH_READING = "Each point is one month's mean miss."
@@ -2453,6 +2475,169 @@ def write_q28_chart(rows, output):
     write_spec(chart, output / f"{name}.vl.json")
 
 
+# Q28 reverse cut (exploratory): the carbon miss by fifth of under-delivery
+
+
+def gigawatts(mwh_per_half_hour):
+    """Under-delivery in a half-hour as mean power over it, GW, to one
+    decimal."""
+    return fixed(Decimal(mwh_per_half_hour) * GIGAWATTS_PER_MWH_PER_HALF_HOUR, 1)
+
+
+def signed_one_decimal(value):
+    """A signed value to one decimal, with a true minus sign; a value that
+    rounds to zero is shown as 0.0, with no sign."""
+    rounded = Decimal(fixed(Decimal(value), 1))
+    if rounded == 0:
+        return "0.0"
+    if rounded > 0:
+        return f"+{rounded}"
+    return f"−{-rounded}"
+
+
+def under_delivery_label(fifth, fifth_count, row):
+    """The fifth's under-delivery range in GW; the first and last fifths
+    also say which end they are."""
+    gigawatt_range = (
+        f"{gigawatts(row['under_delivery_from_mwh'])}–"
+        f"{gigawatts(row['under_delivery_to_mwh'])} GW"
+    )
+    if fifth == 1:
+        return f"Least under-delivery|{gigawatt_range}"
+    if fifth == fifth_count:
+        return f"Most under-delivery|{gigawatt_range}"
+    return gigawatt_range
+
+
+def carbon_miss_by_fifth_rows(rows):
+    """Per fifth of half-hours by under-delivery, the mean signed carbon miss
+    with its 90% interval."""
+    fifths = matching_rows(rows, "item", Q28_REVERSE_FIFTH_ITEM)
+    chart_rows = []
+    for row in fifths:
+        label = under_delivery_label(int(row["fifth"]), len(fifths), row)
+        chart_rows.append(
+            {
+                "fifth": row["fifth"],
+                "label": label,
+                "under_delivery": label.replace("|", ", "),
+                "half_hours": row["half_hours"],
+                "mean_error": row["value"],
+                "mean_label": signed_one_decimal(row["value"]),
+                "interval_low": row["interval_low"],
+                "interval_high": row["interval_high"],
+            }
+        )
+    return chart_rows
+
+
+def refused_outside_the_scale(chart_rows):
+    """The scale is fixed, so every interval must sit inside it."""
+    low, high = Q28_REVERSE_DOMAIN
+    for row in chart_rows:
+        if Decimal(row["interval_low"]) < low or Decimal(row["interval_high"]) > high:
+            raise ValueError(
+                f"Fifth {row['fifth']} runs past the scale {low} to {high}"
+            )
+
+
+def draw_carbon_miss_by_fifth(rows, dates, path):
+    figure, axes = new_figure(len(rows))
+    axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
+    labels = []
+    for position, row in enumerate(rows):
+        mean_error = float(row["mean_error"])
+        axes.plot(
+            [float(row["interval_low"]), float(row["interval_high"])],
+            [position, position],
+            color=NEUTRAL_MARK_COLOUR,
+            linewidth=1.5,
+        )
+        axes.plot(mean_error, position, "o", color=NEUTRAL_MARK_COLOUR)
+        bar_label(axes, position, float(row["interval_high"]), row["mean_label"])
+        labels.append(row["label"])
+    row_labels(axes, labels)
+    axes.set_xlim(*Q28_REVERSE_DOMAIN)
+    x_label(
+        axes,
+        "Mean carbon miss, gCO2/kWh (cleaner than forecast ← → dirtier than forecast)",
+    )
+    png_title(
+        axes,
+        Q28_REVERSE_TITLE,
+        [f"Fifths of Q28's half-hours by under-delivery, {dates}; with 90% ranges"],
+    )
+    save_figure(figure, path)
+
+
+def write_q28_reverse_chart(rows, output):
+    name = "q28_reverse_carbon_miss_by_under_delivery_fifth"
+    chart_rows = carbon_miss_by_fifth_rows(rows)
+    refused_outside_the_scale(chart_rows)
+    dates = output_date_range(rows)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(
+        output, name, BMRS_AND_CARBON_ATTRIBUTION, columns, chart_rows
+    )
+    draw_carbon_miss_by_fifth(chart_rows, dates, output / f"{name}.png")
+
+    data = csv_data(csv_name, ["mean_error", "interval_low", "interval_high"])
+    fifth = row_axis("label", column_of(chart_rows, "label"))
+    height = len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
+    miss_scale = altair.Scale(domain=Q28_REVERSE_DOMAIN, nice=False)
+    miss_axis = altair.X(
+        "mean_error:Q",
+        scale=miss_scale,
+        axis=axis_title(
+            [
+                "Mean carbon miss, g CO2/kWh",
+                "cleaner than forecast ←",
+                "→ dirtier than forecast",
+            ]
+        ),
+    )
+    keys = {
+        Q28_REVERSE_MISS_KEY: key_mark(
+            NEUTRAL_MARK_COLOUR, NEUTRAL_MARK_COLOUR, "circle"
+        ),
+        Q28_REVERSE_RANGE_KEY: key_mark(NEUTRAL_MARK_COLOUR, NO_FILL, LINE_SYMBOL),
+    }
+    tooltip = [
+        altair.Tooltip("under_delivery:N", title="Under-delivery"),
+        altair.Tooltip("half_hours:Q", title="Half-hours", format=","),
+        altair.Tooltip("mean_label:N", title="Mean carbon miss, g/kWh"),
+        altair.Tooltip("interval_low:Q", title="90% range from", format="+.1f"),
+        altair.Tooltip("interval_high:Q", title="90% range to", format="+.1f"),
+    ]
+    interval = keyed(
+        altair.Chart().mark_rule(strokeWidth=2),
+        Q28_REVERSE_RANGE_KEY,
+    ).encode(
+        x=altair.X("interval_low:Q", scale=miss_scale),
+        x2="interval_high:Q",
+        y=fifth,
+        stroke=key_stroke(keys),
+    )
+    dots = keyed(
+        altair.Chart().mark_point(filled=False, size=80, strokeWidth=2, opacity=1),
+        Q28_REVERSE_MISS_KEY,
+    ).encode(x=miss_axis, y=fifth, tooltip=tooltip, **keyed_points(keys))
+    dot_labels = (
+        altair.Chart()
+        .mark_text(align="left", baseline="middle", dx=LABEL_GAP_PIXELS)
+        .encode(
+            x=altair.X("interval_high:Q", scale=miss_scale),
+            y=fifth,
+            text="mean_label:N",
+        )
+    )
+    reading = Q28_REVERSE_READING.format(dates=dates)
+    chart = altair.layer(zero_line(), interval, dots, dot_labels, data=data).properties(
+        **page_layout(Q28_REVERSE_TITLE, reading, height)
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
 # Q29: the stored forecast's miss by time of day and by month
 
 
@@ -2848,6 +3033,10 @@ def write_charts(result_folder, output_folder):
         results, output, Q8_Q28_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
     write_q28_chart(q8_q28, output)
+    q28_reverse = copy_saved_output(
+        results, output, Q28_REVERSE_RESULT, BMRS_AND_CARBON_ATTRIBUTION
+    )
+    write_q28_reverse_chart(q28_reverse, output)
     q29 = copy_saved_output(results, output, Q29_RESULT, CARBON_ATTRIBUTION)
     write_q29_time_chart(q29, output)
     write_q29_month_chart(q29, output)
