@@ -20,6 +20,7 @@
 
 {% set dates_needed = var('rf_restatement_dates_needed') %}
 {% set read_until = analysis_read_until() %}
+{% set capture_cutoff = utc_instant_var('rf_restatement_capture_cutoff') %}
 
 with runs as (
     select

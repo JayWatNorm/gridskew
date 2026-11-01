@@ -24,6 +24,10 @@ PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 # The repository profile reads the guarded DBT_* variables; pinning it and the
 # target stops an inherited DBT_PROFILES_DIR sending dbt to another database.
 PROFILES_DIR = Path(__file__).resolve().parents[2] / "dbt_profiles"
+CAPTURE_CUTOFF_VAR = "rf_restatement_capture_cutoff"
+# Without its offset a cutoff would be read in the session's time zone; with
+# another offset it is not the UTC instant recorded for the read.
+CUTOFFS_NOT_IN_UTC = ("2026-11-30 00:00:00", "2026-11-30 00:00:00+01")
 
 
 def disposable_connection():
@@ -36,14 +40,7 @@ def disposable_connection():
     )
 
 
-def compile_analyses(dbt_vars=None, also_compiled=()):
-    """The manifest of a compile of every analysis, with dbt_vars if given.
-
-    also_compiled names models whose compiled SQL is wanted too. A separate
-    target folder leaves dbt/target, which later checks read, as the last
-    full build wrote it.
-    """
-
+def run_compile(dbt_vars, also_compiled, target_dir):
     command = [
         "dbt",
         "compile",
@@ -56,20 +53,42 @@ def compile_analyses(dbt_vars=None, also_compiled=()):
         str(PROFILES_DIR),
         "--target",
         "dev",
+        "--target-path",
+        target_dir,
     ]
     if dbt_vars is not None:
         command += ["--vars", json.dumps(dbt_vars)]
+    return subprocess.run(command, capture_output=True, text=True)
+
+
+def compile_analyses(dbt_vars=None, also_compiled=()):
+    """The manifest of a compile of every analysis, with dbt_vars if given.
+
+    also_compiled names models whose compiled SQL is wanted too. A separate
+    target folder leaves dbt/target, which later checks read, as the last
+    full build wrote it.
+    """
+
     with TemporaryDirectory(prefix="analyses-") as target_dir:
-        result = subprocess.run(
-            command + ["--target-path", target_dir],
-            capture_output=True,
-            text=True,
-        )
+        result = run_compile(dbt_vars, also_compiled, target_dir)
         if result.returncode != 0:
             print(result.stdout[-4000:], result.stderr[-2000:])
             raise SystemExit("dbt could not compile the analyses")
         manifest_path = Path(target_dir) / "manifest.json"
         return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+
+def cutoffs_compiled_anyway():
+    """The capture cutoffs not in UTC that compile without dbt naming the var."""
+
+    compiled_anyway = []
+    for cutoff in CUTOFFS_NOT_IN_UTC:
+        with TemporaryDirectory(prefix="analyses-") as target_dir:
+            result = run_compile({CAPTURE_CUTOFF_VAR: cutoff}, (), target_dir)
+        if result.returncode != 0 and CAPTURE_CUTOFF_VAR in result.stdout:
+            continue
+        compiled_anyway.append(cutoff)
+    return compiled_anyway
 
 
 def compiled_analyses():
@@ -136,6 +155,13 @@ def main():
     if failed:
         raise SystemExit(f"{len(failed)} of {len(analyses)} analyses fail: {failed}")
     print(f"Analyses: all {len(analyses)} compile and run")
+
+    compiled_anyway = cutoffs_compiled_anyway()
+    if compiled_anyway:
+        raise SystemExit(
+            f"{CAPTURE_CUTOFF_VAR} not in UTC compiled anyway: {compiled_anyway}"
+        )
+    print(f"Analyses: {CAPTURE_CUTOFF_VAR} not in UTC stops the compile")
 
 
 if __name__ == "__main__":
