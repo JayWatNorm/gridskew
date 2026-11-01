@@ -217,7 +217,7 @@ listed_schedules as (
     from (
         values
 {%- for schedule in forecast_poll_schedules() %}
-            ('{{ schedule.label }}'){{ ',' if not loop.last }}
+            ('{{ schedule.label | replace("'", "''") }}'){{ ',' if not loop.last }}
 {%- endfor %}
     ) as listed (schedule)
 ),

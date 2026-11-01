@@ -700,9 +700,12 @@ def q10_project_values_fixtures(gate_open=True):
 #   F1 has PN 0 and metered 3 then 0: active on its first run;
 #   BW1 is active only half an hour before the window, AW1 only half an hour
 #     after the cutoff, and NR1 has no row: all inactive, none with a row in
-#     the window.
-# Seven active units, two interconnectors (one INTELE), four inactive (three
-# with no row in the window), one active unit with no PN unit-period.
+#     the window;
+#   EP1 and OP1 are active on a PN in the window; EP1's only shortfall row is
+#     at the cutoff, OP1's only one half an hour before the window, neither
+#     determinable.
+# Nine active units, two interconnectors (one INTELE), four inactive (three
+# with no row in the window); M1 and OP1 have no PN unit-period in the window.
 #
 # Idle unit-periods behind the population half-hours: U5's (PN 0 and metered
 # 0) is idle; U2's at A's third half-hour (PN 0, metered 1) is not, nor is
@@ -753,7 +756,8 @@ insert into synthetic_cohort values
     ('IM1', 'E_IM1', 'PS', 'pumped storage'), ('P1', 'E_P1', 'OCGT', 'gas'),
     ('M1', 'E_M1', 'BIOMASS', 'biomass'), ('F1', 'E_F1', 'NPSHYD', 'hydro'),
     ('BW1', 'E_BW1', 'CCGT', 'gas'), ('AW1', 'E_AW1', 'CCGT', 'gas'),
-    ('NR1', 'E_NR1', 'CCGT', 'gas');
+    ('NR1', 'E_NR1', 'CCGT', 'gas'), ('EP1', 'E_EP1', 'CCGT', 'gas'),
+    ('OP1', 'E_OP1', 'CCGT', 'gas');
 
 insert into synthetic_pn_periods values
     ('U1', '2026-09-01', '2026-09-01 01:00+00', 1, 'mapped'),
@@ -766,7 +770,9 @@ insert into synthetic_pn_periods values
     ('P1', '2026-09-01', '2026-08-31 23:00+00', 3, 'mapped'),
     ('F1', '2026-09-03', '2026-09-03 03:30+00', 0, 'mapped'),
     ('BW1', '2026-08-31', '2026-08-31 22:30+00', 4, 'mapped'),
-    ('AW1', '2026-09-05', '2026-09-05 00:30+00', 4, 'mapped');
+    ('AW1', '2026-09-05', '2026-09-05 00:30+00', 4, 'mapped'),
+    ('EP1', '2026-09-01', '2026-09-01 01:00+00', 2, 'mapped'),
+    ('OP1', '2026-09-01', '2026-09-01 01:00+00', 2, 'mapped');
 
 insert into synthetic_metered_periods values
     ('E_M1', '2026-09-05', '2026-09-05 00:00+00', 0, 2, 'mapped', 'M1'),
@@ -856,7 +862,11 @@ where settlement_date = date '2026-09-03' and period = 10
 union all
 select 'IM1', settlement_date, period_start, 2, 'determinable'
 from synthetic_periods
-where settlement_date = date '2026-09-03' and period = 10;
+where settlement_date = date '2026-09-03' and period = 10
+union all
+select 'EP1', date '2026-09-05', timestamptz '2026-09-05 00:00:00+00', null, 'no_metered_value'
+union all
+select 'OP1', date '2026-08-31', timestamptz '2026-08-31 22:30:00+00', null, 'no_metered_value';
 
 update synthetic_shortfall set pn_mwh = 0, metered_mwh = 0
 where national_grid_bm_unit in ('U4', 'U5', 'F1');
@@ -1340,12 +1350,12 @@ DETERMINABLE_UNIT_PERIODS = (
 )
 IDLE_SHARE = (5, "idle share of those determinable unit-periods", None)
 Q4_COHORT_EXPECTED = {
-    ACTIVE_UNITS: dict(value="7"),
+    ACTIVE_UNITS: dict(value="9"),
     INTERCONNECTOR_UNITS: dict(value="2"),
     INTELE_UNITS: dict(value="1"),
     INACTIVE_UNITS: dict(value="4"),
     NO_ROW_UNITS: dict(value="3"),
-    NO_PN_UNITS: dict(value="1"),
+    NO_PN_UNITS: dict(value="2"),
     IDLE_UNIT_PERIODS: dict(value="1"),
     DETERMINABLE_UNIT_PERIODS: dict(value="189"),
     IDLE_SHARE: dict(value="0.005291"),
@@ -1474,11 +1484,11 @@ Q4_NOT_REACHED_EXPECTED = {
     (2, QUINTILE, 1): dict(half_hours=19),
     (2, Q4_TOP_TIES, None): dict(half_hours=None, value=None, result=None),
     **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {}),
-    ACTIVE_UNITS: dict(value="7"),
-    NO_PN_UNITS: dict(value="1"),
+    ACTIVE_UNITS: dict(value="9"),
+    NO_PN_UNITS: dict(value="2"),
     IDLE_UNIT_PERIODS: dict(value="1"),
     DETERMINABLE_UNIT_PERIODS: dict(value="189"),
-    IDLE_SHARE: dict(value=None),
+    IDLE_SHARE: dict(value="0.005291"),
 }
 
 # B39's error at 38: A38, B38 and B39 share the top quintile's smallest

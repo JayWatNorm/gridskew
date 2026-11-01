@@ -90,7 +90,7 @@ listed_schedules as (
     from (
         values
 {%- for schedule in forecast_poll_schedules() %}
-            ({{ loop.index }}, '{{ schedule.label }}', {{ schedule.full_poll_rows }}, '{{ schedule.basis }}')
+            ({{ loop.index }}, '{{ schedule.label | replace("'", "''") }}', {{ schedule.full_poll_rows }}, '{{ schedule.basis | replace("'", "''") }}')
                 {{- ',' if not loop.last }}
 {%- endfor %}
     ) as listed (schedule_order, schedule, full_poll_rows, basis)

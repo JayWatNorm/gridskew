@@ -462,33 +462,33 @@ coverage_rows as (
 
     union all
 
-    select 3, null,'half-hours with error_final left out: final forecast over '
+    select 3, null, 'half-hours with error_final left out: final forecast over '
         || {{ final_horizon_limit_seconds // 60 }} || ' minutes ahead', null, half_hours,
         null, null, null, null, null
     from errors_left_out
 
     union all
 
-    select 3, null,'matched days with no half-hour whose final forecast is within '
+    select 3, null, 'matched days with no half-hour whose final forecast is within '
         || {{ final_horizon_limit_seconds // 60 }} || ' minutes', null, null,
         gate.matched_days - gate.eligible_days, null, null, null, null
     from gate
 
     union all
 
-    select 3, null,'settlement dates with the cohort measure', null, null,
+    select 3, null, 'settlement dates with the cohort measure', null, null,
         count(distinct settlement_date), min(settlement_date), max(settlement_date), null, null
     from cohort_shortfall
 
     union all
 
-    select 3, null,'settlement dates with both values in any half-hour', null, null,
+    select 3, null, 'settlement dates with both values in any half-hour', null, null,
         count(distinct settlement_date), min(settlement_date), max(settlement_date), null, null
     from both_values
 
     union all
 
-    select 3, null,'on matched days: cohort measure without error_final', null, count(*),
+    select 3, null, 'on matched days: cohort measure without error_final', null, count(*),
         count(distinct cohort_shortfall.settlement_date), null, null, null, null
     from cohort_shortfall
     inner join matched_days
@@ -499,7 +499,7 @@ coverage_rows as (
 
     union all
 
-    select 3, null,'on matched days: error_final without the cohort measure', null, count(*),
+    select 3, null, 'on matched days: error_final without the cohort measure', null, count(*),
         count(distinct matched_days.settlement_date), null, null, null, null
     from errors
     inner join matched_days
@@ -510,19 +510,19 @@ coverage_rows as (
 
     union all
 
-    select 3, null,'cohort unit-periods per population half-hour: min', null, count(*), null, null, null,
+    select 3, null, 'cohort unit-periods per population half-hour: min', null, count(*), null, null, null,
         min(unit_periods), null
     from population
 
     union all
 
-    select 3, null,'cohort unit-periods per population half-hour: median', null, count(*), null, null, null,
+    select 3, null, 'cohort unit-periods per population half-hour: median', null, count(*), null, null, null,
         percentile_cont(0.5) within group (order by unit_periods)::numeric, null
     from population
 
     union all
 
-    select 3, null,'cohort unit-periods per population half-hour: max', null, count(*), null, null, null,
+    select 3, null, 'cohort unit-periods per population half-hour: max', null, count(*), null, null, null,
         max(unit_periods), null
     from population
 ),
@@ -619,15 +619,12 @@ active_units_without_pn as (
             select 1
             from {{ ref('int_shortfall_by_unit_period') }} as shortfall
             where shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
-                and shortfall.period_start_utc >= (select min(period_start) from errors)
-{% if read_until is not none %}
-                and shortfall.period_start_utc <= timestamptz '{{ read_until }}'
-{% endif %}
+                and {{ active_cohort_window_test('shortfall', '(select min(period_start) from errors)', cohort_window_end) }}
         )
 ),
 
--- Counts of units and unit-periods, shown before the gate; the idle share
--- waits for it.
+-- Counts of units and unit-periods, and the idle share, all shown before the
+-- gate.
 cohort_rows as (
     select
         5 as section,
@@ -696,16 +693,13 @@ cohort_rows as (
 
     select 5, 9, 'idle share of those determinable unit-periods',
         null, null, null, null, null,
-        case when gate.is_reached
-            then round(
-                population_unit_periods.idle_unit_periods::numeric
-                    / nullif(population_unit_periods.determinable_unit_periods, 0),
-                6
-            )
-        end,
+        round(
+            population_unit_periods.idle_unit_periods::numeric
+                / nullif(population_unit_periods.determinable_unit_periods, 0),
+            6
+        ),
         null
     from population_unit_periods
-    cross join gate
 ),
 
 all_rows as (
