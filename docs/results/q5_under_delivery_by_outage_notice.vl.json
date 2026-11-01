@@ -83,7 +83,8 @@
         "x": {
           "axis": {
             "title": [
-              "Under-delivery, terawatt-hours (TWh)"
+              "Under-delivery, terawatt-hours (TWh),",
+              "22 Aug 2025 \u2013 27 Sep 2026"
             ]
           },
           "field": "scaled",

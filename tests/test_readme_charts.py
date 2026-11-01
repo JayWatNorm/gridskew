@@ -22,10 +22,13 @@ from scripts.readme_charts import (
     KEY_MARK_COLOUR,
     NEUTRAL_MARK_COLOUR,
     PALE_KEY_COLOUR,
+    Q2_WEEK,
     SPLIT_GREYS,
     SPLIT_THREE_SCHEME,
     SPLIT_TWO_SCHEME,
     end_name_heights,
+    output_date_range,
+    output_month_range,
     write_charts,
 )
 
@@ -45,6 +48,21 @@ SHARED_COLOURS = [
 FIXTURES = Path(__file__).parent / "fixtures" / "results"
 REPOSITORY = Path(__file__).parent.parent
 PAGE = REPOSITORY / "site" / "index.html"
+QUESTIONS = REPOSITORY / "docs" / "research-questions.md"
+FULL_MONTHS = {
+    "Jan": "January",
+    "Feb": "February",
+    "Mar": "March",
+    "Apr": "April",
+    "May": "May",
+    "Jun": "June",
+    "Jul": "July",
+    "Aug": "August",
+    "Sep": "September",
+    "Oct": "October",
+    "Nov": "November",
+    "Dec": "December",
+}
 PAGES_WORKFLOW = REPOSITORY / ".github" / "workflows" / "pages.yml"
 PINNED_JSDELIVR_FILE = re.compile(
     r"https://cdn\.jsdelivr\.net/npm/(?P<package>[a-z][a-z-]*)@\d+\.\d+\.\d+/\S+"
@@ -888,6 +906,33 @@ def diverging_colours(folder, spec_name):
     return None
 
 
+def x_axis_titles(folder, spec_name):
+    """Every x-axis title line a spec writes, joined into one text."""
+    layers = []
+    drawn_layers(written_specs(folder)[spec_name], layers)
+    lines = []
+    for layer in layers:
+        x = layer.get("encoding", {}).get("x", {})
+        title = x.get("axis", {}).get("title") if isinstance(x, dict) else None
+        if isinstance(title, list):
+            lines.extend(title)
+        elif isinstance(title, str):
+            lines.append(title)
+    return " ".join(lines)
+
+
+def reading_line(folder, spec_name):
+    """A spec's reading line as one line, from its widest wrapping."""
+    subtitle = written_specs(folder)[spec_name]["title"]["subtitle"]
+    return " ".join(wrapped_choices(subtitle["signal"])[-1])
+
+
+def saved_output_rows(name):
+    """A committed saved output's rows, after its attribution line."""
+    text = (REPOSITORY / "docs" / "results" / name).read_text(encoding="utf-8")
+    return list(csv.DictReader(io.StringIO(text.split("\n", 1)[1])))
+
+
 def unlabelled_values(folder, name):
     """Rows of the summary chart whose drawn value has no label."""
     missing = []
@@ -1070,7 +1115,7 @@ def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
             "All units: 40% of under-delivery came with a published outage"
         ),
         "q2_moved_energy_by_unit_type.vl.json": (
-            "Where the 100 GWh of revisions came from"
+            "Where the 100 GWh of revisions for 10–16 Aug 2026 came from"
         ),
         "q23_typical_gap_by_fuel_group.vl.json": (
             "With no NESO instruction, wind farms stray furthest from their plans"
@@ -1267,6 +1312,65 @@ def test_both_q29_charts_share_one_diverging_pair_no_fuel_group_wears(written):
     for light, dark in FUEL_GROUP_COLOURS.values():
         assert light not in pair
         assert dark not in pair
+
+
+def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
+    # Q3's fixture covers 22 August 2025 to 26 September 2026, and Q12 reads
+    # Q3's half-hours; Q5's rows run 22 August 2025 to 27 September 2026;
+    # Q24's fixture holds September 2026 only; Q2's week is its rule's.
+    q3 = "22 Aug 2025 – 26 Sep 2026"
+    assert q3 in x_axis_titles(written, "q3_gap_from_plan_by_fuel_group.vl.json")
+    assert q3 in x_axis_titles(written, "q12_instructed_share_by_fuel_group.vl.json")
+    assert "22 Aug 2025 – 27 Sep 2026" in x_axis_titles(
+        written, "q5_under_delivery_by_outage_notice.vl.json"
+    )
+    assert "energy in TWh, Sep 2026." in reading_line(
+        written, "q24_flagged_share_by_fuel_group.vl.json"
+    )
+    assert (
+        f"for {Q2_WEEK} came from"
+        in (
+            written_specs(written)["q2_moved_energy_by_unit_type.vl.json"][
+                "description"
+            ]
+        )
+    )
+
+
+def test_q2s_week_is_its_registered_population():
+    # Q2's outputs hold no dates, so its week is the rule's.
+    first_day, rest = Q2_WEEK.split("–")
+    last_day, month, year = rest.split(" ")
+    rule = f"Settlement dates {first_day} to {last_day} {FULL_MONTHS[month]} {year}"
+
+    assert f"**Population.** {rule}, every BM unit" in QUESTIONS.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
+    q3 = output_date_range(saved_output_rows("q3_metered_vs_notified.csv"))
+    q5 = output_date_range(saved_output_rows("q5_shortfall_with_known_outage.csv"))
+    q24 = output_month_range(saved_output_rows("q24_system_action_share.csv"))
+    q28 = output_date_range(saved_output_rows("q8_q28_history.csv"))
+    page = PAGE.read_text(encoding="utf-8")
+    expected = [
+        f"About a quarter (24%, {q5}) came with one",
+        f"managing the network:</strong> 97% ({q24}).",
+        f"the biggest carbon misses ({q28}), under-delivery",
+        f"Slightly less, with wide spreads ({q3}).",
+        f"0.03 MWh per unit per half-hour (bioenergy, {Q2_WEEK}).",
+        f"of under-delivery ({q5}) came with a published outage",
+        f"of 13.4 TWh, {q24})",
+        f"Mean under-delivery per half-hour, {q28}: 762 MWh",
+        f"Materially: for settlement dates {Q2_WEEK}, 3.4%",
+    ]
+    missing = []
+    for phrase in expected:
+        if phrase not in page:
+            missing.append(phrase)
+
+    assert missing == []
 
 
 def test_q23_titles_state_no_figures(written):

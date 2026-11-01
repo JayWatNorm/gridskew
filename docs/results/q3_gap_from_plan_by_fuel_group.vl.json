@@ -103,7 +103,8 @@
           "axis": {
             "title": [
               "Plan minus meter, megawatt-hours (MWh)",
-              "per unit per half-hour",
+              "per unit per half-hour,",
+              "22 Aug 2025 \u2013 26 Sep 2026",
               "left: produced more than planned \u00b7 right: less"
             ]
           },

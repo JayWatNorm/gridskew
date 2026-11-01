@@ -81,7 +81,8 @@
           "axis": {
             "title": [
               "Size of each part of the gap,",
-              "terawatt-hours (TWh)"
+              "terawatt-hours (TWh),",
+              "22 Aug 2025 \u2013 26 Sep 2026"
             ]
           },
           "field": "scaled",

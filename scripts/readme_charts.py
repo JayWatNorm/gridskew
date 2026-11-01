@@ -266,7 +266,11 @@ Q30_CORRELATIONS = [
 Q30_EXPECTED_SIZE = 0.2
 Q30_SIZE_LABEL_START = "Size of misses"
 
-Q2_TITLE = "Where the {gigawatt_hours} GWh of revisions came from"
+Q2_TITLE = "Where the {gigawatt_hours} GWh of revisions for {week} came from"
+# Q2's saved outputs hold no dates; its week is the registered rule's
+# population ("Settlement dates 10 to 16 August 2026" in
+# docs/research-questions.md), which a test holds this to.
+Q2_WEEK = "10–16 Aug 2026"
 Q2_AXIS_TITLE = "Share of the energy revised, %"
 Q3_TITLE = "Most fuel types produce slightly less than planned, with wide spreads"
 Q12_TITLE = (
@@ -325,7 +329,7 @@ Q23_MONTHLY_READING = (
 Q24_READING = (
     "Each bar is one fuel group's instructed energy as 100%, split into the "
     "share NESO flagged as managing the network and the rest. Under each name "
-    "is that energy in TWh."
+    "is that energy in TWh, {months}."
 )
 Q25_READING = (
     "Each row is a fuel group. The dot is the share of its instructions "
@@ -473,6 +477,44 @@ def fixed(value, places):
     """The value at a fixed number of decimal places, halves rounded up."""
     step = Decimal(1).scaleb(-places)
     return str(value.quantize(step, rounding=ROUND_HALF_UP))
+
+
+def day_label(day):
+    """'2025-08-22' as '22 Aug 2025'."""
+    year, month, date = day.split("-")
+    return f"{int(date)} {MONTH_NAMES[int(month) - 1]} {year}"
+
+
+def span(first, last):
+    if first == last:
+        return first
+    return f"{first} – {last}"
+
+
+def output_date_range(rows):
+    """The days a saved output covers, from its earliest first date to its
+    latest last date, to stand beside a figure in energy units."""
+    firsts = []
+    lasts = []
+    for row in rows:
+        if row.get("first_date"):
+            firsts.append(row["first_date"])
+        if row.get("last_date"):
+            lasts.append(row["last_date"])
+    if not firsts or not lasts:
+        raise ValueError("The saved output holds no dates for its range")
+    return span(day_label(min(firsts)), day_label(max(lasts)))
+
+
+def output_month_range(rows):
+    """The settlement months a saved output covers, first to last."""
+    months = []
+    for row in rows:
+        if row.get("settlement_month"):
+            months.append(row["settlement_month"])
+    if not months:
+        raise ValueError("The saved output holds no months for its range")
+    return span(month_name(min(months)), month_name(max(months)))
 
 
 def percentage(part, whole):
@@ -928,7 +970,7 @@ def moved_energy_by_unit_type(rows):
 def write_q2_chart(rows, output):
     name = "q2_moved_energy_by_unit_type"
     chart_rows, total = moved_energy_by_unit_type(rows)
-    title = Q2_TITLE.format(gigawatt_hours=fixed(total / 1000, 0))
+    title = Q2_TITLE.format(gigawatt_hours=fixed(total / 1000, 0), week=Q2_WEEK)
     columns = ["unit_type", "label", "moved_mwh", "share_of_moved_pct"]
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
 
@@ -946,10 +988,7 @@ def write_q2_chart(rows, output):
     png_title(
         axes,
         title,
-        [
-            "Between the three-week and two-month settlement runs, settlement "
-            "dates 10 to 16 August 2026"
-        ],
+        ["Between the three-week and two-month settlement runs"],
     )
     save_figure(figure, output / f"{name}.png")
 
@@ -1013,7 +1052,7 @@ def gap_from_plan_rows(q3_rows):
     return chart_rows
 
 
-def draw_gap_from_plan(rows, path):
+def draw_gap_from_plan(rows, dates, path):
     figure, axes = new_figure(len(rows))
     for position, row in enumerate(rows):
         lower = float(row["q1_deviation_mwh"])
@@ -1040,10 +1079,7 @@ def draw_gap_from_plan(rows, path):
     png_title(
         axes,
         Q3_TITLE,
-        [
-            "Bar: interquartile range of all units' half-hours; dot: median, "
-            "22 August 2025 to 26 September 2026."
-        ],
+        [f"Bar: interquartile range of all units' half-hours; dot: median, {dates}."],
     )
     handles = [
         Line2D(
@@ -1066,7 +1102,7 @@ def write_q3_chart(q3_rows, output):
     chart_rows = gap_from_plan_rows(q3_rows)
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
-    draw_gap_from_plan(chart_rows, output / f"{name}.png")
+    draw_gap_from_plan(chart_rows, output_date_range(q3_rows), output / f"{name}.png")
 
     measures = ["q1_deviation_mwh", "median_deviation_mwh", "q3_deviation_mwh"]
     data = csv_data(csv_name, measures)
@@ -1074,7 +1110,8 @@ def write_q3_chart(q3_rows, output):
     x_axis = axis_title(
         [
             "Plan minus meter, megawatt-hours (MWh)",
-            "per unit per half-hour",
+            "per unit per half-hour,",
+            output_date_range(q3_rows),
             "left: produced more than planned · right: less",
         ]
     )
@@ -1157,9 +1194,12 @@ def largest_parts_first(row):
     return (-Decimal(row["parts_mwh"]), row["fuel_group"])
 
 
-def write_q12_chart(rows, output):
+def write_q12_chart(rows, q3_rows, output):
+    """Q12's output holds no dates; it reads Q3's half-hours, so its range is
+    Q3's."""
     name = "q12_instructed_share_by_fuel_group"
     chart_rows = instructed_share_rows(rows)
+    dates = output_date_range(q3_rows)
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
 
@@ -1176,11 +1216,7 @@ def write_q12_chart(rows, output):
     row_labels(axes, labels)
     axes.set_xlim(0, max(ends) * BAR_LABEL_ROOM)
     x_label(axes, "Size of each part of the gap between plan and meter, TWh")
-    png_title(
-        axes,
-        Q12_TITLE,
-        ["Instructed share at each bar's end; 22 August 2025 to 26 September 2026"],
-    )
+    png_title(axes, Q12_TITLE, [f"Instructed share at each bar's end; {dates}"])
     save_figure(figure, output / f"{name}.png", legend_handles(axes))
 
     data = csv_data(
@@ -1199,7 +1235,7 @@ def write_q12_chart(rows, output):
         rows_axis,
         Q12_PARTS,
         SPLIT_TWO_SCHEME,
-        ["Size of each part of the gap,", "terawatt-hours (TWh)"],
+        ["Size of each part of the gap,", "terawatt-hours (TWh),", dates],
         tooltip,
         1_000_000,
     )
@@ -1284,6 +1320,7 @@ def write_q5_chart(rows, output):
     name = "q5_under_delivery_by_outage_notice"
     chart_rows = notice_rows(rows)
     title = Q5_TITLE.format(share=fixed(share_with_a_notice(rows), 0))
+    dates = output_date_range(rows)
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
     colours = split_greys_light(SPLIT_THREE)
@@ -1300,12 +1337,7 @@ def write_q5_chart(rows, output):
     axes.set_xlim(0, max(ends) * BAR_LABEL_ROOM)
     x_label(axes, "Under-delivery, TWh")
     png_title(
-        axes,
-        title,
-        [
-            "Share with a published outage at each bar's end; 22 August 2025 to "
-            "27 September 2026"
-        ],
+        axes, title, [f"Share with a published outage at each bar's end; {dates}"]
     )
     save_figure(figure, output / f"{name}.png", legend_handles(axes))
 
@@ -1321,7 +1353,7 @@ def write_q5_chart(rows, output):
         rows_axis,
         Q5_SEGMENTS,
         SPLIT_THREE_SCHEME,
-        ["Under-delivery, terawatt-hours (TWh)"],
+        ["Under-delivery, terawatt-hours (TWh),", dates],
         tooltip,
         1_000_000,
     )
@@ -1988,6 +2020,8 @@ def names_with_energy(chart_rows):
 def write_q24_chart(rows, output):
     name = "q24_flagged_share_by_fuel_group"
     chart_rows = flagged_share_rows(rows)
+    # The output holds settlement months, not days.
+    months = output_month_range(rows)
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
 
@@ -2011,7 +2045,7 @@ def write_q24_chart(rows, output):
     axes.set_xlim(0, 100)
     axes.set_xticks(SHARE_TICKS)
     x_label(axes, Q24_AXIS_TITLE)
-    png_title(axes, Q24_TITLE, ["22 August 2025 to 30 September 2026"])
+    png_title(axes, Q24_TITLE, [f"Energy under each name, {months}"])
     save_figure(figure, output / f"{name}.png", legend_handles(axes))
 
     data = csv_data(
@@ -2055,7 +2089,9 @@ def write_q24_chart(rows, output):
         .transform_calculate(volume_twh="datum.acceptance_volume_mwh / 1000000")
         .properties(
             **page_layout(
-                Q24_TITLE, Q24_READING, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
+                Q24_TITLE,
+                Q24_READING.format(months=months),
+                len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS,
             )
         )
     )
@@ -2791,7 +2827,7 @@ def write_charts(result_folder, output_folder):
     copy_saved_output(results, output, Q22_RESULT, BMRS_ATTRIBUTION)
     write_q3_chart(q3, output)
     q12 = copy_saved_output(results, output, Q12_RESULT, BMRS_ATTRIBUTION)
-    write_q12_chart(q12, output)
+    write_q12_chart(q12, q3, output)
     q5 = copy_saved_output(results, output, Q5_RESULT, BMRS_ATTRIBUTION)
     write_q5_chart(q5, output)
     copy_saved_output(results, output, Q6_RESULT, BMRS_ATTRIBUTION)
