@@ -1610,26 +1610,44 @@ def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
     slope = [row for row in rows if row["section"] == "3" and row["line"] == "2"][0]
     read = [row for row in rows if row["section"] == "1"][0]
     dates = output_date_range(rows)
+    fifths = item_rows(rows, "2", Q28_REVERSE_FIFTH_ITEM)
+    least = one_row(fifths, "fifth", "1")["value"]
+    most = one_row(fifths, "fifth", "5")["value"]
+    section_two = [row for row in rows if row["section"] == "2"]
+    all_half_hours = one_row(section_two, "line", "2")
+    mean_size = all_half_hours["mean_abs_error"]
+    q28 = saved_output_rows("q8_q28_history.csv")
+    q28_ratio = Decimal(item_row(q28, "3", "ratio, top over bottom")["value"])
+    q28_bar = item_row(q28, "3", "verdict (supported at a ratio of 1.25 or more)")
     page = PAGE.read_text(encoding="utf-8")
     block = page.split('<section class="exploratory"', 1)[1].split("</section>", 1)[0]
 
     assert '<h4 id="q28-reverse-title">Exploratory: the reverse direction</h4>' in block
     assert (
-        "<p>Sorting the same half-hours by how much units under-delivered instead: "
-        "the more they fell short, the dirtier carbon came out than forecast, about "
-        f"{signed_tenths(slope['value'])} g/kWh for each extra GW of under-delivery "
-        f"(90% range {signed_tenths(slope['interval_low'])} to "
-        f"{signed_tenths(slope['interval_high'])}).</p>" in block
+        "<p>Q28 sorted by the size of the carbon miss and found a small rise in "
+        f"under-delivery ({whole((q28_ratio - 1) * 100)}%; its test needed 25%). "
+        "This sorts the same half-hours by how much units under-delivered, and "
+        "looks at the direction of the miss. Each extra GW of under-delivery went "
+        f"with a carbon miss about {tenths(slope['value'])} g/kWh further towards "
+        f"dirtier than forecast (90% range {tenths(slope['interval_low'])} to "
+        f"{tenths(slope['interval_high'])}). On average, the fifth with the least "
+        f"under-delivery came out {tenths(-Decimal(least))} g/kWh cleaner than "
+        f"forecast and the fifth with the most {tenths(most)} g/kWh dirtier; misses "
+        f"had a mean size of {tenths(mean_size)} g/kWh in either direction. Time of "
+        "day and month are not held fixed, and carbon misses differ by both (Q29), "
+        "so this may partly reflect them.</p>" in block
     )
     assert (
         f"<figcaption>Q28's {int(read['half_hours']):,} half-hours, {dates};" in block
     )
     assert (
         '<p class="note">Exploratory: asked after Q28 was read, so not '
-        "pre-registered. It shows association, not cause, and does not hold time "
-        "of day fixed; Q31 and Q32 test this direction on new data.</p>" in block
+        "pre-registered. It shows association, not cause; Q31 and Q32 test this "
+        "direction on new data.</p>" in block
     )
     assert read["result"] == "matches Q28"
+    assert q28_bar["result"] == "not supported"
+    assert Decimal(least) < 0 < Decimal(most)
 
 
 def test_q28s_reverse_chart_shows_each_fifths_gw_range_and_miss():
@@ -1773,8 +1791,9 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"carbon intensity of {whole(all_carbon['mean_actual_g_per_kwh'])} g/kWh,",
         f"801 MWh in the largest, about "
         f"{percent_of(largest_fifth[0], all_demand['mean_demand_mwh_per_half_hour'], 0)}% "
-        f"of mean national demand "
-        f"({int(all_demand['mean_demand_mwh_per_half_hour']):,} MWh a half-hour).",
+        "of mean national demand from NESO's initial outturn "
+        '(<a href="#national-demand">INDO</a>), '
+        f"{int(all_demand['mean_demand_mwh_per_half_hour']):,} MWh a half-hour.",
         f"in every whole month, against plans of {low} to {high}% of capacity;",
         f"16.4 TWh of under-delivery (about {percent_of(under_delivery, planned_total, 0)}% "
         "of the energy these units planned over almost the same dates)",
@@ -1807,6 +1826,26 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
 
     assert missing == []
     assert 283_242 == int(metered["unit_periods"]) - int(cohort["unit_periods"])
+
+
+def caption_of_chart(page, chart_id):
+    """The figcaption under the chart with this id."""
+    after_chart = page.split(f'<div class="chart" id="{chart_id}"></div>', 1)[1]
+    return after_chart.split("</figcaption>", 1)[0]
+
+
+def test_each_scale_figure_links_the_context_count_it_divides_by():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert '<a href="results/context_plan_per_unit_half_hour.csv">' in (
+        caption_of_chart(page, "q3-chart")
+    )
+    assert '<a href="results/context_demand.csv">' in caption_of_chart(
+        page, "q28-chart"
+    )
+    assert '<a href="results/context_carbon_intensity.csv">' in caption_of_chart(
+        page, "q28-reverse-chart"
+    )
 
 
 def test_each_context_row_is_labelled_a_denominator_not_a_result():
@@ -2239,6 +2278,39 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q2_moved_energy_by_unit_type.vl.json",
     ]
     assert not_shipped([*local_targets(page_tags()), *specs]) == []
+
+
+def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path):
+    # The saved outputs are the committed CSVs without their attribution line.
+    # PNGs are left out: their pixels depend on the platform's fonts.
+    results = REPOSITORY / "docs" / "results"
+    saved = tmp_path / "saved"
+    saved.mkdir()
+    for committed in results.glob("*.csv"):
+        text = committed.read_text(encoding="utf-8")
+        if text.startswith("# "):
+            text = text.split("\n", 1)[1]
+        (saved / committed.name).write_text(text, encoding="utf-8")
+
+    written = tmp_path / "written"
+    write_charts(saved, written)
+
+    stale = []
+    for path in sorted(written.iterdir()):
+        if path.suffix == ".png":
+            continue
+        if path.read_bytes() != (results / path.name).read_bytes():
+            stale.append(path.name)
+    assert stale == []
+
+
+def test_every_in_page_link_has_a_target():
+    page = PAGE.read_text(encoding="utf-8")
+    targets = set(re.findall(r'\bid="([^"]+)"', page))
+    links = set(re.findall(r'href="#([^"]+)"', page))
+
+    assert "national-demand" in links
+    assert sorted(links - targets) == []
 
 
 def test_the_page_shows_no_figure_with_four_or_more_decimals():

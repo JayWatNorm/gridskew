@@ -321,6 +321,10 @@
         <dd>NESO's forecast of grams of CO2 per kWh for each half-hour. The miss is NESO's estimate of the actual minus the forecast: positive means dirtier than forecast.</dd>
       </div>
       <div>
+        <dt id="national-demand">National demand (INDO)</dt>
+        <dd>NESO's initial outturn of the Great Britain generation requirement, calculated from metered generation and including transmission losses. It leaves out interconnector exports, pumped-storage pumping and power stations' own use. Wind and solar on local networks are outside that metering, so they lower it rather than count in it.</dd>
+      </div>
+      <div>
         <dt>Stored forecast</dt>
         <dd>The one carbon forecast NESO's API keeps for each past half-hour; NESO does not document when it is made. Where GridSkew's archive overlaps it (17 August to 10 September 2026), it matched the forecast as it stood at about the end of the half-hour; after 10 September 2026, half the stored values match none of the archive's polls.</dd>
       </div>
@@ -399,7 +403,7 @@
     <p class="answer">Slightly less, with wide spreads (22 Aug 2025 – 26 Sep 2026). Wind, gas, nuclear and bioenergy usually produced a little less than planned: wind's median is <strong>0.3 MWh</strong> short per half-hour (about 0.6 MW), about 1.4% of a wind unit's mean plan of 22.1 MWh a half-hour. But a quarter of wind's half-hours fell over 2.9 MWh short and a quarter ran over 1 MWh above. Hydro, pumped storage and interconnectors have a median gap of zero: many of their half-hours show almost no gap, as when a unit planned to stay idle and did.</p>
     <figure>
       <div class="chart" id="q3-chart"></div>
-      <figcaption>22 August 2025 to 26 September 2026, on the latest settlement run held. Coal (closed units) is left out; interconnectors are links whose metered figure is an allocation against a plan of zero. Source: Elexon BMRS.</figcaption>
+      <figcaption>22 August 2025 to 26 September 2026, on the latest settlement run held. Coal (closed units) is left out; interconnectors are links whose metered figure is an allocation against a plan of zero. Source: Elexon BMRS. <a href="results/context_plan_per_unit_half_hour.csv">Context data</a></figcaption>
     </figure>
     <div class="sub" id="q22">
       <p><strong>Did later meter data change one week's fuel-group picture?</strong> <span class="tag">Q22</span> No: no group's median gap changed sign or order, and the biggest change was 0.03 MWh per unit per half-hour (bioenergy, 10–16 Aug 2026): its median gap moved from 0.78 to 0.75 MWh, about 4%. The test cannot see large corrections at single stations.</p>
@@ -597,7 +601,7 @@
     </figure>
     <figure>
       <div class="chart" id="q29-demand-chart"></div>
-      <figcaption>For scale only; no link is tested. Mean national demand from NESO's initial outturn (INDO), on the same 17,280 half-hours, a context count. Source: Elexon BMRS. <a href="results/context_demand.csv">Context data</a></figcaption>
+      <figcaption>For scale only; no link is tested. Mean national demand from NESO's initial outturn (<a href="#national-demand">INDO</a>), on the same 17,280 half-hours, a context count. Source: Elexon BMRS. <a href="results/context_demand.csv">Context data</a></figcaption>
     </figure>
     <details class="method">
       <summary>How I measured it</summary>
@@ -619,18 +623,18 @@
     <p class="answer">No. Over 22 Aug 2025 – 16 Aug 2026, the fifth of half-hours with the biggest misses carried <strong>5% more</strong> under-delivery (90% range 3% to 8%) than the fifth with the smallest: a small but steady rise, far short of the 25% needed. Half-hours are sorted by how far the forecast missed, not which way, so this cannot say whether under-delivery makes the forecast too clean or too dirty, or by how much.</p>
     <figure>
       <div class="chart" id="q28-chart"></div>
-      <figcaption>17,278 half-hours, all units together. Mean under-delivery per half-hour, 22 Aug 2025 – 16 Aug 2026: 762 MWh in the smallest-miss fifth, 801 MWh in the largest, about 6% of mean national demand (13,069 MWh a half-hour). Source: Elexon BMRS and NESO Carbon Intensity API.</figcaption>
+      <figcaption>17,278 half-hours, all units together. Mean under-delivery per half-hour, 22 Aug 2025 – 16 Aug 2026: 762 MWh in the smallest-miss fifth, 801 MWh in the largest, about 6% of mean national demand from NESO's initial outturn (<a href="#national-demand">INDO</a>), 13,069 MWh a half-hour. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/context_demand.csv">Context data</a></figcaption>
     </figure>
     <p class="note">The reverse question, how much under-delivery moves the carbon forecast and in which direction, is registered as <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q31-when-units-unexplained-deviations-add-carbon-is-the-last-carbon-forecast-too-clean">Q31</a> and <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q32-when-wind-farms-fall-short-of-their-plans-is-the-last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas">Q32</a>, read on new data in 2027.</p>
     <!-- Q28-REVERSE-EXPLORATORY -->
     <section class="exploratory" aria-labelledby="q28-reverse-title">
       <h4 id="q28-reverse-title">Exploratory: the reverse direction</h4>
-      <p>Sorting the same half-hours by how much units under-delivered instead: the more they fell short, the dirtier carbon came out than forecast, about +2.8 g/kWh for each extra GW of under-delivery (90% range +2.1 to +3.5).</p>
+      <p>Q28 sorted by the size of the carbon miss and found a small rise in under-delivery (5%; its test needed 25%). This sorts the same half-hours by how much units under-delivered, and looks at the direction of the miss. Each extra GW of under-delivery went with a carbon miss about 2.8 g/kWh further towards dirtier than forecast (90% range 2.1 to 3.5). On average, the fifth with the least under-delivery came out 2.9 g/kWh cleaner than forecast and the fifth with the most 0.9 g/kWh dirtier; misses had a mean size of 9.3 g/kWh in either direction. Time of day and month are not held fixed, and carbon misses differ by both (Q29), so this may partly reflect them.</p>
       <figure>
         <div class="chart" id="q28-reverse-chart"></div>
-        <figcaption>Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; under-delivery in GW is MWh per half-hour × 2 ÷ 1,000. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/q28_reverse_exploratory.csv">Saved output</a> · <a href="results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv">chart data</a></figcaption>
+        <figcaption>Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; under-delivery in GW is MWh per half-hour × 2 ÷ 1,000. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/q28_reverse_exploratory.csv">Saved output</a> · <a href="results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv">chart data</a> · <a href="results/context_carbon_intensity.csv">context data</a></figcaption>
       </figure>
-      <p class="note">Exploratory: asked after Q28 was read, so not pre-registered. It shows association, not cause, and does not hold time of day fixed; Q31 and Q32 test this direction on new data.</p>
+      <p class="note">Exploratory: asked after Q28 was read, so not pre-registered. It shows association, not cause; Q31 and Q32 test this direction on new data.</p>
     </section>
     <details class="method">
       <summary>How I measured it</summary>
