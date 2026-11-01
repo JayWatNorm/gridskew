@@ -125,7 +125,8 @@ grouped as (
         unit_periods.bm_unit,
         unit_periods.r3_mwh,
         unit_periods.rf_mwh,
-        coalesce(cohort_fuel_groups.fuel_group, 'outside the cohort') as fuel_group
+        coalesce(cohort_fuel_groups.fuel_group, 'outside the cohort') as fuel_group,
+        case when cohort_fuel_groups.elexon_bm_unit is null then 3 else 4 end as position
     from unit_periods
     left join cohort_fuel_groups
         on unit_periods.bm_unit = cohort_fuel_groups.elexon_bm_unit
@@ -142,27 +143,39 @@ grouped as (
         count(*) filter (where r3_mwh is null) as only_in_rf
 {% endset %}
 
--- Overall comes straight from the unit-periods, not from the fuel groups, so
--- an Elexon ID in two fuel groups counts once in it. With no GROUP BY it has
--- a row even when no unit-period is stored.
+-- The cohort total and overall come straight from the unit-periods, not from
+-- the fuel groups, so an Elexon ID in two fuel groups counts once in each.
+-- With no GROUP BY each has a row even when no unit-period is stored.
 measures as (
     select
-        fuel_group as item,
+        1 as position,
+        'cohort total' as item,
         {{ measure_columns }}
-    from grouped
-    group by fuel_group
+    from unit_periods
+    where bm_unit in (select elexon_bm_unit from cohort_fuel_groups)
 
     union all
 
     select
+        2 as position,
         'overall' as item,
         {{ measure_columns }}
     from unit_periods
+
+    union all
+
+    select
+        position,
+        fuel_group as item,
+        {{ measure_columns }}
+    from grouped
+    group by position, fuel_group
 ),
 
 measure_rows as (
     select
         1 as section,
+        measures.position,
         measures.item,
         measures.unit_periods,
         measures.units,
@@ -228,7 +241,8 @@ select
     null::bigint as periods,
     dates,
     first_date,
-    last_date
+    last_date,
+    position
 from measure_rows
 
 union all
@@ -248,6 +262,7 @@ select
     null,
     null,
     periods,
+    null,
     null,
     null,
     null
@@ -272,7 +287,8 @@ select
     null,
     null,
     null,
+    null,
     null
 from repeated_cohort_ids
 
-order by section, item
+order by section, position, item

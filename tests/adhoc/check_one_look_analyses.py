@@ -549,9 +549,25 @@ Q2RF_TABLES = {
 # (section, item, None) -> {column: expected}. Gas: 10 to 12, 20 to 15, 8 to
 # 8: gross 7 of 38, net -3. Wind: -4 to -1 (6 only in R3): 3 of 4, net 3.
 # Outside: 5 to 5, -10 to -6 (7 only in RF): 4 of 15, net 4. Hydro: 0 to 3,
-# not defined. Overall: 17 of 57, net 7.
-Q2RF_EXPECTED = {
+# not defined. Overall: 17 of 57, net 7. The cohort total is overall less
+# outside: 5 unit-periods, 13 of 42, net 3.
+Q2RF_MEASURES = {
+    (1, "cohort total", None): dict(
+        position=1,
+        unit_periods=5,
+        units=3,
+        changed_unit_periods=4,
+        gross_change_mwh="13.000",
+        r3_absolute_mwh="42.000",
+        gross_share="0.309524",
+        net_change_mwh="3.000",
+        net_share="0.071429",
+        share_status="defined",
+        only_in_r3=2,
+        only_in_rf=0,
+    ),
     (1, "gas", None): dict(
+        position=4,
         unit_periods=3,
         units=1,
         changed_unit_periods=2,
@@ -563,11 +579,9 @@ Q2RF_EXPECTED = {
         share_status="defined",
         only_in_r3=0,
         only_in_rf=0,
-        dates=2,
-        first_date="2025-08-22",
-        last_date="2025-08-23",
     ),
     (1, "wind", None): dict(
+        position=4,
         unit_periods=1,
         gross_change_mwh="3.000",
         r3_absolute_mwh="4.000",
@@ -577,6 +591,7 @@ Q2RF_EXPECTED = {
         only_in_rf=0,
     ),
     (1, "outside the cohort", None): dict(
+        position=3,
         unit_periods=2,
         changed_unit_periods=1,
         gross_change_mwh="4.000",
@@ -587,6 +602,7 @@ Q2RF_EXPECTED = {
         only_in_rf=1,
     ),
     (1, "hydro", None): dict(
+        position=4,
         unit_periods=1,
         gross_change_mwh="3.000",
         r3_absolute_mwh="0.000",
@@ -595,6 +611,7 @@ Q2RF_EXPECTED = {
         share_status="not defined: sum of abs(R3) is 0",
     ),
     (1, "overall", None): dict(
+        position=2,
         unit_periods=7,
         units=4,
         changed_unit_periods=5,
@@ -608,6 +625,7 @@ Q2RF_EXPECTED = {
         only_in_rf=1,
     ),
     (1, "solar", None): dict(
+        position=4,
         unit_periods=0,
         units=0,
         changed_unit_periods=0,
@@ -619,6 +637,12 @@ Q2RF_EXPECTED = {
         only_in_r3=1,
         only_in_rf=0,
     ),
+}
+Q2RF_POPULATION = {
+    (1, "gas", None): dict(dates=2, first_date="2025-08-22", last_date="2025-08-23"),
+}
+Q2RF_EXPECTED = {
+    **Q2RF_MEASURES,
     (2, "date 2025-08-22: R3", None): dict(unit_periods=7, units=5, periods=2),
     (2, "date 2025-08-22: RF", None): dict(unit_periods=6, units=4, periods=2),
     (2, "date 2025-08-23: R3", None): dict(unit_periods=2, units=2, periods=1),
@@ -629,6 +653,17 @@ Q2RF_EXPECTED = {
         None,
     ): dict(units=0),
 }
+# The headline first, then every unit, the units outside the cohort and the
+# fuel groups by name.
+Q2RF_MEASURES_ORDER = [
+    "cohort total",
+    "overall",
+    "outside the cohort",
+    "gas",
+    "hydro",
+    "solar",
+    "wind",
+]
 
 REPEATED_ID = (
     3,
@@ -639,7 +674,8 @@ TWO_GROUPS_FOR_ONE_ID = ",\n    ('GAS-1B', 'T_GAS-1', 'wind')"
 # With T_GAS-1 in gas and wind, its three unit-periods (10 to 12, 20 to 15,
 # 8 to 8) still count once overall: the main run's 7 unit-periods, 17 of 57,
 # net 7. Counted once per group they would give 10 unit-periods, 24 of 95,
-# net 4.
+# net 4. The cohort total likewise stays 5 unit-periods, 13 of 42, net 3;
+# adding the fuel-group rows would give 20 of 80.
 Q2RF_OVERALL = (1, "overall", None)
 Q2RF_TWO_GROUPS_OVERALL = dict(
     unit_periods=7,
@@ -651,12 +687,19 @@ Q2RF_TWO_GROUPS_OVERALL = dict(
     only_in_r3=2,
     only_in_rf=1,
 )
+Q2RF_COHORT_TOTAL = (1, "cohort total", None)
+Q2RF_TWO_GROUPS_COHORT_TOTAL = dict(
+    unit_periods=5,
+    gross_change_mwh="13.000",
+    r3_absolute_mwh="42.000",
+    net_change_mwh="3.000",
+)
 
 # K2: with 22 August's RF stored after the cutoff, the population is 23 and
-# 24 August. Gas, T_GAS-1 alone: 8 to 8 and 100 to 0, gross 100 of 108, net
-# -100. 2__SUPP's 23 August R3 row has no RF held at the cutoff.
+# 24 August. The cohort total, T_GAS-1 alone: 8 to 8 and 100 to 0, gross 100
+# of 108, net -100. 2__SUPP's 23 August R3 row has no RF held at the cutoff.
 Q2RF_LATE_EXPECTED = {
-    (1, "gas", None): dict(
+    (1, "cohort total", None): dict(
         unit_periods=2,
         gross_change_mwh="100.000",
         r3_absolute_mwh="108.000",
@@ -1798,6 +1841,23 @@ def q2rf_fixtures(extra_cohort_rows="", b1610_rows=Q2RF_B1610_ROWS, changes=""):
     )
 
 
+def q2rf_out_of_order(title, run, section, expected_items):
+    """The section's items in the order fetched, when that is not the order given."""
+
+    rows, error = run
+    if error is not None:
+        return []
+    items = []
+    for cells in rows.values():
+        if cells["section"] == section:
+            items.append(cells["item"])
+    if items == expected_items:
+        return []
+    return [
+        f"{title}: section {section} in the order {items}, expected {expected_items}"
+    ]
+
+
 def q8_q28_fixtures(
     demand_blocks=MAIN_DEMAND_BLOCKS,
     bottom_shortfall="null",
@@ -2083,7 +2143,9 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
         conn, q2rf_fixtures(), reached, Q2RF, Q2RF_TABLES, time_zone
     )
     found = mismatches(title, main_run, Q2RF_EXPECTED)
+    found += mismatches(title, main_run, Q2RF_POPULATION)
     found += unexpected_rows(title, main_run, Q2RF_EXPECTED)
+    found += q2rf_out_of_order(title, main_run, 1, Q2RF_MEASURES_ORDER)
 
     late_run = run_analysis(
         conn,
@@ -2112,7 +2174,11 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     found += mismatches(
         f"{title} two groups",
         two_groups_run,
-        {REPEATED_ID: dict(units=1), Q2RF_OVERALL: Q2RF_TWO_GROUPS_OVERALL},
+        {
+            REPEATED_ID: dict(units=1),
+            Q2RF_OVERALL: Q2RF_TWO_GROUPS_OVERALL,
+            Q2RF_COHORT_TOTAL: Q2RF_TWO_GROUPS_COHORT_TOTAL,
+        },
     )
     return found
 
