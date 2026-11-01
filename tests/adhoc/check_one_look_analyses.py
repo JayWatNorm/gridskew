@@ -792,6 +792,47 @@ Q2RF_LATE_EXPECTED = {
     (5, "population reached at", None): dict(instant="2026-11-17 00:05:00+00:00"),
 }
 
+# K4: every settlement date one day earlier, stored times unchanged. The
+# population is 21 and 22 August, every measure is as in the main case, each
+# date's RF is due a day earlier, and the reach time does not move. Earlier
+# rather than later, so the first population date falls before 22 August
+# 2025 and a floor typed in at that date fails.
+ONE_DAY_EARLIER = "update synthetic_b1610 set settlement_date = settlement_date - 1;"
+Q2RF_ONE_DAY_EARLIER_EXPECTED = {
+    (1, "gas", None): dict(dates=2, first_date="2025-08-21", last_date="2025-08-22"),
+    (2, "date 2025-08-21: R3", None): dict(unit_periods=7, units=5, periods=2),
+    (2, "date 2025-08-21: RF", None): dict(unit_periods=6, units=4, periods=2),
+    (2, "date 2025-08-22: R3", None): dict(unit_periods=2, units=2, periods=1),
+    (2, "date 2025-08-22: RF", None): dict(unit_periods=2, units=2, periods=1),
+    REPEATED_ID: dict(units=0),
+    (4, "date 2025-08-19", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-12 00:00:00+00:00",
+    ),
+    (4, "date 2025-08-20", None): dict(
+        date_status="RF held, no R3",
+        rf_capture_due_at="2026-11-13 00:00:00+00:00",
+    ),
+    (4, "date 2025-08-21", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-14 00:00:00+00:00",
+        rf_first_stored_at="2026-11-29 12:00:00+00:00",
+    ),
+    (4, "date 2025-08-22", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-15 00:00:00+00:00",
+    ),
+    (4, "date 2025-08-23", None): dict(
+        date_status="R3 and RF held, after the population",
+        rf_capture_due_at="2026-11-16 00:00:00+00:00",
+    ),
+    (5, "capture cutoff", None): dict(instant="2026-11-29 12:00:00+00:00"),
+    (5, "population reached at", None): dict(instant="2026-11-17 00:05:00+00:00"),
+    (5, "registry extract retrieved at", None): dict(
+        instant="2026-11-29 06:00:00+00:00"
+    ),
+}
+
 # K5: one gas unit on the two clock-change days, 27 October 2024 (50 periods)
 # and 30 March 2025 (46). Periods 1: 1 to 1 on both; period 50: 4 to 6;
 # period 46: 10 to 7. Gross 5 of 16, net -1. RF is first asked for at 00:00
@@ -2406,6 +2447,25 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
         time_zone,
     )
     found += mismatches(f"{title} late", late_run, Q2RF_LATE_EXPECTED)
+
+    one_day_earlier_run = run_analysis(
+        conn,
+        q2rf_fixtures(changes=ONE_DAY_EARLIER),
+        reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    earlier_title = f"{title} one day earlier"
+    found += mismatches(earlier_title, one_day_earlier_run, Q2RF_MEASURES)
+    found += mismatches(
+        earlier_title, one_day_earlier_run, Q2RF_ONE_DAY_EARLIER_EXPECTED
+    )
+    found += unexpected_rows(
+        earlier_title,
+        one_day_earlier_run,
+        {**Q2RF_MEASURES, **Q2RF_ONE_DAY_EARLIER_EXPECTED},
+    )
 
     clock_change_run = run_analysis(
         conn,
