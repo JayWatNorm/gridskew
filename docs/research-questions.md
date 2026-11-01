@@ -35,7 +35,7 @@ as a finding. This page holds the rules and their status, not the results.
   share of idle unit-periods (PN and metered output both zero) is reported
   in coverage and beside each unit-level median.
 
-**The thesis.** We test whether half-hours in which power stations miss
+**The thesis.** GridSkew tests whether half-hours in which power stations miss
 their own plans are also half-hours in which NESO's carbon forecast misses
 by more. NESO builds its forecast from its own demand, wind and solar
 forecasts, not from those plans, so any link is indirect. Q1 describes how
@@ -91,9 +91,9 @@ contextual explanations.
 
 ### Forecast read controls
 
-We read a forecast result only after the forecast feed has run past the
-cutoff and the outturn has had eight days to settle. We save the query,
-output and read time; limiting a rerun to the data held then is done by
+A forecast result is read only after the forecast feed has run past the
+cutoff and the outturn has had eight days to settle. The query, output
+and read time are saved; limiting a rerun to the data held then is done by
 hand. Recorded on 25 October 2026 for Q1, Q4 and Q10, before any of them was
 read:
 

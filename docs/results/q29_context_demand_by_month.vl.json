@@ -1,0 +1,83 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "mean_demand_gw": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q29_context_demand_by_month.csv"
+  },
+  "description": "For scale: mean national demand each month",
+  "height": 140,
+  "layer": [
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "item",
+            "title": "Month",
+            "type": "nominal"
+          },
+          {
+            "field": "half_hours",
+            "title": "Half-hours",
+            "type": "nominal"
+          },
+          {
+            "field": "mean_demand_gw",
+            "format": ".1f",
+            "title": "Mean demand, GW",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "labelAngle": 0,
+            "labelExpr": "['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][toNumber(slice(datum.label, 5, 7)) - 1] + ' ' + slice(datum.label, 2, 4)",
+            "labelOverlap": "parity"
+          },
+          "field": "month",
+          "title": null,
+          "type": "ordinal"
+        },
+        "y": {
+          "axis": {
+            "title": [
+              "Mean national demand, GW",
+              "for scale only"
+            ]
+          },
+          "field": "mean_demand_gw",
+          "type": "quantitative"
+        }
+      },
+      "mark": {
+        "color": "#6e7781",
+        "cornerRadiusEnd": 3,
+        "type": "bar"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is one month's mean national demand (NESO's\", \"initial outturn), for scale only; no link is tested.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is one month's mean national demand (NESO's initial\", \"outturn), for scale only; no link is tested.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is one month's mean national demand (NESO's initial outturn), for\", \"scale only; no link is tested.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is one month's mean national demand (NESO's initial outturn), for scale only; no\", \"link is tested.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is one month's mean national demand (NESO's initial outturn), for scale only; no link is tested.\"] : ([\"Each bar is one month's mean national demand (NESO's initial outturn), for scale only; no link is tested.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"For scale: mean national demand each month\"] : (containerSize()[0] + 0 * width < 480 ? [\"For scale: mean national demand each month\"] : (containerSize()[0] + 0 * width < 560 ? [\"For scale: mean national demand each month\"] : (containerSize()[0] + 0 * width < 640 ? [\"For scale: mean national demand each month\"] : (containerSize()[0] + 0 * width < 720 ? [\"For scale: mean national demand each month\"] : ([\"For scale: mean national demand each month\"])))))"
+    }
+  },
+  "width": "container"
+}

@@ -1,0 +1,11 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+fuel_group,q3_unit_periods,q3_abs_pn_mwh,q3_mean_plan_mwh,q3_median_plan_mwh,q3_unit_periods_nonzero_plan,q3_median_nonzero_plan_mwh,q22_unit_periods,q22_mean_plan_mwh,q22_median_plan_mwh,q22_median_nonzero_plan_mwh,label
+wind,4296890,94955560.6,22.099,8.500,3779308,11.000,76944,8.862,2.500,4.000,"context only: denominator, not a registered result"
+gas_turbine,1501188,65400591.5,43.566,0.000,308585,206.500,26208,49.318,0.000,198.500,"context only: denominator, not a registered result"
+nuclear,269444,36468182.5,135.346,0.000,128946,299.000,4704,143.253,193.000,295.000,"context only: denominator, not a registered result"
+bioenergy,211706,22340326.9,105.525,63.500,176909,65.000,3696,107.359,64.000,65.000,"context only: denominator, not a registered result"
+pumped_storage,307936,4557222.6,14.799,0.000,56910,75.000,5376,13.723,0.000,75.000,"context only: denominator, not a registered result"
+other,1373987,4307232.6,3.135,0.000,561613,3.500,27908,3.008,0.000,3.500,"context only: denominator, not a registered result"
+hydro,423412,3246304.9,7.667,3.500,249683,10.500,7392,5.545,0.000,9.500,"context only: denominator, not a registered result"
+interconnector,153945,591130.5,3.840,0.000,5155,82.500,2688,0.076,0.000,100.000,"context only: denominator, not a registered result"
+coal,115476,0.0,0.000,0.000,0,,2016,0.000,0.000,,"context only: denominator, not a registered result"

@@ -152,6 +152,11 @@
             "field": "units",
             "title": "Units",
             "type": "nominal"
+          },
+          {
+            "field": "planned_label",
+            "title": "Median unit's plan, % of capacity (for scale)",
+            "type": "nominal"
           }
         ],
         "x": {
@@ -471,6 +476,11 @@
             "field": "units",
             "title": "Units",
             "type": "nominal"
+          },
+          {
+            "field": "planned_label",
+            "title": "Median unit's plan, % of capacity (for scale)",
+            "type": "nominal"
           }
         ],
         "x": {
@@ -586,6 +596,11 @@
           {
             "field": "units",
             "title": "Units",
+            "type": "nominal"
+          },
+          {
+            "field": "planned_label",
+            "title": "Median unit's plan, % of capacity (for scale)",
             "type": "nominal"
           }
         ],
