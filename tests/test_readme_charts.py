@@ -1379,11 +1379,47 @@ def test_q2s_week_is_its_registered_population_and_q22s():
     # Q2's and Q22's outputs hold no dates, so the week is their rules'.
     first_day, rest = Q2_WEEK.split("–")
     last_day, month, year = rest.split(" ")
-    dates = f"settlement dates {first_day} to {last_day} {FULL_MONTHS[month]} {year}"
+    week = f"{first_day} to {last_day} {FULL_MONTHS[month]} {year}"
+    q2_population = f"**Population.** Settlement dates {week}, every BM unit"
+    q22_run = f"run of settlement dates {week}, side by side"
     questions = QUESTIONS.read_text(encoding="utf-8")
 
-    assert f"**Population.** S{dates[1:]}, every BM unit" in questions
-    assert f"run of {dates}, side by side" in questions
+    assert q2_population in questions
+    assert q22_run in questions
+
+
+def q24_data_start(page):
+    """The first day of Q24's read, from its How we measured it entry."""
+    article = page.split('<article id="q24">', 1)[1].split("</article>", 1)[0]
+    found = re.search(r"<dt>Data</dt>\s*<dd>(\d{1,2} [A-Z][a-z]+ \d{4}) to ", article)
+    return found.group(1)
+
+
+def test_q24s_part_month_starts_on_its_reads_first_day():
+    # Q24's output holds months only; its first month is a part month, and
+    # the day it starts is the one its read records.
+    page = PAGE.read_text(encoding="utf-8")
+    q24 = output_month_range(saved_output_rows("q24_system_action_share.csv"))
+    first_month, first_year = q24.split(" – ")[0].split(" ")
+    start = q24_data_start(page)
+
+    assert start.endswith(f" {FULL_MONTHS[first_month]} {first_year}")
+    assert f"the first is a part month, from {start}. Units with" in page
+
+
+def test_q23s_answer_says_how_far_units_strayed_not_why():
+    # With no instruction in force the gap can still hold a forecast miss,
+    # energy bought outside the Balancing Mechanism, a declared cut or a
+    # settlement estimate, so the page does not call it the unit's own.
+    page = PAGE.read_text(encoding="utf-8")
+    answer = page.split('<article id="q23">', 1)[1].split('<p class="answer">', 1)[1]
+    answer = answer.split("</p>", 1)[0]
+
+    assert (
+        "Only half-hours with no NESO instruction count. The gap shows how far "
+        "a unit strayed from its plan, not why." in answer
+    )
+    assert "unit's own" not in answer
 
 
 def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
@@ -1400,7 +1436,7 @@ def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
         f"0.03 MWh per unit per half-hour (bioenergy, {Q2_WEEK}).",
         f"of under-delivery ({q5}) came with a published outage",
         f"of 13.4 TWh, settlement months {q24})",
-        f"<figcaption>Settlement months {q24}. Units with",
+        f"<figcaption>Settlement months {q24}; the first is a part month",
         f"Most of it for gas, hydro and pumped storage ({q3}): <strong>83 to 91%",
         "NESO never instructed a nuclear unit in those dates.",
         f"No. Over {q28}, the fifth of half-hours with the biggest misses",
@@ -1567,7 +1603,14 @@ def test_every_split_grey_stands_out_from_the_page_and_its_neighbour():
     # interconnectors, a neutral result or a comparison.
     page = PAGE.read_text(encoding="utf-8")
     light_page, dark_page = re.findall(r"--surface: (#[0-9a-f]{6});", page)
+    light_text = re.findall(r"--text: (#[0-9a-f]{6});", page)[0]
     steps = ["strong", "mid", "soft"]
+
+    # The light strong grey stays lighter than the page's text, so a bar
+    # part does not read as text.
+    assert contrast_ratio(SPLIT_GREYS["strong"][0], light_page) < contrast_ratio(
+        light_text, light_page
+    )
 
     for mode, surface in enumerate([light_page, dark_page]):
         greys = []
@@ -1576,7 +1619,7 @@ def test_every_split_grey_stands_out_from_the_page_and_its_neighbour():
         for grey in greys:
             assert contrast_ratio(grey, surface) >= 3.0
         for upper, lower in zip(greys[:-1], greys[1:], strict=True):
-            assert contrast_ratio(upper, lower) >= 1.5
+            assert contrast_ratio(upper, lower) >= 1.8
     other_greys = set(FUEL_GROUP_COLOURS["interconnector"])
     other_greys.update([NEUTRAL_MARK_COLOUR, COMPARISON_COLOUR])
     for light, dark in SPLIT_GREYS.values():

@@ -413,12 +413,13 @@ LOG_SHARE_TICKS = [0.01, 0.1, 1, 10, 100]
 # instructed, flagged or planned part takes the strong grey, unplanned the
 # mid, the rest the soft. In dark mode the strong grey is the lightest, so it
 # still stands out most. Every grey, the soft one too, reaches 3:1 against
-# the page; neighbouring greys differ by about 2:1 or more, and a 2 px gap
-# in the page's own colour separates the parts. The page
-# registers each set for its colour mode as a scheme the specs name.
+# the page; neighbouring greys differ by at least 1.8:1, and a 2 px gap in
+# the page's own colour separates the parts. The light strong grey stays
+# lighter than the page's text, so a bar part does not read as text. The
+# page registers each set for its colour mode as a scheme the specs name.
 SPLIT_GREYS = {
-    "strong": ("#0a111a", "#dfe6ef"),
-    "mid": ("#3a414a", "#a6adb6"),
+    "strong": ("#232a33", "#dfe6ef"),
+    "mid": ("#4d545d", "#a6adb6"),
     "soft": ("#7a818a", "#5b626b"),
 }
 SPLIT_TWO_SCHEME = "gridskew-split-two"
