@@ -45,6 +45,10 @@ REACHED_VARS = {
     "forecast_drift_half_hours_needed": 7,
     "shortfall_error_matched_days_needed": 2,
     "rf_restatement_dates_needed": 2,
+    # Not the project's 450, so a 450 typed into the SQL fails; the two
+    # manifests' cutoffs differ, so a typed cutoff fails one of them.
+    "b1610_rf_capture_offset_days": 449,
+    "rf_restatement_capture_cutoff": "2026-11-29 12:00:00+00",
     "forecast_stalls_days_needed": 4,
     **STALLS_WINDOW_VARS,
     **Q29_WINDOW_VARS,
@@ -54,7 +58,7 @@ NOT_REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 8,
     "shortfall_error_matched_days_needed": 3,
-    "rf_restatement_dates_needed": 4,
+    "rf_restatement_capture_cutoff": "2026-11-30 00:00:00+00",
     "forecast_stalls_days_needed": 5,
     **STALLS_WINDOW_VARS,
 }
@@ -463,20 +467,25 @@ Q2RF_GATED = (
 )
 
 
-# Q2-RF's B1610 rows. 22 and 23 August 2025 are the first two dates with
-# both runs; 20 August has only R3 and 21 August only RF (neither is a
-# population date); 24 August is a third date (outside the first two);
-# 6 September 2026 is after analysis_read_until. T_ZERO's R3 is 0, so its
-# group's share is not defined; T_SOLAR has only an R3 row, so its group has
-# no unit-period in both runs. extra_cohort_rows lets one case give T_GAS-1
-# a second fuel group.
+# Q2-RF's B1610 rows, with the time each was stored (R3: the back-fill, 24
+# August 2026 10:00). The REACHED cutoff is 29 November 2026 12:00, and the
+# RF capture (offset 449 there) first asks for a date on its settlement date
+# plus 450 days. 22 and 23 August 2025 are the first two dates holding both
+# runs; 22 August's RF was stored exactly at the cutoff, two weeks late, and
+# 23 August's in two parts (2__SUPP's after a retry). 20 August has only R3,
+# its RF due and not held; 21 August only RF: its R3 row was stored after
+# both cutoffs. 24 August is a third date (outside the first two). T_ZERO's
+# R3 is 0, so its group's share is not defined; T_SOLAR has only an R3 row,
+# so its group has no unit-period in both runs. extra_cohort_rows lets one
+# case give T_GAS-1 a second fuel group; changes runs after the inserts.
 Q2RF_FIXTURES = """
 create temporary table synthetic_b1610 (
     bm_unit text,
     settlement_date date,
     settlement_period integer,
     settlement_run_type text,
-    quantity numeric
+    quantity numeric,
+    retrieved_at timestamptz
 ) on commit drop;
 create temporary table synthetic_cohort (
     national_grid_bm_unit text,
@@ -491,23 +500,45 @@ insert into synthetic_cohort values
     ('ZERO-1', 'T_ZERO', 'hydro'),
     ('SOLAR-1', 'T_SOLAR', 'solar'),
     ('NOID-1', null, 'gas'){extra_cohort_rows};
-
+{b1610_rows}
+{changes}
+"""
+Q2RF_B1610_ROWS = """
 insert into synthetic_b1610 values
-    ('T_GAS-1', '2025-08-20', 1, 'R3', 70),
-    ('T_GAS-1', '2025-08-21', 1, 'RF', 50),
-    ('T_GAS-1', '2025-08-22', 1, 'R3', 10), ('T_GAS-1', '2025-08-22', 1, 'RF', 12),
-    ('T_GAS-1', '2025-08-22', 1, 'SF', 999),
-    ('T_WIND-1', '2025-08-22', 1, 'R3', -4), ('T_WIND-1', '2025-08-22', 1, 'RF', -1),
-    ('2__SUPP', '2025-08-22', 1, 'R3', 5), ('2__SUPP', '2025-08-22', 1, 'RF', 5),
-    ('T_ZERO', '2025-08-22', 1, 'R3', 0), ('T_ZERO', '2025-08-22', 1, 'RF', 3),
-    ('T_SOLAR', '2025-08-22', 1, 'R3', 9),
-    ('T_GAS-1', '2025-08-22', 2, 'R3', 20), ('T_GAS-1', '2025-08-22', 2, 'RF', 15),
-    ('T_WIND-1', '2025-08-22', 2, 'R3', 6),
-    ('2__SUPP', '2025-08-22', 2, 'RF', 7),
-    ('T_GAS-1', '2025-08-23', 1, 'R3', 8), ('T_GAS-1', '2025-08-23', 1, 'RF', 8),
-    ('2__SUPP', '2025-08-23', 1, 'R3', -10), ('2__SUPP', '2025-08-23', 1, 'RF', -6),
-    ('T_GAS-1', '2025-08-24', 1, 'R3', 100), ('T_GAS-1', '2025-08-24', 1, 'RF', 0),
-    ('T_GAS-1', '2026-09-06', 1, 'R3', 1000), ('T_GAS-1', '2026-09-06', 1, 'RF', 0);
+    ('T_GAS-1', '2025-08-20', 1, 'R3', 70, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-21', 1, 'RF', 50, '2026-11-14 00:05+00'),
+    ('T_GAS-1', '2025-08-21', 1, 'R3', 1000, '2026-12-01 00:00+00'),
+    ('T_GAS-1', '2025-08-22', 1, 'R3', 10, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-22', 1, 'RF', 12, '2026-11-29 12:00+00'),
+    ('T_GAS-1', '2025-08-22', 1, 'SF', 999, '2026-08-24 10:00+00'),
+    ('T_WIND-1', '2025-08-22', 1, 'R3', -4, '2026-08-24 10:00+00'),
+    ('T_WIND-1', '2025-08-22', 1, 'RF', -1, '2026-11-29 12:00+00'),
+    ('2__SUPP', '2025-08-22', 1, 'R3', 5, '2026-08-24 10:00+00'),
+    ('2__SUPP', '2025-08-22', 1, 'RF', 5, '2026-11-29 12:00+00'),
+    ('T_ZERO', '2025-08-22', 1, 'R3', 0, '2026-08-24 10:00+00'),
+    ('T_ZERO', '2025-08-22', 1, 'RF', 3, '2026-11-29 12:00+00'),
+    ('T_SOLAR', '2025-08-22', 1, 'R3', 9, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-22', 2, 'R3', 20, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-22', 2, 'RF', 15, '2026-11-29 12:00+00'),
+    ('T_WIND-1', '2025-08-22', 2, 'R3', 6, '2026-08-24 10:00+00'),
+    ('2__SUPP', '2025-08-22', 2, 'RF', 7, '2026-11-29 12:00+00'),
+    ('T_GAS-1', '2025-08-23', 1, 'R3', 8, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-23', 1, 'RF', 8, '2026-11-16 00:05+00'),
+    ('2__SUPP', '2025-08-23', 1, 'R3', -10, '2026-08-24 10:00+00'),
+    ('2__SUPP', '2025-08-23', 1, 'RF', -6, '2026-11-18 06:00+00'),
+    ('T_GAS-1', '2025-08-24', 1, 'R3', 100, '2026-08-24 10:00+00'),
+    ('T_GAS-1', '2025-08-24', 1, 'RF', 0, '2026-11-17 00:05+00');
+"""
+# K2: 22 August's RF and 2__SUPP's 23 August RF stored a microsecond after
+# the REACHED cutoff, so neither is held at it.
+STORED_JUST_AFTER_THE_CUTOFF = """
+update synthetic_b1610
+set retrieved_at = '2026-11-29 12:00:00.000001+00'
+where settlement_run_type = 'RF'
+    and (
+        settlement_date = '2025-08-22'
+        or (settlement_date = '2025-08-23' and bm_unit = '2__SUPP')
+    );
 """
 
 Q2RF_TABLES = {
@@ -621,7 +652,25 @@ Q2RF_TWO_GROUPS_OVERALL = dict(
     only_in_rf=1,
 )
 
-# Four dates needed: 22 to 24 August are before the cutoff, so three.
+# K2: with 22 August's RF stored after the cutoff, the population is 23 and
+# 24 August. Gas, T_GAS-1 alone: 8 to 8 and 100 to 0, gross 100 of 108, net
+# -100. 2__SUPP's 23 August R3 row has no RF held at the cutoff.
+Q2RF_LATE_EXPECTED = {
+    (1, "gas", None): dict(
+        unit_periods=2,
+        gross_change_mwh="100.000",
+        r3_absolute_mwh="108.000",
+        gross_share="0.925926",
+        net_change_mwh="-100.000",
+        dates=2,
+        first_date="2025-08-23",
+        last_date="2025-08-24",
+    ),
+    (1, "outside the cohort", None): dict(unit_periods=0, only_in_r3=1, only_in_rf=0),
+}
+
+# The project's 30 dates needed, at the NOT_REACHED cutoff (30 November 2026
+# 00:00): 22 to 24 August hold both runs, so three.
 Q2RF_NOT_REACHED_EXPECTED = {
     (1, "overall", None): dict(
         unit_periods=8,
@@ -1743,8 +1792,10 @@ def q4_fixtures(a_bottom, b_bottom, a_tenth, stale_b_half_hours=0, extra_days=""
 ALL_STALE_DAY = ", (date '2026-08-31')"
 
 
-def q2rf_fixtures(extra_cohort_rows=""):
-    return Q2RF_FIXTURES.format(extra_cohort_rows=extra_cohort_rows)
+def q2rf_fixtures(extra_cohort_rows="", b1610_rows=Q2RF_B1610_ROWS, changes=""):
+    return Q2RF_FIXTURES.format(
+        extra_cohort_rows=extra_cohort_rows, b1610_rows=b1610_rows, changes=changes
+    )
 
 
 def q8_q28_fixtures(
@@ -2033,6 +2084,16 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     )
     found = mismatches(title, main_run, Q2RF_EXPECTED)
     found += unexpected_rows(title, main_run, Q2RF_EXPECTED)
+
+    late_run = run_analysis(
+        conn,
+        q2rf_fixtures(changes=STORED_JUST_AFTER_THE_CUTOFF),
+        reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    found += mismatches(f"{title} late", late_run, Q2RF_LATE_EXPECTED)
 
     early_run = run_analysis(
         conn, q2rf_fixtures(), not_reached, Q2RF, Q2RF_TABLES, time_zone

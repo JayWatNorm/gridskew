@@ -19,31 +19,38 @@
 -- returns counts and no energy.
 
 {% set dates_needed = var('rf_restatement_dates_needed') %}
-{% set read_until = analysis_read_until() %}
 {% set capture_cutoff = utc_instant_var('rf_restatement_capture_cutoff') %}
+{% set stored_until %}{% if capture_cutoff is none %}now(){% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
 
-with runs as (
+with date_runs as (
     select
-        bm_unit,
         settlement_date,
-        settlement_period,
         settlement_run_type,
-        quantity
+        count(distinct settlement_period) as periods,
+        min(retrieved_at) as first_stored_at
     from {{ source('elexon', 'elexon_b1610') }}
     where settlement_run_type in ('R3', 'RF')
-{% if read_until is not none %}
-        and settlement_date::timestamp at time zone 'Europe/London' <= timestamptz '{{ read_until }}'
-{% endif %}
+        and retrieved_at <= {{ stored_until }}
+    group by settlement_date, settlement_run_type
+),
+
+held_dates as (
+    select
+        settlement_date,
+        coalesce(max(periods) filter (where settlement_run_type = 'R3'), 0) as r3_periods,
+        coalesce(max(periods) filter (where settlement_run_type = 'RF'), 0) as rf_periods,
+        min(first_stored_at) filter (where settlement_run_type = 'RF') as rf_first_stored_at
+    from date_runs
+    group by settlement_date
 ),
 
 dates_with_both_runs as (
     select
         settlement_date,
         row_number() over (order by settlement_date) as date_order
-    from runs
-    group by settlement_date
-    having count(*) filter (where settlement_run_type = 'R3') > 0
-        and count(*) filter (where settlement_run_type = 'RF') > 0
+    from held_dates
+    where r3_periods > 0
+        and rf_periods > 0
 ),
 
 population_dates as (
@@ -61,16 +68,24 @@ gate as (
     from population_dates
 ),
 
+-- A retry adds later rows to a date already held, so the unit-period rows
+-- need the cutoff too. The date range lets the block-range index on
+-- settlement_date serve the read; the join keeps out a date inside it that
+-- holds only one run.
 population_runs as (
     select
-        runs.bm_unit,
-        runs.settlement_date,
-        runs.settlement_period,
-        runs.settlement_run_type,
-        runs.quantity
-    from runs
+        b1610.bm_unit,
+        b1610.settlement_date,
+        b1610.settlement_period,
+        b1610.settlement_run_type,
+        b1610.quantity
+    from {{ source('elexon', 'elexon_b1610') }} as b1610
     inner join population_dates
-        on runs.settlement_date = population_dates.settlement_date
+        on b1610.settlement_date = population_dates.settlement_date
+    cross join gate
+    where b1610.settlement_run_type in ('R3', 'RF')
+        and b1610.retrieved_at <= {{ stored_until }}
+        and b1610.settlement_date between gate.first_date and gate.last_date
 ),
 
 r3 as (
