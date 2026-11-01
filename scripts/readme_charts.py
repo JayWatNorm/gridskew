@@ -314,7 +314,8 @@ Q25_TITLE = (
 )
 Q28_TITLE = "Bigger carbon misses came with slightly more under-delivery, not 25% more"
 Q28_REVERSE_TITLE = (
-    "Exploratory: the more units fell short, the dirtier carbon came out than forecast"
+    "Exploratory: carbon came out dirtier than forecast when more units fell short "
+    "(time of day not held fixed)"
 )
 Q29_TIME_TITLE = "Afternoons came out dirtier than forecast, evenings cleaner"
 Q29_MONTH_TITLE = (

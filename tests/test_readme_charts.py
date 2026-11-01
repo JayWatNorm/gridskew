@@ -1610,16 +1610,26 @@ def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
     slope = [row for row in rows if row["section"] == "3" and row["line"] == "2"][0]
     read = [row for row in rows if row["section"] == "1"][0]
     dates = output_date_range(rows)
+    carbon = item_row(
+        saved_output_rows("context_carbon_intensity.csv"), "1", "all half-hours"
+    )
+    mean_intensity = carbon["mean_actual_g_per_kwh"]
     page = PAGE.read_text(encoding="utf-8")
     block = page.split('<section class="exploratory"', 1)[1].split("</section>", 1)[0]
 
     assert '<h4 id="q28-reverse-title">Exploratory: the reverse direction</h4>' in block
     assert (
-        "<p>Sorting the same half-hours by how much units under-delivered instead: "
-        "the more they fell short, the dirtier carbon came out than forecast, about "
-        f"{signed_tenths(slope['value'])} g/kWh for each extra GW of under-delivery "
+        "<p>Q28 sorted by the size of the carbon miss and found little. This sorts "
+        "the same half-hours by how much units under-delivered, and looks at the "
+        "direction of the miss: the more they fell short, the dirtier carbon came "
+        f"out than forecast, about {signed_tenths(slope['value'])} g/kWh for each "
+        "extra GW of under-delivery "
         f"(90% range {signed_tenths(slope['interval_low'])} to "
-        f"{signed_tenths(slope['interval_high'])}).</p>" in block
+        f"{signed_tenths(slope['interval_high'])}), about "
+        f"{percent_of(slope['value'], mean_intensity, 0)}% of the mean intensity of "
+        f"{whole(mean_intensity)} g/kWh. Time of day is not held fixed, and carbon "
+        "misses differ by time of day (Q29), so this may partly reflect that.</p>"
+        in block
     )
     assert (
         f"<figcaption>Q28's {int(read['half_hours']):,} half-hours, {dates};" in block
@@ -1773,8 +1783,8 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"carbon intensity of {whole(all_carbon['mean_actual_g_per_kwh'])} g/kWh,",
         f"801 MWh in the largest, about "
         f"{percent_of(largest_fifth[0], all_demand['mean_demand_mwh_per_half_hour'], 0)}% "
-        f"of mean national demand "
-        f"({int(all_demand['mean_demand_mwh_per_half_hour']):,} MWh a half-hour).",
+        "of mean national demand from NESO's initial outturn (INDO), "
+        f"{int(all_demand['mean_demand_mwh_per_half_hour']):,} MWh a half-hour.",
         f"in every whole month, against plans of {low} to {high}% of capacity;",
         f"16.4 TWh of under-delivery (about {percent_of(under_delivery, planned_total, 0)}% "
         "of the energy these units planned over almost the same dates)",
@@ -1807,6 +1817,17 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
 
     assert missing == []
     assert 283_242 == int(metered["unit_periods"]) - int(cohort["unit_periods"])
+
+
+def test_each_scale_figure_links_the_context_count_it_divides_by():
+    page = PAGE.read_text(encoding="utf-8")
+    q3 = page.split('<article id="q3">', 1)[1].split("</article>", 1)[0]
+    q28 = page.split('<article id="q28">', 1)[1].split("</article>", 1)[0]
+    q28_main, q28_reverse = q28.split('<section class="exploratory"', 1)
+
+    assert '<a href="results/context_plan_per_unit_half_hour.csv">' in q3
+    assert '<a href="results/context_demand.csv">' in q28_main
+    assert '<a href="results/context_carbon_intensity.csv">' in q28_reverse
 
 
 def test_each_context_row_is_labelled_a_denominator_not_a_result():
@@ -2239,6 +2260,30 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q2_moved_energy_by_unit_type.vl.json",
     ]
     assert not_shipped([*local_targets(page_tags()), *specs]) == []
+
+
+def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path):
+    # The saved outputs are the committed CSVs without their attribution line.
+    # PNGs are left out: their pixels depend on the platform's fonts.
+    results = REPOSITORY / "docs" / "results"
+    saved = tmp_path / "saved"
+    saved.mkdir()
+    for committed in results.glob("*.csv"):
+        text = committed.read_text(encoding="utf-8")
+        if text.startswith("# "):
+            text = text.split("\n", 1)[1]
+        (saved / committed.name).write_text(text, encoding="utf-8")
+
+    written = tmp_path / "written"
+    write_charts(saved, written)
+
+    stale = []
+    for path in sorted(written.iterdir()):
+        if path.suffix == ".png":
+            continue
+        if path.read_bytes() != (results / path.name).read_bytes():
+            stale.append(path.name)
+    assert stale == []
 
 
 def test_the_page_shows_no_figure_with_four_or_more_decimals():
