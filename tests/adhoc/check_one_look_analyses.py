@@ -492,6 +492,9 @@ create temporary table synthetic_cohort (
     elexon_bm_unit text,
     fuel_group text
 ) on commit drop;
+create temporary table synthetic_registry_extract (
+    retrieved_at timestamptz
+) on commit drop;
 
 insert into synthetic_cohort values
     ('GAS-1', 'T_GAS-1', 'gas'),
@@ -500,6 +503,7 @@ insert into synthetic_cohort values
     ('ZERO-1', 'T_ZERO', 'hydro'),
     ('SOLAR-1', 'T_SOLAR', 'solar'),
     ('NOID-1', null, 'gas'){extra_cohort_rows};
+insert into synthetic_registry_extract values ('2026-11-29 06:00+00');
 {b1610_rows}
 {changes}
 """
@@ -544,7 +548,11 @@ where settlement_run_type = 'RF'
 Q2RF_TABLES = {
     "elexon_b1610": "pg_temp.synthetic_b1610",
     "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+    "int_elexon__bm_units_current": "pg_temp.synthetic_registry_extract",
 }
+# Sections 2 to 5 never carry energy, before or after the population.
+_, Q2RF_ENERGY_COLUMNS = Q2RF_GATED
+Q2RF_NO_ENERGY = ({2, 3, 4, 5}, Q2RF_ENERGY_COLUMNS)
 
 # (section, item, None) -> {column: expected}. Gas: 10 to 12, 20 to 15, 8 to
 # 8: gross 7 of 38, net -3. Wind: -4 to -1 (6 only in R3): 3 of 4, net 3.
@@ -643,7 +651,12 @@ Q2RF_POPULATION = {
 }
 # Each date's RF is first asked for at 00:00 UTC, its settlement date plus
 # 449 + 1 days: 20 August 2025 on 13 November 2026, and so on. Every August
-# date has 48 periods.
+# date has 48 periods. The dates holding R3 have RF stored, or expected, at:
+# 23 August 16 November 00:05, 24 August 17 November 00:05, and 20 and 22
+# August at the cutoff (20 August's is due and not held). The second of
+# these is 17 November 00:05: the population of two was reached then, with 23
+# and 24 August, and 22 August, stored late but before the cutoff, took its
+# place by date.
 Q2RF_SETTLEMENT_DATES = {
     (4, "date 2025-08-20", None): dict(
         settlement_date="2025-08-20",
@@ -703,6 +716,13 @@ Q2RF_EXPECTED = {
         None,
     ): dict(units=0),
     **Q2RF_SETTLEMENT_DATES,
+    (5, "capture cutoff", None): dict(position=1, instant="2026-11-29 12:00:00+00:00"),
+    (5, "population reached at", None): dict(
+        position=2, instant="2026-11-17 00:05:00+00:00"
+    ),
+    (5, "registry extract retrieved at", None): dict(
+        position=3, instant="2026-11-29 06:00:00+00:00"
+    ),
 }
 # The headline first, then every unit, the units outside the cohort and the
 # fuel groups by name.
@@ -769,6 +789,7 @@ Q2RF_LATE_EXPECTED = {
         rf_first_stored_at="2026-11-16 00:05:00+00:00",
     ),
     (4, "date 2025-08-24", None): dict(date_status="in the population"),
+    (5, "population reached at", None): dict(instant="2026-11-17 00:05:00+00:00"),
 }
 
 # K5: one gas unit on the two clock-change days, 27 October 2024 (50 periods)
@@ -811,6 +832,116 @@ Q2RF_CLOCK_CHANGE_EXPECTED = {
         rf_periods=2,
         rf_capture_due_at="2026-06-23 00:00:00+00:00",
     ),
+    (5, "population reached at", None): dict(instant="2026-06-23 00:05:00+00:00"),
+}
+
+# K6: the production calendar, on the project's 30 dates and 450-day offset,
+# at the NOT_REACHED cutoff, 30 November 2026 00:00. One unit, period 1, R3
+# for every date from 22 August to 30 September 2025. RF stored five minutes
+# after it is due (22 August's due 16 November 2026 00:00) from 22 August to
+# 5 September, except 25 August. 5 September's is due exactly at the cutoff
+# and stored after it. Held at the cutoff: 13 dates. Expected RF: the 13
+# stored times, then 25 August and 5 September at the cutoff, then 6 to 20
+# September when due, 1 to 15 December: the 30th is 15 December 00:00.
+Q2RF_CALENDAR_ROWS = """
+insert into synthetic_b1610
+select 'T_GAS-1', date '2025-08-22' + day_number, 1, 'R3', 10, '2026-08-24 10:00+00'
+from generate_series(0, 39) as day_number;
+insert into synthetic_b1610 values
+    ('T_GAS-1', '2025-08-22', 1, 'RF', 11, '2026-11-16 00:05+00'),
+    ('T_GAS-1', '2025-08-23', 1, 'RF', 11, '2026-11-17 00:05+00'),
+    ('T_GAS-1', '2025-08-24', 1, 'RF', 11, '2026-11-18 00:05+00'),
+    ('T_GAS-1', '2025-08-26', 1, 'RF', 11, '2026-11-20 00:05+00'),
+    ('T_GAS-1', '2025-08-27', 1, 'RF', 11, '2026-11-21 00:05+00'),
+    ('T_GAS-1', '2025-08-28', 1, 'RF', 11, '2026-11-22 00:05+00'),
+    ('T_GAS-1', '2025-08-29', 1, 'RF', 11, '2026-11-23 00:05+00'),
+    ('T_GAS-1', '2025-08-30', 1, 'RF', 11, '2026-11-24 00:05+00'),
+    ('T_GAS-1', '2025-08-31', 1, 'RF', 11, '2026-11-25 00:05+00'),
+    ('T_GAS-1', '2025-09-01', 1, 'RF', 11, '2026-11-26 00:05+00'),
+    ('T_GAS-1', '2025-09-02', 1, 'RF', 11, '2026-11-27 00:05+00'),
+    ('T_GAS-1', '2025-09-03', 1, 'RF', 11, '2026-11-28 00:05+00'),
+    ('T_GAS-1', '2025-09-04', 1, 'RF', 11, '2026-11-29 00:05+00'),
+    ('T_GAS-1', '2025-09-05', 1, 'RF', 11, '2026-11-30 00:05+00');
+"""
+IN_THE_POPULATION = dict(date_status="in the population")
+RF_NOT_YET_DUE = dict(date_status="RF not yet due")
+Q2RF_CALENDAR_DATES = {
+    (4, "date 2025-08-22", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-16 00:00:00+00:00",
+        rf_first_stored_at="2026-11-16 00:05:00+00:00",
+    ),
+    (4, "date 2025-08-23", None): IN_THE_POPULATION,
+    (4, "date 2025-08-24", None): IN_THE_POPULATION,
+    (4, "date 2025-08-25", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-19 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
+    (4, "date 2025-08-26", None): IN_THE_POPULATION,
+    (4, "date 2025-08-27", None): IN_THE_POPULATION,
+    (4, "date 2025-08-28", None): IN_THE_POPULATION,
+    (4, "date 2025-08-29", None): IN_THE_POPULATION,
+    (4, "date 2025-08-30", None): IN_THE_POPULATION,
+    (4, "date 2025-08-31", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-25 00:00:00+00:00",
+    ),
+    (4, "date 2025-09-01", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-26 00:00:00+00:00",
+    ),
+    (4, "date 2025-09-02", None): IN_THE_POPULATION,
+    (4, "date 2025-09-03", None): IN_THE_POPULATION,
+    (4, "date 2025-09-04", None): dict(
+        date_status="in the population",
+        rf_capture_due_at="2026-11-29 00:00:00+00:00",
+        rf_first_stored_at="2026-11-29 00:05:00+00:00",
+    ),
+    (4, "date 2025-09-05", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-30 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
+    (4, "date 2025-09-06", None): dict(
+        date_status="RF not yet due",
+        rf_capture_due_at="2026-12-01 00:00:00+00:00",
+    ),
+    (4, "date 2025-09-07", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-08", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-09", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-10", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-11", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-12", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-13", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-14", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-15", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-16", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-17", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-18", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-19", None): RF_NOT_YET_DUE,
+    (4, "date 2025-09-20", None): dict(
+        date_status="RF not yet due",
+        rf_capture_due_at="2026-12-15 00:00:00+00:00",
+    ),
+}
+# 25 August lies inside the population's first and last date, holds R3 and
+# no RF: its row must not be read.
+Q2RF_CALENDAR_EXPECTED = {
+    (1, "overall", None): dict(
+        unit_periods=13,
+        only_in_r3=0,
+        only_in_rf=0,
+        gross_change_mwh=None,
+        share_status="population not reached: no result",
+        dates=13,
+        first_date="2025-08-22",
+        last_date="2025-09-04",
+    ),
+    (5, "capture cutoff", None): dict(instant="2026-11-30 00:00:00+00:00"),
+    (5, "population projected at", None): dict(
+        position=2, instant="2026-12-15 00:00:00+00:00"
+    ),
 }
 
 # The project's 30 dates needed, at the NOT_REACHED cutoff (30 November 2026
@@ -823,6 +954,12 @@ Q2RF_NOT_REACHED_EXPECTED = {
         share_status="population not reached: no result",
         dates=3,
     ),
+    # 20 and 22 to 24 August hold R3 at this cutoff: four dates, not 30.
+    (
+        5,
+        "population not projected: fewer dates hold R3 than needed",
+        None,
+    ): dict(position=2, instant=None),
 }
 
 
@@ -1942,6 +2079,17 @@ def q2rf_fixtures(extra_cohort_rows="", b1610_rows=Q2RF_B1610_ROWS, changes=""):
     )
 
 
+def q2rf_section(run, section):
+    """The run with only the rows of one section."""
+
+    rows, error = run
+    in_section = {}
+    for key, cells in rows.items():
+        if cells["section"] == section:
+            in_section[key] = cells
+    return in_section, error
+
+
 def q2rf_out_of_order(title, run, section, expected_items):
     """The section's items in the order fetched, when that is not the order given."""
 
@@ -2247,6 +2395,7 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     found += mismatches(title, main_run, Q2RF_POPULATION)
     found += unexpected_rows(title, main_run, Q2RF_EXPECTED)
     found += q2rf_out_of_order(title, main_run, 1, Q2RF_MEASURES_ORDER)
+    found += gated_values_left_null(title, main_run, Q2RF_NO_ENERGY)
 
     late_run = run_analysis(
         conn,
@@ -2275,6 +2424,24 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     )
     found += mismatches(f"{title} early", early_run, Q2RF_NOT_REACHED_EXPECTED)
     found += gated_values_left_null(f"{title} early", early_run, Q2RF_GATED)
+    found += gated_values_left_null(f"{title} early", early_run, Q2RF_NO_ENERGY)
+
+    calendar_run = run_analysis(
+        conn,
+        q2rf_fixtures(b1610_rows=Q2RF_CALENDAR_ROWS),
+        not_reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
+    )
+    calendar_title = f"{title} production calendar"
+    found += mismatches(calendar_title, calendar_run, Q2RF_CALENDAR_EXPECTED)
+    found += mismatches(calendar_title, calendar_run, Q2RF_CALENDAR_DATES)
+    found += unexpected_rows(
+        calendar_title, q2rf_section(calendar_run, 4), Q2RF_CALENDAR_DATES
+    )
+    found += gated_values_left_null(calendar_title, calendar_run, Q2RF_GATED)
+    found += gated_values_left_null(calendar_title, calendar_run, Q2RF_NO_ENERGY)
 
     two_groups_run = run_analysis(
         conn,

@@ -21,6 +21,7 @@
 {% set dates_needed = var('rf_restatement_dates_needed') %}
 {% set capture_offset_days = var('b1610_rf_capture_offset_days') %}
 {% set capture_cutoff = utc_instant_var('rf_restatement_capture_cutoff') %}
+{% set cutoff_passed %}{% if capture_cutoff is none %}null::timestamptz{% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
 {% set stored_until %}{% if capture_cutoff is none %}now(){% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
 
 with date_runs as (
@@ -243,27 +244,100 @@ settlement_dates as (
         on held_dates.settlement_date = population_dates.settlement_date
 ),
 
+-- A date's RF is expected when it was first stored; one not yet held, at the
+-- later of its due time and the cutoff (a missing date is taken to arrive
+-- now, a future one when due).
+expected_arrivals as (
+    select
+        settlement_date,
+        r3_periods,
+        case
+            when rf_periods > 0 then rf_first_stored_at
+            else greatest(rf_capture_due_at, {{ stored_until }})
+        end as expected_rf_at
+    from settlement_dates
+),
+
+r3_date_arrivals as (
+    select
+        expected_rf_at,
+        row_number() over (order by expected_rf_at, settlement_date) as arrival_order
+    from expected_arrivals
+    where r3_periods > 0
+),
+
+-- The population is reached when the Nth date holding R3 has its RF stored:
+-- with N held, the moment that happened; otherwise a projection.
+reach as (
+    select
+        count(*) >= {{ dates_needed }} as is_projected,
+        max(expected_rf_at) filter (where arrival_order = {{ dates_needed }}) as reached_at
+    from r3_date_arrivals
+),
+
 settlement_date_rows as (
     select
         4 as section,
-        'date ' || settlement_date as item,
-        settlement_date,
+        'date ' || settlement_dates.settlement_date as item,
+        settlement_dates.settlement_date,
         case
-            when is_in_population then 'in the population'
-            when r3_periods > 0 and rf_periods > 0
+            when settlement_dates.is_in_population then 'in the population'
+            when settlement_dates.r3_periods > 0 and settlement_dates.rf_periods > 0
                 then 'R3 and RF held, after the population'
-            when rf_periods > 0 then 'RF held, no R3'
-            when rf_capture_due_at <= {{ stored_until }} then 'RF due, not held'
+            when settlement_dates.rf_periods > 0 then 'RF held, no R3'
+            when settlement_dates.rf_capture_due_at <= {{ stored_until }}
+                then 'RF due, not held'
             else 'RF not yet due'
         end as date_status,
-        expected_periods,
-        r3_periods,
-        rf_periods,
-        rf_capture_due_at,
-        rf_first_stored_at
+        settlement_dates.expected_periods,
+        settlement_dates.r3_periods,
+        settlement_dates.rf_periods,
+        settlement_dates.rf_capture_due_at,
+        settlement_dates.rf_first_stored_at
     from settlement_dates
-    where rf_periods > 0
-        or (r3_periods > 0 and rf_capture_due_at <= {{ stored_until }})
+    inner join expected_arrivals
+        on settlement_dates.settlement_date = expected_arrivals.settlement_date
+    cross join reach
+    where settlement_dates.rf_periods > 0
+        or (
+            settlement_dates.r3_periods > 0
+            and settlement_dates.rf_capture_due_at <= {{ stored_until }}
+        )
+        or (
+            settlement_dates.r3_periods > 0
+            and expected_arrivals.expected_rf_at <= reach.reached_at
+        )
+),
+
+read_rows as (
+    select
+        5 as section,
+        1 as position,
+        'capture cutoff' as item,
+        {{ cutoff_passed }} as instant
+
+    union all
+
+    select
+        5,
+        2,
+        case
+            when gate.is_reached then 'population reached at'
+            when reach.is_projected then 'population projected at'
+            else 'population not projected: fewer dates hold R3 than needed'
+        end,
+        reach.reached_at
+    from gate
+    cross join reach
+
+    union all
+
+    select
+        5,
+        3,
+        'registry extract retrieved at',
+        max(retrieved_at)
+    from {{ ref('int_elexon__bm_units_current') }}
 )
 
 select
@@ -291,7 +365,8 @@ select
     null::bigint as r3_periods,
     null::bigint as rf_periods,
     null::timestamptz as rf_capture_due_at,
-    null::timestamptz as rf_first_stored_at
+    null::timestamptz as rf_first_stored_at,
+    null::timestamptz as instant
 from measure_rows
 
 union all
@@ -321,6 +396,7 @@ select
     null,
     null,
     null,
+    null,
     null
 from date_coverage
 
@@ -331,6 +407,7 @@ select
     'Elexon IDs with more than one cohort fuel group (each would count twice)',
     null,
     repeated_ids,
+    null,
     null,
     null,
     null,
@@ -381,7 +458,39 @@ select
     r3_periods,
     rf_periods,
     rf_capture_due_at,
-    rf_first_stored_at
+    rf_first_stored_at,
+    null
 from settlement_date_rows
+
+union all
+
+select
+    section,
+    item,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    position,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    instant
+from read_rows
 
 order by section, position, settlement_date, item
