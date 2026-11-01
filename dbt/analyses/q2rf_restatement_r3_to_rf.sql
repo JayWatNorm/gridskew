@@ -29,7 +29,9 @@
 -- Section 4 lists settlement dates with each run's periods against the
 -- London calendar and when the RF capture first asks for the date; section
 -- 5 gives the cutoff, when the population was reached or is projected to
--- be, and the registry extract's time. The earlier run is named once, here.
+-- be, and the registry extract's time. The projection takes a date whose RF
+-- is due and not held to arrive at the cutoff, and a date not yet due to
+-- arrive when due. The earlier run is named once, here.
 
 {% set earlier_run = 'R3' %}
 {% set earlier = earlier_run | lower %}

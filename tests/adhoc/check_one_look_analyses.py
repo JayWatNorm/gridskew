@@ -1795,13 +1795,13 @@ Q2RF_EXPECTED = {
 # The headline first, then every unit, the units outside the cohort and the
 # fuel groups by name.
 Q2RF_MEASURES_ORDER = [
-    "cohort total",
-    "overall",
-    "outside the cohort",
-    "gas",
-    "hydro",
-    "solar",
-    "wind",
+    (1, "cohort total", None),
+    (1, "overall", None),
+    (1, "outside the cohort", None),
+    (1, "gas", None),
+    (1, "hydro", None),
+    (1, "solar", None),
+    (1, "wind", None),
 ]
 
 REPEATED_ID = (
@@ -2063,13 +2063,24 @@ Q2RF_NOT_REACHED_EXPECTED = {
         share_status="population not reached: no result",
         dates=3,
     ),
-    # 20 and 22 to 24 August hold R3 at this cutoff: four dates, not 30.
+    # 20 and 22 to 24 August and 5 September hold R3 at this cutoff: five
+    # dates, not 30, so no reach time lists 5 September. Its RF is due
+    # exactly at the cutoff; only "due at or before the cutoff" lists it.
     (
         5,
         "population not projected: fewer dates hold R3 than needed",
         None,
     ): dict(position=2, instant=None),
+    (4, "date 2025-09-05", None): dict(
+        date_status="RF due, not held",
+        rf_capture_due_at="2026-11-30 00:00:00+00:00",
+        rf_first_stored_at=None,
+    ),
 }
+R3_DUE_AT_THE_NOT_REACHED_CUTOFF = """
+insert into synthetic_b1610 values
+    ('T_GAS-1', '2025-09-05', 1, 'R3', 10, '2026-08-24 10:00+00');
+"""
 
 
 # Q25: one acceptance that crosses 00:00 UTC, the boundary between two daily
@@ -3572,23 +3583,6 @@ def q2rf_section(run, section):
     return in_section, error
 
 
-def q2rf_out_of_order(title, run, section, expected_items):
-    """The section's items in the order fetched, when that is not the order given."""
-
-    rows, error = run
-    if error is not None:
-        return []
-    items = []
-    for cells in rows.values():
-        if cells["section"] == section:
-            items.append(cells["item"])
-    if items == expected_items:
-        return []
-    return [
-        f"{title}: section {section} in the order {items}, expected {expected_items}"
-    ]
-
-
 def q8_q28_fixtures(
     demand_blocks=MAIN_DEMAND_BLOCKS,
     bottom_shortfall="null",
@@ -4184,7 +4178,7 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     found = mismatches(title, main_run, Q2RF_EXPECTED)
     found += mismatches(title, main_run, Q2RF_POPULATION)
     found += unexpected_rows(title, main_run, Q2RF_EXPECTED)
-    found += q2rf_out_of_order(title, main_run, 1, Q2RF_MEASURES_ORDER)
+    found += section_order_mismatches(title, main_run, 1, Q2RF_MEASURES_ORDER)
     found += gated_values_left_null(title, main_run, Q2RF_NO_ENERGY)
 
     late_run = run_analysis(
@@ -4229,7 +4223,12 @@ def q2rf_mismatches(conn, reached, not_reached, time_zone):
     )
 
     early_run = run_analysis(
-        conn, q2rf_fixtures(), not_reached, Q2RF, Q2RF_TABLES, time_zone
+        conn,
+        q2rf_fixtures(changes=R3_DUE_AT_THE_NOT_REACHED_CUTOFF),
+        not_reached,
+        Q2RF,
+        Q2RF_TABLES,
+        time_zone,
     )
     found += mismatches(f"{title} early", early_run, Q2RF_NOT_REACHED_EXPECTED)
     found += gated_values_left_null(f"{title} early", early_run, Q2RF_GATED)
