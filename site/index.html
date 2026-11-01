@@ -186,6 +186,12 @@
   .tile .value { font-size: 1.7rem; font-weight: 600; line-height: 1.2; margin: 0.2rem 0; }
   .tile .detail { font-size: 0.9rem; color: var(--text-secondary); margin: 0; }
 
+  .exploratory {
+    margin-top: 1.25rem;
+    border-left: 3px solid var(--rule);
+    padding-left: 0.9rem;
+  }
+  .exploratory h4 { font-size: 1rem; line-height: 1.4; margin: 0 0 0.4rem; }
   details.method {
     margin-top: 1rem;
     border-top: 1px solid var(--rule);
@@ -613,6 +619,15 @@
     </figure>
     <p class="note">The reverse question, how much under-delivery moves the carbon forecast and in which direction, is registered as <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q31-when-units-unexplained-deviations-add-carbon-is-the-last-carbon-forecast-too-clean">Q31</a> and <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q32-when-wind-farms-fall-short-of-their-plans-is-the-last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas">Q32</a>, read on new data in 2027.</p>
     <!-- Q28-REVERSE-EXPLORATORY -->
+    <section class="exploratory" aria-labelledby="q28-reverse-title">
+      <h4 id="q28-reverse-title">Exploratory: the reverse direction</h4>
+      <p>Sorting the same half-hours by how much units under-delivered instead: the more they fell short, the dirtier carbon came out than forecast, about +2.8 g/kWh for each extra GW of under-delivery (90% range +2.1 to +3.5).</p>
+      <figure>
+        <div class="chart" id="q28-reverse-chart"></div>
+        <figcaption>Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; under-delivery in GW is MWh per half-hour × 2 ÷ 1,000. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/q28_reverse_exploratory.csv">Saved output</a> · <a href="results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv">chart data</a></figcaption>
+      </figure>
+      <p class="note">Exploratory: asked after Q28 was read, so not pre-registered. It shows association, not cause, and does not hold time of day fixed; Q31 and Q32 test this direction on new data.</p>
+    </section>
     <details class="method">
       <summary>How we measured it</summary>
       <dl>
@@ -888,6 +903,7 @@
   vegaEmbed("#q29-time-chart", "results/q29_error_by_time_of_day.vl.json", chartOptions);
   vegaEmbed("#q29-month-chart", "results/q29_error_by_month.vl.json", chartOptions);
   vegaEmbed("#q28-chart", "results/q28_shortfall_index_by_miss_fifth.vl.json", chartOptions);
+  vegaEmbed("#q28-reverse-chart", "results/q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json", chartOptions);
   vegaEmbed("#q30-chart", "results/q30_rank_correlations.vl.json", chartOptions);
   vegaEmbed("#q2-chart", "results/q2_moved_energy_by_unit_type.vl.json", chartOptions);
 </script>
