@@ -88,6 +88,9 @@ vars:
   q30_window_until: '2026-08-16'
   q30_bootstrap_seed: 20261027
   q30_bootstrap_min_usable_draws: 900
+  # Q2-RF works out when the RF capture first asks for each settlement date
+  # from this many days, the RF DAG's LAG (a test keeps them equal).
+  b1610_rf_capture_offset_days: 450
   # Q2-RF is read once, when this many settlement dates hold RF and R3.
   rf_restatement_dates_needed: 30
   # Q27 (forecast stalls) counts slot polls from this start and is read once
