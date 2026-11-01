@@ -1407,6 +1407,37 @@ def test_q24s_part_month_starts_on_its_reads_first_day():
     assert f"the first is a part month, from {start}. Units with" in page
 
 
+def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
+    # Q28 sorts half-hours by the size of the carbon miss, not its sign,
+    # then compares under-delivery; the reverse is Q31's and Q32's.
+    page = PAGE.read_text(encoding="utf-8")
+    article = page.split('<article id="q28">', 1)[1].split("</article>", 1)[0]
+    rules = (
+        "https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md"
+    )
+    reverse = (
+        '<p class="note">The reverse question, how much under-delivery moves the '
+        "carbon forecast and in which direction, is registered as "
+        f'<a href="{rules}#q31-when-units-unexplained-deviations-add-carbon-is-the-'
+        'last-carbon-forecast-too-clean">Q31</a> and '
+        f'<a href="{rules}#q32-when-wind-farms-fall-short-of-their-plans-is-the-'
+        'last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas">Q32</a>, '
+        "read on new data in 2027.</p>"
+    )
+
+    assert (
+        "<h3>In the half-hours when NESO's stored carbon forecast missed most, "
+        "did units fall further short of their plans?" in article
+    )
+    assert (
+        "Half-hours are sorted by how far the forecast missed, not which way, so "
+        "this cannot say whether under-delivery makes the forecast too clean or "
+        "too dirty, or by how much.</p>" in article
+    )
+    assert reverse in article
+    assert "<!-- Q28-REVERSE-EXPLORATORY -->" in article
+
+
 def test_q23s_answer_says_how_far_units_strayed_not_why():
     # With no instruction in force the gap can still hold a forecast miss,
     # energy bought outside the Balancing Mechanism, a declared cut or a
