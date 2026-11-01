@@ -436,7 +436,12 @@ def ask_each_once(conn, dataset, days, summary):
             logger.warning(
                 "%s",
                 json.dumps(
-                    {"dataset": dataset, "day": day.isoformat(), "failed": reason}
+                    {
+                        "dataset": dataset,
+                        "day": day.isoformat(),
+                        "failed": reason,
+                        "error": str(error),
+                    }
                 ),
             )
             if stops_the_asking(error):
@@ -446,12 +451,13 @@ def ask_each_once(conn, dataset, days, summary):
 
 
 def failure_reason(error):
+    """The HTTP status or the kind of error, without its message: the summary
+    holds counts and dates only."""
+
     status = http_status(error)
     if status is not None:
         return f"HTTP {status}"
-    if isinstance(error, psycopg.Error):
-        return f"database error: {error}"
-    return f"{type(error).__name__}: {error}"
+    return type(error).__name__
 
 
 def stops_the_asking(error):

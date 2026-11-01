@@ -713,6 +713,11 @@ def test_a_settlement_date_is_complete_with_exactly_periods_1_to_its_calendar_co
             id="down-to-the-first-capture-day",
         ),
         pytest.param(
+            date(2026, 11, 8),
+            days_newest_first(date(2026, 11, 7), date(2026, 11, 1)),
+            id="seven-days-to-the-first-capture-day",
+        ),
+        pytest.param(
             date(2026, 11, 9),
             days_newest_first(date(2026, 11, 8), date(2026, 11, 2)),
             id="seven-days",
@@ -985,7 +990,7 @@ def test_the_look_back_stops_at_once_on_a_database_error():
         no_pause(),
         http_answering(whole_windfor_reply(), whole_windfor_reply()) as get,
     ):
-        with pytest.raises(RuntimeError, match="database error"):
+        with pytest.raises(RuntimeError, match="OperationalError"):
             wind_poller.capture_windfor_look_back(conn, date(2026, 11, 4))
 
     assert requested(get) == windfor_requests([date(2026, 11, 3)])
@@ -1105,6 +1110,16 @@ def test_the_summary_counts_each_day_and_warns_of_a_day_leaving_not_complete(cap
         if record.levelno == logging.WARNING:
             warnings.append(json.loads(record.getMessage())["day"])
     assert warnings == ["2026-11-02"]
+
+
+def test_the_first_run_asks_for_the_first_capture_day_and_no_older_day():
+    first_capture_day = date(2026, 11, 1)
+
+    with http_answering(empty_reply()) as get:
+        wind_poller.capture_windfor_target(database_holding(), first_capture_day)
+        wind_poller.capture_windfor_look_back(database_holding(), first_capture_day)
+
+    assert requested(get) == windfor_requests([first_capture_day])
 
 
 def test_a_target_before_the_first_capture_day_asks_nothing():

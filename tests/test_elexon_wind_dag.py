@@ -148,12 +148,21 @@ def test_a_target_retry_waits_at_least_30_minutes_and_ends_within_a_day(
     load_wind_dag(monkeypatch)
     retry_policy = DAG_SETTINGS[DAG_ID]["default_args"]
 
-    first_wait = waits_before_each_retry(retry_policy, jitter=1)[0]
+    shortest_waits = waits_before_each_retry(retry_policy, jitter=1)
+    first_wait = shortest_waits[0]
 
     # Elexon's licence counts asking more than once a half hour as misuse.
     assert first_wait >= timedelta(minutes=30)
     # The next morning's run asks again.
     assert longest_retry_span(retry_policy) < timedelta(hours=24)
+    assert shortest_waits == [
+        timedelta(minutes=30),
+        timedelta(minutes=60),
+        timedelta(minutes=120),
+        timedelta(minutes=120),
+        timedelta(minutes=120),
+    ]
+    assert longest_retry_span(retry_policy) == timedelta(minutes=600)
 
 
 @pytest.mark.parametrize("task_name,capture_name", TASK_CAPTURES)
