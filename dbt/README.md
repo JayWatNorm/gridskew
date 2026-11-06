@@ -325,7 +325,13 @@ Each states its reading rule in its header and is read once.
 `analysis_read_until` is a UTC date and time with its offset (for example
 `2026-09-30 22:30:00+00`); a value without one stops the compile. A read
 records its time and keeps the compiled query and output, so a rerun can
-limit every source to the captures stored by then.
+limit every source to the captures stored by then. Q2-RF reads
+`rf_restatement_capture_cutoff` instead, an instant of the same form: only
+B1610 rows stored at or before it count, so a rerun with the same cutoff
+reads the same rows. With no cutoff it shows counts and dates only, up to
+the query's own time, and no energy. Its sections 4 and 5 list each
+settlement date's runs and RF capture due time and say when the population
+was reached or is projected to be.
 
 ## Local setup
 
