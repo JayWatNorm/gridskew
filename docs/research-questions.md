@@ -174,9 +174,6 @@ Waiting for 2,880 complete half-hours.
   contradicted when the median is at most −2 and the positive share at most
   45%; otherwise there is no directional drift. The share test uses the
   exact share; the reported share is rounded to six decimals.
-- **For scale** (added 6 November 2026; not part of the rule). 2 g/kWh is
-  about a fifth of the stored forecast's mean miss over the year before
-  (Q29: 9.3 g/kWh).
 - **Sensitivity check.** The same verdict rule, recomputed with one poll
   per slot, no poll excluded, the same thresholds and no population minimum
   of its own. If the two verdicts differ, the result is "not robust to
@@ -205,6 +202,11 @@ Waiting for 2,880 complete half-hours.
   returns the count and no result.
 - The verdict shows the usual direction of revision, not whether the
   forecast is efficient.
+
+**For scale** (added 6 November 2026; not part of the rule). Q1's 2 g/kWh
+is about a fifth of the stored forecast's mean miss against NESO's actual
+from 22 August 2025 to 16 August 2026 (Q29: 9.3 g/kWh), a different measure
+in the same units; the comparison is illustrative only.
 
 ### Q2. How much does metered output change between settlement runs?
 
@@ -1010,7 +1012,7 @@ unexplained shortfall, and national demand outturn.
 **Status:** registered 31 October 2026, before any data in its window
 existed.
 
-**Already seen.** On 1 November 2026, after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at this direction: the carbon miss by how much units under-delivered. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
+**Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at this direction: the carbon miss by how much units under-delivered, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
 **Rule:**
 
@@ -1049,7 +1051,7 @@ unexplained shortfall by fuel group.
 **Status:** registered 31 October 2026, before any data in its window
 existed.
 
-**Already seen.** On 1 November 2026, after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at this direction: the carbon miss by how much units under-delivered. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
+**Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at a related direction: the carbon miss by how much all units together under-delivered, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It pools all fuels and holds no time of day or month fixed, so it says nothing about wind or gas apart. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
 **Rule:**
 
@@ -1092,9 +1094,11 @@ existed.
   better with the half-hour before" if the same half-hour's mean absolute
   difference exceeds the half-hour before's by at least 0.5 g/kWh, with an
   interval above zero; the half-hour two before is described only.
-- **For scale** (added 6 November 2026; not part of the rule). 0.5 g/kWh is
-  about a twentieth of the stored forecast's mean miss in Q29 (9.3 g/kWh).
 - **One look.** Read once, at least 8 days after the cutoff.
+
+**For scale** (added 6 November 2026; not part of the rule). 0.5 g/kWh is
+about a twentieth of the stored forecast's mean miss in Q29 (9.3 g/kWh);
+the comparison is illustrative only.
 
 ### Q34. When units under-delivered against their plan, how much had already been signalled in public?
 
@@ -1158,7 +1162,7 @@ instructions.
 **Status:** registered 31 October 2026, before any data in its window
 existed.
 
-**Already seen.** On 1 November 2026, after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at this direction: the carbon miss by how much units under-delivered. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
+**Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at a related direction: the carbon miss by how much all units under-delivered, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It uses all fuels' under-delivery, not the wind forecast's misses. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
 **Rule:**
 
@@ -1183,13 +1187,14 @@ existed.
   that; no clear link when the interval includes zero. Also described:
   whether a GW short moves the error more than a GW over, compared only
   when short goes with dirtier and over with cleaner.
-- **For scale** (added 6 November 2026; not part of the rule). In Q30, the
-  middle fifth of wind-forecast misses was 0.4 to 0.7 GW, which at 1.00
-  g/kWh per GW would move the carbon miss by 0.4 to 0.7 g/kWh; the stored
-  carbon forecast's mean miss was 9.3 g/kWh (Q29). Q30 used a short-lead
-  wind forecast, so Q36's 24-hour misses will be larger; the comparison is
-  illustrative only.
 - **One look.** Read once, at least 8 days after the cutoff.
+
+**For scale** (added 6 November 2026; not part of the rule). In Q30, the
+middle fifth of wind-forecast misses was 0.4 to 0.7 GW, which at 1.00 g/kWh
+per GW would move the carbon miss by 0.4 to 0.7 g/kWh; the stored carbon
+forecast's mean miss was 9.3 g/kWh (Q29). Q30 used a short-lead wind
+forecast, so Q36's 24-hour misses may be larger; the comparison is
+illustrative only.
 
 ## Candidates
 
