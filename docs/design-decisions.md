@@ -73,8 +73,8 @@ type, mapping) are joined when the fact is read. A registry change therefore
 shows at once without rewriting any history. `fct_generation` holds each
 unit's metered energy per half-hour from the first settlement run GridSkew
 captured and the latest, keeping zero, negative and unmapped rows;
-`fct_commitments` holds each unit's planned energy per half-hour from its
-latest captured notification, and a half-hour without a complete plan stays
+`fct_commitments` holds each unit's planned energy per half-hour from the
+latest version of its plan, and a half-hour without a complete plan stays
 empty, never zero.
 [BM-unit registry lineage](../dbt/README.md#bm-unit-registry-lineage)
 
