@@ -478,7 +478,7 @@
 
   <article id="q5">
     <h3>When units under-delivered with no instruction to explain it, had an outage already been published? <span class="tag">Q5</span></h3>
-    <p class="answer">Mostly not. About a quarter (<strong>24%</strong>) of under-delivery (22 Aug 2025 – 27 Sep 2026) came with a published outage; for wind, the largest part, only about a tenth did. Nuclear is 39% of the under-delivery that came with a notice; without it, the share is 16%. Nuclear's 93% reflects standing notices of partial derating, not outages the plan missed.</p>
+    <p class="answer">Mostly not. About a quarter (<strong>24%</strong>) of under-delivery (22 Aug 2025 – 27 Sep 2026) came with a published outage; for wind, the largest part, only about a tenth did. Nuclear is 39% of the under-delivery that came with a notice; without it, the share falls from 24% to 16%. Nuclear's 93% reflects standing notices of partial derating, not outages the plan missed.</p>
     <figure>
       <div class="chart" id="q5-chart"></div>
       <figcaption>22 August 2025 to 27 September 2026. Half-hours under both kinds of notice count as unplanned. Coal (closed units) and interconnectors are not drawn; their under-delivery, 0.05 TWh, came with no notice and counts in the total behind the 24%. Source: Elexon BMRS and REMIT.</figcaption>
@@ -501,7 +501,7 @@
 
   <article id="q6">
     <h3>How soon after the start time written in an outage notice does it appear? <span class="tag">Q6</span></h3>
-    <p class="answer">The median unplanned notice first published from 1 Nov 2024 to 12 Oct 2026 appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. About two in three (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice.</p>
+    <p class="answer">The median unplanned notice first published from 1 Nov 2024 to 12 Oct 2026 appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. 64% (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice.</p>
     <div class="tiles">
       <div class="tile">
         <p class="label">Unplanned (11,811 notices)</p>
@@ -526,7 +526,7 @@
         <dt>Note</dt>
         <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. The EU energy regulator ACER's one-hour guidance is context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
         <dt>Rule</dt>
-        <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full rule</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a></dd>
+        <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full rule</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a> · <a href="results/context_q6_start_alignment.csv">context data</a></dd>
       </dl>
     </details>
   </article>
@@ -643,7 +643,7 @@
         <figcaption>Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; under-delivery in GW is MWh per half-hour × 2 ÷ 1,000. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/q28_reverse_exploratory.csv">Saved output</a> · <a href="results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv">chart data</a> · <a href="results/context_carbon_intensity.csv">context data</a></figcaption>
       </figure>
       <h5>Within the same time of day and month</h5>
-      <p>Within the same time of day and month, each extra GW of under-delivery went with a carbon miss 2.4 g/kWh further towards dirtier than forecast (90% range 1.8 to 3.1), against 2.8 g/kWh with neither held fixed: a positive slope remains within the same time of day and month. Holding them fixed took 0.35 g/kWh per GW off the slope (90% range 0.05 to 0.67). The 90% range is above zero in all four time-of-day blocks and in 7 of the 13 months; in the other 6 it includes zero, and the slope itself is at or below zero from December to February.</p>
+      <p>Within the same time of day and month, each extra GW of under-delivery went with a carbon miss 2.4 g/kWh further towards dirtier than forecast (90% range 1.8 to 3.1), against 2.8 g/kWh with neither held fixed: a positive slope remains within the same time of day and month. Holding them fixed took 0.35 g/kWh per GW off the slope (90% range 0.05 to 0.67). The 90% range is above zero in all four time-of-day blocks and in 7 of the 13 months; in the other 6 it includes zero, and the slope itself is at or below zero only in December, January and February.</p>
       <div class="table-wrap">
         <table>
           <caption class="note">By time of day (UTC)</caption>
@@ -760,7 +760,7 @@
         <dt>Data</dt>
         <dd>3,083,376 matched half-hourly figures in each pair, one per unit per half-hour, none in one run only. Every unit counts, suppliers' customer accounts included. Read 11 October 2026.</dd>
         <dt>The three gas units</dt>
-        <dd>At two of them, the three-week run filled two days the one-week run had at zero, and the two-month run zeroed one of them. At the third, the three-week run repeated the one-week values, and the two-month run replaced every value from 11 to 16 August.</dd>
+        <dd>At two of them, the three-week run filled two days the one-week run had at zero, and the two-month run zeroed one of them. At the third, the three-week run repeated the one-week values, and the two-month run replaced every value from 11 to 16 August. These figures come from a unit-level output that is not published.</dd>
         <dt>Rule</dt>
         <dd>Recorded 25 September 2026, before any metered figure was read. It tests only the two run-pair shares; the split by unit type and the three gas units are described after the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">Full rule</a> · the query is not in this repository · saved outputs: <a href="results/q2_settlement_run_changes.csv">run pairs</a>, <a href="results/q2_changes_by_unit_prefix.csv">by unit type</a> · <a href="results/q2_moved_energy_by_unit_type.csv">chart data</a></dd>
       </dl>
@@ -805,7 +805,7 @@
 </main>
 
 <footer>
-  <p class="stamp">Results as of 6 November 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it (Q2's and Q22's are not in this repository), read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every rule</a></p>
+  <p class="stamp">Results read between 11 October and 6 November 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it (Q2's and Q22's are not in this repository), read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every rule</a></p>
   <p>Contains BMRS data © Elexon Limited copyright and database right 2026. <a href="https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/">BMRS licence</a></p>
   <p>Carbon intensity data: <a href="https://carbonintensity.org.uk/">NESO Carbon Intensity API</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, modified: aggregated by GridSkew.</p>
   <p>Neither provider endorses this project.</p>

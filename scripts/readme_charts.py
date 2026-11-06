@@ -70,6 +70,9 @@ CONTEXT_CARBON_RESULT = "context_carbon_intensity.csv"
 CONTEXT_DEMAND_RESULT = "context_demand.csv"
 CONTEXT_PLAN_RESULT = "context_plan_per_unit_half_hour.csv"
 CONTEXT_CAPACITY_RESULT = "context_plan_pct_capacity.csv"
+# Read 31 October 2026: how many of Q6's notices start on the hour or
+# half-hour, counts only.
+CONTEXT_Q6_ALIGNMENT_RESULT = "context_q6_start_alignment.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
 SPEC_DATA_FOLDER = "results"
@@ -3218,6 +3221,7 @@ def write_charts(result_folder, output_folder):
     q5 = copy_saved_output(results, output, Q5_RESULT, BMRS_ATTRIBUTION)
     write_q5_chart(q5, plan, output)
     copy_saved_output(results, output, Q6_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_Q6_ALIGNMENT_RESULT, BMRS_ATTRIBUTION)
     q23 = copy_saved_output(results, output, Q23_RESULT, BMRS_ATTRIBUTION)
     write_q23_typical_chart(q23, capacity, output)
     write_q23_monthly_chart(q23, capacity, output)

@@ -179,6 +179,11 @@ NEW_SAVED_OUTPUTS = {
         f"{CONTEXT_LABEL}",
     ],
     "context_plan_pct_capacity.csv": planned_output_fixture_lines(),
+    "context_q6_start_alignment.csv": [
+        "section,item,notices,on_half_hour,on_whole_minute,label",
+        f'1,coverage: 5 in the population,400,,,"{CONTEXT_LABEL}"',
+        f'2,class (first publication): Unplanned,300,180,290,"{CONTEXT_LABEL}"',
+    ],
     "q3_metered_vs_notified.csv": [
         "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
         "q1_deviation_mwh,q3_deviation_mwh,abs_metered_mwh,abs_pn_mwh",
@@ -430,6 +435,7 @@ WRITTEN_FILES = [
     "context_demand.csv",
     "context_plan_pct_capacity.csv",
     "context_plan_per_unit_half_hour.csv",
+    "context_q6_start_alignment.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
     "q12_instructed_share_by_fuel_group.vl.json",
@@ -1277,6 +1283,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_demand.csv": BMRS_LINE,
         "context_plan_pct_capacity.csv": BMRS_LINE,
         "context_plan_per_unit_half_hour.csv": BMRS_LINE,
+        "context_q6_start_alignment.csv": BMRS_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
         "q22_first_against_latest_run.csv": BMRS_LINE,
@@ -1793,8 +1800,9 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
     blocks = strata_rows(rows, "2")
     months = strata_rows(rows, "3")
     low_months = at_or_below_zero(months)
-    first_low = strata_month_label(low_months[0]).split(" ")[0]
-    last_low = strata_month_label(low_months[-1]).split(" ")[0]
+    low_names = []
+    for month in low_months:
+        low_names.append(FULL_MONTHS[strata_month_label(month).split(" ")[0]])
     clause = strata_clause(within["interval_low"], within["interval_high"])
     block = exploratory_block()
 
@@ -1817,8 +1825,8 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         f"above zero in all {NUMBER_WORDS[len(blocks)]} time-of-day blocks and in "
         f"{len(above_zero(months))} of the {len(months)} months; in the other "
         f"{len(months) - len(above_zero(months))} it includes zero, and the slope "
-        f"itself is at or below zero from {FULL_MONTHS[first_low]} to "
-        f"{FULL_MONTHS[last_low]}.</p>" in block
+        f"itself is at or below zero only in {', '.join(low_names[:-1])} and "
+        f"{low_names[-1]}.</p>" in block
     )
     assert (
         f'<p class="note">Q28\'s {int(population["half_hours"]):,} half-hours, '
@@ -2154,6 +2162,7 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
     read_day = latest_day(
         reverse_read_day, strata_read_day(saved_output_rows(STRATA_RESULT))
     )
+    earliest = earliest_stated_read(PAGE.read_text(encoding="utf-8"))
 
     expected = [
         f"the median wind farm missed its plan by {tenths(min(wind))} to "
@@ -2167,9 +2176,22 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
         "Over the same dates, misses in NESO's demand and wind forecasts have "
         f"rank correlations of only {hundredths(demand_rho)} and "
         f"{hundredths(wind_rho)} with the size of the carbon miss.",
-        f"Results as of {read_day}, from GridSkew",
+        f"Results read between {earliest.day} {earliest:%B} and {read_day}, from "
+        "GridSkew",
     ]
     assert missing_phrases(expected) == []
+    assert read_day.endswith(f" {earliest.year}")
+
+
+def earliest_stated_read(page):
+    """The earliest read date the page states for any result: the "Read ..."
+    lines of the method blocks and the notes' "read on ..." and "read once
+    on ..."."""
+    stated = re.compile(rf"\b[Rr]ead (?:once )?(?:on )?({LONG_DATE})")
+    days = []
+    for found in stated.finditer(page):
+        days.append(datetime.strptime(found.group(1), "%d %B %Y"))
+    return min(days)
 
 
 Q5_WITH_NOTICE = ("planned", "unplanned", "both")
@@ -2214,11 +2236,42 @@ def test_q5s_nuclear_figures_come_from_its_saved_output():
     expected = [
         f"About a quarter (<strong>{all_share}%</strong>) of under-delivery",
         f"Nuclear is {share_of_notices}% of the under-delivery that came with a "
-        f"notice; without it, the share is {share_without}%. Nuclear's 93% reflects "
+        f"notice; without it, the share falls from {all_share}% to {share_without}%. "
+        "Nuclear's 93% reflects "
         "standing notices of partial derating, not outages the plan missed.</p>",
     ]
     assert missing_phrases(expected) == []
     assert all_total == Decimal(item_row(q5, "1", "total")["positive_shortfall_mwh"])
+
+
+def test_q6s_on_the_hour_share_comes_from_its_context_count():
+    alignment = saved_output_rows("context_q6_start_alignment.csv")
+    unplanned = one_row(alignment, "item", "class (first publication): Unplanned")
+    lag = saved_output_rows("q6_publication_lag.csv")
+    lag_unplanned = one_row(item_rows(lag, "1", ""), "outage_class", "Unplanned")
+    on_the_hour = int(unplanned["on_half_hour"])
+    notices = int(unplanned["notices"])
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q6")
+
+    assert (
+        f"{percent_of(on_the_hour, notices, 0)}% ({on_the_hour:,} of {notices:,}) "
+        "give a start exactly on the hour or half-hour, so this is not the time "
+        "from failure to notice.</p>" in article
+    )
+    assert int(lag_unplanned["notices"]) == notices
+    assert '<a href="results/context_q6_start_alignment.csv">context data</a>' in (
+        article
+    )
+
+
+def test_q2s_gas_unit_details_say_their_output_is_not_published():
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q2")
+    gas_units = article.split("<dt>The three gas units</dt>", 1)[1]
+    gas_units = gas_units.split("</dd>", 1)[0]
+
+    assert gas_units.endswith(
+        " These figures come from a unit-level output that is not published."
+    )
 
 
 def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
@@ -2455,6 +2508,7 @@ def test_each_context_row_is_labelled_a_denominator_not_a_result():
         "context_demand.csv",
         "context_plan_per_unit_half_hour.csv",
         "context_plan_pct_capacity.csv",
+        "context_q6_start_alignment.csv",
     ]:
         for row in saved_output_rows(name):
             assert row["label"] == CONTEXT_LABEL
