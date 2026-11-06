@@ -3,6 +3,7 @@ import io
 import json
 import re
 import statistics
+from datetime import datetime
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from html.parser import HTMLParser
 from pathlib import Path
@@ -1772,6 +1773,12 @@ def strata_read_day(rows):
     return re.search(rf"decided by James ({LONG_DATE})", label).group(1)
 
 
+def latest_day(*days):
+    """The latest of some "6 November 2026" days, in the same form."""
+    parsed = [datetime.strptime(day, "%d %B %Y") for day in days]
+    return f"{max(parsed).day} {max(parsed):%B %Y}"
+
+
 def exploratory_block():
     page = PAGE.read_text(encoding="utf-8")
     return page.split('<section class="exploratory"', 1)[1].split("</section>", 1)[0]
@@ -1808,9 +1815,9 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         f"(90% range {hundredths(-Decimal(difference['interval_high']))} to "
         f"{hundredths(-Decimal(difference['interval_low']))}). The 90% range is "
         f"above zero in all {NUMBER_WORDS[len(blocks)]} time-of-day blocks and in "
-        f"{len(above_zero(months))} of the {len(months)} months; "
-        f"{FULL_MONTHS[first_low]} to {FULL_MONTHS[last_low]} are at or below "
-        "zero.</p>" in block
+        f"{len(above_zero(months))} of the {len(months)} months; the slope is at "
+        f"or below zero only from {FULL_MONTHS[first_low]} to "
+        f"{FULL_MONTHS[last_low]}.</p>" in block
     )
     assert (
         f'<p class="note">Q28\'s {int(population["half_hours"]):,} half-hours, '
@@ -2142,7 +2149,10 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
         "add-back) with abs(error_api_final)",
     )["value"]
     read = one_row(reverse, "section", "1")["item"]
-    read_day = re.match(rf"read ({LONG_DATE}),", read).group(1)
+    reverse_read_day = re.match(rf"read ({LONG_DATE}),", read).group(1)
+    read_day = latest_day(
+        reverse_read_day, strata_read_day(saved_output_rows(STRATA_RESULT))
+    )
 
     expected = [
         f"the median wind farm missed its plan by {tenths(min(wind))} to "
