@@ -1541,7 +1541,7 @@ Q2RF_GATED = (
 # plus 450 days. 22 and 23 August 2025 are the first two dates holding both
 # runs; 22 August's RF was stored exactly at the cutoff, two weeks late, and
 # 23 August's in two parts (2__SUPP's after a retry). 20 August has only R3,
-# its RF due and not held; 21 August only RF: its R3 row was stored after
+# its RF capture due and not held; 21 August only RF: its R3 row was stored after
 # both cutoffs. 24 August is a third date (outside the first two). T_ZERO's
 # R3 is 0, so its group's share is not defined; T_SOLAR has only an R3 row,
 # so its group has no unit-period in both runs. extra_cohort_rows lets one
@@ -1728,7 +1728,7 @@ Q2RF_POPULATION = {
 Q2RF_SETTLEMENT_DATES = {
     (4, "date 2025-08-20", None): dict(
         settlement_date="2025-08-20",
-        date_status="RF due, not held",
+        date_status="RF capture due, not held",
         expected_periods=48,
         r3_periods=1,
         rf_periods=0,
@@ -1850,7 +1850,7 @@ Q2RF_LATE_EXPECTED = {
     ),
     (1, "outside the cohort", None): dict(unit_periods=0, only_in_r3=1, only_in_rf=0),
     (4, "date 2025-08-22", None): dict(
-        date_status="RF due, not held", rf_periods=0, rf_first_stored_at=None
+        date_status="RF capture due, not held", rf_periods=0, rf_first_stored_at=None
     ),
     (4, "date 2025-08-23", None): dict(
         date_status="in the population",
@@ -1874,7 +1874,7 @@ Q2RF_ONE_DAY_EARLIER_EXPECTED = {
     (2, "date 2025-08-22: RF", None): dict(unit_periods=2, units=2, periods=1),
     REPEATED_ID: dict(units=0),
     (4, "date 2025-08-19", None): dict(
-        date_status="RF due, not held",
+        date_status="RF capture due, not held",
         rf_capture_due_at="2026-11-12 00:00:00+00:00",
     ),
     (4, "date 2025-08-20", None): dict(
@@ -1973,7 +1973,7 @@ insert into synthetic_b1610 values
     ('T_GAS-1', '2025-09-05', 1, 'RF', 11, '2026-11-30 00:05+00');
 """
 IN_THE_POPULATION = dict(date_status="in the population")
-RF_NOT_YET_DUE = dict(date_status="RF not yet due")
+RF_NOT_YET_DUE = dict(date_status="RF capture not yet due")
 Q2RF_CALENDAR_DATES = {
     (4, "date 2025-08-22", None): dict(
         date_status="in the population",
@@ -1983,7 +1983,7 @@ Q2RF_CALENDAR_DATES = {
     (4, "date 2025-08-23", None): IN_THE_POPULATION,
     (4, "date 2025-08-24", None): IN_THE_POPULATION,
     (4, "date 2025-08-25", None): dict(
-        date_status="RF due, not held",
+        date_status="RF capture due, not held",
         rf_capture_due_at="2026-11-19 00:00:00+00:00",
         rf_first_stored_at=None,
     ),
@@ -2008,12 +2008,12 @@ Q2RF_CALENDAR_DATES = {
         rf_first_stored_at="2026-11-29 00:05:00+00:00",
     ),
     (4, "date 2025-09-05", None): dict(
-        date_status="RF due, not held",
+        date_status="RF capture due, not held",
         rf_capture_due_at="2026-11-30 00:00:00+00:00",
         rf_first_stored_at=None,
     ),
     (4, "date 2025-09-06", None): dict(
-        date_status="RF not yet due",
+        date_status="RF capture not yet due",
         rf_capture_due_at="2026-12-01 00:00:00+00:00",
     ),
     (4, "date 2025-09-07", None): RF_NOT_YET_DUE,
@@ -2030,7 +2030,7 @@ Q2RF_CALENDAR_DATES = {
     (4, "date 2025-09-18", None): RF_NOT_YET_DUE,
     (4, "date 2025-09-19", None): RF_NOT_YET_DUE,
     (4, "date 2025-09-20", None): dict(
-        date_status="RF not yet due",
+        date_status="RF capture not yet due",
         rf_capture_due_at="2026-12-15 00:00:00+00:00",
     ),
 }
@@ -2072,7 +2072,7 @@ Q2RF_NOT_REACHED_EXPECTED = {
         None,
     ): dict(position=2, instant=None),
     (4, "date 2025-09-05", None): dict(
-        date_status="RF due, not held",
+        date_status="RF capture due, not held",
         rf_capture_due_at="2026-11-30 00:00:00+00:00",
         rf_first_stored_at=None,
     ),

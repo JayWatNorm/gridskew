@@ -326,8 +326,8 @@ settlement_date_rows as (
             when settlement_date_arrivals.rf_periods > 0
                 then 'RF held, no {{ earlier_run }}'
             when settlement_date_arrivals.rf_capture_due_at <= {{ stored_until }}
-                then 'RF due, not held'
-            else 'RF not yet due'
+                then 'RF capture due, not held'
+            else 'RF capture not yet due'
         end as date_status,
         settlement_date_arrivals.expected_periods,
         settlement_date_arrivals.earlier_periods,
