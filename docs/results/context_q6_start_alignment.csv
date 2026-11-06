@@ -1,0 +1,14 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+section,item,notices,on_half_hour,on_whole_minute,label
+1,coverage: 1 other market information,514,,,"context only: denominator, not a registered result"
+1,coverage: 2 dismissed,9488,,,"context only: denominator, not a registered result"
+1,coverage: 3 first published before the burn-in date,2331,,,"context only: denominator, not a registered result"
+1,coverage: 4 event starts before the history,8,,,"context only: denominator, not a registered result"
+1,coverage: 5 in the population,20368,,,"context only: denominator, not a registered result"
+2,class (first publication): (none) (as read),12,11,12,"context only: denominator, not a registered result"
+2,class (first publication): Planned (as read),8545,7484,8062,"context only: denominator, not a registered result"
+2,class (first publication): Unplanned (as read),11811,7541,10581,"context only: denominator, not a registered result"
+3,unplanned by current event type: Consumption unavailability (as read),355,112,324,"context only: denominator, not a registered result"
+3,unplanned by current event type: Other unavailability (as read),33,27,32,"context only: denominator, not a registered result"
+3,unplanned by current event type: Production unavailability (as read),11201,7319,10007,"context only: denominator, not a registered result"
+3,unplanned by current event type: Transmission unavailability (as read),222,83,218,"context only: denominator, not a registered result"

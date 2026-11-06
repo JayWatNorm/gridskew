@@ -1012,7 +1012,7 @@ unexplained shortfall, and national demand outturn.
 **Status:** registered 31 October 2026, before any data in its window
 existed.
 
-**Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at this direction: the stored carbon forecast's miss by how much units under-delivered, without carbon weights, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It uses no data in this question's window and changes nothing in this rule; it is on the results page.
+**Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at this direction: the stored carbon forecast's miss by how much units under-delivered, without carbon weights, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). A second exploratory cut, read on 6 November 2026, held time of day and month fixed: a slope of +2.4 g/kWh per GW (90% range +1.8 to +3.1) remained. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
 **Rule:**
 
@@ -1051,7 +1051,7 @@ unexplained shortfall by fuel group.
 **Status:** registered 31 October 2026, before any data in its window
 existed.
 
-**Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at a related direction: the stored carbon forecast's miss by how much all units together under-delivered, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It pools all fuels and holds no time of day or month fixed, so it says nothing about wind or gas apart. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
+**Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at a related direction: the stored carbon forecast's miss by how much all units together under-delivered, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It pools all fuels and holds no time of day or month fixed, so it says nothing about wind or gas apart. A second exploratory cut, read on 6 November 2026, held time of day and month fixed: a slope of +2.4 g/kWh per GW (90% range +1.8 to +3.1) remained. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
 **Rule:**
 

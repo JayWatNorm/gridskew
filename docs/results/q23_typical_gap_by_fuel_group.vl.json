@@ -70,7 +70,8 @@
         "x": {
           "axis": {
             "title": [
-              "Gap between plan and meter, % of capacity",
+              "Gap between plan and meter, % of capacity,",
+              "Sep 2025 \u2013 Aug 2026",
               "further right: further from plan"
             ]
           },
@@ -171,7 +172,8 @@
         "x": {
           "axis": {
             "title": [
-              "Gap between plan and meter, % of capacity",
+              "Gap between plan and meter, % of capacity,",
+              "Sep 2025 \u2013 Aug 2026",
               "further right: further from plan"
             ]
           },
@@ -399,7 +401,7 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is the median of a fuel group's 12 monthly\", \"medians; the pale line, the median of its 12 monthly\", \"90th percentiles (1 unit in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the\", \"pale line, the median of its 12 monthly 90th percentiles (1 unit\", \"in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the\", \"median of its 12 monthly 90th percentiles (1 unit in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its\", \"12 monthly 90th percentiles (1 unit in 10 misses by more).\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its 12 monthly\", \"90th percentiles (1 unit in 10 misses by more).\"] : ([\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its 12 monthly 90th percentiles\", \"(1 unit in 10 misses by more).\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is the median of a fuel group's 12 monthly\", \"medians; the pale line, the median of its 12 monthly\", \"90th percentiles (1 unit in 10 misses by more). For\", \"scale, the median wind unit planned 18 to 43% of its\", \"capacity, depending on the month.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the\", \"pale line, the median of its 12 monthly 90th percentiles (1 unit\", \"in 10 misses by more). For scale, the median wind unit planned 18\", \"to 43% of its capacity, depending on the month.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the\", \"median of its 12 monthly 90th percentiles (1 unit in 10 misses by more). For\", \"scale, the median wind unit planned 18 to 43% of its capacity, depending on the\", \"month.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its\", \"12 monthly 90th percentiles (1 unit in 10 misses by more). For scale, the median wind unit\", \"planned 18 to 43% of its capacity, depending on the month.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its 12 monthly\", \"90th percentiles (1 unit in 10 misses by more). For scale, the median wind unit planned 18 to 43% of its\", \"capacity, depending on the month.\"] : ([\"Each bar is the median of a fuel group's 12 monthly medians; the pale line, the median of its 12 monthly 90th percentiles\", \"(1 unit in 10 misses by more). For scale, the median wind unit planned 18 to 43% of its capacity, depending on the month.\"])))))"
     },
     "text": {
       "expr": "containerSize()[0] + 0 * width < 400 ? [\"With no NESO instruction, wind farms stray\", \"furthest from their plans\"] : (containerSize()[0] + 0 * width < 480 ? [\"With no NESO instruction, wind farms stray furthest from\", \"their plans\"] : (containerSize()[0] + 0 * width < 560 ? [\"With no NESO instruction, wind farms stray furthest from their plans\"] : (containerSize()[0] + 0 * width < 640 ? [\"With no NESO instruction, wind farms stray furthest from their plans\"] : (containerSize()[0] + 0 * width < 720 ? [\"With no NESO instruction, wind farms stray furthest from their plans\"] : ([\"With no NESO instruction, wind farms stray furthest from their plans\"])))))"

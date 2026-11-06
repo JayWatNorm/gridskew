@@ -3,7 +3,8 @@ import io
 import json
 import re
 import statistics
-from decimal import ROUND_HALF_UP, Decimal
+from datetime import datetime
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -27,6 +28,7 @@ from scripts.readme_charts import (
     SPLIT_GREYS,
     SPLIT_THREE_SCHEME,
     SPLIT_TWO_SCHEME,
+    UNIT_TYPE_BY_PREFIX,
     end_name_heights,
     output_date_range,
     output_month_range,
@@ -150,8 +152,8 @@ def planned_output_fixture_lines():
 NEW_SAVED_OUTPUTS = {
     # Context counts, each unlike the real ones so a typed figure fails: 124.5
     # g/kWh and 21,350 MW are halves rounded up; wind's mean plan 18.25 MWh a
-    # half-hour; its 5,600 MWh planned makes Q5's 700 MWh of under-delivery
-    # 12.5%, so 13%; gas's 12.35 TWh shows as 12.4.
+    # half-hour and its median 7.25; its 5,600 MWh planned makes Q5's 700 MWh
+    # of under-delivery 12.5%, so 13%; gas's 12.35 TWh shows as 12.4.
     "context_carbon_intensity.csv": [
         "section,item,half_hours_in_window,half_hours_counted,"
         "mean_actual_g_per_kwh,median_actual_g_per_kwh,label",
@@ -170,13 +172,18 @@ NEW_SAVED_OUTPUTS = {
         "q3_median_plan_mwh,q3_unit_periods_nonzero_plan,"
         "q3_median_nonzero_plan_mwh,q22_unit_periods,q22_mean_plan_mwh,"
         "q22_median_plan_mwh,q22_median_nonzero_plan_mwh,label",
-        f"wind,400,5600.0,18.250,8.500,300,11.000,40,8.000,2.500,4.000,{CONTEXT_LABEL}",
+        f"wind,400,5600.0,18.250,7.250,300,11.000,40,8.000,2.500,4.000,{CONTEXT_LABEL}",
         f"gas_turbine,300,12350000.0,40.000,0.000,60,200.000,30,49.000,0.000,198.000,"
         f"{CONTEXT_LABEL}",
         f"nuclear,150,8100.0,135.000,0.000,70,299.000,15,143.000,193.000,295.000,"
         f"{CONTEXT_LABEL}",
     ],
     "context_plan_pct_capacity.csv": planned_output_fixture_lines(),
+    "context_q6_start_alignment.csv": [
+        "section,item,notices,on_half_hour,on_whole_minute,label",
+        f'1,coverage: 5 in the population,400,,,"{CONTEXT_LABEL}"',
+        f'2,class (first publication): Unplanned (as read),300,180,290,"{CONTEXT_LABEL}"',
+    ],
     "q3_metered_vs_notified.csv": [
         "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
         "q1_deviation_mwh,q3_deviation_mwh,abs_metered_mwh,abs_pn_mwh",
@@ -237,6 +244,20 @@ NEW_SAVED_OUTPUTS = {
         "4.000000,6.000000,1000,,,,interval available",
         '3,2,"least-squares slope, gCO2/kWh per GW",,500,,,,,,3.000000,'
         "2.000000,4.000000,1000,,,,interval available",
+    ],
+    # The reverse cut within time of day and month: copied as saved, with
+    # its attribution; the page reads the committed output.
+    "q28_reverse_strata_exploratory.csv": [
+        "section,line,item,fifth,stratum,half_hours,days,first_date,last_date,"
+        "under_delivery_from_mwh,under_delivery_to_mwh,value,interval_low,"
+        "interval_high,usable_draws,mean_signed_error,cells,result",
+        '1,2,"population: Q28\'s matched days and half-hours",,,500,100,'
+        "2025-09-01,2026-07-31,,,,,,,,,matches Q28",
+        '2,1,"UTC block of the half-hour\'s start: slope",,00:00-05:59,125,100,,,'
+        "225.000000,3000.000000,1.500000,0.500000,2.500000,1000,0.100000,,"
+        "interval available",
+        '4,1,"within-cell slope",,,500,100,2025-09-01,2026-07-31,,,1.750000,'
+        "1.250000,2.250000,1000,0.050000,8,interval available",
     ],
 }
 
@@ -414,6 +435,7 @@ WRITTEN_FILES = [
     "context_demand.csv",
     "context_plan_pct_capacity.csv",
     "context_plan_per_unit_half_hour.csv",
+    "context_q6_start_alignment.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
     "q12_instructed_share_by_fuel_group.vl.json",
@@ -439,6 +461,7 @@ WRITTEN_FILES = [
     "q28_reverse_carbon_miss_by_under_delivery_fifth.png",
     "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json",
     "q28_reverse_exploratory.csv",
+    "q28_reverse_strata_exploratory.csv",
     "q28_shortfall_index_by_miss_fifth.csv",
     "q28_shortfall_index_by_miss_fifth.png",
     "q28_shortfall_index_by_miss_fifth.vl.json",
@@ -1260,6 +1283,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_demand.csv": BMRS_LINE,
         "context_plan_pct_capacity.csv": BMRS_LINE,
         "context_plan_per_unit_half_hour.csv": BMRS_LINE,
+        "context_q6_start_alignment.csv": BMRS_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
         "q22_first_against_latest_run.csv": BMRS_LINE,
@@ -1273,6 +1297,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q25_short_instructions_by_fuel_group.csv": BMRS_LINE,
         "q28_reverse_carbon_miss_by_under_delivery_fifth.csv": BMRS_AND_CARBON_LINE,
         "q28_reverse_exploratory.csv": BMRS_AND_CARBON_LINE,
+        "q28_reverse_strata_exploratory.csv": BMRS_AND_CARBON_LINE,
         "q28_shortfall_index_by_miss_fifth.csv": BMRS_AND_CARBON_LINE,
         "q29_context_demand_by_month.csv": BMRS_LINE,
         "q29_final_forecast_error_by_month_and_block.csv": CARBON_LINE,
@@ -1554,8 +1579,8 @@ def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
         "https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md"
     )
     reverse = (
-        '<p class="note">The reverse question, how much under-delivery moves the '
-        "carbon forecast and in which direction, is registered as "
+        '<p class="note">The reverse question, how far under-delivery goes with the '
+        "carbon forecast's miss, and in which direction, is registered as "
         f'<a href="{rules}#q31-when-units-unexplained-deviations-add-carbon-is-the-'
         'last-carbon-forecast-too-clean">Q31</a> and '
         f'<a href="{rules}#q32-when-wind-farms-fall-short-of-their-plans-is-the-'
@@ -1677,6 +1702,199 @@ def test_q28s_reverse_chart_shows_each_fifths_gw_range_and_miss():
         assert chart_row["interval_high"] == saved_row["interval_high"]
 
 
+STRATA_RESULT = "q28_reverse_strata_exploratory.csv"
+# The wording fixed before the strata read for the within-cell slope's 90%
+# range: above zero, including zero, below zero.
+STRATA_ABOVE_ZERO = "a positive slope remains within the same time of day and month"
+STRATA_INCLUDES_ZERO = "no clear slope remains within the same time of day and month"
+STRATA_BELOW_ZERO = "the sign reverses within the same time of day and month"
+NUMBER_WORDS = {4: "four", 17: "seventeen"}
+
+
+def strata_clause(low, high):
+    """The clause fixed before the read for a 90% range from low to high."""
+    if Decimal(low) > 0:
+        return STRATA_ABOVE_ZERO
+    if Decimal(high) < 0:
+        return STRATA_BELOW_ZERO
+    return STRATA_INCLUDES_ZERO
+
+
+def page_signed(value):
+    """A value to one decimal with its sign, as the page's tables write it."""
+    return signed_tenths(value).replace("-", "−")
+
+
+def strata_month_label(stratum):
+    """Q29's '2025-08 (partial: 22 to 31)' as 'Aug 2025 (22 to 31)'."""
+    month, _, part = stratum.partition(" (partial: ")
+    year, number = month.split("-")
+    label = f"{list(FULL_MONTHS)[int(number) - 1]} {year}"
+    if not part:
+        return label
+    return f"{label} ({part.removesuffix(')')})"
+
+
+def strata_table_row(label, row):
+    return (
+        f"<tr><td>{label}</td><td>{int(row['half_hours']):,}</td>"
+        f"<td>{page_signed(row['value'])}</td>"
+        f"<td>{page_signed(row['interval_low'])} to "
+        f"{page_signed(row['interval_high'])}</td></tr>"
+    )
+
+
+def strata_rows(rows, section):
+    found = []
+    for row in rows:
+        if row["section"] == section:
+            found.append(row)
+    return found
+
+
+def strata_row(rows, section, line):
+    return one_row(strata_rows(rows, section), "line", line)
+
+
+def above_zero(rows):
+    """The strata whose 90% range lies wholly above zero."""
+    found = []
+    for row in rows:
+        if Decimal(row["interval_low"]) > 0:
+            found.append(row["stratum"])
+    return found
+
+
+def at_or_below_zero(rows):
+    """The strata whose slope is zero or negative."""
+    found = []
+    for row in rows:
+        if Decimal(row["value"]) <= 0:
+            found.append(row["stratum"])
+    return found
+
+
+def strata_read_day(rows):
+    """The day the strata read records, from its label line."""
+    label = strata_row(rows, "1", "1")["item"]
+    return re.search(rf"decided by James ({LONG_DATE})", label).group(1)
+
+
+def latest_day(*days):
+    """The latest of some "6 November 2026" days, in the same form."""
+    parsed = [datetime.strptime(day, "%d %B %Y") for day in days]
+    return f"{max(parsed).day} {max(parsed):%B %Y}"
+
+
+def exploratory_block():
+    page = PAGE.read_text(encoding="utf-8")
+    return page.split('<section class="exploratory"', 1)[1].split("</section>", 1)[0]
+
+
+def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
+    rows = saved_output_rows(STRATA_RESULT)
+    population = strata_row(rows, "1", "2")
+    within = strata_row(rows, "4", "1")
+    pooled = strata_row(rows, "4", "2")
+    difference = strata_row(rows, "4", "4")
+    blocks = strata_rows(rows, "2")
+    months = strata_rows(rows, "3")
+    low_months = at_or_below_zero(months)
+    low_names = []
+    for month in low_months:
+        low_names.append(FULL_MONTHS[strata_month_label(month).split(" ")[0]])
+    clause = strata_clause(within["interval_low"], within["interval_high"])
+    block = exploratory_block()
+
+    assert population["result"] == "matches Q28"
+    assert Decimal(within["interval_low"]) > 0
+    assert clause == STRATA_ABOVE_ZERO
+    assert above_zero(blocks) == column_strata(blocks)
+    assert low_months == ["2025-12", "2026-01", "2026-02"]
+    assert "<h5>Within the same time of day and month</h5>" in block
+    assert (
+        "<p>Within the same time of day and month, each extra GW of "
+        "under-delivery went with a carbon miss "
+        f"{tenths(within['value'])} g/kWh further towards dirtier than forecast "
+        f"(90% range {tenths(within['interval_low'])} to "
+        f"{tenths(within['interval_high'])}), against {tenths(pooled['value'])} "
+        f"g/kWh with neither held fixed: {clause}. Holding them fixed took "
+        f"{hundredths(-Decimal(difference['value']))} g/kWh per GW off the slope "
+        f"(90% range {hundredths(-Decimal(difference['interval_high']))} to "
+        f"{hundredths(-Decimal(difference['interval_low']))}). The 90% range is "
+        f"above zero in all {NUMBER_WORDS[len(blocks)]} time-of-day blocks and in "
+        f"{len(above_zero(months))} of the {len(months)} months; in the other "
+        f"{len(months) - len(above_zero(months))} it includes zero, and the slope "
+        f"itself is at or below zero only in {', '.join(low_names[:-1])} and "
+        f"{low_names[-1]}.</p>" in block
+    )
+    assert (
+        f'<p class="note">Q28\'s {int(population["half_hours"]):,} half-hours, '
+        f"{output_date_range([population])}; read once on {strata_read_day(rows)}. "
+        "Month intervals resample whole days from the whole year, so a month's day "
+        "count varies between draws. "
+        f'<a href="results/{STRATA_RESULT}">Saved output</a></p>' in block
+    )
+    assert (
+        '<p class="note">Exploratory and association only: a further look at a '
+        "window already seen, published whatever it showed. "
+        f"{NUMBER_WORDS[len(blocks) + len(months)].capitalize()} slopes were read, "
+        "none corrected for reading many. Wind output is not held fixed, and a "
+        "windy period may raise both under-delivery and the carbon miss.</p>" in block
+    )
+    for other in sorted({STRATA_INCLUDES_ZERO, STRATA_BELOW_ZERO}):
+        assert other not in block
+
+
+def column_strata(rows):
+    found = []
+    for row in rows:
+        found.append(row["stratum"])
+    return found
+
+
+def test_q28s_strata_tables_show_each_slope_and_range_from_the_saved_output():
+    rows = saved_output_rows(STRATA_RESULT)
+    by_block = []
+    for row in strata_rows(rows, "2"):
+        by_block.append(strata_table_row(row["stratum"].replace("-", "–"), row))
+    by_block.append(
+        strata_table_row("All, within block and month", strata_row(rows, "4", "1"))
+    )
+    by_block.append(
+        strata_table_row("All, neither held fixed", strata_row(rows, "4", "2"))
+    )
+    by_month = []
+    for row in strata_rows(rows, "3"):
+        by_month.append(strata_table_row(strata_month_label(row["stratum"]), row))
+    block = exploratory_block()
+
+    assert len(by_block) == 6
+    assert len(by_month) == 13
+    block_rows = "\n            ".join(by_block)
+    month_rows = "\n              ".join(by_month)
+    assert '<caption class="note">By time of day (UTC)</caption>' in block
+    assert f"<tbody>\n            {block_rows}\n          </tbody>" in block
+    assert "<summary>By month</summary>" in block
+    assert f"<tbody>\n              {month_rows}\n            </tbody>" in block
+
+
+def test_q31_and_q32_note_the_strata_cut_from_its_saved_output():
+    rows = saved_output_rows(STRATA_RESULT)
+    within = strata_row(rows, "4", "1")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    sentence = (
+        f"A second exploratory cut, read on {strata_read_day(rows)}, held time of "
+        f"day and month fixed: a slope of {signed_tenths(within['value'])} g/kWh per "
+        f"GW (90% range {signed_tenths(within['interval_low'])} to "
+        f"{signed_tenths(within['interval_high'])}) remained. It uses no data in "
+        "this question's window"
+    )
+
+    for question_id in ("Q31", "Q32"):
+        assert sentence in " ".join(register_section(questions, question_id).split())
+
+
 def whole(value):
     return str(Decimal(value).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
@@ -1781,11 +1999,19 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
     q5_metered = item_row(q5, "3", "cohort unit-periods: determinable")
     low, high = wind_planned_range(capacity)
     three_gas_units_gwh = Decimal("0.18") * Decimal(revised) / Decimal(1000)
+    link_plan = one_row(plan, "fuel_group", "interconnector")
+    link_zero_plan = int(link_plan["q3_unit_periods"]) - int(
+        link_plan["q3_unit_periods_nonzero_plan"]
+    )
+    link_zero_share = percent_of(link_zero_plan, link_plan["q3_unit_periods"], 0)
 
     expected = [
-        f"(about 0.6 MW), about {percent_of(wind_median, wind_plan['q3_mean_plan_mwh'], 1)}% "
-        f"of a wind unit's mean plan of {tenths(wind_plan['q3_mean_plan_mwh'])} MWh a "
-        "half-hour.",
+        f"(about 0.6 MW), about "
+        f"{percent_of(wind_median, wind_plan['q3_median_plan_mwh'], 1)}% of a wind "
+        f"unit's median plan of {tenths(wind_plan['q3_median_plan_mwh'])} MWh a "
+        f"half-hour (mean {tenths(wind_plan['q3_mean_plan_mwh'])}).",
+        "an allocation against a plan that is zero in "
+        f"{link_zero_share}% of half-hours.",
         f"<strong>9.3 g/kWh</strong>, about "
         f"{percent_of(q29_size, all_carbon['mean_actual_g_per_kwh'], 1)}% of the mean "
         f"carbon intensity of {whole(all_carbon['mean_actual_g_per_kwh'])} g/kWh,",
@@ -1794,26 +2020,24 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         "of mean national demand from NESO's initial outturn "
         '(<a href="#national-demand">INDO</a>), '
         f"{int(all_demand['mean_demand_mwh_per_half_hour']):,} MWh a half-hour.",
-        f"in every whole month, against plans of {low} to {high}% of capacity;",
+        f"in every whole month, against a median plan of {low} to {high}% of capacity;",
         f"16.4 TWh of under-delivery (about {percent_of(under_delivery, planned_total, 0)}% "
         "of the energy these units planned over almost the same dates)",
         f"Sep 2026; about "
         f"{percent_of(wind_flagged['acceptance_volume_mwh'], wind_plan['q3_abs_pn_mwh'], 0)}% "
-        "of the energy wind farms planned)",
+        "of the energy wind farms planned over almost the same dates)",
         f"its median gap moved from {first.quantize(Decimal('0.01'))} to "
-        f"{latest.quantize(Decimal('0.01'))} MWh, about "
-        f"{percent_of(first - latest, first, 0)}%.",
-        f"revisions came to about {nearest_ten(three_gas_units_gwh)} GWh, 18% of the "
-        "energy revised",
+        f"{latest.quantize(Decimal('0.01'))} MWh. The test cannot see",
+        "revisions, up or down counted alike, came to about "
+        f"{nearest_ten(three_gas_units_gwh)} GWh, 18% of the energy revised",
         "Among transmission-connected and embedded units, three gas units account "
-        "for 18% of it",
+        "for 18% of all the energy revised",
         f"no meter reading ({percent_of(no_meter['unit_periods'], int(cohort['unit_periods']) + int(no_meter['unit_periods']), 1)}%), "
         f"and 283,242 with a meter reading and no plan "
         f"({percent_of(int(metered['unit_periods']) - int(cohort['unit_periods']), metered['unit_periods'], 1)}%).",
         f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
         "of half-hours with no instruction).",
-        f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); "
-        "10 notices that name no unit that could be matched.",
+        f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); ",
         f"Waiting for 2,880 complete half-hours ({2880 // 48} days' worth).",
         "<figcaption>For scale only; no link is tested. Mean national demand",
         f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
@@ -1826,6 +2050,438 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
 
     assert missing == []
     assert 283_242 == int(metered["unit_periods"]) - int(cohort["unit_periods"])
+
+
+RULES_URL = (
+    "https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md"
+)
+SHORT_MONTHS = dict(zip(FULL_MONTHS.values(), FULL_MONTHS.keys(), strict=True))
+LONG_DATE = r"\d{1,2} [A-Z][a-z]+ \d{4}"
+
+
+def hundredths(value):
+    return str(Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def next_half_above(value):
+    """The first multiple of 0.5 above the value: the "under" limit the page
+    states for it."""
+    halves = (Decimal(value) * 2).to_integral_value(rounding=ROUND_FLOOR)
+    return str((halves + 1) / 2)
+
+
+def missing_phrases(expected):
+    page = PAGE.read_text(encoding="utf-8")
+    missing = []
+    for phrase in expected:
+        if phrase not in page:
+            missing.append(phrase)
+    return missing
+
+
+def article_text(page, article_id):
+    return page.split(f'<article id="{article_id}">', 1)[1].split("</article>", 1)[0]
+
+
+def short_date(long_date):
+    """'22 August 2025' as '22 Aug 2025'."""
+    day, month, year = long_date.split(" ")
+    return f"{day} {SHORT_MONTHS[month]} {year}"
+
+
+def long_date(day):
+    """'2025-08-22' as '22 August 2025'."""
+    year, month, date = day.split("-")
+    month_names = list(FULL_MONTHS.values())
+    return f"{int(date)} {month_names[int(month) - 1]} {year}"
+
+
+def long_date_range(rows):
+    """A saved output's first and last dates, written out in full."""
+    firsts = []
+    lasts = []
+    for row in rows:
+        if row.get("first_date"):
+            firsts.append(row["first_date"])
+        if row.get("last_date"):
+            lasts.append(row["last_date"])
+    return long_date(min(firsts)), long_date(max(lasts))
+
+
+def data_entry_range(page, article_id):
+    """The first and last day an article's Data entry gives."""
+    found = re.search(
+        rf"<dt>Data</dt>\s*<dd>({LONG_DATE}) to ({LONG_DATE})",
+        article_text(page, article_id),
+    )
+    return found.group(1), found.group(2)
+
+
+def whole_month_medians(q23_rows, fuel_group):
+    """A fuel group's median gap in each of Q23's whole months, September
+    2025 to August 2026, % of capacity."""
+    values = []
+    for row in item_rows(q23_rows, "1", "unit-months"):
+        whole_month = "2025-09-01" <= row["settlement_month"] <= "2026-08-01"
+        if row["fuel_group"] == fuel_group and whole_month:
+            values.append(Decimal(row["median_absolute_pct"]))
+    assert len(values) == 12
+    return values
+
+
+def highest_other_month(q23_rows):
+    """The largest median gap of any fuel group but wind in a whole month."""
+    groups = set()
+    for row in q23_rows:
+        if row["section"] == "1" and row["fuel_group"] != "wind":
+            groups.add(row["fuel_group"])
+    highest = Decimal(0)
+    for fuel_group in groups:
+        highest = max(highest, *whole_month_medians(q23_rows, fuel_group))
+    return highest
+
+
+def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
+    q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
+    q8_q28 = saved_output_rows("q8_q28_history.csv")
+    q30 = saved_output_rows("q30_wind_vs_carbon_error.csv")
+    reverse = saved_output_rows("q28_reverse_exploratory.csv")
+    wind = whole_month_medians(q23, "wind")
+    other_limit = next_half_above(highest_other_month(q23))
+    demand_rho = item_row(
+        q8_q28, "2", "rho_demand: abs(error_api_final) with abs(demand_error_final_mw)"
+    )["value"]
+    wind_rho = item_row(
+        q30,
+        "2",
+        "rho_abs (primary): abs(wind error, outturn with cohort curtailment "
+        "add-back) with abs(error_api_final)",
+    )["value"]
+    read = one_row(reverse, "section", "1")["item"]
+    reverse_read_day = re.match(rf"read ({LONG_DATE}),", read).group(1)
+    read_day = latest_day(
+        reverse_read_day, strata_read_day(saved_output_rows(STRATA_RESULT))
+    )
+    earliest = earliest_stated_read(PAGE.read_text(encoding="utf-8"))
+
+    expected = [
+        f"the median wind farm missed its plan by {tenths(min(wind))} to "
+        f"{tenths(max(wind))}% of its capacity in every whole month from "
+        "September 2025 to August 2026; the median unit of every other type, "
+        f"by under {other_limit}%.",
+        f"<strong>{tenths(min(wind))} to {tenths(max(wind))}%</strong> of its "
+        "capacity in every whole month, against a median plan of",
+        f"the median unit of every other type, by under {other_limit}%. In "
+        "September 2026",
+        "Over the same dates, misses in NESO's demand and wind forecasts have "
+        f"rank correlations of only {hundredths(demand_rho)} and "
+        f"{hundredths(wind_rho)} with the size of the carbon miss.",
+        f"Results read between {earliest.day} {earliest:%B} and {read_day}, from "
+        "GridSkew",
+    ]
+    assert missing_phrases(expected) == []
+    assert read_day.endswith(f" {earliest.year}")
+
+
+def earliest_stated_read(page):
+    """The earliest read date the page states for any result: the "Read ..."
+    lines of the method blocks and the notes' "read on ..." and "read once
+    on ..."."""
+    stated = re.compile(rf"\b[Rr]ead (?:once )?(?:on )?({LONG_DATE})")
+    days = []
+    for found in stated.finditer(page):
+        days.append(datetime.strptime(found.group(1), "%d %B %Y"))
+    return min(days)
+
+
+Q5_WITH_NOTICE = ("planned", "unplanned", "both")
+Q5_CLASSES = (*Q5_WITH_NOTICE, "none")
+
+
+def with_notice_and_total(rows):
+    """Under-delivery with a notice live, and all of it, MWh, over the rows'
+    outage classes: the page's 24% is the first over the second for all
+    units."""
+    with_notice = Decimal(0)
+    total = Decimal(0)
+    for row in rows:
+        if row["item"] not in Q5_CLASSES:
+            continue
+        total += Decimal(row["positive_shortfall_mwh"])
+        if row["item"] in Q5_WITH_NOTICE:
+            with_notice += Decimal(row["positive_shortfall_mwh"])
+    return with_notice, total
+
+
+def q5_rows(rows, section, fuel_group):
+    found = []
+    for row in rows:
+        if row["section"] == section and row["fuel_group"] == fuel_group:
+            found.append(row)
+    return found
+
+
+def test_q5s_nuclear_figures_come_from_its_saved_output():
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    all_with_notice, all_total = with_notice_and_total(q5_rows(q5, "1", ""))
+    nuclear_with_notice, nuclear_total = with_notice_and_total(
+        q5_rows(q5, "2", "nuclear")
+    )
+    share_of_notices = percent_of(nuclear_with_notice, all_with_notice, 0)
+    share_without = percent_of(
+        all_with_notice - nuclear_with_notice, all_total - nuclear_total, 0
+    )
+    all_share = percent_of(all_with_notice, all_total, 0)
+
+    expected = [
+        f"About a quarter (<strong>{all_share}%</strong>) of under-delivery",
+        f"Nuclear is {share_of_notices}% of the under-delivery that came with a "
+        f"notice; without it, the share falls from {all_share}% to {share_without}%. "
+        "Nuclear's 93% reflects "
+        "standing notices of partial derating, not outages the plan missed.</p>",
+    ]
+    assert missing_phrases(expected) == []
+    assert all_total == Decimal(item_row(q5, "1", "total")["positive_shortfall_mwh"])
+
+
+def test_q6s_on_the_hour_share_comes_from_its_context_count():
+    alignment = saved_output_rows("context_q6_start_alignment.csv")
+    unplanned = one_row(
+        alignment, "item", "class (first publication): Unplanned (as read)"
+    )
+    lag = saved_output_rows("q6_publication_lag.csv")
+    lag_unplanned = one_row(item_rows(lag, "1", ""), "outage_class", "Unplanned")
+    on_the_hour = int(unplanned["on_half_hour"])
+    notices = int(unplanned["notices"])
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q6")
+
+    assert (
+        f"{percent_of(on_the_hour, notices, 0)}% ({on_the_hour:,} of {notices:,}) "
+        "give a start exactly on the hour or half-hour, so this is not the time "
+        "from failure to notice.</p>" in article
+    )
+    assert int(lag_unplanned["notices"]) == notices
+    assert '<a href="results/context_q6_start_alignment.csv">context data</a>' in (
+        article
+    )
+
+
+def test_q2s_gas_unit_details_say_their_output_is_not_published():
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q2")
+    gas_units = article.split("<dt>The three gas units</dt>", 1)[1]
+    gas_units = gas_units.split("</dd>", 1)[0]
+
+    assert gas_units.endswith(
+        " These figures come from a unit-level output that is not published."
+    )
+
+
+def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
+    q12 = saved_output_rows("q12_instructed_vs_residual.csv")
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    q29 = saved_output_rows("q29_final_forecast_error_by_month_and_block.csv")
+    q2 = saved_output_rows("q2_settlement_run_changes.csv")
+    prefixes = saved_output_rows("q2_changes_by_unit_prefix.csv")
+
+    shares = {}
+    for row in q12:
+        shares[row["fuel_group"]] = whole(
+            Decimal(100) * Decimal(row["instructed_share_of_abs_deviation"])
+        )
+    earliest_run = item_row(q5, "3", "population by metered run: II")
+    all_units = item_row(q5, "1", "total")
+    earliest_mean = Decimal(earliest_run["positive_shortfall_mwh"]) / Decimal(
+        earliest_run["unit_periods"]
+    )
+    overall_mean = Decimal(all_units["positive_shortfall_mwh"]) / Decimal(
+        all_units["unit_periods"]
+    )
+    publications = 0
+    for row in q5:
+        if row["item"].startswith("Active production unavailability publications"):
+            publications += int(row["remit_publications"])
+    unmapped = item_row(
+        q5,
+        "3",
+        "Active production unavailability publications by mapping rule: unmapped",
+    )["remit_publications"]
+    not_drawn_mwh = Decimal(0)
+    not_drawn_with_notice_mwh = Decimal(0)
+    for row in q5:
+        if row["section"] != "2" or row["fuel_group"] not in ("coal", "interconnector"):
+            continue
+        not_drawn_mwh += Decimal(row["positive_shortfall_mwh"])
+        if row["item"] != "none":
+            not_drawn_with_notice_mwh += Decimal(row["positive_shortfall_mwh"])
+    seen = re.search(
+        r"mean (?P<mean>\+?[\d.]+), median (?P<median>[\d.]+)",
+        one_row(q29, "section", "1")["item"],
+    )
+    one_week = one_row(q2, "run_pair", "II->SF")
+    three_weeks = one_row(q2, "run_pair", "SF->R1")
+    grid_changed = 0
+    grid_matched = 0
+    prefix_moved_mwh = Decimal(0)
+    other_prefixes = []
+    for row in prefixes:
+        prefix_moved_mwh += Decimal(row["moved_mwh"])
+        if row["unit_prefix"] in ("T", "E"):
+            grid_changed += int(row["changed"])
+            grid_matched += int(row["matched"])
+        if row["unit_prefix"] not in UNIT_TYPE_BY_PREFIX:
+            other_prefixes.append(row["unit_prefix"])
+    other_prefixes.sort()
+
+    expected = [
+        "counting the instructed and the not-instructed part each by its size, "
+        f"and {shares['other']}% for the other group. For wind "
+        f"({shares['wind']}%) and bioenergy ({shares['bioenergy']}%), the part "
+        "NESO did not instruct is larger.",
+        "rest on the earliest settlement run and carry about twice the "
+        "mean under-delivery per unit half-hour "
+        f"({tenths(earliest_mean)} MWh against {tenths(overall_mean)});",
+        f"{unmapped} of {publications:,} outage publications that name no unit "
+        "that could be matched.",
+        "Coal (closed units) and interconnectors are not drawn; their "
+        f"under-delivery, {hundredths(not_drawn_mwh / Decimal(1_000_000))} TWh, "
+        "came with no notice",
+        "A September 2026 exploration had partly seen the overall mean and "
+        f"median ({seen['mean']} and {seen['median']}, measured with the "
+        "opposite sign).",
+        "as a share of the earlier run's total "
+        f"({int(whole(Decimal(one_week['base_abs_mwh']) / 1000)):,} GWh for the "
+        "one-week run, "
+        f"{int(whole(Decimal(three_weeks['base_abs_mwh']) / 1000)):,} GWh for "
+        "the three-week run).",
+        "Between the three-week and two-month runs, transmission-connected and "
+        "embedded units changed in "
+        f"{percent_of(grid_changed, grid_matched, 1)}% of half-hours,",
+        "Other unit types are the units whose identifiers start with "
+        f"{', '.join(other_prefixes[:-1])} or {other_prefixes[-1]}.",
+    ]
+    assert missing_phrases(expected) == []
+    assert whole(earliest_mean / overall_mean) == "2"
+    assert not_drawn_with_notice_mwh == 0
+    assert prefix_moved_mwh == Decimal(three_weeks["moved_mwh"])
+    assert Decimal(three_weeks["moved_share"]) == (
+        Decimal(three_weeks["moved_mwh"]) / Decimal(three_weeks["base_abs_mwh"])
+    ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+
+def test_each_answer_states_the_dates_its_saved_output_or_read_covers():
+    page = PAGE.read_text(encoding="utf-8")
+    q8_q28 = saved_output_rows("q8_q28_history.csv")
+    q30 = saved_output_rows("q30_wind_vs_carbon_error.csv")
+    q25_months = output_month_range(
+        saved_output_rows("q25_instruction_fragmentation_corrected.csv")
+    )
+    q8_first, q8_last = long_date_range(q8_q28)
+    q25_first, q25_last = data_entry_range(page, "q25")
+    q6 = re.search(
+        rf"first published from ({LONG_DATE}) to the read on ({LONG_DATE})",
+        article_text(page, "q6"),
+    )
+    q6_first, q6_read = q6.group(1), q6.group(2)
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    expected = [
+        f"No clear difference ({output_date_range(q8_q28)}): ranking half-hours",
+        f"The same 17,278 half-hours as Q28, {q8_first} to {q8_last}.",
+        f"Barely: over {output_date_range(q30)}, the sizes of the two misses",
+        f"Far more often ({short_date(q25_first)} – {short_date(q25_last)}).",
+        "The median unplanned notice first published from "
+        f"{short_date(q6_first)} to {short_date(q6_read)} appears",
+    ]
+    assert missing_phrases(expected) == []
+    assert q25_months == (
+        f"{short_date(q25_first).split(' ', 1)[1]} – "
+        f"{short_date(q25_last).split(' ', 1)[1]}"
+    )
+    assert f"stored publication on or after {q6_first} and event start" in " ".join(
+        questions.split()
+    )
+
+
+def test_the_limitations_name_the_results_that_set_one_measure_against_another():
+    # Q5 sets under-delivery against outage notices, Q8 and Q28 against the
+    # carbon miss, Q30 the wind miss against it; each is an article on the
+    # page, beside the exploratory block.
+    page = PAGE.read_text(encoding="utf-8")
+    named = ["Q5", "Q8", "Q28", "Q30"]
+    limitation = (
+        f"<li>Results that set one measure against another ({', '.join(named)} "
+        "and the exploratory cuts) are associations, not causes. Each result "
+        "covers the period given beside it and may not hold in another.</li>"
+    )
+
+    assert limitation in page
+    for question_id in named:
+        assert f'<article id="{question_id.lower()}">' in page
+    assert '<section class="exploratory"' in page
+
+
+def register_section(questions, question_id):
+    """The register's section for one question, heading to next heading."""
+    heading = f"\n### {question_id}. "
+    assert heading in questions
+    return questions.split(heading, 1)[1].split("\n### ", 1)[0]
+
+
+def test_still_to_come_lists_the_registered_questions_with_the_registers_dates():
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    item = page.split("<li><strong>Also registered, not yet read:</strong>", 1)[1]
+    item = item.split("</li>", 1)[0]
+    dated = re.findall(r"(Q[0-9A-Z-]+) \(about ([A-Z][a-z]+ \d{4})\)", item)
+    first, last = re.search(r"and Q(\d+) to Q(\d+)\.", item).groups()
+
+    assert dated == [
+        ("Q22-RF", "November 2027"),
+        ("Q2-R2RF", "May 2027"),
+        ("Q2-R1RF", "August 2027"),
+    ]
+    for question_id, month in dated:
+        assert f"(about {month})" in " ".join(
+            register_section(questions, question_id).split()
+        )
+    for number in range(int(first), int(last) + 1):
+        register_section(questions, f"Q{number}")
+    assert f'are in <a href="{RULES_URL}">every rule</a>.' in item
+
+
+def test_the_settlement_run_ages_are_the_measured_runs_in_months():
+    # docs/sources/elexon/020_b1610.md measured the day each run goes live;
+    # an average month is 30.44 days.
+    runs = (REPOSITORY / "docs" / "sources" / "elexon" / "020_b1610.md").read_text(
+        encoding="utf-8"
+    )
+    number_words = {2: "two", 4: "four", 7: "seven"}
+    ages = []
+    for run in ("R1", "R2", "R3", "RF"):
+        live_from = re.search(rf"\| `{run}` \| \**~?(\d+)", runs).group(1)
+        months = int(whole(Decimal(live_from) / Decimal("30.44")))
+        ages.append(f"{number_words.get(months, months)} months ({run})")
+    r2_months = ages[1].split(" ", 1)[0]
+
+    expected = [
+        "about one week (II), three weeks (SF), "
+        f"{ages[0]}, {ages[1]}, {ages[2]} and {ages[3]} after the day.",
+        f"the {r2_months}-month run (R2) to 29 April",
+    ]
+    assert missing_phrases(expected) == []
+
+
+def test_the_unit_glossary_states_each_conversion_the_page_uses():
+    # Worked: a half-hour is 0.5 hours; giga is 1,000 mega; tera is a
+    # million mega.
+    half_hour_hours = Decimal("0.5")
+    megawatts_per_gigawatt = 1000
+
+    expected = [
+        f"1 MW for a half-hour is {Decimal(1) * half_hour_hours} MWh. "
+        f"1 GW is {megawatts_per_gigawatt:,} MW; 1 TWh is a million MWh."
+    ]
+    assert missing_phrases(expected) == []
 
 
 def caption_of_chart(page, chart_id):
@@ -1854,17 +2510,34 @@ def test_each_context_row_is_labelled_a_denominator_not_a_result():
         "context_demand.csv",
         "context_plan_per_unit_half_hour.csv",
         "context_plan_pct_capacity.csv",
+        "context_q6_start_alignment.csv",
     ]:
         for row in saved_output_rows(name):
             assert row["label"] == CONTEXT_LABEL
 
 
 def test_chart_reading_lines_give_scale_from_the_context_counts(written):
-    # The fixture, unlike the real counts: wind's mean plan 18.25 MWh, gas
-    # 12.35 TWh planned, wind's 700 MWh of under-delivery against 5,600 MWh
-    # planned (12.5%), 124.5 g/kWh; each half rounds up.
-    assert "a wind unit's mean plan is 18.3 MWh a half-hour." in reading_line(
-        written, "q3_gap_from_plan_by_fuel_group.vl.json"
+    # The fixture, unlike the real counts: wind's mean plan 18.25 MWh and
+    # median 7.25, gas 12.35 TWh planned, wind's 700 MWh of under-delivery
+    # against 5,600 MWh planned (12.5%), 124.5 g/kWh; each half rounds up.
+    # The median wind unit plans 20.05% of capacity in September 2025, one
+    # point more each month, so 31.05% in August 2026 (and 32.05% in the
+    # provisional September, which the range leaves out).
+    q23_scale = (
+        "For scale, the median wind unit planned 20 to 31% of its capacity, "
+        "depending on the month."
+    )
+    assert (
+        "a wind unit's median plan is 7.3 MWh a half-hour (mean 18.3)."
+        in reading_line(written, "q3_gap_from_plan_by_fuel_group.vl.json")
+    )
+    assert q23_scale in reading_line(written, "q23_typical_gap_by_fuel_group.vl.json")
+    assert q23_scale in reading_line(written, "q23_monthly_gap_by_fuel_group.vl.json")
+    assert "Sep 2025 – Aug 2026" in x_axis_titles(
+        written, "q23_typical_gap_by_fuel_group.vl.json"
+    )
+    assert "the mean carbon intensity was 125 g/kWh." in reading_line(
+        written, "q29_error_by_month.vl.json"
     )
     assert "wind planned 0.0 TWh over these dates and gas 12.4 TWh." in (
         reading_line(written, "q12_instructed_share_by_fuel_group.vl.json")
@@ -1921,7 +2594,7 @@ def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
     page = PAGE.read_text(encoding="utf-8")
     expected = [
         f"About a quarter (24%, {q5}) came with one",
-        f"managing the network:</strong> 97% (settlement months {q24}).",
+        f"possibly for network reasons:</strong> 97% (settlement months {q24}).",
         f"the biggest carbon misses ({q28}), under-delivery",
         f"Slightly less, with wide spreads ({q3}).",
         f"0.03 MWh per unit per half-hour (bioenergy, {Q2_WEEK}):",
