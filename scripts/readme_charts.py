@@ -63,6 +63,7 @@ Q25_RESULT = "q25_instruction_fragmentation.csv"
 Q25_CORRECTED_RESULT = "q25_instruction_fragmentation_corrected.csv"
 Q8_Q28_RESULT = "q8_q28_history.csv"
 Q28_REVERSE_RESULT = "q28_reverse_exploratory.csv"
+Q28_REVERSE_STRATA_RESULT = "q28_reverse_strata_exploratory.csv"
 # Context counts read on 1 November 2026: denominators for scale, each row
 # labelled "context only: denominator, not a registered result".
 CONTEXT_CARBON_RESULT = "context_carbon_intensity.csv"
@@ -3235,6 +3236,9 @@ def write_charts(result_folder, output_folder):
         results, output, Q28_REVERSE_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
     write_q28_reverse_chart(q28_reverse, output)
+    copy_saved_output(
+        results, output, Q28_REVERSE_STRATA_RESULT, BMRS_AND_CARBON_ATTRIBUTION
+    )
     q29 = copy_saved_output(results, output, Q29_RESULT, CARBON_ATTRIBUTION)
     write_q29_time_chart(q29, carbon, output)
     write_q29_month_chart(q29, carbon, output)

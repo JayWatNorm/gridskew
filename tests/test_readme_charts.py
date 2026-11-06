@@ -239,6 +239,20 @@ NEW_SAVED_OUTPUTS = {
         '3,2,"least-squares slope, gCO2/kWh per GW",,500,,,,,,3.000000,'
         "2.000000,4.000000,1000,,,,interval available",
     ],
+    # The reverse cut within time of day and month: copied as saved, with
+    # its attribution; the page reads the committed output.
+    "q28_reverse_strata_exploratory.csv": [
+        "section,line,item,fifth,stratum,half_hours,days,first_date,last_date,"
+        "under_delivery_from_mwh,under_delivery_to_mwh,value,interval_low,"
+        "interval_high,usable_draws,mean_signed_error,cells,result",
+        '1,2,"population: Q28\'s matched days and half-hours",,,500,100,'
+        "2025-09-01,2026-07-31,,,,,,,,,matches Q28",
+        '2,1,"UTC block of the half-hour\'s start: slope",,00:00-05:59,125,100,,,'
+        "225.000000,3000.000000,1.500000,0.500000,2.500000,1000,0.100000,,"
+        "interval available",
+        '4,1,"within-cell slope",,,500,100,2025-09-01,2026-07-31,,,1.750000,'
+        "1.250000,2.250000,1000,0.050000,8,interval available",
+    ],
 }
 
 # Rows the newer charts read, added to the fixture files. Q23: a part month,
@@ -440,6 +454,7 @@ WRITTEN_FILES = [
     "q28_reverse_carbon_miss_by_under_delivery_fifth.png",
     "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json",
     "q28_reverse_exploratory.csv",
+    "q28_reverse_strata_exploratory.csv",
     "q28_shortfall_index_by_miss_fifth.csv",
     "q28_shortfall_index_by_miss_fifth.png",
     "q28_shortfall_index_by_miss_fifth.vl.json",
@@ -1274,6 +1289,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q25_short_instructions_by_fuel_group.csv": BMRS_LINE,
         "q28_reverse_carbon_miss_by_under_delivery_fifth.csv": BMRS_AND_CARBON_LINE,
         "q28_reverse_exploratory.csv": BMRS_AND_CARBON_LINE,
+        "q28_reverse_strata_exploratory.csv": BMRS_AND_CARBON_LINE,
         "q28_shortfall_index_by_miss_fifth.csv": BMRS_AND_CARBON_LINE,
         "q29_context_demand_by_month.csv": BMRS_LINE,
         "q29_final_forecast_error_by_month_and_block.csv": CARBON_LINE,
@@ -1678,6 +1694,191 @@ def test_q28s_reverse_chart_shows_each_fifths_gw_range_and_miss():
         assert chart_row["interval_high"] == saved_row["interval_high"]
 
 
+STRATA_RESULT = "q28_reverse_strata_exploratory.csv"
+# The wording fixed before the strata read for the within-cell slope's 90%
+# range: above zero, including zero, below zero.
+STRATA_ABOVE_ZERO = "a positive slope remains within the same time of day and month"
+STRATA_INCLUDES_ZERO = "no clear slope remains within the same time of day and month"
+STRATA_BELOW_ZERO = "the sign reverses within the same time of day and month"
+NUMBER_WORDS = {4: "four", 17: "seventeen"}
+
+
+def strata_clause(low, high):
+    """The clause fixed before the read for a 90% range from low to high."""
+    if Decimal(low) > 0:
+        return STRATA_ABOVE_ZERO
+    if Decimal(high) < 0:
+        return STRATA_BELOW_ZERO
+    return STRATA_INCLUDES_ZERO
+
+
+def page_signed(value):
+    """A value to one decimal with its sign, as the page's tables write it."""
+    return signed_tenths(value).replace("-", "−")
+
+
+def strata_month_label(stratum):
+    """Q29's '2025-08 (partial: 22 to 31)' as 'Aug 2025 (22 to 31)'."""
+    month, _, part = stratum.partition(" (partial: ")
+    year, number = month.split("-")
+    label = f"{list(FULL_MONTHS)[int(number) - 1]} {year}"
+    if not part:
+        return label
+    return f"{label} ({part.removesuffix(')')})"
+
+
+def strata_table_row(label, row):
+    return (
+        f"<tr><td>{label}</td><td>{int(row['half_hours']):,}</td>"
+        f"<td>{page_signed(row['value'])}</td>"
+        f"<td>{page_signed(row['interval_low'])} to "
+        f"{page_signed(row['interval_high'])}</td></tr>"
+    )
+
+
+def strata_rows(rows, section):
+    found = []
+    for row in rows:
+        if row["section"] == section:
+            found.append(row)
+    return found
+
+
+def strata_row(rows, section, line):
+    return one_row(strata_rows(rows, section), "line", line)
+
+
+def above_zero(rows):
+    """The strata whose 90% range lies wholly above zero."""
+    found = []
+    for row in rows:
+        if Decimal(row["interval_low"]) > 0:
+            found.append(row["stratum"])
+    return found
+
+
+def at_or_below_zero(rows):
+    """The strata whose slope is zero or negative."""
+    found = []
+    for row in rows:
+        if Decimal(row["value"]) <= 0:
+            found.append(row["stratum"])
+    return found
+
+
+def strata_read_day(rows):
+    """The day the strata read records, from its label line."""
+    label = strata_row(rows, "1", "1")["item"]
+    return re.search(rf"decided by James ({LONG_DATE})", label).group(1)
+
+
+def exploratory_block():
+    page = PAGE.read_text(encoding="utf-8")
+    return page.split('<section class="exploratory"', 1)[1].split("</section>", 1)[0]
+
+
+def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
+    rows = saved_output_rows(STRATA_RESULT)
+    population = strata_row(rows, "1", "2")
+    within = strata_row(rows, "4", "1")
+    pooled = strata_row(rows, "4", "2")
+    difference = strata_row(rows, "4", "4")
+    blocks = strata_rows(rows, "2")
+    months = strata_rows(rows, "3")
+    low_months = at_or_below_zero(months)
+    first_low = strata_month_label(low_months[0]).split(" ")[0]
+    last_low = strata_month_label(low_months[-1]).split(" ")[0]
+    clause = strata_clause(within["interval_low"], within["interval_high"])
+    block = exploratory_block()
+
+    assert population["result"] == "matches Q28"
+    assert Decimal(within["interval_low"]) > 0
+    assert clause == STRATA_ABOVE_ZERO
+    assert above_zero(blocks) == column_strata(blocks)
+    assert low_months == ["2025-12", "2026-01", "2026-02"]
+    assert "<h5>Within the same time of day and month</h5>" in block
+    assert (
+        "<p>Within the same time of day and month, each extra GW of "
+        "under-delivery went with a carbon miss "
+        f"{tenths(within['value'])} g/kWh further towards dirtier than forecast "
+        f"(90% range {tenths(within['interval_low'])} to "
+        f"{tenths(within['interval_high'])}), against {tenths(pooled['value'])} "
+        f"g/kWh with neither held fixed: {clause}. Holding them fixed took "
+        f"{hundredths(-Decimal(difference['value']))} g/kWh per GW off the slope "
+        f"(90% range {hundredths(-Decimal(difference['interval_high']))} to "
+        f"{hundredths(-Decimal(difference['interval_low']))}). The 90% range is "
+        f"above zero in all {NUMBER_WORDS[len(blocks)]} time-of-day blocks and in "
+        f"{len(above_zero(months))} of the {len(months)} months; "
+        f"{FULL_MONTHS[first_low]} to {FULL_MONTHS[last_low]} are at or below "
+        "zero.</p>" in block
+    )
+    assert (
+        f'<p class="note">Q28\'s {int(population["half_hours"]):,} half-hours, '
+        f"{output_date_range([population])}; read once on {strata_read_day(rows)}. "
+        "Month intervals resample whole days from the whole year, so a month's day "
+        "count varies between draws. "
+        f'<a href="results/{STRATA_RESULT}">Saved output</a></p>' in block
+    )
+    assert (
+        '<p class="note">Exploratory and association only: a further look at a '
+        "window already seen, published whatever it showed. "
+        f"{NUMBER_WORDS[len(blocks) + len(months)].capitalize()} slopes were read, "
+        "none corrected for reading many. Wind output is not held fixed, and a "
+        "windy period may raise both under-delivery and the carbon miss.</p>" in block
+    )
+    for other in sorted({STRATA_INCLUDES_ZERO, STRATA_BELOW_ZERO}):
+        assert other not in block
+
+
+def column_strata(rows):
+    found = []
+    for row in rows:
+        found.append(row["stratum"])
+    return found
+
+
+def test_q28s_strata_tables_show_each_slope_and_range_from_the_saved_output():
+    rows = saved_output_rows(STRATA_RESULT)
+    by_block = []
+    for row in strata_rows(rows, "2"):
+        by_block.append(strata_table_row(row["stratum"].replace("-", "–"), row))
+    by_block.append(
+        strata_table_row("All, within block and month", strata_row(rows, "4", "1"))
+    )
+    by_block.append(
+        strata_table_row("All, neither held fixed", strata_row(rows, "4", "2"))
+    )
+    by_month = []
+    for row in strata_rows(rows, "3"):
+        by_month.append(strata_table_row(strata_month_label(row["stratum"]), row))
+    block = exploratory_block()
+
+    assert len(by_block) == 6
+    assert len(by_month) == 13
+    block_rows = "\n            ".join(by_block)
+    month_rows = "\n              ".join(by_month)
+    assert '<caption class="note">By time of day (UTC)</caption>' in block
+    assert f"<tbody>\n            {block_rows}\n          </tbody>" in block
+    assert "<summary>By month</summary>" in block
+    assert f"<tbody>\n              {month_rows}\n            </tbody>" in block
+
+
+def test_q31_and_q32_note_the_strata_cut_from_its_saved_output():
+    rows = saved_output_rows(STRATA_RESULT)
+    within = strata_row(rows, "4", "1")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    sentence = (
+        f"A second exploratory cut, read on {strata_read_day(rows)}, held time of "
+        f"day and month fixed: a slope of {signed_tenths(within['value'])} g/kWh per "
+        f"GW (90% range {signed_tenths(within['interval_low'])} to "
+        f"{signed_tenths(within['interval_high'])}) remained. It uses no data in "
+        "this question's window"
+    )
+
+    for question_id in ("Q31", "Q32"):
+        assert sentence in " ".join(register_section(questions, question_id).split())
+
+
 def whole(value):
     return str(Decimal(value).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
@@ -1793,7 +1994,8 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"{percent_of(wind_median, wind_plan['q3_median_plan_mwh'], 1)}% of a wind "
         f"unit's median plan of {tenths(wind_plan['q3_median_plan_mwh'])} MWh a "
         f"half-hour (mean {tenths(wind_plan['q3_mean_plan_mwh'])}).",
-        f"an allocation against a plan that is zero in {link_zero_share}% of half-hours.",
+        "an allocation against a plan that is zero in "
+        f"{link_zero_share}% of half-hours.",
         f"<strong>9.3 g/kWh</strong>, about "
         f"{percent_of(q29_size, all_carbon['mean_actual_g_per_kwh'], 1)}% of the mean "
         f"carbon intensity of {whole(all_carbon['mean_actual_g_per_kwh'])} g/kWh,",
@@ -2084,7 +2286,8 @@ def test_each_answer_states_the_dates_its_saved_output_or_read_covers():
         f"Far more often ({short_date(q25_first)} – {short_date(q25_last)}).",
         "The median unplanned notice first published from "
         f"{short_date(q6_first)} to {short_date(q6_read)} appears",
-        "<li>Every result is an association over about a year "
+        "<li>Every result that compares two measures is an association over about a "
+        "year "
         f"({q5_first_month} to {q5_last_month}), not a cause",
     ]
     assert missing_phrases(expected) == []
