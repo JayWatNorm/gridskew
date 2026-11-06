@@ -3,7 +3,7 @@ import io
 import json
 import re
 import statistics
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -27,6 +27,7 @@ from scripts.readme_charts import (
     SPLIT_GREYS,
     SPLIT_THREE_SCHEME,
     SPLIT_TWO_SCHEME,
+    UNIT_TYPE_BY_PREFIX,
     end_name_heights,
     output_date_range,
     output_month_range,
@@ -150,8 +151,8 @@ def planned_output_fixture_lines():
 NEW_SAVED_OUTPUTS = {
     # Context counts, each unlike the real ones so a typed figure fails: 124.5
     # g/kWh and 21,350 MW are halves rounded up; wind's mean plan 18.25 MWh a
-    # half-hour; its 5,600 MWh planned makes Q5's 700 MWh of under-delivery
-    # 12.5%, so 13%; gas's 12.35 TWh shows as 12.4.
+    # half-hour and its median 7.25; its 5,600 MWh planned makes Q5's 700 MWh
+    # of under-delivery 12.5%, so 13%; gas's 12.35 TWh shows as 12.4.
     "context_carbon_intensity.csv": [
         "section,item,half_hours_in_window,half_hours_counted,"
         "mean_actual_g_per_kwh,median_actual_g_per_kwh,label",
@@ -170,7 +171,7 @@ NEW_SAVED_OUTPUTS = {
         "q3_median_plan_mwh,q3_unit_periods_nonzero_plan,"
         "q3_median_nonzero_plan_mwh,q22_unit_periods,q22_mean_plan_mwh,"
         "q22_median_plan_mwh,q22_median_nonzero_plan_mwh,label",
-        f"wind,400,5600.0,18.250,8.500,300,11.000,40,8.000,2.500,4.000,{CONTEXT_LABEL}",
+        f"wind,400,5600.0,18.250,7.250,300,11.000,40,8.000,2.500,4.000,{CONTEXT_LABEL}",
         f"gas_turbine,300,12350000.0,40.000,0.000,60,200.000,30,49.000,0.000,198.000,"
         f"{CONTEXT_LABEL}",
         f"nuclear,150,8100.0,135.000,0.000,70,299.000,15,143.000,193.000,295.000,"
@@ -1554,8 +1555,8 @@ def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
         "https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md"
     )
     reverse = (
-        '<p class="note">The reverse question, how much under-delivery moves the '
-        "carbon forecast and in which direction, is registered as "
+        '<p class="note">The reverse question, how far under-delivery goes with the '
+        "carbon forecast's miss, and in which direction, is registered as "
         f'<a href="{rules}#q31-when-units-unexplained-deviations-add-carbon-is-the-'
         'last-carbon-forecast-too-clean">Q31</a> and '
         f'<a href="{rules}#q32-when-wind-farms-fall-short-of-their-plans-is-the-'
@@ -1781,11 +1782,18 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
     q5_metered = item_row(q5, "3", "cohort unit-periods: determinable")
     low, high = wind_planned_range(capacity)
     three_gas_units_gwh = Decimal("0.18") * Decimal(revised) / Decimal(1000)
+    link_plan = one_row(plan, "fuel_group", "interconnector")
+    link_zero_plan = int(link_plan["q3_unit_periods"]) - int(
+        link_plan["q3_unit_periods_nonzero_plan"]
+    )
+    link_zero_share = percent_of(link_zero_plan, link_plan["q3_unit_periods"], 0)
 
     expected = [
-        f"(about 0.6 MW), about {percent_of(wind_median, wind_plan['q3_mean_plan_mwh'], 1)}% "
-        f"of a wind unit's mean plan of {tenths(wind_plan['q3_mean_plan_mwh'])} MWh a "
-        "half-hour.",
+        f"(about 0.6 MW), about "
+        f"{percent_of(wind_median, wind_plan['q3_median_plan_mwh'], 1)}% of a wind "
+        f"unit's median plan of {tenths(wind_plan['q3_median_plan_mwh'])} MWh a "
+        f"half-hour (mean {tenths(wind_plan['q3_mean_plan_mwh'])}).",
+        f"an allocation against a plan that is zero in {link_zero_share}% of half-hours.",
         f"<strong>9.3 g/kWh</strong>, about "
         f"{percent_of(q29_size, all_carbon['mean_actual_g_per_kwh'], 1)}% of the mean "
         f"carbon intensity of {whole(all_carbon['mean_actual_g_per_kwh'])} g/kWh,",
@@ -1794,26 +1802,24 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         "of mean national demand from NESO's initial outturn "
         '(<a href="#national-demand">INDO</a>), '
         f"{int(all_demand['mean_demand_mwh_per_half_hour']):,} MWh a half-hour.",
-        f"in every whole month, against plans of {low} to {high}% of capacity;",
+        f"in every whole month, against a median plan of {low} to {high}% of capacity;",
         f"16.4 TWh of under-delivery (about {percent_of(under_delivery, planned_total, 0)}% "
         "of the energy these units planned over almost the same dates)",
         f"Sep 2026; about "
         f"{percent_of(wind_flagged['acceptance_volume_mwh'], wind_plan['q3_abs_pn_mwh'], 0)}% "
-        "of the energy wind farms planned)",
+        "of the energy wind farms planned over almost the same dates)",
         f"its median gap moved from {first.quantize(Decimal('0.01'))} to "
-        f"{latest.quantize(Decimal('0.01'))} MWh, about "
-        f"{percent_of(first - latest, first, 0)}%.",
-        f"revisions came to about {nearest_ten(three_gas_units_gwh)} GWh, 18% of the "
-        "energy revised",
+        f"{latest.quantize(Decimal('0.01'))} MWh. The test cannot see",
+        "revisions, up or down counted alike, came to about "
+        f"{nearest_ten(three_gas_units_gwh)} GWh, 18% of the energy revised",
         "Among transmission-connected and embedded units, three gas units account "
-        "for 18% of it",
+        "for 18% of all the energy revised",
         f"no meter reading ({percent_of(no_meter['unit_periods'], int(cohort['unit_periods']) + int(no_meter['unit_periods']), 1)}%), "
         f"and 283,242 with a meter reading and no plan "
         f"({percent_of(int(metered['unit_periods']) - int(cohort['unit_periods']), metered['unit_periods'], 1)}%).",
         f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
         "of half-hours with no instruction).",
-        f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); "
-        "10 notices that name no unit that could be matched.",
+        f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); ",
         f"Waiting for 2,880 complete half-hours ({2880 // 48} days' worth).",
         "<figcaption>For scale only; no link is tested. Mean national demand",
         f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
@@ -1826,6 +1832,333 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
 
     assert missing == []
     assert 283_242 == int(metered["unit_periods"]) - int(cohort["unit_periods"])
+
+
+RULES_URL = (
+    "https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md"
+)
+SHORT_MONTHS = dict(zip(FULL_MONTHS.values(), FULL_MONTHS.keys(), strict=True))
+LONG_DATE = r"\d{1,2} [A-Z][a-z]+ \d{4}"
+
+
+def hundredths(value):
+    return str(Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def next_half_above(value):
+    """The first multiple of 0.5 above the value: the "under" limit the page
+    states for it."""
+    halves = (Decimal(value) * 2).to_integral_value(rounding=ROUND_FLOOR)
+    return str((halves + 1) / 2)
+
+
+def missing_phrases(expected):
+    page = PAGE.read_text(encoding="utf-8")
+    missing = []
+    for phrase in expected:
+        if phrase not in page:
+            missing.append(phrase)
+    return missing
+
+
+def article_text(page, article_id):
+    return page.split(f'<article id="{article_id}">', 1)[1].split("</article>", 1)[0]
+
+
+def short_date(long_date):
+    """'22 August 2025' as '22 Aug 2025'."""
+    day, month, year = long_date.split(" ")
+    return f"{day} {SHORT_MONTHS[month]} {year}"
+
+
+def long_date(day):
+    """'2025-08-22' as '22 August 2025'."""
+    year, month, date = day.split("-")
+    month_names = list(FULL_MONTHS.values())
+    return f"{int(date)} {month_names[int(month) - 1]} {year}"
+
+
+def long_date_range(rows):
+    """A saved output's first and last dates, written out in full."""
+    firsts = []
+    lasts = []
+    for row in rows:
+        if row.get("first_date"):
+            firsts.append(row["first_date"])
+        if row.get("last_date"):
+            lasts.append(row["last_date"])
+    return long_date(min(firsts)), long_date(max(lasts))
+
+
+def data_entry_range(page, article_id):
+    """The first and last day an article's Data entry gives."""
+    found = re.search(
+        rf"<dt>Data</dt>\s*<dd>({LONG_DATE}) to ({LONG_DATE})",
+        article_text(page, article_id),
+    )
+    return found.group(1), found.group(2)
+
+
+def whole_month_medians(q23_rows, fuel_group):
+    """A fuel group's median gap in each of Q23's whole months, September
+    2025 to August 2026, % of capacity."""
+    values = []
+    for row in item_rows(q23_rows, "1", "unit-months"):
+        whole_month = "2025-09-01" <= row["settlement_month"] <= "2026-08-01"
+        if row["fuel_group"] == fuel_group and whole_month:
+            values.append(Decimal(row["median_absolute_pct"]))
+    assert len(values) == 12
+    return values
+
+
+def highest_other_month(q23_rows):
+    """The largest median gap of any fuel group but wind in a whole month."""
+    groups = set()
+    for row in q23_rows:
+        if row["section"] == "1" and row["fuel_group"] != "wind":
+            groups.add(row["fuel_group"])
+    highest = Decimal(0)
+    for fuel_group in groups:
+        highest = max(highest, *whole_month_medians(q23_rows, fuel_group))
+    return highest
+
+
+def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
+    q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
+    q8_q28 = saved_output_rows("q8_q28_history.csv")
+    q30 = saved_output_rows("q30_wind_vs_carbon_error.csv")
+    reverse = saved_output_rows("q28_reverse_exploratory.csv")
+    wind = whole_month_medians(q23, "wind")
+    other_limit = next_half_above(highest_other_month(q23))
+    demand_rho = item_row(
+        q8_q28, "2", "rho_demand: abs(error_api_final) with abs(demand_error_final_mw)"
+    )["value"]
+    wind_rho = item_row(
+        q30,
+        "2",
+        "rho_abs (primary): abs(wind error, outturn with cohort curtailment "
+        "add-back) with abs(error_api_final)",
+    )["value"]
+    read = one_row(reverse, "section", "1")["item"]
+    read_day = re.match(rf"read ({LONG_DATE}),", read).group(1)
+
+    expected = [
+        f"the median wind farm missed its plan by {tenths(min(wind))} to "
+        f"{tenths(max(wind))}% of its capacity in every whole month from "
+        "September 2025 to August 2026; the median unit of every other type, "
+        f"by under {other_limit}%.",
+        f"<strong>{tenths(min(wind))} to {tenths(max(wind))}%</strong> of its "
+        "capacity in every whole month, against a median plan of",
+        f"the median unit of every other type, by under {other_limit}%. In "
+        "September 2026",
+        "Over the same dates, misses in NESO's demand and wind forecasts have "
+        f"rank correlations of only {hundredths(demand_rho)} and "
+        f"{hundredths(wind_rho)} with the size of the carbon miss.",
+        f"Results as of {read_day}, from GridSkew",
+    ]
+    assert missing_phrases(expected) == []
+
+
+def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
+    q12 = saved_output_rows("q12_instructed_vs_residual.csv")
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    q29 = saved_output_rows("q29_final_forecast_error_by_month_and_block.csv")
+    q2 = saved_output_rows("q2_settlement_run_changes.csv")
+    prefixes = saved_output_rows("q2_changes_by_unit_prefix.csv")
+    q6 = saved_output_rows("q6_publication_lag.csv")
+
+    shares = {}
+    for row in q12:
+        shares[row["fuel_group"]] = whole(
+            Decimal(100) * Decimal(row["instructed_share_of_abs_deviation"])
+        )
+    earliest_run = item_row(q5, "3", "population by metered run: II")
+    all_units = item_row(q5, "1", "total")
+    earliest_mean = Decimal(earliest_run["positive_shortfall_mwh"]) / Decimal(
+        earliest_run["unit_periods"]
+    )
+    overall_mean = Decimal(all_units["positive_shortfall_mwh"]) / Decimal(
+        all_units["unit_periods"]
+    )
+    publications = 0
+    for row in q5:
+        if row["item"].startswith("Active production unavailability publications"):
+            publications += int(row["remit_publications"])
+    unmapped = item_row(
+        q5,
+        "3",
+        "Active production unavailability publications by mapping rule: unmapped",
+    )["remit_publications"]
+    not_drawn_mwh = Decimal(0)
+    not_drawn_with_notice_mwh = Decimal(0)
+    for row in q5:
+        if row["section"] != "2" or row["fuel_group"] not in ("coal", "interconnector"):
+            continue
+        not_drawn_mwh += Decimal(row["positive_shortfall_mwh"])
+        if row["item"] != "none":
+            not_drawn_with_notice_mwh += Decimal(row["positive_shortfall_mwh"])
+    seen = re.search(
+        r"mean (?P<mean>\+?[\d.]+), median (?P<median>[\d.]+)",
+        one_row(q29, "section", "1")["item"],
+    )
+    one_week = one_row(q2, "run_pair", "II->SF")
+    three_weeks = one_row(q2, "run_pair", "SF->R1")
+    grid_changed = 0
+    grid_matched = 0
+    prefix_moved_mwh = Decimal(0)
+    other_prefixes = []
+    for row in prefixes:
+        prefix_moved_mwh += Decimal(row["moved_mwh"])
+        if row["unit_prefix"] in ("T", "E"):
+            grid_changed += int(row["changed"])
+            grid_matched += int(row["matched"])
+        if row["unit_prefix"] not in UNIT_TYPE_BY_PREFIX:
+            other_prefixes.append(row["unit_prefix"])
+    other_prefixes.sort()
+    unplanned = int(
+        one_row(item_rows(q6, "1", ""), "outage_class", "Unplanned")["notices"]
+    )
+
+    expected = [
+        "counting the instructed and the not-instructed part each by its size, "
+        f"and {shares['other']}% for the other group. For wind "
+        f"({shares['wind']}%) and bioenergy ({shares['bioenergy']}%), the part "
+        "NESO did not instruct is larger.",
+        "rest on the earliest settlement run and carry about twice the "
+        "mean under-delivery per unit half-hour "
+        f"({tenths(earliest_mean)} MWh against {tenths(overall_mean)});",
+        f"{unmapped} of {publications:,} outage publications that name no unit "
+        "that could be matched.",
+        "Coal (closed units) and interconnectors are not drawn; their "
+        f"under-delivery, {hundredths(not_drawn_mwh / Decimal(1_000_000))} TWh, "
+        "came with no notice",
+        "A September 2026 exploration had partly seen the overall mean and "
+        f"median ({seen['mean']} and {seen['median']}, measured with the "
+        "opposite sign).",
+        "as a share of the earlier run's total "
+        f"({int(whole(Decimal(one_week['base_abs_mwh']) / 1000)):,} GWh for the "
+        "one-week run, "
+        f"{int(whole(Decimal(three_weeks['base_abs_mwh']) / 1000)):,} GWh for "
+        "the three-week run).",
+        "Between the three-week and two-month runs, transmission-connected and "
+        "embedded units changed in "
+        f"{percent_of(grid_changed, grid_matched, 1)}% of half-hours,",
+        "Other unit types are the units whose identifiers start with "
+        f"{', '.join(other_prefixes[:-1])} or {other_prefixes[-1]}.",
+        f"{percent_of(7541, unplanned, 0)}% (7,541 of {unplanned:,}) give a start",
+    ]
+    assert missing_phrases(expected) == []
+    assert whole(earliest_mean / overall_mean) == "2"
+    assert not_drawn_with_notice_mwh == 0
+    assert prefix_moved_mwh == Decimal(three_weeks["moved_mwh"])
+    assert Decimal(three_weeks["moved_share"]) == (
+        Decimal(three_weeks["moved_mwh"]) / Decimal(three_weeks["base_abs_mwh"])
+    ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+
+def test_each_answer_states_the_dates_its_saved_output_or_read_covers():
+    page = PAGE.read_text(encoding="utf-8")
+    q8_q28 = saved_output_rows("q8_q28_history.csv")
+    q30 = saved_output_rows("q30_wind_vs_carbon_error.csv")
+    q25_months = output_month_range(
+        saved_output_rows("q25_instruction_fragmentation_corrected.csv")
+    )
+    q5_first, q5_last = long_date_range(
+        saved_output_rows("q5_shortfall_with_known_outage.csv")
+    )
+    q8_first, q8_last = long_date_range(q8_q28)
+    q25_first, q25_last = data_entry_range(page, "q25")
+    q6 = re.search(
+        rf"first published from ({LONG_DATE}) to the read on ({LONG_DATE})",
+        article_text(page, "q6"),
+    )
+    q6_first, q6_read = q6.group(1), q6.group(2)
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    q5_first_month = q5_first.split(" ", 1)[1]
+    q5_last_month = q5_last.split(" ", 1)[1]
+
+    expected = [
+        f"No clear difference ({output_date_range(q8_q28)}): ranking half-hours",
+        f"The same 17,278 half-hours as Q28, {q8_first} to {q8_last}.",
+        f"Barely: over {output_date_range(q30)}, the sizes of the two misses",
+        f"Far more often ({short_date(q25_first)} – {short_date(q25_last)}).",
+        "The median unplanned notice first published from "
+        f"{short_date(q6_first)} to {short_date(q6_read)} appears",
+        "<li>Every result is an association over about a year "
+        f"({q5_first_month} to {q5_last_month}), not a cause",
+    ]
+    assert missing_phrases(expected) == []
+    assert q25_months == (
+        f"{short_date(q25_first).split(' ', 1)[1]} – "
+        f"{short_date(q25_last).split(' ', 1)[1]}"
+    )
+    assert f"stored publication on or after {q6_first} and event start" in " ".join(
+        questions.split()
+    )
+
+
+def register_section(questions, question_id):
+    """The register's section for one question, heading to next heading."""
+    heading = f"\n### {question_id}. "
+    assert heading in questions
+    return questions.split(heading, 1)[1].split("\n### ", 1)[0]
+
+
+def test_still_to_come_lists_the_registered_questions_with_the_registers_dates():
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    item = page.split("<li><strong>Also registered, not yet read:</strong>", 1)[1]
+    item = item.split("</li>", 1)[0]
+    dated = re.findall(r"(Q[0-9A-Z-]+) \(about ([A-Z][a-z]+ \d{4})\)", item)
+    first, last = re.search(r"and Q(\d+) to Q(\d+)\.", item).groups()
+
+    assert dated == [
+        ("Q22-RF", "November 2027"),
+        ("Q2-R2RF", "May 2027"),
+        ("Q2-R1RF", "August 2027"),
+    ]
+    for question_id, month in dated:
+        assert f"(about {month})" in " ".join(
+            register_section(questions, question_id).split()
+        )
+    for number in range(int(first), int(last) + 1):
+        register_section(questions, f"Q{number}")
+    assert f'are in <a href="{RULES_URL}">every rule</a>.' in item
+
+
+def test_the_settlement_run_ages_are_the_measured_runs_in_months():
+    # docs/sources/elexon/020_b1610.md measured the day each run goes live;
+    # an average month is 30.44 days.
+    runs = (REPOSITORY / "docs" / "sources" / "elexon" / "020_b1610.md").read_text(
+        encoding="utf-8"
+    )
+    number_words = {2: "two", 4: "four", 7: "seven"}
+    ages = []
+    for run in ("R1", "R2", "R3", "RF"):
+        live_from = re.search(rf"\| `{run}` \| \**~?(\d+)", runs).group(1)
+        months = int(whole(Decimal(live_from) / Decimal("30.44")))
+        ages.append(f"{number_words.get(months, months)} months ({run})")
+    r2_months = ages[1].split(" ", 1)[0]
+
+    expected = [
+        "about one week (II), three weeks (SF), "
+        f"{ages[0]}, {ages[1]}, {ages[2]} and {ages[3]} after the day.",
+        f"the {r2_months}-month run (R2) to 29 April",
+    ]
+    assert missing_phrases(expected) == []
+
+
+def test_the_unit_glossary_states_each_conversion_the_page_uses():
+    # Worked: a half-hour is 0.5 hours; giga is 1,000 mega; tera is a
+    # million mega.
+    half_hour_hours = Decimal("0.5")
+    megawatts_per_gigawatt = 1000
+
+    expected = [
+        f"1 MW for a half-hour is {Decimal(1) * half_hour_hours} MWh. "
+        f"1 GW is {megawatts_per_gigawatt:,} MW; 1 TWh is a million MWh."
+    ]
+    assert missing_phrases(expected) == []
 
 
 def caption_of_chart(page, chart_id):
@@ -1860,11 +2193,27 @@ def test_each_context_row_is_labelled_a_denominator_not_a_result():
 
 
 def test_chart_reading_lines_give_scale_from_the_context_counts(written):
-    # The fixture, unlike the real counts: wind's mean plan 18.25 MWh, gas
-    # 12.35 TWh planned, wind's 700 MWh of under-delivery against 5,600 MWh
-    # planned (12.5%), 124.5 g/kWh; each half rounds up.
-    assert "a wind unit's mean plan is 18.3 MWh a half-hour." in reading_line(
-        written, "q3_gap_from_plan_by_fuel_group.vl.json"
+    # The fixture, unlike the real counts: wind's mean plan 18.25 MWh and
+    # median 7.25, gas 12.35 TWh planned, wind's 700 MWh of under-delivery
+    # against 5,600 MWh planned (12.5%), 124.5 g/kWh; each half rounds up.
+    # The median wind unit plans 20.05% of capacity in September 2025, one
+    # point more each month, so 31.05% in August 2026 (and 32.05% in the
+    # provisional September, which the range leaves out).
+    q23_scale = (
+        "For scale, the median wind unit planned 20 to 31% of its capacity, "
+        "depending on the month."
+    )
+    assert (
+        "a wind unit's median plan is 7.3 MWh a half-hour (mean 18.3)."
+        in reading_line(written, "q3_gap_from_plan_by_fuel_group.vl.json")
+    )
+    assert q23_scale in reading_line(written, "q23_typical_gap_by_fuel_group.vl.json")
+    assert q23_scale in reading_line(written, "q23_monthly_gap_by_fuel_group.vl.json")
+    assert "Sep 2025 – Aug 2026" in x_axis_titles(
+        written, "q23_typical_gap_by_fuel_group.vl.json"
+    )
+    assert "the mean carbon intensity was 125 g/kWh." in reading_line(
+        written, "q29_error_by_month.vl.json"
     )
     assert "wind planned 0.0 TWh over these dates and gas 12.4 TWh." in (
         reading_line(written, "q12_instructed_share_by_fuel_group.vl.json")
@@ -1921,7 +2270,7 @@ def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
     page = PAGE.read_text(encoding="utf-8")
     expected = [
         f"About a quarter (24%, {q5}) came with one",
-        f"managing the network:</strong> 97% (settlement months {q24}).",
+        f"possibly for network reasons:</strong> 97% (settlement months {q24}).",
         f"the biggest carbon misses ({q28}), under-delivery",
         f"Slightly less, with wide spreads ({q3}).",
         f"0.03 MWh per unit per half-hour (bioenergy, {Q2_WEEK}):",

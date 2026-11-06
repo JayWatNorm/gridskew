@@ -296,8 +296,8 @@ Q2_WEEK = "10–16 Aug 2026"
 Q2_AXIS_TITLE = "Share of the energy revised, %"
 Q3_TITLE = "Most fuel types produce slightly less than planned, with wide spreads"
 Q12_TITLE = (
-    "Instructions are most of the gap for gas, hydro and pumped storage, "
-    "under half for wind"
+    "Instructions are most of the gap for gas, hydro, pumped storage and the "
+    "other group, under half for wind and bioenergy"
 )
 Q5_TITLE = "All units: {share}% of under-delivery came with a published outage"
 Q23_TYPICAL_TITLE = (
@@ -306,10 +306,10 @@ Q23_TYPICAL_TITLE = (
 Q23_MONTHLY_TITLE = "Wind stayed furthest from plan in every whole month"
 Q24_TITLE = (
     "NESO flags almost all the energy its instructions move at wind farms as "
-    "managing the network"
+    "system actions"
 )
 Q25_TITLE = (
-    "Batteries (the other group) and pumped storage get far more short "
+    "The other group (mostly batteries) and pumped storage get far more short "
     "instructions than power stations"
 )
 Q28_TITLE = "Bigger carbon misses came with slightly more under-delivery, not 25% more"
@@ -333,9 +333,9 @@ Q3_READING = (
     "meter, the bar its interquartile range (the middle 50% of half-hours)."
 )
 Q12_READING = (
-    "Each bar is a fuel group's whole gap between plan and meter, split into "
-    "the part NESO instructed and the rest; the figure is the instructed "
-    "share."
+    "Each bar adds the sizes of the two parts of a fuel group's gap between "
+    "plan and meter: the part NESO instructed and the rest; the figure is the "
+    "instructed share."
 )
 Q5_READING = (
     "Each bar is a fuel group's under-delivery, split by whether an outage "
@@ -354,7 +354,7 @@ Q23_MONTHLY_READING = (
 )
 Q24_READING = (
     "Each bar is one fuel group's instructed energy as 100%, split into the "
-    "share NESO flagged as managing the network and the rest. Under each name "
+    "share NESO flagged as system actions and the rest. Under each name "
     "is that energy in TWh, settlement months {months}."
 )
 Q25_READING = (
@@ -383,12 +383,18 @@ Q29_DEMAND_READING = (
 )
 
 # A scale for each chart's figures, from the context counts.
-Q3_SCALE = "For scale, a wind unit's mean plan is {wind} MWh a half-hour."
+Q3_SCALE = (
+    "For scale, a wind unit's median plan is {median} MWh a half-hour (mean {mean})."
+)
 Q12_SCALE = "For scale, wind planned {wind} TWh over these dates and gas {gas} TWh."
 Q5_SCALE = (
     "For scale, wind's under-delivery is about {share}% of the energy it planned."
 )
-Q29_TIME_SCALE = "For scale, the mean carbon intensity was {intensity} g/kWh."
+Q29_SCALE = "For scale, the mean carbon intensity was {intensity} g/kWh."
+Q23_SCALE = (
+    "For scale, the median wind unit planned {low} to {high}% of its capacity, "
+    "depending on the month."
+)
 Q30_READING = (
     "Each row compares the two misses one way: the dot is the rank "
     "correlation, the line its 90% range. In the size rows, a dot in the "
@@ -1160,8 +1166,12 @@ def draw_gap_from_plan(rows, dates, path):
 def write_q3_chart(q3_rows, plan_rows, output):
     name = "q3_gap_from_plan_by_fuel_group"
     chart_rows = gap_from_plan_rows(q3_rows, plan_rows)
-    wind_plan = fixed(Decimal(context_plan(plan_rows, "wind")["q3_mean_plan_mwh"]), 1)
-    reading = f"{Q3_READING} {Q3_SCALE.format(wind=wind_plan)}"
+    wind_plan = context_plan(plan_rows, "wind")
+    scale = Q3_SCALE.format(
+        median=fixed(Decimal(wind_plan["q3_median_plan_mwh"]), 1),
+        mean=fixed(Decimal(wind_plan["q3_mean_plan_mwh"]), 1),
+    )
+    reading = f"{Q3_READING} {scale}"
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
     draw_gap_from_plan(chart_rows, output_date_range(q3_rows), output / f"{name}.png")
@@ -1696,6 +1706,22 @@ def fuel_group_colour(channel):
     )
 
 
+def whole_month_span():
+    """Q23's whole months, first to last, as 'Sep 2025 – Aug 2026'."""
+    return span(month_name(Q23_WHOLE_MONTHS[0]), month_name(Q23_WHOLE_MONTHS[-1]))
+
+
+def wind_planned_scale(capacity_rows):
+    """For scale, the lowest and highest month of the median wind unit's
+    planned output over Q23's whole months, % of capacity, from the context
+    count; a whole month the count lacks is refused."""
+    planned = []
+    for month in Q23_WHOLE_MONTHS:
+        share = planned_share(capacity_rows, Q23_EMPHASISED_GROUP, month)
+        planned.append(Decimal(share))
+    return Q23_SCALE.format(low=fixed(min(planned), 0), high=fixed(max(planned), 0))
+
+
 def draw_typical_gaps(rows, title, path):
     figure, axes = new_figure(len(rows))
     for position, row in enumerate(rows):
@@ -1727,7 +1753,7 @@ def draw_typical_gaps(rows, title, path):
         labels.append(fuel_group_name(row["fuel_group"]))
     row_labels(axes, labels)
     axes.set_xlim(0, Q23_TYPICAL_AXIS_TOP)
-    x_label(axes, "Gap between plan and meter, % of capacity")
+    x_label(axes, f"Gap between plan and meter, % of capacity, {whole_month_span()}")
     png_title(axes, title, [Q23_TYPICAL_READING])
     handles = [
         Line2D([], [], color=COMPARISON_COLOUR, linewidth=8, label=Q23_KEY_TYPICAL),
@@ -1743,10 +1769,11 @@ def draw_typical_gaps(rows, title, path):
     save_figure(figure, path, handles)
 
 
-def write_q23_typical_chart(rows, output):
+def write_q23_typical_chart(rows, capacity_rows, output):
     name = "q23_typical_gap_by_fuel_group"
     chart_rows = typical_gap_rows(rows)
     title = typical_title(chart_rows)
+    reading = f"{Q23_TYPICAL_READING} {wind_planned_scale(capacity_rows)}"
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
     draw_typical_gaps(chart_rows, title, output / f"{name}.png")
@@ -1763,7 +1790,8 @@ def write_q23_typical_chart(rows, output):
         scale=altair.Scale(domain=[0, Q23_TYPICAL_AXIS_TOP], nice=False),
         axis=axis_title(
             [
-                "Gap between plan and meter, % of capacity",
+                "Gap between plan and meter, % of capacity,",
+                whole_month_span(),
                 "further right: further from plan",
             ]
         ),
@@ -1829,9 +1857,7 @@ def write_q23_typical_chart(rows, output):
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(
-            **page_layout(title, Q23_TYPICAL_READING, len(chart_rows) * ROW_STEP_PIXELS)
-        )
+        .properties(**page_layout(title, reading, len(chart_rows) * ROW_STEP_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -1913,25 +1939,30 @@ def with_planned_output(chart_rows, capacity_rows):
     capacity, from the context count, for scale; a month the count lacks is
     refused."""
     for row in chart_rows:
-        planned = None
-        for capacity_row in matching_rows(
-            capacity_rows, "fuel_group", row["fuel_group"]
-        ):
-            if capacity_row["settlement_month"] == row["month"]:
-                planned = capacity_row["median_unit_planned_pct_of_capacity"]
-        if planned is None:
-            raise ValueError(
-                f"The context count has no planned output for {row['fuel_group']} "
-                f"in {row['month']}"
-            )
+        planned = planned_share(capacity_rows, row["fuel_group"], row["month"])
         row["planned_label"] = one_decimal_label(planned)
     return chart_rows
+
+
+def planned_share(capacity_rows, fuel_group, month):
+    """The median unit's planned output for the group and month, % of
+    capacity, from the context count; a month the count lacks is refused."""
+    planned = None
+    for capacity_row in matching_rows(capacity_rows, "fuel_group", fuel_group):
+        if capacity_row["settlement_month"] == month:
+            planned = capacity_row["median_unit_planned_pct_of_capacity"]
+    if planned is None:
+        raise ValueError(
+            f"The context count has no planned output for {fuel_group} in {month}"
+        )
+    return planned
 
 
 def write_q23_monthly_chart(rows, capacity_rows, output):
     name = "q23_monthly_gap_by_fuel_group"
     chart_rows = with_planned_output(monthly_gap_rows(rows), capacity_rows)
     title = monthly_title(chart_rows)
+    reading = f"{Q23_MONTHLY_READING} {wind_planned_scale(capacity_rows)}"
     columns = list(chart_rows[0])
     csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
     draw_monthly_gaps(chart_rows, title, output / f"{name}.png")
@@ -2077,14 +2108,12 @@ def write_q23_monthly_chart(rows, capacity_rows, output):
         .transform_calculate(
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
-        .properties(
-            **page_layout(title, Q23_MONTHLY_READING, Q23_MONTHLY_HEIGHT_PIXELS)
-        )
+        .properties(**page_layout(title, reading, Q23_MONTHLY_HEIGHT_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
 
-# Q24: the share NESO flags as managing the network
+# Q24: the share NESO flags as system actions
 
 
 def flagged_share_rows(rows):
@@ -2764,11 +2793,13 @@ def mean_intensity(carbon_rows):
     return row_for(carbon_rows, "1", "all half-hours")["mean_actual_g_per_kwh"]
 
 
+def q29_scale(carbon_rows):
+    return Q29_SCALE.format(intensity=fixed(Decimal(mean_intensity(carbon_rows)), 0))
+
+
 def write_q29_time_chart(rows, carbon_rows, output):
     name = "q29_error_by_time_of_day"
-    scale = Q29_TIME_SCALE.format(
-        intensity=fixed(Decimal(mean_intensity(carbon_rows)), 0)
-    )
+    scale = q29_scale(carbon_rows)
     blocks = matching_rows(rows, "section", "3")
     (overall,) = matching_rows(rows, "section", "1")
 
@@ -2860,8 +2891,9 @@ MONTH_LABEL = (
 )
 
 
-def write_q29_month_chart(rows, output):
+def write_q29_month_chart(rows, carbon_rows, output):
     name = "q29_error_by_month"
+    reading = f"{Q29_MONTH_READING} {q29_scale(carbon_rows)}"
     months = matching_rows(rows, "section", "2")
 
     figure, axes = pyplot.subplots(figsize=(FIGURE_WIDTH_INCHES, 4))
@@ -2949,9 +2981,7 @@ def write_q29_month_chart(rows, output):
                 )
             },
         )
-        .properties(
-            **page_layout(Q29_MONTH_TITLE, Q29_MONTH_READING, LINE_CHART_HEIGHT_PIXELS)
-        )
+        .properties(**page_layout(Q29_MONTH_TITLE, reading, LINE_CHART_HEIGHT_PIXELS))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -3188,7 +3218,7 @@ def write_charts(result_folder, output_folder):
     write_q5_chart(q5, plan, output)
     copy_saved_output(results, output, Q6_RESULT, BMRS_ATTRIBUTION)
     q23 = copy_saved_output(results, output, Q23_RESULT, BMRS_ATTRIBUTION)
-    write_q23_typical_chart(q23, output)
+    write_q23_typical_chart(q23, capacity, output)
     write_q23_monthly_chart(q23, capacity, output)
     q24 = copy_saved_output(results, output, Q24_RESULT, BMRS_ATTRIBUTION)
     write_q24_chart(q24, output)
@@ -3207,7 +3237,7 @@ def write_charts(result_folder, output_folder):
     write_q28_reverse_chart(q28_reverse, output)
     q29 = copy_saved_output(results, output, Q29_RESULT, CARBON_ATTRIBUTION)
     write_q29_time_chart(q29, carbon, output)
-    write_q29_month_chart(q29, output)
+    write_q29_month_chart(q29, carbon, output)
     write_q29_demand_chart(demand, output)
     q30 = copy_saved_output(results, output, Q30_RESULT, BMRS_AND_CARBON_ATTRIBUTION)
     write_q30_chart(q30, output)

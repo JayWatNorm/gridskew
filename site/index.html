@@ -276,13 +276,13 @@
   <section aria-labelledby="found-title">
     <h2 id="found-title">What I found</h2>
     <ul class="findings">
-      <li><strong>Wind strays furthest from its own plan.</strong> With no NESO instruction in force, the median wind farm missed its plan by more than the median unit of any other type in every whole month from September 2025 to August 2026. <a href="#q23">Q23</a></li>
+      <li><strong>Wind strays furthest from its own plan.</strong> With no NESO instruction in force, the median wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month from September 2025 to August 2026; the median unit of every other type, by under 3.5%. <a href="#q23">Q23</a></li>
       <li><strong>Most under-delivery comes with no published outage.</strong> About a quarter (24%, 22 Aug 2025 – 27 Sep 2026) came with one; for wind, about a tenth. <a href="#q5">Q5</a></li>
-      <li><strong>NESO flags almost all the energy its instructions move at wind farms as managing the network:</strong> 97% (settlement months Aug 2025 – Sep 2026). <a href="#q24">Q24</a></li>
-      <li><strong>The carbon forecast's misses barely track any of it.</strong> In the fifth of half-hours with the biggest carbon misses (22 Aug 2025 – 16 Aug 2026), under-delivery was only 5% larger than in the fifth with the smallest; the test needed 25%. Misses in NESO's demand and wind forecasts show only weak links too. <a href="#q28">Q28</a>, <a href="#q8">Q8</a>, <a href="#q30">Q30</a></li>
+      <li><strong>NESO flags almost all the energy its instructions move at wind farms as system actions, possibly for network reasons:</strong> 97% (settlement months Aug 2025 – Sep 2026). <a href="#q24">Q24</a></li>
+      <li><strong>The carbon forecast's misses barely track under-delivery.</strong> In the fifth of half-hours with the biggest carbon misses (22 Aug 2025 – 16 Aug 2026), under-delivery was only 5% larger than in the fifth with the smallest; the test needed 25%. Over the same dates, misses in NESO's demand and wind forecasts have rank correlations of only 0.04 and 0.01 with the size of the carbon miss. <a href="#q28">Q28</a>, <a href="#q8">Q8</a>, <a href="#q30">Q30</a></li>
     </ul>
     <p class="caveat">The carbon forecast tested is the stored forecast (see the words below), not a day-ahead forecast. Q4 repeats the test on GridSkew's own archive of every forecast, where the timing is known.</p>
-    <p>Every reading rule was recorded before its result was read, and each result was read once; where the data had been explored first, the details say so. "How I measured it", under each answer, gives the rule, the numbers and the dates. A figure given for scale sets a result against a context count read on 1 November 2026, a denominator, not a registered result: <a href="results/context_plan_per_unit_half_hour.csv">planned energy</a>, <a href="results/context_plan_pct_capacity.csv">planned share of capacity</a>, <a href="results/context_demand.csv">national demand</a> and <a href="results/context_carbon_intensity.csv">carbon intensity</a>.</p>
+    <p>Every reading rule was recorded before its result was read, and each result was read once (Q25 was re-run once on the same data, with the two halves of instructions that cross midnight joined); where the data had been explored first, or a result is exploratory, the details say so. "How I measured it", under each answer, gives the rule, the numbers and the dates. A figure given for scale sets a result against a context count read on 1 November 2026, a denominator, not a registered result: <a href="results/context_plan_per_unit_half_hour.csv">planned energy</a>, <a href="results/context_plan_pct_capacity.csv">planned share of capacity</a>, <a href="results/context_demand.csv">national demand</a> and <a href="results/context_carbon_intensity.csv">carbon intensity</a>.</p>
   </section>
 
   <section class="glossary" aria-labelledby="glossary-title">
@@ -302,15 +302,19 @@
       </div>
       <div>
         <dt>Settlement runs</dt>
-        <dd>Elexon's later recalculations of metered output with more meter data: about one week, three weeks, two months, five months, seven months and 14 months after the day. Each result uses the latest run held at its read.</dd>
+        <dd>Elexon's later recalculations of metered output with more meter data: about one week (II), three weeks (SF), two months (R1), four months (R2), seven months (R3) and 14 months (RF) after the day. Each result uses the latest run held at its read.</dd>
       </div>
       <div>
-        <dt>Under-delivery not instructed</dt>
-        <dd>How much less a unit produced than it should have: its plan, or NESO's instructed level while an instruction applied.</dd>
+        <dt>Under-delivery (not instructed)</dt>
+        <dd>How much less a unit produced than it should have: its plan, or NESO's instructed level while an instruction applied. On this page, "under-delivery" always means this.</dd>
       </div>
       <div>
         <dt>Unit (BM unit)</dt>
         <dd>A generator, battery, pumped-storage station, interconnector link or supplier's customer account in the Balancing Mechanism. Q2 covers every unit, suppliers' customer accounts included; the other questions cover units with a published fuel type: not the whole grid, and some are closed or idle.</dd>
+      </div>
+      <div>
+        <dt>Transmission-connected and embedded</dt>
+        <dd>Connected to the national transmission network, or to a local distribution network.</dd>
       </div>
       <div>
         <dt>Fuel group, and "other"</dt>
@@ -325,12 +329,12 @@
         <dd>NESO's initial outturn of the Great Britain generation requirement, calculated from metered generation and including transmission losses. It leaves out interconnector exports, pumped-storage pumping and power stations' own use. Wind and solar on local networks are outside that metering, so they lower it rather than count in it.</dd>
       </div>
       <div>
-        <dt>Stored forecast</dt>
+        <dt id="stored-forecast">Stored forecast</dt>
         <dd>The one carbon forecast NESO's API keeps for each past half-hour; NESO does not document when it is made. Where GridSkew's archive overlaps it (17 August to 10 September 2026), it matched the forecast as it stood at about the end of the half-hour; after 10 September 2026, half the stored values match none of the archive's polls.</dd>
       </div>
       <div>
         <dt>Rank correlation</dt>
-        <dd>From −1 to 1; 0 means no link. It ranks the values rather than using their sizes.</dd>
+        <dd>From −1 to 1; 0 means no steady rise or fall of one with the other. It ranks the values rather than using their sizes.</dd>
       </div>
       <div>
         <dt>Mean</dt>
@@ -345,12 +349,16 @@
         <dd>The value only 1 in 10 exceed.</dd>
       </div>
       <div>
-        <dt>Interquartile range</dt>
-        <dd>The middle 50% of values, from the 25th to the 75th percentile.</dd>
+        <dt>Quartiles and interquartile range</dt>
+        <dd>The quartiles are the 25th and 75th percentiles; the interquartile range is the middle 50% of values between them.</dd>
       </div>
       <div>
         <dt>90% range</dt>
-        <dd>Where a figure falls in 90% of 1,000 resamples of whole days: a guide to uncertainty, not part of any verdict.</dd>
+        <dd>The range holding the middle 90% of a figure's values across 1,000 resamples of whole days: a guide to uncertainty, not part of any verdict.</dd>
+      </div>
+      <div>
+        <dt>MW, MWh, GW, TWh, g/kWh</dt>
+        <dd>MW is power and MWh energy: 1 MW for a half-hour is 0.5 MWh. 1 GW is 1,000 MW; 1 TWh is a million MWh. g/kWh is grams of CO2 per kilowatt-hour.</dd>
       </div>
     </dl>
   </section>
@@ -369,7 +377,7 @@
 
   <article id="q23">
     <h3>When NESO has not asked a unit to change its output, how closely does it follow its own plan? <span class="tag">Q23</span></h3>
-    <p class="answer">Wind strays most. Only half-hours with no NESO instruction count. The gap shows how far a unit strayed from its plan, not why. From September 2025 to August 2026, the median wind farm missed its plan by <strong>6.3 to 8.0%</strong> of its capacity in every whole month, against plans of 18 to 43% of capacity; the median unit of every other type, by under 3.5%. In September 2026, on early meter data, wind and bioenergy rose above their whole-month range; this is provisional and not explained.</p>
+    <p class="answer">Wind strays most. Only half-hours with no NESO instruction count. The gap shows how far a unit strayed from its plan, not why. From September 2025 to August 2026, the median wind farm missed its plan by <strong>6.3 to 8.0%</strong> of its capacity in every whole month, against a median plan of 18 to 43% of capacity; the median unit of every other type, by under 3.5%. In September 2026, on early meter data, wind and bioenergy rose above their whole-month range; this is provisional and not explained.</p>
     <figure>
       <div class="chart" id="q23-typical-chart"></div>
       <figcaption>Half-hours with no instruction in force, whole months September 2025 to August 2026. The pale line shows only for groups of 20 units or more; coal (closed units) is left out. Source: Elexon BMRS.</figcaption>
@@ -389,7 +397,7 @@
         <dt>Data</dt>
         <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 20:05 UTC.</dd>
         <dt>Left out</dt>
-        <dd>Interconnectors; 18 units with no positive registered capacity (4 coal, 3 gas, 4 nuclear, 6 other, 1 wind); 237,653 half-hours of individual units with no instruction and no meter reading (3.0% of half-hours with no instruction). Counted again on 31 October 2026, half-hours without a meter reading are about 3% of the total: 4.4% to 5.0% a month from November 2025 to March 2026 and 1.7% in September 2026, mostly in the other group (14.5% of its half-hours).</dd>
+        <dd>Interconnectors; 18 units with no positive registered capacity (4 coal, 3 gas, 4 nuclear, 6 other, 1 wind); 237,653 half-hours of individual units with no instruction and no meter reading (3.0% of half-hours with no instruction).</dd>
         <dt>Wind cut back to relieve the network</dt>
         <dd>Over the whole window, the median wind farm missed by 7.8% of capacity on days when NESO asked at least one wind farm to cut output and flagged it as managing the network, and by 4.5% on days without (363 and 42 days): an association, not a cause.</dd>
         <dt>Rule</dt>
@@ -400,13 +408,13 @@
 
   <article id="q3">
     <h3>Does each fuel group usually produce more or less than it planned? <span class="tag">Q3</span></h3>
-    <p class="answer">Slightly less, with wide spreads (22 Aug 2025 – 26 Sep 2026). Wind, gas, nuclear and bioenergy usually produced a little less than planned: wind's median is <strong>0.3 MWh</strong> short per half-hour (about 0.6 MW), about 1.4% of a wind unit's mean plan of 22.1 MWh a half-hour. But a quarter of wind's half-hours fell over 2.9 MWh short and a quarter ran over 1 MWh above. Hydro, pumped storage and interconnectors have a median gap of zero: many of their half-hours show almost no gap, as when a unit planned to stay idle and did.</p>
+    <p class="answer">Slightly less, with wide spreads (22 Aug 2025 – 26 Sep 2026). Wind, gas, nuclear and bioenergy usually produced a little less than planned: wind's median is <strong>0.3 MWh</strong> short per half-hour (about 0.6 MW), about 3.6% of a wind unit's median plan of 8.5 MWh a half-hour (mean 22.1). But a quarter of wind's half-hours fell over 2.9 MWh short and a quarter ran over 1 MWh above. Hydro, pumped storage and interconnectors have a median gap of zero: many of their half-hours show almost no gap, as when a unit planned to stay idle and did.</p>
     <figure>
       <div class="chart" id="q3-chart"></div>
-      <figcaption>22 August 2025 to 26 September 2026, on the latest settlement run held. Coal (closed units) is left out; interconnectors are links whose metered figure is an allocation against a plan of zero. Source: Elexon BMRS. <a href="results/context_plan_per_unit_half_hour.csv">Context data</a></figcaption>
+      <figcaption>22 August 2025 to 26 September 2026, on the latest settlement run held. Coal (closed units) is left out; interconnectors are links whose metered figure is an allocation against a plan that is zero in 97% of half-hours. Source: Elexon BMRS. <a href="results/context_plan_per_unit_half_hour.csv">Context data</a></figcaption>
     </figure>
     <div class="sub" id="q22">
-      <p><strong>Did later meter data change one week's fuel-group picture?</strong> <span class="tag">Q22</span> No: no group's median gap changed sign or order, and the biggest change was 0.03 MWh per unit per half-hour (bioenergy, 10–16 Aug 2026): its median gap moved from 0.78 to 0.75 MWh, about 4%. The test cannot see large corrections at single stations.</p>
+      <p><strong>Did later meter data change one week's fuel-group picture?</strong> <span class="tag">Q22</span> No: no group's median gap changed sign or order, and the biggest change was 0.03 MWh per unit per half-hour (bioenergy, 10–16 Aug 2026): its median gap moved from 0.78 to 0.75 MWh. The test cannot see large corrections at single stations: in the same week, <a href="#q2">Q2</a> finds large revisions at three gas units between the three-week and two-month runs.</p>
     </div>
     <details class="method">
       <summary>How I measured it</summary>
@@ -444,7 +452,7 @@
 
   <article id="q12">
     <h3>How much of the gap between plan and meter comes from NESO's instructions? <span class="tag">Q12</span></h3>
-    <p class="answer">Most of it for gas, hydro and pumped storage (22 Aug 2025 – 26 Sep 2026): <strong>83 to 91%</strong>, counting the instructed and the not-instructed part each by its size. For wind, instructions are 44%, so the part NESO did not instruct is larger. NESO never instructed a nuclear unit in those dates.</p>
+    <p class="answer">Most of it for gas, hydro and pumped storage (22 Aug 2025 – 26 Sep 2026): <strong>83 to 91%</strong>, counting the instructed and the not-instructed part each by its size, and 58% for the other group. For wind (44%) and bioenergy (37%), the part NESO did not instruct is larger. NESO never instructed a nuclear unit in those dates.</p>
     <figure>
       <div class="chart" id="q12-chart"></div>
       <figcaption>22 August 2025 to 26 September 2026. Interconnectors (never instructed) and coal (closed units) are left out. Source: Elexon BMRS.</figcaption>
@@ -455,7 +463,7 @@
         <dt>Measure</dt>
         <dd>I split each half-hour's gap between plan and meter into the part NESO instructed and the part it did not. Per fuel group, I give the instructed part's size as a share of both parts' sizes added together. The parts can point opposite ways, so this is not a share of each half-hour's own gap.</dd>
         <dt>The part not instructed</dt>
-        <dd>It includes services NESO buys outside the balancing mechanism, wind forecast error and settlement estimates.</dd>
+        <dd>It holds services NESO buys outside the balancing mechanism, which are not counted here (see Q26), and can hold wind forecast error and estimated meter readings; this split does not show which.</dd>
         <dt>Data</dt>
         <dd>The same 8,653,046 half-hours of individual units as Q3. Read 11 October 2026, with overlapping instructions ordered by time, then number; Elexon's settlement orders them by number. The two orders differ for 32 of 3,620,900 instructions.</dd>
         <dt>Rule</dt>
@@ -469,13 +477,13 @@
   <h2 id="outages-title">When units fall short, was an outage published?</h2>
 
   <article id="q5">
-    <h3>When units under-delivered against their plan, had an outage already been published? <span class="tag">Q5</span></h3>
+    <h3>When units under-delivered with no instruction to explain it, had an outage already been published? <span class="tag">Q5</span></h3>
     <p class="answer">Mostly not. About a quarter (<strong>24%</strong>) of under-delivery (22 Aug 2025 – 27 Sep 2026) came with a published outage; for wind, the largest part, only about a tenth did. Nuclear's 93% reflects standing notices of partial derating, not outages the plan missed.</p>
     <figure>
       <div class="chart" id="q5-chart"></div>
-      <figcaption>22 August 2025 to 27 September 2026. Half-hours under both kinds of notice count as unplanned. Coal (closed units) and interconnectors are left out. Source: Elexon BMRS and REMIT.</figcaption>
+      <figcaption>22 August 2025 to 27 September 2026. Half-hours under both kinds of notice count as unplanned. Coal (closed units) and interconnectors are not drawn; their under-delivery, 0.05 TWh, came with no notice and counts in the total behind the 24%. Source: Elexon BMRS and REMIT.</figcaption>
     </figure>
-    <p class="note">"No notice" is not "no outage": small units rarely publish. The newest 19 days, in September 2026, carry about twice the mean under-delivery per half-hour; this is not explained.</p>
+    <p class="note">"No notice" is not "no outage": small units rarely publish. The newest 19 days, in September 2026, rest on the earliest settlement run and carry about twice the mean under-delivery per unit half-hour (3.9 MWh against 1.9); this is not explained.</p>
     <details class="method">
       <summary>How I measured it</summary>
       <dl>
@@ -484,7 +492,7 @@
         <dt>Data</dt>
         <dd>8,675,654 half-hours of individual units, 22 August 2025 to 27 September 2026, with 16.4 TWh of under-delivery (about 7% of the energy these units planned over almost the same dates): planned 12.0%, unplanned 11.2%, both 0.4%, none 76.4%. Read 12 October 2026, with data to 27 September 2026 22:30 UTC.</dd>
         <dt>Left out</dt>
-        <dd>255,473 half-hours of individual units with no meter reading (2.9%); 10 notices that name no unit that could be matched.</dd>
+        <dd>255,473 half-hours of individual units with no meter reading (2.9%); 10 of 45,247 outage publications that name no unit that could be matched.</dd>
         <dt>Rule</dt>
         <dd>Recorded 12 October 2026, before any value was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q5-how-much-positive-unexplained-shortfall-coincides-with-outages-published-in-remit-at-the-period-start">Full rule</a> · query <code>q5_shortfall_with_known_outage.sql</code> · <a href="results/q5_shortfall_with_known_outage.csv">saved output</a> · <a href="results/q5_under_delivery_by_outage_notice.csv">chart data</a></dd>
       </dl>
@@ -493,7 +501,7 @@
 
   <article id="q6">
     <h3>How soon after the start time written in an outage notice does it appear? <span class="tag">Q6</span></h3>
-    <p class="answer">The median unplanned notice appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. About two in three (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice.</p>
+    <p class="answer">The median unplanned notice first published from 1 Nov 2024 to 12 Oct 2026 appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. 64% (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice.</p>
     <div class="tiles">
       <div class="tile">
         <p class="label">Unplanned (11,811 notices)</p>
@@ -510,13 +518,13 @@
       <summary>How I measured it</summary>
       <dl>
         <dt>Measure</dt>
-        <dd>For each notice, the time it first appeared on Elexon's feed of outage notices minus the start time the participant wrote in it. I report the median and the 90th percentile.</dd>
+        <dd>For each notice, the publication time on its first stored version in Elexon's feed of outage notices minus the start time the participant wrote in it. Who sets that publication time is not documented. I report the median and the 90th percentile.</dd>
         <dt>Data</dt>
         <dd>20,368 notices first published from 1 November 2024 to the read on 12 October 2026. By type, planned "other unavailability" notices have a 90th percentile of 99 minutes after their start.</dd>
         <dt>Left out</dt>
         <dd>9,488 notices dismissed as of the read (29%), 2,331 first published before 1 November 2024 (7%), 514 other market information, and 8 whose event starts before 22 August 2024. 12 notices with no class are not shown.</dd>
         <dt>Note</dt>
-        <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. ACER's one-hour guidance is context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
+        <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. The EU energy regulator ACER's one-hour guidance is context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
         <dt>Rule</dt>
         <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full rule</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a></dd>
       </dl>
@@ -528,11 +536,11 @@
   <h2 id="instructions-title">How does NESO steer units?</h2>
 
   <article id="q24">
-    <h3>How much of the energy NESO's instructions move does it flag as managing the network? <span class="tag">Q24</span></h3>
-    <p class="answer">Almost all of it for wind (<strong>97%</strong> of 13.4 TWh, settlement months Aug 2025 – Sep 2026; about 14% of the energy wind farms planned) and hydro (93%), and 70% for pumped storage. The flag marks an instruction as possibly for network reasons, such as relieving a bottleneck, rather than balancing supply and demand. For bioenergy, the other group (mostly batteries) and gas it is 24%, 31% and 35%.</p>
+    <h3>How much of the energy NESO's instructions move does it flag as system actions? <span class="tag">Q24</span></h3>
+    <p class="answer">Almost all of it for wind (<strong>97%</strong> of 13.4 TWh, settlement months Aug 2025 – Sep 2026; about 14% of the energy wind farms planned over almost the same dates) and hydro (93%), and 70% for pumped storage. The flag marks an instruction as possibly for network reasons, such as relieving a bottleneck, rather than balancing supply and demand. For bioenergy, the other group (mostly batteries) and gas it is 24%, 31% and 35%.</p>
     <figure>
       <div class="chart" id="q24-chart"></div>
-      <figcaption>Settlement months Aug 2025 – Sep 2026; the first is a part month, from 22 August 2025. Units with a published fuel type only: they carry 42.5% of all instructions. Coal and nuclear units had none. Source: Elexon BMRS.</figcaption>
+      <figcaption>Settlement months Aug 2025 – Sep 2026; the first is a part month, from 22 August 2025. Units with a published fuel type only: they carry 42.5% of all instructions by number. Coal and nuclear units had none. Source: Elexon BMRS.</figcaption>
     </figure>
     <details class="method">
       <summary>How I measured it</summary>
@@ -551,10 +559,10 @@
 
   <article id="q25">
     <h3>Do batteries and pumped storage get shorter instructions than power stations? <span class="tag">Q25</span></h3>
-    <p class="answer">Far more often. About one in five instructions to the other group, mostly batteries, lasts under 10 minutes (<strong>21%</strong>), and one in six to pumped storage. For gas it is about 1 in 480, and less for hydro, bioenergy and wind.</p>
+    <p class="answer">Far more often (22 Aug 2025 – 30 Sep 2026). About one in five instructions to the other group, mostly batteries, lasts under 10 minutes (<strong>21%</strong>), and one in six to pumped storage. For gas it is about 1 in 480, and less for hydro, bioenergy and wind.</p>
     <figure>
       <div class="chart" id="q25-chart"></div>
-      <figcaption>22 August 2025 to 30 September 2026, from the output that joins instructions crossing midnight. Source: Elexon BMRS.</figcaption>
+      <figcaption>22 August 2025 to 30 September 2026, with the two halves of instructions that cross midnight joined. Source: Elexon BMRS.</figcaption>
     </figure>
     <details class="method">
       <summary>How I measured it</summary>
@@ -586,7 +594,7 @@
 
 <section id="carbon" aria-labelledby="carbon-title">
   <h2 id="carbon-title">Does any of this go with the carbon forecast's misses?</h2>
-  <p>GridSkew's own archive of every carbon forecast starts on 17 August 2026, so these four questions use the stored forecast for the year before it, 22 August 2025 to 16 August 2026.</p>
+  <p>GridSkew's own archive of every carbon forecast starts on 17 August 2026, so these four questions use the <a href="#stored-forecast">stored forecast</a> for the year before it, 22 August 2025 to 16 August 2026.</p>
 
   <article id="q29">
     <h3>How far off is NESO's stored carbon forecast, by month and by time of day? <span class="tag">Q29</span></h3>
@@ -609,7 +617,7 @@
         <dt>Measure</dt>
         <dd>For every half-hour from 22 August 2025 to 16 August 2026, I take NESO's estimate of what happened minus the forecast its API kept (positive = dirtier than forecast). I describe it by month and by six-hour block of the day in UTC; there is no test.</dd>
         <dt>Data</dt>
-        <dd>17,280 half-hours, each with an error. Winter months came out cleaner than forecast (down to −3.4 in November 2025), April to July slightly dirtier; 1 to 16 August 2026 had the largest misses (mean size 12.1 g, 16 days). The overall mean and median were seen in a September 2026 exploration, measured with the opposite sign. The "actual" is NESO's own estimate; each month is seen once; this is not a judgement of NESO's method. Read 27 October 2026, 06:15 UTC.</dd>
+        <dd>17,280 half-hours, each with an error. Winter months came out cleaner than forecast (down to −3.4 in November 2025), April to July slightly dirtier; 1 to 16 August 2026 had the largest misses (mean size 12.1 g, 16 days). A September 2026 exploration had partly seen the overall mean and median (+0.43 and 0, measured with the opposite sign). The "actual" is NESO's own estimate; each month is seen once; this is not a judgement of NESO's method. Read 27 October 2026, 06:15 UTC.</dd>
         <dt>Coverage</dt>
         <dd>GridSkew's data hold an impossible 0 g/kWh actual for 6 August 2026, 11:00 UTC, which falls in the August 2026 cell.</dd>
         <dt>Rule</dt>
@@ -625,7 +633,7 @@
       <div class="chart" id="q28-chart"></div>
       <figcaption>17,278 half-hours, all units together. Mean under-delivery per half-hour, 22 Aug 2025 – 16 Aug 2026: 762 MWh in the smallest-miss fifth, 801 MWh in the largest, about 6% of mean national demand from NESO's initial outturn (<a href="#national-demand">INDO</a>), 13,069 MWh a half-hour. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/context_demand.csv">Context data</a></figcaption>
     </figure>
-    <p class="note">The reverse question, how much under-delivery moves the carbon forecast and in which direction, is registered as <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q31-when-units-unexplained-deviations-add-carbon-is-the-last-carbon-forecast-too-clean">Q31</a> and <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q32-when-wind-farms-fall-short-of-their-plans-is-the-last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas">Q32</a>, read on new data in 2027.</p>
+    <p class="note">The reverse question, how far under-delivery goes with the carbon forecast's miss, and in which direction, is registered as <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q31-when-units-unexplained-deviations-add-carbon-is-the-last-carbon-forecast-too-clean">Q31</a> and <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q32-when-wind-farms-fall-short-of-their-plans-is-the-last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas">Q32</a>, read on new data in 2027.</p>
     <!-- Q28-REVERSE-EXPLORATORY -->
     <section class="exploratory" aria-labelledby="q28-reverse-title">
       <h4 id="q28-reverse-title">Exploratory: the reverse direction</h4>
@@ -644,7 +652,7 @@
         <dt>Data</dt>
         <dd>17,278 half-hours on 360 days, 22 August 2025 to 16 August 2026; two half-hours on one day have no under-delivery figure. Misses are whole grams, so neighbouring fifths share an edge: 1,360 half-hours missed by exactly 3 g. The overall error of this forecast had already been seen in a September 2026 exploration. Read 26 October 2026, 11:21 UTC, with Q8.</dd>
         <dt>Settlement runs held</dt>
-        <dd>The seven-month run (R3) from 22 August 2025 to 19 January 2026, the five-month run (R2) to 29 April, the two-month run (R1) to 5 July and for 10 to 16 August, and the three-week run (SF) from 6 July to 9 August 2026.</dd>
+        <dd>The seven-month run (R3) from 22 August 2025 to 19 January 2026, the four-month run (R2) to 29 April, the two-month run (R1) to 5 July and for 10 to 16 August, and the three-week run (SF) from 6 July to 9 August 2026.</dd>
         <dt>Coverage</dt>
         <dd>GridSkew's data hold an impossible 0 g/kWh actual for 6 August 2026, 11:00 UTC, which also falls in Q29's August 2026 cell.</dd>
         <dt>Rule</dt>
@@ -655,14 +663,14 @@
 
   <article id="q8">
     <h3>When NESO's stored carbon forecast misses, does a demand-forecast miss or under-delivery go with it more? <span class="tag">Q8</span></h3>
-    <p class="answer">No clear difference: both links are very weak, with rank correlations of <strong>0.04</strong> for demand and 0.05 for under-delivery. The gap between them is −0.01 (90% range −0.04 to 0.02); to count as stronger, one link needed to lead by 0.1.</p>
+    <p class="answer">No clear difference (22 Aug 2025 – 16 Aug 2026): ranking half-hours by the size of each miss and by under-delivery, both links are very weak, with rank correlations of <strong>0.04</strong> for demand and 0.05 for under-delivery. The gap between them is −0.01 (90% range −0.04 to 0.02); to count as stronger, one link needed to lead by 0.1.</p>
     <details class="method">
       <summary>How I measured it</summary>
       <dl>
         <dt>Measure</dt>
         <dd>For each half-hour I rank how far the stored carbon forecast missed, how far the last demand forecast missed, and total under-delivery. One link counts as stronger only if its rank correlation beats the other by 0.1 or more. The demand miss is the first Initial National Demand Outturn (INDO) minus NESO's last national demand forecast (NDF) before the half-hour.</dd>
         <dt>Data</dt>
-        <dd>The same 17,278 half-hours as Q28. Read 26 October 2026, 11:21 UTC.</dd>
+        <dd>The same 17,278 half-hours as Q28, 22 August 2025 to 16 August 2026. Read 26 October 2026, 11:21 UTC.</dd>
         <dt>Rule</dt>
         <dd>Recorded before the read and completed 25 October 2026, before any demand value was held. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q8-is-demand-forecast-error-more-strongly-associated-with-carbon-forecast-error-than-shortfall-is">Full rule</a> · query <code>q8_q28_history.sql</code> · <a href="results/q8_q28_history.csv">saved output</a></dd>
       </dl>
@@ -670,8 +678,8 @@
   </article>
 
   <article id="q30">
-    <h3>When NESO's wind forecast misses, does its carbon forecast miss too? <span class="tag">Q30</span></h3>
-    <p class="answer">Barely: the sizes of the two misses have a rank correlation of <strong>0.01</strong>, inside the ±0.2 written down as expected before the read. The direction, also set beforehand, came out slightly the wrong way (+0.07, expected negative); on delivered wind alone it is −0.17, which may reflect wind NESO turned down and needs its own test.</p>
+    <h3>When NESO's wind forecast misses, does its stored carbon forecast miss too? <span class="tag">Q30</span></h3>
+    <p class="answer">Barely: over 22 Aug 2025 – 16 Aug 2026, the sizes of the two misses have a rank correlation of <strong>0.01</strong>, inside the ±0.2 written down as expected before the read. The direction, also set beforehand, came out slightly the wrong way (+0.07, expected negative); on delivered wind alone it is −0.17, which may reflect wind NESO turned down; that is not tested here.</p>
     <figure>
       <div class="chart" id="q30-chart"></div>
       <figcaption>17,280 half-hours, 22 August 2025 to 16 August 2026. Source: Elexon BMRS and NESO Carbon Intensity API.</figcaption>
@@ -680,11 +688,11 @@
       <summary>How I measured it</summary>
       <dl>
         <dt>Measure</dt>
-        <dd>For each half-hour I compare metered wind, with wind NESO turned down added back, against the latest wind forecast published before it (WINDFOR, issued up to eight times a day), using its hourly point without interpolation or fall-back. I measure how closely the sizes and the directions of the two misses rank together; there is no test.</dd>
+        <dd>For each half-hour I compare metered wind, with wind NESO turned down added back, against the latest wind forecast published before it (WINDFOR, issued up to eight times a day), using its hourly point without interpolation or fall-back. A wind miss is outturn minus forecast, so positive means more wind than forecast, which was expected to go with a cleaner-than-forecast carbon outcome (a negative correlation). I measure how closely the sizes and the directions of the two misses rank together; there is no test.</dd>
         <dt>Data</dt>
-        <dd>17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Forecast ages from the source stamp: up to 1 hour for 5,756 half-hours, 1 to 2 hours for 5,756, 2 to 4 hours for 5,766 and over 4 hours for 2. Metered wind only, with no embedded wind; an association, not a cause. Read 27 October 2026, on data captured up to 14:03:55 UTC.</dd>
+        <dd>17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Forecast ages from the issue time on each forecast: up to 1 hour for 5,756 half-hours, 1 to 2 hours for 5,756, 2 to 4 hours for 5,766 and over 4 hours for 2. The carbon forecast is the stored one, set against a wind forecast up to hours old. Metered wind only, with no embedded wind; an association, not a cause. Read 27 October 2026, on data captured up to 14:03:55 UTC.</dd>
         <dt>Coverage</dt>
-        <dd>21 first wind outturns were published more than 30 minutes late, 3 of them zero; those over an hour late or zero all fall on six dates (27 November 2025; 15 January, 24 February, 4 June, 7 July and 6 August 2026). GridSkew's data also hold an impossible 0 g/kWh carbon actual for 6 August 2026, 11:00 UTC, which falls in Q29's August 2026 cell.</dd>
+        <dd>21 first wind outturns were published more than 30 minutes late, 3 of them zero; those over an hour late or zero all fall on six dates (27 November 2025; 15 January, 24 February, 4 June, 7 July and 6 August 2026); they are included in the correlations. GridSkew's data also hold an impossible 0 g/kWh carbon actual for 6 August 2026, 11:00 UTC, which falls in Q29's August 2026 cell.</dd>
         <dt>Rule</dt>
         <dd>Recorded 27 October 2026, before any wind data was held; one day of wind values (22 August 2025) was seen in checks of the data feed before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026">Full rule</a> · query <code>q30_wind_vs_carbon_error.sql</code> · <a href="results/q30_wind_vs_carbon_error.csv">saved output</a> · <a href="results/q30_rank_correlations.csv">chart data</a></dd>
       </dl>
@@ -697,22 +705,22 @@
 
   <article id="q2">
     <h3>How much do metered figures change when Elexon recalculates settlement with later meter data? <span class="tag">Q2</span></h3>
-    <p class="answer">Materially: for settlement dates 10–16 Aug 2026, 3.4% of the energy was revised between the one-week and three-week runs, and <strong>2.3%</strong> between the three-week and two-month runs, 77% of that in suppliers' customer accounts. Transmission-connected and embedded units changed in under 1% of half-hours, but three gas units' revisions came to about 40 GWh, 18% of the energy revised between the three-week and two-month runs.</p>
+    <p class="answer">Materially: for settlement dates 10–16 Aug 2026, 3.4% of the energy was revised between the one-week and three-week runs, and <strong>2.3%</strong> between the three-week and two-month runs, 77% of that in suppliers' customer accounts. Between the three-week and two-month runs, transmission-connected and embedded units changed in 0.7% of half-hours, but three gas units' revisions, up or down counted alike, came to about 40 GWh, 18% of the energy revised between the three-week and two-month runs.</p>
     <figure>
       <div class="chart" id="q2-chart"></div>
-      <figcaption>Settlement dates 10 to 16 August 2026. Among transmission-connected and embedded units, three gas units account for 18% of it: nine-tenths of this group's 20%. Source: Elexon BMRS.</figcaption>
+      <figcaption>Settlement dates 10 to 16 August 2026. Among transmission-connected and embedded units, three gas units account for 18% of all the energy revised: nine-tenths of this group's 20%. Other unit types are the units whose identifiers start with C, I, M or V. Source: Elexon BMRS.</figcaption>
     </figure>
     <details class="method">
       <summary>How I measured it</summary>
       <dl>
         <dt>Measure</dt>
-        <dd>For 10 to 16 August 2026 I compared every unit's half-hourly figure in the runs made about one week, three weeks and two months after each day. A change of 2% or more of the energy, or in 20% or more of half-hours, counts as material.</dd>
+        <dd>For 10 to 16 August 2026 I compared every unit's half-hourly figure in the runs made about one week, three weeks and two months after each day. The energy revised is the sum of every half-hour's change, up or down counted alike, as a share of the earlier run's total (9,348 GWh for the one-week run, 9,494 GWh for the three-week run). A change of 2% or more of the energy, or in 20% or more of half-hours, counts as material.</dd>
         <dt>Data</dt>
         <dd>3,083,376 matched half-hourly figures in each pair, one per unit per half-hour, none in one run only. Every unit counts, suppliers' customer accounts included. Read 11 October 2026.</dd>
         <dt>The three gas units</dt>
         <dd>At two of them, the three-week run filled two days the one-week run had at zero, and the two-month run zeroed one of them. At the third, the three-week run repeated the one-week values, and the two-month run replaced every value from 11 to 16 August.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 25 September 2026, before any metered figure was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">Full rule</a> · the query is not in this repository · saved outputs: <a href="results/q2_settlement_run_changes.csv">run pairs</a>, <a href="results/q2_changes_by_unit_prefix.csv">by unit type</a> · <a href="results/q2_moved_energy_by_unit_type.csv">chart data</a></dd>
+        <dd>Recorded 25 September 2026, before any metered figure was read. It tests only the two run-pair shares; the split by unit type and the three gas units are described after the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">Full rule</a> · the query is not in this repository · saved outputs: <a href="results/q2_settlement_run_changes.csv">run pairs</a>, <a href="results/q2_changes_by_unit_prefix.csv">by unit type</a> · <a href="results/q2_moved_energy_by_unit_type.csv">chart data</a></dd>
       </dl>
       <div class="table-wrap">
         <table>
@@ -734,9 +742,10 @@
     <li><strong>How far off is the carbon forecast a day, four hours and half an hour ahead?</strong> <span class="tag">Q10</span> Read with Q1.</li>
     <li><strong>When NESO's last-minute carbon forecast misses by more, is there more under-delivery that NESO did not instruct?</strong> <span class="tag">Q4</span> Waiting for 90 days with both forecast and metered data.</li>
     <li><strong>How often does the public carbon forecast freeze, and for how long?</strong> <span class="tag">Q27</span> Counted for 90 days from 1 November 2026; about 30 January 2027.</li>
-    <li><strong>Once energy NESO bought outside the balancing mechanism is counted, how much of the gap not instructed disappears?</strong> <span class="tag">Q26</span> After 16 November 2026.</li>
+    <li><strong>Once energy NESO bought outside the balancing mechanism is counted, how much of the gap between plan and meter do NESO's instructions and those services explain together?</strong> <span class="tag">Q26</span> After 16 November 2026.</li>
     <li><strong>How much do metered figures change between the seven-month run and the final run, for the units studied?</strong> <span class="tag">Q2-RF</span> About mid-December 2026.</li>
     <li><strong>Is the grid short of power when units under-deliver most?</strong> <span class="tag">Q9</span> Waiting for imbalance and price data.</li>
+    <li><strong>Also registered, not yet read:</strong> Q22-RF (about November 2027), Q2-R2RF (about May 2027), Q2-R1RF (about August 2027) and Q31 to Q36. Their rules and read dates are in <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">every rule</a>.</li>
   </ul>
 </section>
 
@@ -747,13 +756,14 @@
     <li>The metered figure is the latest settlement run held at each read, which differs by date.</li>
     <li>The plan (PN) is the latest version captured, not the position an hour before delivery, when plans become final.</li>
     <li>Services NESO buys outside the balancing mechanism are not in the instructions (BOALF).</li>
-    <li>The units studied are not the whole grid.</li>
+    <li>The units studied are not the whole grid: wind and solar on local networks outside the Balancing Mechanism, and batteries with no published fuel type, are not in them.</li>
+    <li>Every result is an association over about a year (August 2025 to September 2026), not a cause, and may not hold in another year.</li>
   </ul>
 </section>
 </main>
 
 <footer>
-  <p class="stamp">Results as of 27 October 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it, read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every rule</a></p>
+  <p class="stamp">Results as of 1 November 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it (Q2's and Q22's are not in this repository), read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every rule</a></p>
   <p>Contains BMRS data © Elexon Limited copyright and database right 2026. <a href="https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/">BMRS licence</a></p>
   <p>Carbon intensity data: <a href="https://carbonintensity.org.uk/">NESO Carbon Intensity API</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, modified: aggregated by GridSkew.</p>
   <p>Neither provider endorses this project.</p>
