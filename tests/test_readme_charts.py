@@ -1815,8 +1815,9 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         f"(90% range {hundredths(-Decimal(difference['interval_high']))} to "
         f"{hundredths(-Decimal(difference['interval_low']))}). The 90% range is "
         f"above zero in all {NUMBER_WORDS[len(blocks)]} time-of-day blocks and in "
-        f"{len(above_zero(months))} of the {len(months)} months; the slope is at "
-        f"or below zero only from {FULL_MONTHS[first_low]} to "
+        f"{len(above_zero(months))} of the {len(months)} months; in the other "
+        f"{len(months) - len(above_zero(months))} it includes zero, and the slope "
+        f"itself is at or below zero from {FULL_MONTHS[first_low]} to "
         f"{FULL_MONTHS[last_low]}.</p>" in block
     )
     assert (
@@ -2171,13 +2172,61 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
     assert missing_phrases(expected) == []
 
 
+Q5_WITH_NOTICE = ("planned", "unplanned", "both")
+Q5_CLASSES = (*Q5_WITH_NOTICE, "none")
+
+
+def with_notice_and_total(rows):
+    """Under-delivery with a notice live, and all of it, MWh, over the rows'
+    outage classes: the page's 24% is the first over the second for all
+    units."""
+    with_notice = Decimal(0)
+    total = Decimal(0)
+    for row in rows:
+        if row["item"] not in Q5_CLASSES:
+            continue
+        total += Decimal(row["positive_shortfall_mwh"])
+        if row["item"] in Q5_WITH_NOTICE:
+            with_notice += Decimal(row["positive_shortfall_mwh"])
+    return with_notice, total
+
+
+def q5_rows(rows, section, fuel_group):
+    found = []
+    for row in rows:
+        if row["section"] == section and row["fuel_group"] == fuel_group:
+            found.append(row)
+    return found
+
+
+def test_q5s_nuclear_figures_come_from_its_saved_output():
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    all_with_notice, all_total = with_notice_and_total(q5_rows(q5, "1", ""))
+    nuclear_with_notice, nuclear_total = with_notice_and_total(
+        q5_rows(q5, "2", "nuclear")
+    )
+    share_of_notices = percent_of(nuclear_with_notice, all_with_notice, 0)
+    share_without = percent_of(
+        all_with_notice - nuclear_with_notice, all_total - nuclear_total, 0
+    )
+    all_share = percent_of(all_with_notice, all_total, 0)
+
+    expected = [
+        f"About a quarter (<strong>{all_share}%</strong>) of under-delivery",
+        f"Nuclear is {share_of_notices}% of the under-delivery that came with a "
+        f"notice; without it, the share is {share_without}%. Nuclear's 93% reflects "
+        "standing notices of partial derating, not outages the plan missed.</p>",
+    ]
+    assert missing_phrases(expected) == []
+    assert all_total == Decimal(item_row(q5, "1", "total")["positive_shortfall_mwh"])
+
+
 def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
     q12 = saved_output_rows("q12_instructed_vs_residual.csv")
     q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
     q29 = saved_output_rows("q29_final_forecast_error_by_month_and_block.csv")
     q2 = saved_output_rows("q2_settlement_run_changes.csv")
     prefixes = saved_output_rows("q2_changes_by_unit_prefix.csv")
-    q6 = saved_output_rows("q6_publication_lag.csv")
 
     shares = {}
     for row in q12:
@@ -2227,9 +2276,6 @@ def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
         if row["unit_prefix"] not in UNIT_TYPE_BY_PREFIX:
             other_prefixes.append(row["unit_prefix"])
     other_prefixes.sort()
-    unplanned = int(
-        one_row(item_rows(q6, "1", ""), "outage_class", "Unplanned")["notices"]
-    )
 
     expected = [
         "counting the instructed and the not-instructed part each by its size, "
@@ -2257,7 +2303,6 @@ def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
         f"{percent_of(grid_changed, grid_matched, 1)}% of half-hours,",
         "Other unit types are the units whose identifiers start with "
         f"{', '.join(other_prefixes[:-1])} or {other_prefixes[-1]}.",
-        f"{percent_of(7541, unplanned, 0)}% (7,541 of {unplanned:,}) give a start",
     ]
     assert missing_phrases(expected) == []
     assert whole(earliest_mean / overall_mean) == "2"
@@ -2275,9 +2320,6 @@ def test_each_answer_states_the_dates_its_saved_output_or_read_covers():
     q25_months = output_month_range(
         saved_output_rows("q25_instruction_fragmentation_corrected.csv")
     )
-    q5_first, q5_last = long_date_range(
-        saved_output_rows("q5_shortfall_with_known_outage.csv")
-    )
     q8_first, q8_last = long_date_range(q8_q28)
     q25_first, q25_last = data_entry_range(page, "q25")
     q6 = re.search(
@@ -2286,8 +2328,6 @@ def test_each_answer_states_the_dates_its_saved_output_or_read_covers():
     )
     q6_first, q6_read = q6.group(1), q6.group(2)
     questions = QUESTIONS.read_text(encoding="utf-8")
-    q5_first_month = q5_first.split(" ", 1)[1]
-    q5_last_month = q5_last.split(" ", 1)[1]
 
     expected = [
         f"No clear difference ({output_date_range(q8_q28)}): ranking half-hours",
@@ -2296,9 +2336,6 @@ def test_each_answer_states_the_dates_its_saved_output_or_read_covers():
         f"Far more often ({short_date(q25_first)} – {short_date(q25_last)}).",
         "The median unplanned notice first published from "
         f"{short_date(q6_first)} to {short_date(q6_read)} appears",
-        "<li>Every result that compares two measures is an association over about a "
-        "year "
-        f"({q5_first_month} to {q5_last_month}), not a cause",
     ]
     assert missing_phrases(expected) == []
     assert q25_months == (
@@ -2308,6 +2345,24 @@ def test_each_answer_states_the_dates_its_saved_output_or_read_covers():
     assert f"stored publication on or after {q6_first} and event start" in " ".join(
         questions.split()
     )
+
+
+def test_the_limitations_name_the_results_that_set_one_measure_against_another():
+    # Q5 sets under-delivery against outage notices, Q8 and Q28 against the
+    # carbon miss, Q30 the wind miss against it; each is an article on the
+    # page, beside the exploratory block.
+    page = PAGE.read_text(encoding="utf-8")
+    named = ["Q5", "Q8", "Q28", "Q30"]
+    limitation = (
+        f"<li>Results that set one measure against another ({', '.join(named)} "
+        "and the exploratory cuts) are associations, not causes. Each result "
+        "covers the period given beside it and may not hold in another.</li>"
+    )
+
+    assert limitation in page
+    for question_id in named:
+        assert f'<article id="{question_id.lower()}">' in page
+    assert '<section class="exploratory"' in page
 
 
 def register_section(questions, question_id):

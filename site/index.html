@@ -478,7 +478,7 @@
 
   <article id="q5">
     <h3>When units under-delivered with no instruction to explain it, had an outage already been published? <span class="tag">Q5</span></h3>
-    <p class="answer">Mostly not. About a quarter (<strong>24%</strong>) of under-delivery (22 Aug 2025 – 27 Sep 2026) came with a published outage; for wind, the largest part, only about a tenth did. Nuclear's 93% reflects standing notices of partial derating, not outages the plan missed.</p>
+    <p class="answer">Mostly not. About a quarter (<strong>24%</strong>) of under-delivery (22 Aug 2025 – 27 Sep 2026) came with a published outage; for wind, the largest part, only about a tenth did. Nuclear is 39% of the under-delivery that came with a notice; without it, the share is 16%. Nuclear's 93% reflects standing notices of partial derating, not outages the plan missed.</p>
     <figure>
       <div class="chart" id="q5-chart"></div>
       <figcaption>22 August 2025 to 27 September 2026. Half-hours under both kinds of notice count as unplanned. Coal (closed units) and interconnectors are not drawn; their under-delivery, 0.05 TWh, came with no notice and counts in the total behind the 24%. Source: Elexon BMRS and REMIT.</figcaption>
@@ -501,7 +501,7 @@
 
   <article id="q6">
     <h3>How soon after the start time written in an outage notice does it appear? <span class="tag">Q6</span></h3>
-    <p class="answer">The median unplanned notice first published from 1 Nov 2024 to 12 Oct 2026 appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. 64% (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice.</p>
+    <p class="answer">The median unplanned notice first published from 1 Nov 2024 to 12 Oct 2026 appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. About two in three (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice.</p>
     <div class="tiles">
       <div class="tile">
         <p class="label">Unplanned (11,811 notices)</p>
@@ -643,7 +643,7 @@
         <figcaption>Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; under-delivery in GW is MWh per half-hour × 2 ÷ 1,000. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/q28_reverse_exploratory.csv">Saved output</a> · <a href="results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv">chart data</a> · <a href="results/context_carbon_intensity.csv">context data</a></figcaption>
       </figure>
       <h5>Within the same time of day and month</h5>
-      <p>Within the same time of day and month, each extra GW of under-delivery went with a carbon miss 2.4 g/kWh further towards dirtier than forecast (90% range 1.8 to 3.1), against 2.8 g/kWh with neither held fixed: a positive slope remains within the same time of day and month. Holding them fixed took 0.35 g/kWh per GW off the slope (90% range 0.05 to 0.67). The 90% range is above zero in all four time-of-day blocks and in 7 of the 13 months; the slope is at or below zero only from December to February.</p>
+      <p>Within the same time of day and month, each extra GW of under-delivery went with a carbon miss 2.4 g/kWh further towards dirtier than forecast (90% range 1.8 to 3.1), against 2.8 g/kWh with neither held fixed: a positive slope remains within the same time of day and month. Holding them fixed took 0.35 g/kWh per GW off the slope (90% range 0.05 to 0.67). The 90% range is above zero in all four time-of-day blocks and in 7 of the 13 months; in the other 6 it includes zero, and the slope itself is at or below zero from December to February.</p>
       <div class="table-wrap">
         <table>
           <caption class="note">By time of day (UTC)</caption>
@@ -799,7 +799,7 @@
     <li>The plan (PN) is the latest version captured, not the position an hour before delivery, when plans become final.</li>
     <li>Services NESO buys outside the balancing mechanism are not in the instructions (BOALF).</li>
     <li>The units studied are not the whole grid: wind and solar on local networks outside the Balancing Mechanism, and batteries with no published fuel type, are not in them.</li>
-    <li>Every result that compares two measures is an association over about a year (August 2025 to September 2026), not a cause, and may not hold in another year.</li>
+    <li>Results that set one measure against another (Q5, Q8, Q28, Q30 and the exploratory cuts) are associations, not causes. Each result covers the period given beside it and may not hold in another.</li>
   </ul>
 </section>
 </main>
