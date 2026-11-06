@@ -182,7 +182,7 @@ NEW_SAVED_OUTPUTS = {
     "context_q6_start_alignment.csv": [
         "section,item,notices,on_half_hour,on_whole_minute,label",
         f'1,coverage: 5 in the population,400,,,"{CONTEXT_LABEL}"',
-        f'2,class (first publication): Unplanned,300,180,290,"{CONTEXT_LABEL}"',
+        f'2,class (first publication): Unplanned (as read),300,180,290,"{CONTEXT_LABEL}"',
     ],
     "q3_metered_vs_notified.csv": [
         "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
@@ -2246,7 +2246,9 @@ def test_q5s_nuclear_figures_come_from_its_saved_output():
 
 def test_q6s_on_the_hour_share_comes_from_its_context_count():
     alignment = saved_output_rows("context_q6_start_alignment.csv")
-    unplanned = one_row(alignment, "item", "class (first publication): Unplanned")
+    unplanned = one_row(
+        alignment, "item", "class (first publication): Unplanned (as read)"
+    )
     lag = saved_output_rows("q6_publication_lag.csv")
     lag_unplanned = one_row(item_rows(lag, "1", ""), "outage_class", "Unplanned")
     on_the_hour = int(unplanned["on_half_hour"])
