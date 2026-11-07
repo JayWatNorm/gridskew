@@ -184,6 +184,21 @@ NEW_SAVED_OUTPUTS = {
         f'1,coverage: 5 in the population,400,,,"{CONTEXT_LABEL}"',
         f'2,class (first publication): Unplanned (as read),300,180,290,"{CONTEXT_LABEL}"',
     ],
+    # Saved with a second comment line, the read's time and basis, which the
+    # copy keeps below the attribution.
+    "context_q25_battery_named_units.csv": [
+        "# Read 1 January 2026 on the read's data. Counts only.",
+        "section,item,unit_class,acceptances,units,label",
+        f'1,fuel type OTHER,battery by name or ID,900,9,"{CONTEXT_LABEL}"',
+        f'2,fuel type OTHER,all classes,1000,12,"{CONTEXT_LABEL}"',
+    ],
+    "context_q25_cadl_check.csv": [
+        "# Copied 1 January 2026 from the recorded checks.",
+        "section,item,first_settlement_date,last_settlement_date,stack_responses,"
+        "new_api_calls,acceptances_compared,agree,predicted_short_not_flagged,"
+        "flagged_not_predicted,flagged_by_both,flagged_by_neither,label",
+        "1,check,2025-09-01,2025-09-07,20,20,500,490,10,0,40,450,check",
+    ],
     "q3_metered_vs_notified.csv": [
         "fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,"
         "q1_deviation_mwh,q3_deviation_mwh,abs_metered_mwh,abs_pn_mwh",
@@ -435,6 +450,8 @@ WRITTEN_FILES = [
     "context_demand.csv",
     "context_plan_pct_capacity.csv",
     "context_plan_per_unit_half_hour.csv",
+    "context_q25_battery_named_units.csv",
+    "context_q25_cadl_check.csv",
     "context_q6_start_alignment.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
@@ -1079,9 +1096,13 @@ def reading_line(folder, spec_name):
 
 
 def saved_output_rows(name):
-    """A committed saved output's rows, after its attribution line."""
+    """A committed saved output's rows, after its attribution line and any
+    comment line below it."""
     text = (REPOSITORY / "docs" / "results" / name).read_text(encoding="utf-8")
-    return list(csv.DictReader(io.StringIO(text.split("\n", 1)[1])))
+    lines = text.split("\n")
+    while lines[0].startswith("#"):
+        lines.pop(0)
+    return list(csv.DictReader(io.StringIO("\n".join(lines))))
 
 
 def unlabelled_values(folder, name):
@@ -1283,6 +1304,8 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_demand.csv": BMRS_LINE,
         "context_plan_pct_capacity.csv": BMRS_LINE,
         "context_plan_per_unit_half_hour.csv": BMRS_LINE,
+        "context_q25_battery_named_units.csv": BMRS_LINE,
+        "context_q25_cadl_check.csv": BMRS_LINE,
         "context_q6_start_alignment.csv": BMRS_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
@@ -2266,6 +2289,88 @@ def test_q6s_on_the_hour_share_comes_from_its_context_count():
     )
 
 
+Q25_OTHER = "fuel type OTHER"
+Q25_OUTSIDE = "outside the cohort"
+Q25_UNIT_CLASSES = ("battery by name or ID", "solar by name", "other or unnamed")
+
+
+def battery_count_row(rows, section, item, unit_class):
+    found = []
+    for row in rows:
+        same_item = row["item"] == item and row["unit_class"] == unit_class
+        if row["section"] == section and same_item:
+            found.append(row)
+    assert len(found) == 1
+    return found[0]
+
+
+def class_total(rows, item):
+    """The acceptances of one membership summed over its unit classes."""
+    total = 0
+    for unit_class in Q25_UNIT_CLASSES:
+        total += int(battery_count_row(rows, "1", item, unit_class)["acceptances"])
+    return total
+
+
+def q25_count(rows, section, fuel_group, measure):
+    """The n of one row of Q25's saved output."""
+    found = []
+    for row in rows:
+        same_measure = row["fuel_group"] == fuel_group and row["measure"] == measure
+        if row["section"] == section and same_measure:
+            found.append(row)
+    assert len(found) == 1
+    return int(found[0]["n"])
+
+
+def test_q25s_battery_shares_come_from_their_context_count():
+    counts = saved_output_rows("context_q25_battery_named_units.csv")
+    q25 = saved_output_rows("q25_instruction_fragmentation_corrected.csv")
+    other_battery = int(
+        battery_count_row(counts, "1", Q25_OTHER, Q25_UNIT_CLASSES[0])["acceptances"]
+    )
+    other = int(battery_count_row(counts, "2", Q25_OTHER, "all classes")["acceptances"])
+    outside_battery = int(
+        battery_count_row(counts, "1", Q25_OUTSIDE, Q25_UNIT_CLASSES[0])["acceptances"]
+    )
+    outside = int(
+        battery_count_row(counts, "2", Q25_OUTSIDE, "all classes")["acceptances"]
+    )
+    other_in_q25 = q25_count(q25, "2", "other", "1 dispatch granularity (acceptances)")
+    outside_in_q25 = q25_count(q25, "3", "", "acceptances of units outside the cohort")
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q25")
+
+    assert (
+        f"battery units receive {percent_of(other_battery, other, 0)}% "
+        f"({other_battery:,} of {other:,}) of the other group's instructions."
+    ) in article
+    assert (
+        f"they receive {percent_of(outside_battery, outside, 0)}% "
+        f"({outside_battery:,} of {outside:,}) of the instructions to units with no "
+        "published fuel type."
+    ) in article
+    assert other == other_in_q25 == class_total(counts, Q25_OTHER)
+    assert outside == outside_in_q25 == class_total(counts, Q25_OUTSIDE)
+    assert '<a href="results/context_q25_battery_named_units.csv">' in article
+
+
+def test_q25s_check_against_elexons_flag_comes_from_its_check_counts():
+    checks = saved_output_rows("context_q25_cadl_check.csv")
+    shown = one_row(
+        checks, "item", "rerun of 25 October 2026: corrected query, the figures shown"
+    )
+    compared = int(shown["acceptances_compared"])
+    first_day = int(shown["first_settlement_date"].split("-")[2])
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q25")
+
+    assert (
+        f"which this count matched on all {compared:,} checked ({first_day} to "
+        f"{long_date(shown['last_settlement_date'])})."
+    ) in article
+    assert int(shown["agree"]) == compared
+    assert '<a href="results/context_q25_cadl_check.csv">' in article
+
+
 def test_q2s_gas_unit_details_say_their_output_is_not_published():
     article = article_text(PAGE.read_text(encoding="utf-8"), "q2")
     gas_units = article.split("<dt>The three gas units</dt>", 1)[1]
@@ -2511,6 +2616,7 @@ def test_each_context_row_is_labelled_a_denominator_not_a_result():
         "context_plan_per_unit_half_hour.csv",
         "context_plan_pct_capacity.csv",
         "context_q6_start_alignment.csv",
+        "context_q25_battery_named_units.csv",
     ]:
         for row in saved_output_rows(name):
             assert row["label"] == CONTEXT_LABEL

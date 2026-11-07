@@ -73,6 +73,11 @@ CONTEXT_CAPACITY_RESULT = "context_plan_pct_capacity.csv"
 # Read 31 October 2026: how many of Q6's notices start on the hour or
 # half-hour, counts only.
 CONTEXT_Q6_ALIGNMENT_RESULT = "context_q6_start_alignment.csv"
+# Read 7 November 2026 on the data of Q25's read: Q25's acceptances by
+# whether the unit's registered name or ID marks it as a battery, counts only.
+CONTEXT_Q25_BATTERY_RESULT = "context_q25_battery_named_units.csv"
+# Copied from the recorded cadlFlag checks of 15 and 25 October 2026.
+CONTEXT_Q25_CADL_RESULT = "context_q25_cadl_check.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
 SPEC_DATA_FOLDER = "results"
@@ -3232,6 +3237,8 @@ def write_charts(result_folder, output_folder):
         results, output, Q25_CORRECTED_RESULT, BMRS_ATTRIBUTION
     )
     write_q25_chart(q25_corrected, q25, output)
+    copy_saved_output(results, output, CONTEXT_Q25_BATTERY_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_Q25_CADL_RESULT, BMRS_ATTRIBUTION)
     q8_q28 = copy_saved_output(
         results, output, Q8_Q28_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
