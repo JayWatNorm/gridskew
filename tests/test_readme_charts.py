@@ -66,14 +66,6 @@ FULL_MONTHS = {
     "Nov": "November",
     "Dec": "December",
 }
-TENTHS_WORDS = {
-    5: "half",
-    6: "six-tenths",
-    7: "seven-tenths",
-    8: "eight-tenths",
-    9: "nine-tenths",
-    10: "all",
-}
 PAGES_WORKFLOW = REPOSITORY / ".github" / "workflows" / "pages.yml"
 PINNED_JSDELIVR_FILE = re.compile(
     r"https://cdn\.jsdelivr\.net/npm/(?P<package>[a-z][a-z-]*)@\d+\.\d+\.\d+/\S+"
@@ -2321,7 +2313,8 @@ def test_q2s_gas_units_are_lettered_and_their_share_of_the_group_is_derived():
         'a <a href="results/q2_gas_units_revisions.csv">saved output</a>; the '
         "units are lettered, not named."
     )
-    assert f"{TENTHS_WORDS[int(tenths_of_group)]} of this group" in article
+    assert tenths_of_group == 9
+    assert "nine-tenths of this group" in article
 
 
 def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():

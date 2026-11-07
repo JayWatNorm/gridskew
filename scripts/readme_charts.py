@@ -51,9 +51,6 @@ BMRS_AND_CARBON_ATTRIBUTION = f"{BMRS_ATTRIBUTION} {CARBON_ATTRIBUTION}"
 
 Q2_RESULT = "q2_settlement_run_changes.csv"
 Q2_BY_PREFIX_RESULT = "q2_changes_by_unit_prefix.csv"
-# The three gas units behind Q2's 40 GWh, lettered rather than named: energy
-# revised between the three-week and two-month runs, the net change and the
-# three-week run's energy, from the unit-level read of 11 October 2026.
 Q2_GAS_UNITS_RESULT = "q2_gas_units_revisions.csv"
 Q3_RESULT = "q3_metered_vs_notified.csv"
 Q3_COVERAGE_RESULT = "q3_coverage.csv"
