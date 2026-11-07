@@ -1,0 +1,6 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Lag quartiles. Read 7 November 2026 16:55 UTC (read-only) on the REMIT rows captured by Q6's read (retrieved by 12 October 2026 15:31 UTC): publications ordered by publish time, created time and revision number; the first publication gives the class, the written start and the lag; the last gives the current status and message type; Q6's exclusions. Minutes from the written start to the first publication, negative when published before it. Notices, medians and 90th percentiles equal q6_publication_lag.csv.
+section,outage_class,notices,p25_lag_minutes,median_lag_minutes,p75_lag_minutes,p90_lag_minutes,label
+1,Planned,8545,-6909.9,-1362.9,-71.9,-4.9,"context only: denominator, not a registered result"
+1,Unplanned,11811,-78.2,0.9,16.1,29.9,"context only: denominator, not a registered result"
+1,,12,-15031.4,-6090.5,-2.6,20.4,"context only: denominator, not a registered result"

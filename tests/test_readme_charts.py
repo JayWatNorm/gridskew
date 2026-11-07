@@ -186,6 +186,12 @@ NEW_SAVED_OUTPUTS = {
     ],
     # Saved with a second comment line, the read's time and basis, which the
     # copy keeps below the attribution.
+    "context_q6_lag_quartiles.csv": [
+        "# Lag quartiles. Read 1 January 2026. Minutes.",
+        "section,outage_class,notices,p25_lag_minutes,median_lag_minutes,"
+        "p75_lag_minutes,p90_lag_minutes,label",
+        f'1,Planned,300,-500.0,-100.0,-50.0,-2.0,"{CONTEXT_LABEL}"',
+    ],
     "context_q25_battery_named_units.csv": [
         "# Read 1 January 2026 on the read's data. Counts only.",
         "section,item,unit_class,acceptances,units,label",
@@ -452,6 +458,7 @@ WRITTEN_FILES = [
     "context_plan_per_unit_half_hour.csv",
     "context_q25_battery_named_units.csv",
     "context_q25_cadl_check.csv",
+    "context_q6_lag_quartiles.csv",
     "context_q6_start_alignment.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
@@ -1306,6 +1313,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_plan_per_unit_half_hour.csv": BMRS_LINE,
         "context_q25_battery_named_units.csv": BMRS_LINE,
         "context_q25_cadl_check.csv": BMRS_LINE,
+        "context_q6_lag_quartiles.csv": BMRS_LINE,
         "context_q6_start_alignment.csv": BMRS_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
@@ -2291,7 +2299,54 @@ def test_q6s_on_the_hour_share_comes_from_its_context_count():
 
 Q25_OTHER = "fuel type OTHER"
 Q25_OUTSIDE = "outside the cohort"
-Q25_UNIT_CLASSES = ("battery by name or ID", "solar by name", "other or unnamed")
+
+
+def notices_median_and_p90_by_class(rows):
+    """Each outage class's notices, median and 90th-percentile lag, as
+    saved, from section 1."""
+    by_class = {}
+    for row in rows:
+        if row["section"] != "1":
+            continue
+        by_class[row["outage_class"]] = (
+            row["notices"],
+            row["median_lag_minutes"],
+            row["p90_lag_minutes"],
+        )
+    return by_class
+
+
+def test_q6s_lag_quartiles_rebuild_the_saved_medians_and_90th_percentiles():
+    quartiles = saved_output_rows("context_q6_lag_quartiles.csv")
+    lag = saved_output_rows("q6_publication_lag.csv")
+
+    assert notices_median_and_p90_by_class(quartiles) == {
+        "Planned": ("8545", "-1362.9", "-4.9"),
+        "Unplanned": ("11811", "0.9", "29.9"),
+        "": ("12", "-6090.5", "20.4"),
+    }
+    assert notices_median_and_p90_by_class(
+        quartiles
+    ) == notices_median_and_p90_by_class(lag)
+
+
+def test_q6s_planned_middle_half_comes_from_its_lag_quartiles():
+    quartiles = saved_output_rows("context_q6_lag_quartiles.csv")
+    planned = one_row(quartiles, "outage_class", "Planned")
+    latest_hours = tenths(-Decimal(planned["p75_lag_minutes"]) / 60)
+    earliest_hours = whole(-Decimal(planned["p25_lag_minutes"]) / 60)
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q6")
+
+    assert (
+        '<p class="note">For planned notices, the middle half are published '
+        f"between about {latest_hours} and {earliest_hours} hours before the "
+        "written start.</p>"
+    ) in article
+    assert '<a href="results/context_q6_lag_quartiles.csv">' in article
+
+
+BATTERY_CLASS = "battery by name or ID"
+Q25_UNIT_CLASSES = (BATTERY_CLASS, "solar by name", "other or unnamed")
 
 
 def battery_count_row(rows, section, item, unit_class):
@@ -2327,11 +2382,11 @@ def test_q25s_battery_shares_come_from_their_context_count():
     counts = saved_output_rows("context_q25_battery_named_units.csv")
     q25 = saved_output_rows("q25_instruction_fragmentation_corrected.csv")
     other_battery = int(
-        battery_count_row(counts, "1", Q25_OTHER, Q25_UNIT_CLASSES[0])["acceptances"]
+        battery_count_row(counts, "1", Q25_OTHER, BATTERY_CLASS)["acceptances"]
     )
     other = int(battery_count_row(counts, "2", Q25_OTHER, "all classes")["acceptances"])
     outside_battery = int(
-        battery_count_row(counts, "1", Q25_OUTSIDE, Q25_UNIT_CLASSES[0])["acceptances"]
+        battery_count_row(counts, "1", Q25_OUTSIDE, BATTERY_CLASS)["acceptances"]
     )
     outside = int(
         battery_count_row(counts, "2", Q25_OUTSIDE, "all classes")["acceptances"]
@@ -2341,13 +2396,14 @@ def test_q25s_battery_shares_come_from_their_context_count():
     article = article_text(PAGE.read_text(encoding="utf-8"), "q25")
 
     assert (
-        f"battery units receive {percent_of(other_battery, other, 0)}% "
-        f"({other_battery:,} of {other:,}) of the other group's instructions."
+        "Units identified as batteries by name or ID receive "
+        f"{percent_of(other_battery, other, 0)}% ({other_battery:,} of {other:,}) "
+        "of the other group's instructions."
     ) in article
     assert (
-        f"they receive {percent_of(outside_battery, outside, 0)}% "
-        f"({outside_battery:,} of {outside:,}) of the instructions to units with no "
-        "published fuel type."
+        "of the instructions to them, units identified as batteries by name or ID "
+        f"receive {percent_of(outside_battery, outside, 0)}% "
+        f"({outside_battery:,} of {outside:,})."
     ) in article
     assert other == other_in_q25 == class_total(counts, Q25_OTHER)
     assert outside == outside_in_q25 == class_total(counts, Q25_OUTSIDE)
@@ -2616,6 +2672,7 @@ def test_each_context_row_is_labelled_a_denominator_not_a_result():
         "context_plan_per_unit_half_hour.csv",
         "context_plan_pct_capacity.csv",
         "context_q6_start_alignment.csv",
+        "context_q6_lag_quartiles.csv",
         "context_q25_battery_named_units.csv",
     ]:
         for row in saved_output_rows(name):
