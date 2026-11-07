@@ -158,7 +158,8 @@ fuel_groups as (
 ),
 
 -- The same unit's ABSVD for the same settlement period on the previous
--- settlement date, from the latest capture that holds it.
+-- settlement date, from the latest capture that holds it. The same rule as
+-- int_shortfall_by_unit_period's qas_latest; change both together.
 previous_absvd as (
     select distinct on (
         qas.national_grid_bm_unit, qas.settlement_date, qas.settlement_period
@@ -424,7 +425,11 @@ figure_rows as (
         fuel_group, null, unit_periods, null, null, null,
         round(abs_instructed, 1), round(abs_absvd, 1), round(abs_unexplained_before, 1),
         round(abs_unexplained_after, 1), explained_share_with_absvd, null, fall_mwh, fall_share,
-        null, '{{ placebo_detail }}'
+        null,
+        case when explained_share_with_absvd is null
+            then '{{ not_applicable }}; {{ placebo_detail }}'
+            else '{{ placebo_detail }}'
+        end
     from measured_figures
     where figure_set = 'placebo'
 

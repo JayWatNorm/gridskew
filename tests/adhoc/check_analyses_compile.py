@@ -52,6 +52,9 @@ def run_compile(
     selected=("resource_type:analysis",),
     excluded=(),
 ):
+    """dbt compile of selected plus also_compiled, less excluded. With
+    selected=() also_compiled is the whole selection."""
+
     command = [
         "dbt",
         "compile",

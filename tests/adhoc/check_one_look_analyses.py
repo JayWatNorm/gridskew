@@ -4668,6 +4668,7 @@ insert into synthetic_qas values
     ('B1', 'E_B1', '2025-10-23', 10, -3, '2025-11-12 10:00:00+00'),
     ('B1', 'E_B1', '2025-10-25', 10, -4, '2025-11-08 10:00:00+00'),
     ('B1', 'E_B1', '2025-10-25', 48, -9, '2025-11-08 10:00:00+00'),
+    ('W1', 'E_W1', '2025-10-25', 48, 3, '2025-11-08 10:00:00+00'),
     ('B1', 'E_B1', '2025-10-25', 10, -4, '2025-11-29 00:00:00+00'),
     ('B1', 'E_B1', '2025-10-25', 48, -1, '2025-11-29 00:00:00+00'),
     ('B1', 'E_B1', '2025-10-26', 48, -5, '2025-12-05 10:00:00+00'),
@@ -4799,10 +4800,11 @@ def q26_dates(first_date, last_date):
 # previous date is 34 days old; 30 March p47 has no partner on the 46-period
 # 29 March. Kept: 26 October p48 (25 October's latest -1, not the earlier -9)
 # and 30 March p46 (29 March's latest -6, not -2): I 1, A 1+6 = 7, U 17,
-# U' 7+3 = 10; real A 8, U' 9. Wind: 26 October p48 has no QAS row on
-# 25 October, so 0 (U' 6); 30 March p46 takes 4 (U' 1): I 6, A 4, U 11,
-# U' 7. Gas: no QAS rows, 0: I 6, A 0, U 2, U' 2. All: I 13, A 11, U 30,
-# U' 19; real A 11, U' 23.
+# U' 7+3 = 10; real A 8, U' 9. Wind: 26 October p48 takes 3 from 25 October's
+# earlier capture, the latest holding it (the latest capture has no W1 row)
+# (U' 9); 30 March p46 takes 4 (U' 1): I 6, A 7, U 11, U' 10. Gas: no QAS
+# rows, so 0: I 6, A 0, U 2, U' 2. All: I 13, A 14, U 30, U' 22; real A 11,
+# U' 23.
 Q26_EXPECTED = {
     (1, Q26_RESULT, "other", None): dict(
         **q26_figures(7, "7.0", "17.0", "44.0", "29.0", "0.452830"),
@@ -4889,29 +4891,37 @@ Q26_EXPECTED = {
     (4, Q26_PLACEBO, "wind", None): q26_figures(
         2,
         "6.0",
-        "4.0",
-        "11.0",
         "7.0",
-        "0.588235",
-        "4.0",
-        "0.363636",
+        "11.0",
+        "10.0",
+        "0.565217",
+        "1.0",
+        "0.090909",
         Q26_PLACEBO_DETAIL,
     ),
     (4, Q26_PLACEBO, "gas", None): q26_figures(
         2, "6.0", "0.0", "2.0", "2.0", "0.750000", "0.0", "0.000000", Q26_PLACEBO_DETAIL
     ),
     (4, Q26_PLACEBO, "hydro", None): q26_figures(
-        0, "0.0", "0.0", "0.0", "0.0", None, "0.0", None, Q26_PLACEBO_DETAIL
+        0,
+        "0.0",
+        "0.0",
+        "0.0",
+        "0.0",
+        None,
+        "0.0",
+        None,
+        f"{Q26_NOT_APPLICABLE}; {Q26_PLACEBO_DETAIL}",
     ),
     (4, Q26_PLACEBO, Q26_ALL, None): q26_figures(
         6,
         "13.0",
-        "11.0",
+        "14.0",
         "30.0",
-        "19.0",
-        "0.558140",
-        "11.0",
-        "0.366667",
+        "22.0",
+        "0.551020",
+        "8.0",
+        "0.266667",
         Q26_PLACEBO_DETAIL,
     ),
     (4, Q26_REAL_ON_PLACEBO, "other", None): q26_figures(
