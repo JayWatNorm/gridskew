@@ -2316,6 +2316,14 @@ def test_q2s_gas_units_are_lettered_and_their_share_of_the_group_is_derived():
     )
     assert tenths_of_group == 9
     assert "nine-tenths of this group" in article
+    assert (
+        '<a href="results/q2_gas_units_revisions.csv">the three gas units</a>'
+        in article
+    )
+    rose = []
+    for row in gas_units:
+        rose.append(Decimal(row["net_change_mwh"]) > 0)
+    assert rose == [True, False, False]
 
 
 def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
