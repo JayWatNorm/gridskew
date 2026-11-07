@@ -1472,6 +1472,16 @@ def test_a_saved_output_with_no_header_is_refused(tmp_path):
         write_charts(saved, tmp_path / "out")
 
 
+def test_a_saved_output_with_a_comment_where_its_header_should_be_is_refused(
+    tmp_path,
+):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    prepend_text(saved / "q6_publication_lag.csv", BMRS_LINE + "#note\n")
+
+    with pytest.raises(ValueError, match="no header"):
+        write_charts(saved, tmp_path / "out")
+
+
 def test_a_saved_output_with_a_blank_line_above_its_attribution_is_refused(
     tmp_path,
 ):
