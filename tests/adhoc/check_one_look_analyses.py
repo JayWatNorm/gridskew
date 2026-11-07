@@ -1,4 +1,4 @@
-"""Check the one-look analyses (Q1, Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29, Q30) on worked rows.
+"""Check the one-look analyses (Q1, Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29, Q30, Q26) on worked rows.
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -4544,6 +4544,457 @@ def q30_mismatches(conn, reached, boundary, time_zone):
     return found
 
 
+# Q26 on hand-worked unit-periods. Cohort units: B1 (other), W1 (wind), G1
+# (gas) and H1 (hydro) are active, with a PN above 0 at 22:30 UTC on
+# 26 October 2025; IF1 (INTFR) and IE1 (INTELE) are interconnectors; Z1 never
+# has a PN or metered value above 0 (idle); E1's PN is above 0 only at 22:30
+# UTC on 24 October 2025, half an hour before the window opens at the first
+# counted settlement date (25 October 2025 00:00 BST, 24 October 23:00 UTC),
+# and on 6 September 2026, after the cutoff.
+#
+# QAS captures, by the UTC date of each settlement date's latest capture:
+# 23 October 2025 12 November (20 days: captured, not counted, so the window
+# does not open there); 24 October none (not captured); 25 October latest
+# 29 November 00:00
+# (exactly 35 days; an earlier capture at 14 days); 26 October (50 periods)
+# 5 December (40 days); 28 March 2026 latest 1 May 23:59:59.9 UTC (34 days,
+# though 2 May in London); 29 March (46 periods) latest 4 May (36 days; an
+# earlier capture at 14 days with other values); 30 March 9 May (40 days);
+# 6 September 2026, after the cutoff, 20 October (44 days).
+#
+# Determinable unit-periods with a PN: (unit, date, period, PN, metered,
+# instructed deviation, unexplained before ABSVD, ABSVD). Unexplained after
+# ABSVD is before plus ABSVD.
+Q26 = "q26_instructed_and_absvd_share"
+Q26_FIXTURES = """
+create temporary table synthetic_shortfall (
+    national_grid_bm_unit text,
+    settlement_date date,
+    settlement_period integer,
+    period_start_utc timestamptz,
+    determinability text,
+    pn_mwh numeric,
+    metered_mwh numeric,
+    instructed_deviation_mwh numeric,
+    unexplained_shortfall_mwh numeric,
+    absvd_mwh numeric,
+    unexplained_after_absvd_mwh numeric
+) on commit drop;
+create temporary table synthetic_cohort (
+    national_grid_bm_unit text,
+    elexon_bm_unit text,
+    fuel_type text,
+    fuel_group text
+) on commit drop;
+create temporary table synthetic_pn_periods (
+    national_grid_bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    pn_mwh numeric,
+    mapping_status text
+) on commit drop;
+create temporary table synthetic_metered_periods (
+    bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    first_quantity_mwh numeric,
+    latest_quantity_mwh numeric,
+    mapping_status text,
+    mapped_national_grid_bm_unit text
+) on commit drop;
+create temporary table synthetic_qas (
+    national_grid_bm_unit text,
+    bm_unit text,
+    settlement_date date,
+    settlement_period integer,
+    qas_mwh numeric,
+    retrieved_at timestamptz
+) on commit drop;
+
+insert into synthetic_cohort values
+    ('B1', 'E_B1', 'OTHER', 'other'), ('W1', 'E_W1', 'WIND', 'wind'),
+    ('G1', 'E_G1', 'CCGT', 'gas'), ('H1', 'E_H1', 'NPSHYD', 'hydro'),
+    ('IF1', 'E_IF1', 'INTFR', 'interconnector'),
+    ('IE1', 'E_IE1', 'INTELE', 'unclassified'),
+    ('Z1', 'E_Z1', 'CCGT', 'gas'), ('E1', 'E_E1', 'CCGT', 'gas');
+
+insert into synthetic_shortfall (
+    national_grid_bm_unit, settlement_date, settlement_period, determinability,
+    pn_mwh, metered_mwh, instructed_deviation_mwh, unexplained_shortfall_mwh,
+    absvd_mwh
+) values
+    ('B1', '2025-10-24', 10, 'determinable', 1, 1, 1, 3, null),
+    ('B1', '2025-10-25', 10, 'determinable', 1, 1, 2, 10, -4),
+    ('B1', '2025-10-26', 48, 'determinable', 1, 1, 0, 8, -5),
+    ('B1', '2025-10-26', 49, 'determinable', 1, 1, 1, -6, 2),
+    ('B1', '2025-10-26', 50, 'determinable', 0, -4, 0, 4, 0),
+    ('B1', '2026-03-28', 10, 'determinable', 1, 1, 5, 7, -1),
+    ('B1', '2026-03-29', 10, 'determinable', 1, 1, 3, 5, -2),
+    ('B1', '2026-03-30', 46, 'determinable', 1, 1, 1, 9, -3),
+    ('B1', '2026-03-30', 47, 'determinable', 1, 1, 0, 2, 1),
+    ('B1', '2026-09-06', 10, 'determinable', 1, 1, 1, 1, null),
+    ('W1', '2025-10-26', 48, 'determinable', 1, 1, 4, 6, 2),
+    ('W1', '2026-03-30', 46, 'determinable', 1, 1, 2, -5, 1),
+    ('G1', '2025-10-26', 48, 'determinable', 0, 0, 0, 0, 0),
+    ('G1', '2026-03-30', 46, 'determinable', 1, 1, 6, 2, 0),
+    ('H1', '2026-03-28', 10, 'determinable', 1, 1, 1, 1, 0),
+    ('IF1', '2025-10-26', 48, 'determinable', 1, 1, 9, 9, 9),
+    ('IE1', '2026-03-30', 46, 'determinable', 1, 1, 7, 7, 7),
+    ('Z1', '2025-10-26', 48, 'determinable', 0, 0, 0, 0, 0),
+    ('E1', '2026-03-30', 46, 'determinable', 0, 0, 0, 0, 0);
+update synthetic_shortfall set
+    period_start_utc = (settlement_date::timestamp at time zone 'Europe/London')
+        + (settlement_period - 1) * interval '30 minutes',
+    unexplained_after_absvd_mwh = unexplained_shortfall_mwh + absvd_mwh;
+
+insert into synthetic_pn_periods
+select
+    unit,
+    activity_date,
+    (activity_date::timestamp at time zone 'Europe/London')
+        + (period - 1) * interval '30 minutes',
+    pn_mwh,
+    'mapped'
+from (
+    values
+        ('B1', date '2025-10-26', 48, 5), ('W1', date '2025-10-26', 48, 5),
+        ('G1', date '2025-10-26', 48, 5), ('H1', date '2025-10-26', 48, 5),
+        ('IF1', date '2025-10-26', 48, 5), ('IE1', date '2025-10-26', 48, 5),
+        ('Z1', date '2025-10-26', 48, 0), ('E1', date '2025-10-24', 48, 5),
+        ('E1', date '2026-09-06', 10, 5)
+) as activity (unit, activity_date, period, pn_mwh);
+
+insert into synthetic_qas values
+    ('B1', 'E_B1', '2025-10-23', 10, -3, '2025-11-12 10:00:00+00'),
+    ('B1', 'E_B1', '2025-10-25', 10, -4, '2025-11-08 10:00:00+00'),
+    ('B1', 'E_B1', '2025-10-25', 48, -9, '2025-11-08 10:00:00+00'),
+    ('W1', 'E_W1', '2025-10-25', 48, 3, '2025-11-08 10:00:00+00'),
+    ('B1', 'E_B1', '2025-10-25', 10, -4, '2025-11-29 00:00:00+00'),
+    ('B1', 'E_B1', '2025-10-25', 48, -1, '2025-11-29 00:00:00+00'),
+    ('B1', 'E_B1', '2025-10-26', 48, -5, '2025-12-05 10:00:00+00'),
+    ('B1', 'E_B1', '2025-10-26', 49, 2, '2025-12-05 10:00:00+00'),
+    ('W1', 'E_W1', '2025-10-26', 48, 2, '2025-12-05 10:00:00+00'),
+    ('IF1', 'E_IF1', '2025-10-26', 48, 9, '2025-12-05 10:00:00+00'),
+    ('B1', 'E_B1', '2026-03-28', 10, -1, '2026-05-01 23:59:59.9+00'),
+    ('B1', 'E_B1', '2026-03-29', 10, -2, '2026-04-12 10:00:00+00'),
+    ('B1', 'E_B1', '2026-03-29', 46, -2, '2026-04-12 10:00:00+00'),
+    ('B1', 'E_B1', '2026-03-29', 10, -2, '2026-05-04 10:00:00+00'),
+    ('B1', 'E_B1', '2026-03-29', 46, -6, '2026-05-04 10:00:00+00'),
+    ('W1', 'E_W1', '2026-03-29', 46, 4, '2026-05-04 10:00:00+00'),
+    ('B1', 'E_B1', '2026-03-30', 46, -3, '2026-05-09 10:00:00+00'),
+    ('B1', 'E_B1', '2026-03-30', 47, 1, '2026-05-09 10:00:00+00'),
+    ('W1', 'E_W1', '2026-03-30', 46, 1, '2026-05-09 10:00:00+00'),
+    ('IE1', 'E_IE1', '2026-03-30', 46, 7, '2026-05-09 10:00:00+00'),
+    ('B1', 'E_B1', '2026-09-06', 10, 0, '2026-10-20 10:00:00+00');
+"""
+Q26_TABLES = {
+    "int_shortfall_by_unit_period": "pg_temp.synthetic_shortfall",
+    "int_elexon__bm_unit_cohort": "pg_temp.synthetic_cohort",
+    "int_elexon__pn_period_mapped": "pg_temp.synthetic_pn_periods",
+    "int_elexon__b1610_period_mapped": "pg_temp.synthetic_metered_periods",
+    "stg_elexon__qas": "pg_temp.synthetic_qas",
+}
+Q26_KEY = ("section", "item", "fuel_group", "settlement_month")
+Q26_RESULT = "explained share with ABSVD: the registered result"
+Q26_WITH_ABSVD = "unit-periods with any ABSVD (value: their share)"
+Q26_UNCAPTURED = "unit-periods left out: settlement date not captured"
+Q26_YOUNG = (
+    "unit-periods left out: latest capture less than 35 days after the settlement date"
+)
+Q26_FALL = (
+    "fall in unexplained energy once ABSVD is counted: not called "
+    "pre-registered (the exploration of 11 October 2026)"
+)
+Q26_MONTH = (
+    "by calendar month of the settlement date: informed by the exploration of "
+    "11 October 2026 (falls in winter, small rises in summer)"
+)
+Q26_PLACEBO = (
+    "placebo: ABSVD of the same unit and settlement period on the previous "
+    "settlement date"
+)
+Q26_REAL_ON_PLACEBO = "real figures on the placebo's unit-periods"
+Q26_NO_PARTNER = (
+    "left out of the placebo: the previous settlement date has no such "
+    "settlement period"
+)
+Q26_PARTNER_UNCAPTURED = (
+    "left out of the placebo: the previous settlement date was not captured"
+)
+Q26_PARTNER_YOUNG = (
+    "left out of the placebo: the previous settlement date's latest capture "
+    "is less than 35 days after it"
+)
+Q26_ALL = "all fuel groups"
+Q26_NOT_APPLICABLE = "N/A"
+Q26_PLACEBO_DETAIL = (
+    "no test: a placebo fall near the real fall says ABSVD's apparent effect is "
+    "not specific to the half-hour it belongs to"
+)
+Q26_CAPTURED_DATES = "settlement dates captured"
+Q26_COUNTED_DATES = (
+    "settlement dates counted: latest capture's UTC date at least 35 days after "
+    "the settlement date"
+)
+Q26_LATEST_CAPTURE = (
+    "each unit-period's ABSVD is from the latest capture holding it; not called final"
+)
+Q26_YOUNG_DATES = (
+    "settlement dates left out: latest capture less than 35 days after the "
+    "settlement date"
+)
+Q26_ACTIVE_UNITS = "cohort units: active in the window (value: units)"
+Q26_INTERCONNECTOR_UNITS = (
+    "cohort units: interconnectors, fuel type beginning INT, left out (value: units)"
+)
+Q26_INTELE_UNITS = "of which INTELE, an interconnector by assumption (value: units)"
+Q26_INACTIVE_UNITS = "cohort units: inactive in the window, left out (value: units)"
+Q26_INTERCONNECTOR_PERIODS = "unit-periods left out: interconnector units"
+Q26_INACTIVE_PERIODS = "unit-periods left out: inactive units"
+Q26_IDLE = "idle unit-periods in the result: PN 0 and metered 0 (value: their share)"
+OCTOBER_2025 = "2025-10-01"
+MARCH_2026 = "2026-03-01"
+
+
+def q26_figures(
+    unit_periods,
+    instructed=None,
+    absvd=None,
+    before=None,
+    after=None,
+    share=None,
+    fall=None,
+    fall_share=None,
+    detail=None,
+):
+    """A figure row's cells: n, the four absolute sums, the share and the fall."""
+
+    return dict(
+        unit_periods=unit_periods,
+        abs_instructed_deviation_mwh=instructed,
+        abs_absvd_mwh=absvd,
+        abs_unexplained_before_absvd_mwh=before,
+        abs_unexplained_after_absvd_mwh=after,
+        explained_share_with_absvd=share,
+        fall_mwh=fall,
+        fall_share=fall_share,
+        detail=detail,
+    )
+
+
+def q26_dates(first_date, last_date):
+    return dict(first_date=first_date, last_date=last_date)
+
+
+# Worked by hand from the rows above. In the result (active units, captured,
+# at least 35 days): other B1 on 25 October p10, 26 October p48 to p50,
+# 29 March p10, 30 March p46 and p47 (n 7); wind W1's two rows; gas G1's two
+# rows (Z1 idle and E1 inactive are left out); hydro H1's only row is on the
+# 34-day date. Other: I = 2+0+1+0+3+1+0 = 7, A = 4+5+2+0+2+3+1 = 17,
+# U = 10+8+6+4+5+9+2 = 44, U' = 6+3+4+4+3+6+3 = 29; share 24/53, Q12 7/51,
+# fall 15, 15/44. Wind: I 6, A 3, U 11, U' 12; share 9/21, Q12 6/17, fall -1,
+# -1/11. Gas: I 6, A 0, U 2, U' 2; share and Q12 6/8, fall 0.
+#
+# Placebo, other: 25 October p10's previous date is not captured; 26 October
+# p49 and p50 have no partner on the 48-period 25 October; 29 March p10's
+# previous date is 34 days old; 30 March p47 has no partner on the 46-period
+# 29 March. Kept: 26 October p48 (25 October's latest -1, not the earlier -9)
+# and 30 March p46 (29 March's latest -6, not -2): I 1, A 1+6 = 7, U 17,
+# U' 7+3 = 10; real A 8, U' 9. Wind: 26 October p48 takes 3 from 25 October's
+# earlier capture, the latest holding it (the latest capture has no W1 row)
+# (U' 9); 30 March p46 takes 4 (U' 1): I 6, A 7, U 11, U' 10. Gas: no QAS
+# rows, so 0: I 6, A 0, U 2, U' 2. All: I 13, A 14, U 30, U' 22; real A 11,
+# U' 23.
+Q26_EXPECTED = {
+    (1, Q26_RESULT, "other", None): dict(
+        **q26_figures(7, "7.0", "17.0", "44.0", "29.0", "0.452830"),
+        **q26_dates("2025-10-25", "2026-03-30"),
+        q12_instructed_share_same_periods="0.137255",
+    ),
+    (1, Q26_RESULT, "wind", None): dict(
+        **q26_figures(2, "6.0", "3.0", "11.0", "12.0", "0.428571"),
+        **q26_dates("2025-10-26", "2026-03-30"),
+        q12_instructed_share_same_periods="0.352941",
+    ),
+    (1, Q26_RESULT, "gas", None): dict(
+        **q26_figures(2, "6.0", "0.0", "2.0", "2.0", "0.750000"),
+        **q26_dates("2025-10-26", "2026-03-30"),
+        q12_instructed_share_same_periods="0.750000",
+    ),
+    (1, Q26_RESULT, "hydro", None): dict(
+        **q26_figures(0, "0.0", "0.0", "0.0", "0.0", None, detail=Q26_NOT_APPLICABLE),
+        **q26_dates(None, None),
+        q12_instructed_share_same_periods=None,
+    ),
+    (1, Q26_WITH_ABSVD, "other", None): dict(unit_periods=6, value="0.857143"),
+    (1, Q26_WITH_ABSVD, "wind", None): dict(unit_periods=2, value="1.000000"),
+    (1, Q26_WITH_ABSVD, "gas", None): dict(unit_periods=0, value="0.000000"),
+    (1, Q26_WITH_ABSVD, "hydro", None): dict(unit_periods=0, value=None),
+    (1, Q26_UNCAPTURED, "other", None): dict(unit_periods=1),
+    (1, Q26_UNCAPTURED, "wind", None): dict(unit_periods=0),
+    (1, Q26_UNCAPTURED, "gas", None): dict(unit_periods=0),
+    (1, Q26_UNCAPTURED, "hydro", None): dict(unit_periods=0),
+    (1, Q26_YOUNG, "other", None): dict(unit_periods=1),
+    (1, Q26_YOUNG, "wind", None): dict(unit_periods=0),
+    (1, Q26_YOUNG, "gas", None): dict(unit_periods=0),
+    (1, Q26_YOUNG, "hydro", None): dict(unit_periods=1),
+    (2, Q26_FALL, "other", None): q26_figures(
+        7, before="44.0", after="29.0", fall="15.0", fall_share="0.340909"
+    ),
+    (2, Q26_FALL, "wind", None): q26_figures(
+        2, before="11.0", after="12.0", fall="-1.0", fall_share="-0.090909"
+    ),
+    (2, Q26_FALL, "gas", None): q26_figures(
+        2, before="2.0", after="2.0", fall="0.0", fall_share="0.000000"
+    ),
+    (2, Q26_FALL, "hydro", None): q26_figures(
+        0, before="0.0", after="0.0", fall="0.0", detail=Q26_NOT_APPLICABLE
+    ),
+    # Other, October: I 3, A 11, U 28, U' 17; March: I 4, A 6, U 16, U' 12.
+    (3, Q26_MONTH, "other", OCTOBER_2025): dict(
+        **q26_figures(4, "3.0", "11.0", "28.0", "17.0", "0.451613", "11.0", "0.392857"),
+        **q26_dates("2025-10-25", "2025-10-26"),
+    ),
+    (3, Q26_MONTH, "other", MARCH_2026): dict(
+        **q26_figures(3, "4.0", "6.0", "16.0", "12.0", "0.454545", "4.0", "0.250000"),
+        **q26_dates("2026-03-29", "2026-03-30"),
+    ),
+    (3, Q26_MONTH, "wind", OCTOBER_2025): dict(
+        **q26_figures(1, "4.0", "2.0", "6.0", "8.0", "0.428571", "-2.0", "-0.333333"),
+        **q26_dates("2025-10-26", "2025-10-26"),
+    ),
+    (3, Q26_MONTH, "wind", MARCH_2026): dict(
+        **q26_figures(1, "2.0", "1.0", "5.0", "4.0", "0.428571", "1.0", "0.200000"),
+        **q26_dates("2026-03-30", "2026-03-30"),
+    ),
+    (3, Q26_MONTH, "gas", OCTOBER_2025): dict(
+        **q26_figures(
+            1, "0.0", "0.0", "0.0", "0.0", None, "0.0", None, Q26_NOT_APPLICABLE
+        ),
+        **q26_dates("2025-10-26", "2025-10-26"),
+    ),
+    (3, Q26_MONTH, "gas", MARCH_2026): dict(
+        **q26_figures(1, "6.0", "0.0", "2.0", "2.0", "0.750000", "0.0", "0.000000"),
+        **q26_dates("2026-03-30", "2026-03-30"),
+    ),
+    (4, Q26_PLACEBO, "other", None): q26_figures(
+        2,
+        "1.0",
+        "7.0",
+        "17.0",
+        "10.0",
+        "0.444444",
+        "7.0",
+        "0.411765",
+        Q26_PLACEBO_DETAIL,
+    ),
+    (4, Q26_PLACEBO, "wind", None): q26_figures(
+        2,
+        "6.0",
+        "7.0",
+        "11.0",
+        "10.0",
+        "0.565217",
+        "1.0",
+        "0.090909",
+        Q26_PLACEBO_DETAIL,
+    ),
+    (4, Q26_PLACEBO, "gas", None): q26_figures(
+        2, "6.0", "0.0", "2.0", "2.0", "0.750000", "0.0", "0.000000", Q26_PLACEBO_DETAIL
+    ),
+    (4, Q26_PLACEBO, "hydro", None): q26_figures(
+        0,
+        "0.0",
+        "0.0",
+        "0.0",
+        "0.0",
+        None,
+        "0.0",
+        None,
+        f"{Q26_NOT_APPLICABLE}; {Q26_PLACEBO_DETAIL}",
+    ),
+    (4, Q26_PLACEBO, Q26_ALL, None): q26_figures(
+        6,
+        "13.0",
+        "14.0",
+        "30.0",
+        "22.0",
+        "0.551020",
+        "8.0",
+        "0.266667",
+        Q26_PLACEBO_DETAIL,
+    ),
+    (4, Q26_REAL_ON_PLACEBO, "other", None): q26_figures(
+        2, "1.0", "8.0", "17.0", "9.0", "0.500000", "8.0", "0.470588"
+    ),
+    (4, Q26_REAL_ON_PLACEBO, "wind", None): q26_figures(
+        2, "6.0", "3.0", "11.0", "12.0", "0.428571", "-1.0", "-0.090909"
+    ),
+    (4, Q26_REAL_ON_PLACEBO, "gas", None): q26_figures(
+        2, "6.0", "0.0", "2.0", "2.0", "0.750000", "0.0", "0.000000"
+    ),
+    (4, Q26_REAL_ON_PLACEBO, "hydro", None): q26_figures(
+        0, "0.0", "0.0", "0.0", "0.0", None, "0.0", None, Q26_NOT_APPLICABLE
+    ),
+    (4, Q26_REAL_ON_PLACEBO, Q26_ALL, None): q26_figures(
+        6, "13.0", "11.0", "30.0", "23.0", "0.510638", "7.0", "0.233333"
+    ),
+    (4, Q26_NO_PARTNER, "other", None): dict(unit_periods=3),
+    (4, Q26_NO_PARTNER, "wind", None): dict(unit_periods=0),
+    (4, Q26_NO_PARTNER, "gas", None): dict(unit_periods=0),
+    (4, Q26_NO_PARTNER, "hydro", None): dict(unit_periods=0),
+    (4, Q26_NO_PARTNER, Q26_ALL, None): dict(unit_periods=3),
+    (4, Q26_PARTNER_UNCAPTURED, "other", None): dict(unit_periods=1),
+    (4, Q26_PARTNER_UNCAPTURED, "wind", None): dict(unit_periods=0),
+    (4, Q26_PARTNER_UNCAPTURED, "gas", None): dict(unit_periods=0),
+    (4, Q26_PARTNER_UNCAPTURED, "hydro", None): dict(unit_periods=0),
+    (4, Q26_PARTNER_UNCAPTURED, Q26_ALL, None): dict(unit_periods=1),
+    (4, Q26_PARTNER_YOUNG, "other", None): dict(unit_periods=1),
+    (4, Q26_PARTNER_YOUNG, "wind", None): dict(unit_periods=0),
+    (4, Q26_PARTNER_YOUNG, "gas", None): dict(unit_periods=0),
+    (4, Q26_PARTNER_YOUNG, "hydro", None): dict(unit_periods=0),
+    (4, Q26_PARTNER_YOUNG, Q26_ALL, None): dict(unit_periods=1),
+    # Captured up to the cutoff: 23, 25, 26 October, 28, 29, 30 March; 23 October
+    # and 28 March are under 35 days (B1's and H1's rows on 28 March).
+    (5, Q26_CAPTURED_DATES, None, None): dict(
+        settlement_dates=6, **q26_dates("2025-10-23", "2026-03-30")
+    ),
+    (5, Q26_COUNTED_DATES, None, None): dict(
+        settlement_dates=4,
+        **q26_dates("2025-10-25", "2026-03-30"),
+        detail=Q26_LATEST_CAPTURE,
+    ),
+    (5, Q26_YOUNG_DATES, None, None): dict(
+        settlement_dates=2, unit_periods=2, **q26_dates("2025-10-23", "2026-03-28")
+    ),
+    (5, Q26_UNCAPTURED, None, None): dict(unit_periods=1),
+    # Window from 25 October 2025 (the first counted date). Idle: G1 on
+    # 26 October p48 of the result's 11 unit-periods (B1's p50, PN 0 and
+    # metered -4, is not idle).
+    (6, Q26_ACTIVE_UNITS, None, None): dict(value="4", first_date="2025-10-25"),
+    (6, Q26_INTERCONNECTOR_UNITS, None, None): dict(value="2"),
+    (6, Q26_INTELE_UNITS, None, None): dict(value="1"),
+    (6, Q26_INACTIVE_UNITS, None, None): dict(value="2"),
+    (6, Q26_INTERCONNECTOR_PERIODS, None, None): dict(unit_periods=2),
+    (6, Q26_INACTIVE_PERIODS, None, None): dict(unit_periods=2),
+    (6, Q26_IDLE, None, None): dict(unit_periods=1, value="0.090909"),
+}
+
+
+def q26_mismatches(conn, reached, time_zone):
+    title = f"[{time_zone}] Q26"
+    query = on_fixtures(reached, Q26, Q26_TABLES)
+    run = run_on_fixtures(conn, Q26_FIXTURES, query, time_zone, key_columns=Q26_KEY)
+    found = mismatches(title, run, Q26_EXPECTED)
+    found += unexpected_rows(title, run, Q26_EXPECTED)
+    second_run = run_on_fixtures(
+        conn, Q26_FIXTURES, query, time_zone, key_columns=Q26_KEY
+    )
+    if second_run != run:
+        found.append(f"{title}: a second run gives different rows")
+    return found
+
+
 def check_all(reached, not_reached, boundary, project_values, schedule_window):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
@@ -4572,6 +5023,7 @@ def check_all(reached, not_reached, boundary, project_values, schedule_window):
             found += q8_q28_mismatches(conn, reached, boundary, time_zone)
             found += q29_mismatches(conn, reached, time_zone)
             found += q30_mismatches(conn, reached, boundary, time_zone)
+            found += q26_mismatches(conn, reached, time_zone)
     finally:
         conn.close()
     return found
@@ -4613,8 +5065,8 @@ def main():
             f"{len(found)} one-look analysis cells differ from the worked values"
         )
     print(
-        "One-look analyses: Q1, Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29 and Q30 "
-        "match every worked value"
+        "One-look analyses: Q1, Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29, Q30 and "
+        "Q26 match every worked value"
     )
 
 
