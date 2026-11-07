@@ -309,8 +309,8 @@
         <dd>How much less a unit produced than it should have: its plan, or NESO's instructed level while an instruction applied. On this page, "under-delivery" always means this.</dd>
       </div>
       <div>
-        <dt>Unit (BM unit)</dt>
-        <dd>A generator, battery, pumped-storage station, interconnector link or supplier's customer account in the Balancing Mechanism. Q2 covers every unit, suppliers' customer accounts included; the other questions cover units with a published fuel type: not the whole grid, and some are closed or idle.</dd>
+        <dt>BM unit (unit)</dt>
+        <dd>A generator, battery, pumped-storage station, interconnector link or supplier's customer account in the Balancing Mechanism. Q2 covers every unit, suppliers' customer accounts included; the other questions cover units with a published fuel type: not the whole grid, and some are closed or idle. Some of those are registered by suppliers or virtual lead parties: about 5% of the half-hours in Q3, Q5 and Q12, and 4% in Q23. Their metered figures are settlement allocations, not a station's meter (<a href="results/context_cohort_unit_types.csv">unit types at each read</a>).</dd>
       </div>
       <div>
         <dt>Transmission-connected and embedded</dt>
@@ -318,7 +318,7 @@
       </div>
       <div>
         <dt>Fuel group, and "other"</dt>
-        <dd>The registry's fuel type, grouped. The "other" group is mostly batteries: units identified as batteries by name or ID carry 92% of its instructions.</dd>
+        <dd>The registry's fuel type, grouped, as it stood at each read. The "other" group is mostly batteries: units identified as batteries by name or ID carry 92% of its instructions. Since Q23's read on 15 October 2026, the registry has given 24 more units a fuel type (15 other, 8 gas, 1 bioenergy) and changed none. Counted on 7 November 2026, Q23's half-hours would include 344,950 more at 23 of those units (4.7%), and 801 more at the read's own units, whose first meter figures arrived after the read (<a href="results/context_cohort_change.csv">cohort change</a>).</dd>
       </div>
       <div>
         <dt>Carbon forecast and its miss</dt>
@@ -393,11 +393,13 @@
         <dt>Measure</dt>
         <dd>Only half-hours in which no instruction applied to the unit count, so the unit was expected to follow its own plan. For each unit and month, I add up the sizes of the gaps between plan and meter and divide by what the unit could make at full registered capacity in those half-hours. I report the median unit and the 90th percentile for each fuel group and month.</dd>
         <dt>Not NESO's measure</dt>
-        <dd>NESO's plan-accuracy measure also counts services NESO buys outside the balancing mechanism and each unit's declared limits; this one does not, and it uses today's registered capacity. So no unit is called inaccurate, and NESO's thresholds do not apply.</dd>
+        <dd>NESO's plan-accuracy measure also counts services NESO buys outside the balancing mechanism and each unit's declared limits; this one does not, and it uses the registered capacity at the read. So no unit is called inaccurate, and NESO's thresholds do not apply.</dd>
         <dt>Data</dt>
         <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 20:05 UTC.</dd>
         <dt>Settlement runs held</dt>
         <dd>At the read, the meter figures rest on the seven-month run (R3) from 22 August 2025 to 19 January 2026, the four-month run (R2) to 29 April, the two-month run (R1) to 5 July and for 10 to 16 August, the three-week run (SF) from 6 July to 9 August, from 17 August to 9 September and on 11 and 12 September, and the one-week run (II) on 10 September and from 13 to 30 September 2026. The three-week run for 10 September and 13 to 30 September arrived after the read. <a href="results/context_q23_runs_by_month.csv">Runs by month</a>, counted on 7 November 2026, 16:59 UTC: the unit half-hour counts are as held then, not at the read.</dd>
+        <dt>One-week run</dt>
+        <dd>At the read, 16 gas units read exactly zero on the one-week run in 4,764 unit half-hours that the three-week run shows as not zero (8,247 of the 345,916 unit half-hours then on the one-week run). On the September unit half-hours that have both runs, the three-week run leaves wind's and bioenergy's medians above their whole-month ranges (8.4% and 3.1% of capacity, against 8.8% and 3.7% on the one-week run) and lowers gas's 90th percentile from 17.0% to 2.9%. Counted on 7 November 2026 on the data held at the read: <a href="results/context_ii_zero_readings.csv">zero readings</a>, <a href="results/context_q23_one_week_and_later_runs.csv">one-week and later runs</a>.</dd>
         <dt>Left out</dt>
         <dd>Interconnectors; 18 units with no positive registered capacity (4 coal, 3 gas, 4 nuclear, 6 other, 1 wind); 237,653 half-hours of individual units with no instruction and no meter reading (3.0% of half-hours with no instruction).</dd>
         <dt>Wind cut back to relieve the network</dt>
@@ -416,7 +418,7 @@
       <figcaption>22 August 2025 to 26 September 2026, on the latest settlement run held. Coal (closed units) is left out; interconnectors are links whose metered figure is an allocation against a plan that is zero in 97% of half-hours. Source: Elexon BMRS. <a href="results/context_plan_per_unit_half_hour.csv">Context data</a></figcaption>
     </figure>
     <div class="sub" id="q22">
-      <p><strong>Did later meter data change one week's fuel-group picture?</strong> <span class="tag">Q22</span> No: no group's median gap changed sign or order, and the biggest change was 0.03 MWh per unit per half-hour (bioenergy, 10–16 Aug 2026): its median gap moved from 0.78 to 0.75 MWh. The test cannot see large corrections at single stations: in the same week, <a href="#q2">Q2</a> finds large revisions at three gas units between the three-week and two-month runs.</p>
+      <p><strong>Did later meter data change one week's fuel-group picture?</strong> <span class="tag">Q22</span> No: no group's median gap changed sign or order, and the biggest change was 0.03 MWh per unit per half-hour (bioenergy, 10–16 Aug 2026): its median gap moved from 0.78 to 0.75 MWh. The test cannot see large corrections at single stations: in the same week, <a href="#q2">Q2</a> finds large revisions at three gas units between the three-week and two-month runs. This answer covers only that week, the last before a change in the one-week run: gas units read exactly zero on it, and not zero on a later run, in 172 unit half-hours that week and in 1,002 to 2,514 in each week from 17 August 2026 (<a href="results/context_ii_zero_readings.csv">zero readings by week</a>).</p>
     </div>
     <details class="method">
       <summary>How I measured it</summary>
@@ -485,7 +487,8 @@
       <div class="chart" id="q5-chart"></div>
       <figcaption>22 August 2025 to 27 September 2026. Half-hours under both kinds of notice count as unplanned. Coal (closed units) and interconnectors are not drawn; their under-delivery, 0.05 TWh, came with no notice and counts in the total behind the 24%. Source: Elexon BMRS and REMIT.</figcaption>
     </figure>
-    <p class="note">"No notice" is not "no outage": small units rarely publish. The newest 19 days, in September 2026, rest on the earliest settlement run and carry about twice the mean under-delivery per unit half-hour (3.9 MWh against 1.9); this is not explained.</p>
+    <p class="note">"No notice" is not "no outage": small units rarely publish. The newest 19 days, in September 2026, rest on the earliest settlement run and carry about twice the mean under-delivery per unit half-hour (3.9 MWh against 1.9); this is not explained. In those days, 14 gas units read exactly zero on the one-week run in 5,156 unit half-hours that the three-week run, which arrived after the read, shows as not zero; Elexon's one-week data, as stored, hold these zeros (<a href="results/context_ii_zero_readings.csv">zero readings</a>).</p>
+    <p class="note">About 9% of this under-delivery (1.5 of 16.4 TWh) comes from units drawing power in half-hours when they were expected to produce zero or less (<a href="results/context_q5_drawing_power.csv">breakdown on the data held at the read</a>).</p>
     <details class="method">
       <summary>How I measured it</summary>
       <dl>
@@ -503,7 +506,7 @@
 
   <article id="q6">
     <h3>How soon after the start time written in an outage notice does it appear? <span class="tag">Q6</span></h3>
-    <p class="answer">The median unplanned notice first published from 1 Nov 2024 to 12 Oct 2026 appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. 64% (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice.</p>
+    <p class="answer">The median unplanned notice first published from 1 Nov 2024 to 12 Oct 2026 appears about a minute after its written start, and <strong>9 in 10 within 30 minutes</strong>. 64% (7,541 of 11,811) give a start exactly on the hour or half-hour, so this is not the time from failure to notice. About half of the unplanned notices (5,583 of 11,811) were published before their written start; about one in thirteen (893) more than an hour after it.</p>
     <div class="tiles">
       <div class="tile">
         <p class="label">Unplanned (11,811 notices)</p>
@@ -529,7 +532,7 @@
         <dt>Note</dt>
         <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. The EU energy regulator ACER's one-hour guidance is context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
         <dt>Rule</dt>
-        <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full rule</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a> · <a href="results/context_q6_start_alignment.csv">context data</a> · <a href="results/context_q6_lag_quartiles.csv">lag quartiles</a></dd>
+        <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full rule</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a> · <a href="results/context_q6_start_alignment.csv">context data</a> · <a href="results/context_q6_lag_quartiles.csv">lag quartiles</a> · <a href="results/context_q6_publication_timing.csv">publication timing</a></dd>
       </dl>
     </details>
   </article>
@@ -797,9 +800,9 @@
 <section id="limitations" aria-labelledby="limitations-title">
   <h2 id="limitations-title">Limitations</h2>
   <ul>
-    <li>Fuel groups are the current registry's.</li>
+    <li>Fuel groups are the registry's at each read.</li>
     <li>The metered figure is the latest settlement run held at each read, which differs by date.</li>
-    <li>The plan (PN) is the latest version captured, not the position an hour before delivery, when plans become final.</li>
+    <li>The plan (PN) is the latest published Final Physical Notification captured after gate closure.</li>
     <li>Services NESO buys outside the balancing mechanism are not in the instructions (BOALF).</li>
     <li>The units studied are not the whole grid: wind and solar on local networks outside the Balancing Mechanism, and batteries with no published fuel type, are not in them.</li>
     <li>Results that set one measure against another (Q5, Q8, Q28, Q30 and the exploratory cuts) are associations, not causes. Each result covers the period given beside it and may not hold in another.</li>
