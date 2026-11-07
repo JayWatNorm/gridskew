@@ -201,7 +201,7 @@ NEW_SAVED_OUTPUTS = {
     "context_q30_outturn_lateness.csv": [
         "# Counts as held at a read-only query on 2 March 2027, 09:17 UTC.",
         "section,breakdown,item,half_hours,zero_outturn,first_start_utc,last_start_utc",
-        "1,lateness,over 2 h after the half-hour,5,2,"
+        "1,lateness,over 2 h after the half-hour ends,5,2,"
         "2025-09-03 10:00:00+00:00,2025-09-03 12:00:00+00:00",
     ],
     "q3_metered_vs_notified.csv": [
@@ -2323,13 +2323,14 @@ def context_count_text(name):
 
 
 def context_count_rows(name):
-    return list(csv.DictReader(io.StringIO(context_count_text(name)[1])))
+    counted, rows = context_count_text(name)
+    return list(csv.DictReader(io.StringIO(rows)))
 
 
 def counted_at(name):
     """'7 November 2026, 16:59 UTC': when a context file's counts were taken,
     from its second comment line."""
-    counted = context_count_text(name)[0]
+    counted, rows = context_count_text(name)
     found = re.match(
         rf"# Counts as held at a read-only query on ({LONG_DATE}, \d\d:\d\d UTC)",
         counted,
@@ -2380,10 +2381,8 @@ def day_month(day):
     return f"{day.day} {day:%B}"
 
 
-def follows(later_spans, earlier_spans):
-    """Whether the later run's first span starts the day after the earlier
-    run's first span ends: the page then gives only its end."""
-    return later_spans[0][0] == earlier_spans[0][1] + timedelta(days=1)
+def day_after(day):
+    return day + timedelta(days=1)
 
 
 def held_at_the_read(rows):
@@ -2407,27 +2406,33 @@ def test_q23s_settlement_runs_come_from_its_runs_by_month_count():
     name = "context_q23_runs_by_month.csv"
     rows = context_count_rows(name)
     spans = date_spans_by_run(held_at_the_read(rows), "run_at_read")
-    r3 = spans["R3"]
-    r2 = spans["R2"]
-    r1 = spans["R1"]
-    sf = spans["SF"]
-    ii = spans["II"]
+    [[r3_start, r3_end]] = spans["R3"]
+    [[r2_start, r2_end]] = spans["R2"]
+    [[r1_start, r1_end], [r1_week_start, r1_week_end]] = spans["R1"]
+    [
+        [sf_start, sf_end],
+        [sf_second_start, sf_second_end],
+        [sf_third_start, sf_third_end],
+    ] = spans["SF"]
+    [[ii_day, ii_day_end], [ii_start, ii_end]] = spans["II"]
 
     assert sorted(spans) == ["II", "R1", "R2", "R3", "SF"]
-    assert follows(r2, r3)
-    assert follows(r1, r2)
+    assert r2_start == day_after(r3_end)
+    assert r1_start == day_after(r2_end)
+    assert ii_day == ii_day_end
     assert runs_now_where_the_read_held_ii(rows) == {"SF"}
     assert (
         "At the read, the meter figures rest on the seven-month run (R3) from "
-        f"{day_month_year(r3[0][0])} to {day_month_year(r3[0][1])}, the "
-        f"four-month run (R2) to {day_month(r2[0][1])}, the two-month run (R1) "
-        f"to {day_month(r1[0][1])} and for {r1[1][0].day} to "
-        f"{day_month(r1[1][1])}, the three-week run (SF) from "
-        f"{day_month(sf[0][0])} to {day_month(sf[0][1])}, from "
-        f"{day_month(sf[1][0])} to {day_month(sf[1][1])} and on "
-        f"{sf[2][0].day} and {day_month(sf[2][1])}, and the one-week run (II) "
-        f"on {day_month(ii[0][0])} and from {ii[1][0].day} to "
-        f"{day_month_year(ii[1][1])}. The three-week run for those last dates "
+        f"{day_month_year(r3_start)} to {day_month_year(r3_end)}, the "
+        f"four-month run (R2) to {day_month(r2_end)}, the two-month run (R1) "
+        f"to {day_month(r1_end)} and for {r1_week_start.day} to "
+        f"{day_month(r1_week_end)}, the three-week run (SF) from "
+        f"{day_month(sf_start)} to {day_month(sf_end)}, from "
+        f"{day_month(sf_second_start)} to {day_month(sf_second_end)} and on "
+        f"{sf_third_start.day} and {day_month(sf_third_end)}, and the one-week "
+        f"run (II) on {day_month(ii_day)} and from {ii_start.day} to "
+        f"{day_month_year(ii_end)}. The three-week run for "
+        f"{day_month(ii_day)} and {ii_start.day} to {day_month(ii_end)} "
         "arrived after the read. "
         f'<a href="results/{name}">Runs by month</a>, counted on '
         f"{counted_at(name)}: the unit half-hour counts are as held then, not "
@@ -2448,30 +2453,33 @@ def test_q28s_settlement_runs_come_from_its_runs_held_count():
     spans = date_spans_by_run(
         with_a_metered_value(context_count_rows(name)), "run_held"
     )
-    r3 = spans["R3"]
-    r2 = spans["R2"]
-    r1 = spans["R1"]
-    sf = spans["SF"]
+    [[r3_start, r3_end]] = spans["R3"]
+    [[r2_start, r2_end]] = spans["R2"]
+    [[r1_start, r1_end], [r1_week_start, r1_week_end]] = spans["R1"]
+    [[sf_start, sf_end]] = spans["SF"]
 
     assert sorted(spans) == ["R1", "R2", "R3", "SF"]
-    assert follows(r2, r3)
-    assert follows(r1, r2)
+    assert r2_start == day_after(r3_end)
+    assert r1_start == day_after(r2_end)
     assert (
         "<dd>The seven-month run (R3) from "
-        f"{day_month_year(r3[0][0])} to {day_month_year(r3[0][1])}, the "
-        f"four-month run (R2) to {day_month(r2[0][1])}, the two-month run (R1) "
-        f"to {day_month(r1[0][1])} and for {r1[1][0].day} to "
-        f"{day_month(r1[1][1])}, and the three-week run (SF) from "
-        f"{day_month(sf[0][0])} to {day_month_year(sf[0][1])}. No settlement "
+        f"{day_month_year(r3_start)} to {day_month_year(r3_end)}, the "
+        f"four-month run (R2) to {day_month(r2_end)}, the two-month run (R1) "
+        f"to {day_month(r1_end)} and for {r1_week_start.day} to "
+        f"{day_month(r1_week_end)}, and the three-week run (SF) from "
+        f"{day_month(sf_start)} to {day_month_year(sf_end)}. No settlement "
         "data for these dates arrived after the read. "
-        f'<a href="results/{name}">Runs by date</a>, counted on '
+        f'<a href="results/{name}">Runs by month</a>, counted on '
         f"{counted_at(name)}.</dd>"
         in article_text(PAGE.read_text(encoding="utf-8"), "q28")
     )
 
 
-ON_TIME_BAND = "up to 30 min after the half-hour"
-OVER_AN_HOUR_BANDS = ("1 to 2 h after the half-hour", "over 2 h after the half-hour")
+ON_TIME_BAND = "up to 30 min after the half-hour ends"
+OVER_AN_HOUR_BANDS = (
+    "1 to 2 h after the half-hour ends",
+    "over 2 h after the half-hour ends",
+)
 
 
 def lateness_counts(rows):
@@ -2479,13 +2487,21 @@ def lateness_counts(rows):
     those over an hour late and those that are zero, from the lateness
     bands; and the dates listed with a late or zero first outturn, with the
     half-hours over an hour late on them."""
-    counts = {"all": 0, "late": 0, "over_an_hour": 0, "zero": 0, "on_dates": 0}
+    counts = {
+        "all": 0,
+        "late": 0,
+        "over_an_hour": 0,
+        "zero": 0,
+        "on_dates": 0,
+        "zero_on_dates": 0,
+    }
     dates = []
     for row in rows:
         half_hours = int(row["half_hours"])
         if row["section"] == "2":
             dates.append(datetime.strptime(row["item"], "%Y-%m-%d").date())
             counts["on_dates"] += half_hours
+            counts["zero_on_dates"] += int(row["zero_outturn"])
             continue
         counts["all"] += half_hours
         counts["zero"] += int(row["zero_outturn"])
@@ -2509,6 +2525,7 @@ def test_q30s_late_outturn_counts_come_from_its_lateness_count():
     article = article_text(PAGE.read_text(encoding="utf-8"), "q30")
 
     assert counts["on_dates"] == counts["over_an_hour"]
+    assert counts["zero_on_dates"] == counts["zero"]
     assert f"<dd>{counts['all']:,} half-hours on 360 days," in article
     assert (
         f"<dd>{counts['late']} first wind outturns were published more than 30 "

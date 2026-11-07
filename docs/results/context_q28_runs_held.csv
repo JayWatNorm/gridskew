@@ -1,5 +1,5 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
-# Counts as held at a read-only query on 7 November 2026, 16:59 UTC; no settlement data for these dates was captured after Q28's read (26 October 2026, 11:21 UTC), so the runs are those held at that read.
+# Counts as held at a read-only query on 7 November 2026, 16:59 UTC, using the cohort held at the query time; counts are not the original sample size. No settlement data for these dates was captured after Q28's read (26 October 2026, 11:21 UTC), so the runs are those held at that read.
 month,run_held,cohort_unit_periods,first_date,last_date
 2025-08,(no metered value),4279,2025-08-22,2025-08-31
 2025-08,R3,213666,2025-08-22,2025-08-31

@@ -1,10 +1,10 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
 # Counts as held at a read-only query on 7 November 2026, 16:54 UTC; no wind outturn for these dates was captured after Q30's data cutoff (27 October 2026, 14:03 UTC), so the counts are those of the read.
 section,breakdown,item,half_hours,zero_outturn,first_start_utc,last_start_utc
-1,half-hours by how late the first wind outturn was published,up to 30 min after the half-hour,17259,0,2025-08-21 23:00:00+00:00,2026-08-16 22:30:00+00:00
-1,half-hours by how late the first wind outturn was published,30 to 60 min after the half-hour,6,0,2025-11-27 11:30:00+00:00,2026-08-06 12:00:00+00:00
-1,half-hours by how late the first wind outturn was published,1 to 2 h after the half-hour,11,2,2025-11-27 10:30:00+00:00,2026-08-06 11:30:00+00:00
-1,half-hours by how late the first wind outturn was published,over 2 h after the half-hour,4,1,2025-11-27 10:00:00+00:00,2026-07-07 10:00:00+00:00
+1,half-hours by how late the first wind outturn was published,up to 30 min after the half-hour ends,17259,0,2025-08-21 23:00:00+00:00,2026-08-16 22:30:00+00:00
+1,half-hours by how late the first wind outturn was published,30 to 60 min after the half-hour ends,6,0,2025-11-27 11:30:00+00:00,2026-08-06 12:00:00+00:00
+1,half-hours by how late the first wind outturn was published,1 to 2 h after the half-hour ends,11,2,2025-11-27 10:30:00+00:00,2026-08-06 11:30:00+00:00
+1,half-hours by how late the first wind outturn was published,over 2 h after the half-hour ends,4,1,2025-11-27 10:00:00+00:00,2026-07-07 10:00:00+00:00
 2,"settlement dates with a first outturn over 1 h late or zero: half-hours over 1 h late, and zero first outturns",2025-11-27,3,0,2025-11-27 10:00:00+00:00,2025-11-27 11:00:00+00:00
 2,"settlement dates with a first outturn over 1 h late or zero: half-hours over 1 h late, and zero first outturns",2026-01-15,2,0,2026-01-15 10:00:00+00:00,2026-01-15 10:30:00+00:00
 2,"settlement dates with a first outturn over 1 h late or zero: half-hours over 1 h late, and zero first outturns",2026-02-24,3,1,2026-02-24 11:00:00+00:00,2026-02-24 12:00:00+00:00
