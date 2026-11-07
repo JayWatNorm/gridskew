@@ -1,6 +1,6 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026. Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
 section,line,item,fifth,stratum,half_hours,days,first_date,last_date,under_delivery_from_mwh,under_delivery_to_mwh,value,interval_low,interval_high,usable_draws,mean_signed_error,cells,result
-1,1,"label: EXPLORATORY, association only, not pre-registered; a further look at a window already seen (strata decided by James 6 November 2026, published whatever it shows)",,,,,,,,,,,,,,,"inputs cut at Q28's read, 2026-10-26 11:21:39 UTC; seed 20261025"
+1,1,"label: EXPLORATORY, association only, not pre-registered; a further look at a window already seen (strata chosen on 6 November 2026, published whatever it shows)",,,,,,,,,,,,,,,"inputs cut at Q28's read, 2026-10-26 11:21:39 UTC; seed 20261025"
 1,2,"population: Q28's matched days and half-hours (Q28 saved: 17278 half-hours, 360 days, 2025-08-22 to 2026-08-16)",,,17278,360,2025-08-22,2026-08-16,,,,,,,,,matches Q28
 1,3,registry extract used for the cohort (Q28's read used the one stored 2026-10-26 00:00:01 UTC; value: cohort units),,,,,,,,,589,,,,,,retrieved_at 2026-10-26 00:00:01.067613 UTC
 1,4,population cohort unit-periods whose shortfall row was captured after Q28's read (half_hours: population half-hours holding one),,,0,,,,,,0,,,,,,none

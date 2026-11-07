@@ -748,7 +748,7 @@
 
   <article id="q2">
     <h3>How much do metered figures change when Elexon recalculates settlement with later meter data? <span class="tag">Q2</span></h3>
-    <p class="answer">Materially: for settlement dates 10–16 Aug 2026, 3.4% of the energy was revised between the one-week and three-week runs, and <strong>2.3%</strong> between the three-week and two-month runs, 77% of that in suppliers' customer accounts. Between the three-week and two-month runs, transmission-connected and embedded units changed in 0.7% of half-hours, but three gas units' revisions, up or down counted alike, came to about 40 GWh, 18% of the energy revised between the three-week and two-month runs.</p>
+    <p class="answer">Materially: for settlement dates 10–16 Aug 2026, 3.4% of the energy was revised between the one-week and three-week runs, and <strong>2.3%</strong> between the three-week and two-month runs, 77% of that in suppliers' customer accounts. Between the three-week and two-month runs, transmission-connected and embedded units changed in 0.7% of half-hours, but three gas units' revisions, up or down counted alike, came to about 40 GWh, 35% of their own 114 GWh in the three-week run, and 18% of the energy revised between the three-week and two-month runs.</p>
     <figure>
       <div class="chart" id="q2-chart"></div>
       <figcaption>Settlement dates 10 to 16 August 2026. Among transmission-connected and embedded units, three gas units account for 18% of all the energy revised: nine-tenths of this group's 20%. Other unit types are the units whose identifiers start with C, I, M or V. Source: Elexon BMRS.</figcaption>
@@ -761,9 +761,9 @@
         <dt>Data</dt>
         <dd>3,083,376 matched half-hourly figures in each pair, one per unit per half-hour, none in one run only. Every unit counts, suppliers' customer accounts included. Read 11 October 2026.</dd>
         <dt>The three gas units</dt>
-        <dd>At two of them, the three-week run filled two days the one-week run had at zero, and the two-month run zeroed one of them. At the third, the three-week run repeated the one-week values, and the two-month run replaced every value from 11 to 16 August. These figures come from a unit-level output that is not published.</dd>
+        <dd>At two of them, the three-week run filled two days the one-week run had at zero, and the two-month run zeroed one of them. At the third, the three-week run repeated the one-week values, and the two-month run replaced every value from 11 to 16 August. Each unit's revised energy, net change and three-week-run energy are in a <a href="results/q2_gas_units_revisions.csv">saved output</a>; the units are lettered, not named.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 25 September 2026, before any metered figure was read. It tests only the two run-pair shares; the split by unit type and the three gas units are described after the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">Full rule</a> · the query is not in this repository · saved outputs: <a href="results/q2_settlement_run_changes.csv">run pairs</a>, <a href="results/q2_changes_by_unit_prefix.csv">by unit type</a> · <a href="results/q2_moved_energy_by_unit_type.csv">chart data</a></dd>
+        <dd>Recorded 25 September 2026, before any metered figure was read. It tests only the two run-pair shares; the split by unit type and the three gas units are described after the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">Full rule</a> · the query is not in this repository · saved outputs: <a href="results/q2_settlement_run_changes.csv">run pairs</a>, <a href="results/q2_changes_by_unit_prefix.csv">by unit type</a>, <a href="results/q2_gas_units_revisions.csv">the three gas units</a> · <a href="results/q2_moved_energy_by_unit_type.csv">chart data</a></dd>
       </dl>
       <div class="table-wrap">
         <table>
