@@ -113,6 +113,7 @@ BMRS_AND_CARBON_LINE = (
 # chart's (largest gap first); interconnectors are left out. Q2's unit types
 # sum to round figures, with E beside T and C beside V.
 CONTEXT_LABEL = "context only: denominator, not a registered result"
+DISTRIBUTION_LABEL = "context only: distribution, not a registered result"
 # Q23's chart months, for the planned-output context fixture.
 Q23_FIXTURE_MONTHS = [
     "2025-09-01",
@@ -190,7 +191,7 @@ NEW_SAVED_OUTPUTS = {
         "# Lag quartiles. Read 1 January 2026. Minutes.",
         "section,outage_class,notices,p25_lag_minutes,median_lag_minutes,"
         "p75_lag_minutes,p90_lag_minutes,label",
-        f'1,Planned,300,-500.0,-100.0,-50.0,-2.0,"{CONTEXT_LABEL}"',
+        f'1,Planned,300,-500.0,-100.0,-50.0,-2.0,"{DISTRIBUTION_LABEL}"',
     ],
     "context_q25_battery_named_units.csv": [
         "# Read 1 January 2026 on the read's data. Counts only.",
@@ -2748,11 +2749,15 @@ def test_each_context_row_is_labelled_a_denominator_not_a_result():
         "context_plan_per_unit_half_hour.csv",
         "context_plan_pct_capacity.csv",
         "context_q6_start_alignment.csv",
-        "context_q6_lag_quartiles.csv",
         "context_q25_battery_named_units.csv",
     ]:
         for row in saved_output_rows(name):
             assert row["label"] == CONTEXT_LABEL
+
+
+def test_each_lag_quartile_row_is_labelled_distribution_context_not_a_result():
+    for row in saved_output_rows("context_q6_lag_quartiles.csv"):
+        assert row["label"] == DISTRIBUTION_LABEL
 
 
 def test_chart_reading_lines_give_scale_from_the_context_counts(written):
