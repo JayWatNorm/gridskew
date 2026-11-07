@@ -2378,6 +2378,17 @@ def q25_count(rows, section, fuel_group, measure):
     return int(found[0]["n"])
 
 
+def q25_cohort_acceptances(rows):
+    """Acceptances of every cohort fuel group, all months, from Q25's saved
+    output."""
+    total = 0
+    for row in rows:
+        acceptances = row["measure"] == "1 dispatch granularity (acceptances)"
+        if row["section"] == "2" and acceptances:
+            total += int(row["n"])
+    return total
+
+
 def test_q25s_battery_shares_come_from_their_context_count():
     counts = saved_output_rows("context_q25_battery_named_units.csv")
     q25 = saved_output_rows("q25_instruction_fragmentation_corrected.csv")
@@ -2391,9 +2402,15 @@ def test_q25s_battery_shares_come_from_their_context_count():
     outside = int(
         battery_count_row(counts, "2", Q25_OUTSIDE, "all classes")["acceptances"]
     )
+    other_fuel_types = int(
+        battery_count_row(counts, "2", "cohort, other fuel types", "all classes")[
+            "acceptances"
+        ]
+    )
     other_in_q25 = q25_count(q25, "2", "other", "1 dispatch granularity (acceptances)")
     outside_in_q25 = q25_count(q25, "3", "", "acceptances of units outside the cohort")
-    article = article_text(PAGE.read_text(encoding="utf-8"), "q25")
+    page = PAGE.read_text(encoding="utf-8")
+    article = article_text(page, "q25")
 
     assert (
         "Units identified as batteries by name or ID receive "
@@ -2407,6 +2424,11 @@ def test_q25s_battery_shares_come_from_their_context_count():
     ) in article
     assert other == other_in_q25 == class_total(counts, Q25_OTHER)
     assert outside == outside_in_q25 == class_total(counts, Q25_OUTSIDE)
+    assert other + other_fuel_types == q25_cohort_acceptances(q25)
+    assert (
+        "units identified as batteries by name or ID carry "
+        f"{percent_of(other_battery, other, 0)}% of its instructions."
+    ) in page
     assert '<a href="results/context_q25_battery_named_units.csv">' in article
 
 
@@ -2416,12 +2438,16 @@ def test_q25s_check_against_elexons_flag_comes_from_its_check_counts():
         checks, "item", "rerun of 25 October 2026: corrected query, the figures shown"
     )
     compared = int(shown["acceptances_compared"])
-    first_day = int(shown["first_settlement_date"].split("-")[2])
+    first_year, first_month, first_day = shown["first_settlement_date"].split("-")
+    last_year, last_month, last_day = shown["last_settlement_date"].split("-")
     article = article_text(PAGE.read_text(encoding="utf-8"), "q25")
 
+    month_name = datetime(int(last_year), int(last_month), 1).strftime("%B")
+
+    assert (first_year, first_month) == (last_year, last_month)
     assert (
-        f"which this count matched on all {compared:,} checked ({first_day} to "
-        f"{long_date(shown['last_settlement_date'])})."
+        f"which this count matched on all {compared:,} checked ({int(first_day)} to "
+        f"{int(last_day)} {month_name} {last_year})."
     ) in article
     assert int(shown["agree"]) == compared
     assert '<a href="results/context_q25_cadl_check.csv">' in article

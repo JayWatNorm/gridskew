@@ -318,7 +318,7 @@
       </div>
       <div>
         <dt>Fuel group, and "other"</dt>
-        <dd>The registry's fuel type, grouped. The "other" group is mostly batteries: units named as batteries carry 92% of its instructions.</dd>
+        <dd>The registry's fuel type, grouped. The "other" group is mostly batteries: units identified as batteries by name or ID carry 92% of its instructions.</dd>
       </div>
       <div>
         <dt>Carbon forecast and its miss</dt>
@@ -571,7 +571,7 @@
         <dt>Measure</dt>
         <dd>I join each instruction to the unit's instructions that overlap or touch it, issued within three half-hours either side. I count instructions whose joined run lasts under 10 minutes, Elexon's own test, which this count matched on all 20,680 checked (21 to 27 September 2026).</dd>
         <dt>Data</dt>
-        <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 22:01 UTC. The figures shown join the two halves of instructions that cross midnight, from a run on 25 October 2026 on the read's data; the table gives the read's own figures beside them. I count a unit as a battery when its registered name mentions a battery, BESS or storage, or its ID ends in B and a number. Units identified as batteries by name or ID receive 92% (730,344 of 796,257) of the other group's instructions. Units with no published fuel type are not in the other group; of the instructions to them, units identified as batteries by name or ID receive 58% (1,169,425 of 2,021,245). Both counts use the read's data and unit register.</dd>
+        <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 22:01 UTC. The figures shown join the two halves of instructions that cross midnight, from a run on 25 October 2026 on the read's data; the table gives the read's own figures beside them. I count a unit as a battery when its registered name contains "batter", "BESS" or "storage" (any case), or its ID ends in "B-" and a number. Units identified as batteries by name or ID receive 92% (730,344 of 796,257) of the other group's instructions. Units with no published fuel type are not in the other group; of the instructions to them, units identified as batteries by name or ID receive 58% (1,169,425 of 2,021,245). Both counts use the read's data and unit register.</dd>
         <dt>Rule</dt>
         <dd>Recorded 12 October 2026, after an exploration had read the instruction-on-its-own measure; the joined measure, the result, was added before any read of it. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q25-how-fragmented-are-instructions-to-units-typed-other-mostly-batteries-and-pumped-storage-compared-with-thermal-plant">Full rule</a> · query <code>q25_instruction_fragmentation.sql</code> · saved outputs: <a href="results/q25_instruction_fragmentation_corrected.csv">shown</a>, <a href="results/q25_instruction_fragmentation.csv">as first read</a> · <a href="results/q25_short_instructions_by_fuel_group.csv">chart data</a> · context data: <a href="results/context_q25_battery_named_units.csv">battery counts</a>, <a href="results/context_q25_cadl_check.csv">check against Elexon's test</a></dd>
       </dl>
