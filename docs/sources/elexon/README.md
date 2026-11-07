@@ -148,8 +148,8 @@ Base-endpoint examples from the spec:
 treat an undocumented stream cap as untested rather than absent.
 
 For the undocumented ones, a 92 day B1610 request returned the full range,
-4,417 rows for one BM unit, with no truncation. Note that 92 days is also the
-documented cap for `NDFD` and `TSDFD`, so **92 may be a platform default rather
+4,417 rows for one BM unit, with no truncation. The documented cap for `NDFD`
+and `TSDFD` is also 92 days, so **92 may be a platform default rather
 than "no limit"**.
 
 **The boundary period is included.** 92 days is 4,416 half hours; the extra row
