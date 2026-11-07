@@ -74,6 +74,12 @@ CONTEXT_CAPACITY_RESULT = "context_plan_pct_capacity.csv"
 # Read 31 October 2026: how many of Q6's notices start on the hour or
 # half-hour, counts only.
 CONTEXT_Q6_ALIGNMENT_RESULT = "context_q6_start_alignment.csv"
+# Read 7 November 2026, counts and dates only, each with its read time as a
+# second comment line: the settlement run behind each date of Q23 and Q28,
+# and how late Q30's first wind outturns were published.
+CONTEXT_Q23_RUNS_RESULT = "context_q23_runs_by_month.csv"
+CONTEXT_Q28_RUNS_RESULT = "context_q28_runs_held.csv"
+CONTEXT_Q30_LATENESS_RESULT = "context_q30_outturn_lateness.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
 SPEC_DATA_FOLDER = "results"
@@ -3225,6 +3231,7 @@ def write_charts(result_folder, output_folder):
     copy_saved_output(results, output, Q6_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, CONTEXT_Q6_ALIGNMENT_RESULT, BMRS_ATTRIBUTION)
     q23 = copy_saved_output(results, output, Q23_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_Q23_RUNS_RESULT, BMRS_ATTRIBUTION)
     write_q23_typical_chart(q23, capacity, output)
     write_q23_monthly_chart(q23, capacity, output)
     q24 = copy_saved_output(results, output, Q24_RESULT, BMRS_ATTRIBUTION)
@@ -3238,6 +3245,7 @@ def write_charts(result_folder, output_folder):
         results, output, Q8_Q28_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
     write_q28_chart(q8_q28, output)
+    copy_saved_output(results, output, CONTEXT_Q28_RUNS_RESULT, BMRS_ATTRIBUTION)
     q28_reverse = copy_saved_output(
         results, output, Q28_REVERSE_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
@@ -3250,6 +3258,7 @@ def write_charts(result_folder, output_folder):
     write_q29_month_chart(q29, carbon, output)
     write_q29_demand_chart(demand, output)
     q30 = copy_saved_output(results, output, Q30_RESULT, BMRS_AND_CARBON_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_Q30_LATENESS_RESULT, BMRS_ATTRIBUTION)
     write_q30_chart(q30, output)
 
 

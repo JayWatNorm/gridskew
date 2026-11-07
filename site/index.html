@@ -396,6 +396,8 @@
         <dd>NESO's plan-accuracy measure also counts services NESO buys outside the balancing mechanism and each unit's declared limits; this one does not, and it uses today's registered capacity. So no unit is called inaccurate, and NESO's thresholds do not apply.</dd>
         <dt>Data</dt>
         <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 20:05 UTC.</dd>
+        <dt>Settlement runs held</dt>
+        <dd>At the read, the meter figures rest on the seven-month run (R3) from 22 August 2025 to 19 January 2026, the four-month run (R2) to 29 April, the two-month run (R1) to 5 July and for 10 to 16 August, the three-week run (SF) from 6 July to 9 August, from 17 August to 9 September and on 11 and 12 September, and the one-week run (II) on 10 September and from 13 to 30 September 2026. The three-week run for 10 September and 13 to 30 September arrived after the read. <a href="results/context_q23_runs_by_month.csv">Runs by month</a>, counted on 7 November 2026, 16:59 UTC: the unit half-hour counts are as held then, not at the read.</dd>
         <dt>Left out</dt>
         <dd>Interconnectors; 18 units with no positive registered capacity (4 coal, 3 gas, 4 nuclear, 6 other, 1 wind); 237,653 half-hours of individual units with no instruction and no meter reading (3.0% of half-hours with no instruction).</dd>
         <dt>Wind cut back to relieve the network</dt>
@@ -694,7 +696,7 @@
         <dt>Data</dt>
         <dd>17,278 half-hours on 360 days, 22 August 2025 to 16 August 2026; two half-hours on one day have no under-delivery figure. Misses are whole grams, so neighbouring fifths share an edge: 1,360 half-hours missed by exactly 3 g. The overall error of this forecast had already been seen in a September 2026 exploration. Read 26 October 2026, 11:21 UTC, with Q8.</dd>
         <dt>Settlement runs held</dt>
-        <dd>The seven-month run (R3) from 22 August 2025 to 19 January 2026, the four-month run (R2) to 29 April, the two-month run (R1) to 5 July and for 10 to 16 August, and the three-week run (SF) from 6 July to 9 August 2026.</dd>
+        <dd>The seven-month run (R3) from 22 August 2025 to 19 January 2026, the four-month run (R2) to 29 April, the two-month run (R1) to 5 July and for 10 to 16 August, and the three-week run (SF) from 6 July to 9 August 2026. No settlement data for these dates arrived after the read. <a href="results/context_q28_runs_held.csv">Runs by month</a>, counted on 7 November 2026, 16:59 UTC.</dd>
         <dt>Coverage</dt>
         <dd>GridSkew's data hold an impossible 0 g/kWh actual for 6 August 2026, 11:00 UTC, which also falls in Q29's August 2026 cell.</dd>
         <dt>Rule</dt>
@@ -734,7 +736,7 @@
         <dt>Data</dt>
         <dd>17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Forecast ages from the issue time on each forecast: up to 1 hour for 5,756 half-hours, 1 to 2 hours for 5,756, 2 to 4 hours for 5,766 and over 4 hours for 2. The carbon forecast is the stored one, set against a wind forecast up to hours old. Metered wind only, with no embedded wind; an association, not a cause. Read 27 October 2026, on data captured up to 14:03:55 UTC.</dd>
         <dt>Coverage</dt>
-        <dd>21 first wind outturns were published more than 30 minutes late, 3 of them zero; those over an hour late or zero all fall on six dates (27 November 2025; 15 January, 24 February, 4 June, 7 July and 6 August 2026); they are included in the correlations. GridSkew's data also hold an impossible 0 g/kWh carbon actual for 6 August 2026, 11:00 UTC, which falls in Q29's August 2026 cell.</dd>
+        <dd>21 first wind outturns were published more than 30 minutes late, 3 of them zero; those over an hour late or zero all fall on six dates (27 November 2025; 15 January, 24 February, 4 June, 7 July and 6 August 2026); they are included in the correlations. <a href="results/context_q30_outturn_lateness.csv">Lateness counts</a>, counted on 7 November 2026, 16:54 UTC; no wind outturn for these dates arrived after the read. GridSkew's data also hold an impossible 0 g/kWh carbon actual for 6 August 2026, 11:00 UTC, which falls in Q29's August 2026 cell.</dd>
         <dt>Rule</dt>
         <dd>Recorded 27 October 2026, before any wind data was held; one day of wind values (22 August 2025) was seen in checks of the data feed before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026">Full rule</a> · query <code>q30_wind_vs_carbon_error.sql</code> · <a href="results/q30_wind_vs_carbon_error.csv">saved output</a> · <a href="results/q30_rank_correlations.csv">chart data</a></dd>
       </dl>
