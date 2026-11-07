@@ -3,17 +3,20 @@
 Reads each read's saved output from a folder, under the file names below,
 and writes into the output folder:
 
-- each saved output as CSV, its attribution as the first line and its rows
-  unchanged (LF line endings);
+- each saved output as CSV, its attribution as the first line and its other
+  comment lines and rows unchanged (LF line endings);
 - for each chart, a chart CSV of exactly the values it draws, picked,
   joined or summed from the saved outputs, with the same attribution line
   (Q29 reads its saved output directly);
 - for each chart, a PNG and a Vega-Lite spec that reads its CSV by URL
   (``results/<name>.csv``), never inlined.
 
-A saved output that lacks a row a chart reads is refused. Nothing is
-queried. Fuel groups and measures are shown under readable names; the CSVs
-keep the saved codes. A rerun on the same input writes identical files.
+A saved output may already carry its attribution line, so the written
+folder (``docs/results``) is itself a valid input; a different attribution,
+or no header, is refused, as is a saved output that lacks a row a chart
+reads. Nothing is queried. Fuel groups and measures are shown under readable
+names; the CSVs keep the saved codes. A rerun on the same input writes
+identical files.
 
 The page that shows the specs sets their font and the colours of text,
 axes and gridlines. Each spec sets its data colours, and each colour has
@@ -48,6 +51,8 @@ CARBON_ATTRIBUTION = (
     "modified: aggregated by GridSkew."
 )
 BMRS_AND_CARBON_ATTRIBUTION = f"{BMRS_ATTRIBUTION} {CARBON_ATTRIBUTION}"
+# How every attribution line starts, whatever its year or wording.
+ATTRIBUTION_OPENINGS = ("# Contains BMRS data", "# Carbon intensity data")
 
 Q2_RESULT = "q2_settlement_run_changes.csv"
 Q2_BY_PREFIX_RESULT = "q2_changes_by_unit_prefix.csv"
@@ -517,12 +522,48 @@ CHIP_LABEL_PADDING_PIXELS = 20
 CHIP_SIZE = 90
 
 
+def split_leading_comments(text):
+    """The lines starting "# " above a saved output's header, and the text
+    from its header on."""
+    comments = []
+    rest = text
+    while rest.startswith("# "):
+        line, newline, rest = rest.partition("\n")
+        comments.append(line + newline)
+    return comments, rest
+
+
+def comments_below_attribution(comments, attribution_line, name):
+    """The comment lines kept below the attribution: all of them but the
+    attribution itself when it is already the first. Any other attribution
+    is refused."""
+    kept = []
+    for position, comment in enumerate(comments):
+        if not comment.startswith(ATTRIBUTION_OPENINGS):
+            kept.append(comment)
+            continue
+        if position != 0 or comment != attribution_line:
+            raise ValueError(f"{name}: unexpected attribution line {comment!r}")
+    return kept
+
+
 def copy_saved_output(results, output, name, attribution):
-    """Write the saved output with its attribution as the first line; return
-    its rows. Text mode reads Windows line endings as LF."""
+    """Write the saved output with its attribution as the first line and its
+    other comment lines and rows unchanged below it; return its rows. A
+    written output read back, attribution and all, is copied unchanged. Text
+    mode reads Windows line endings as LF."""
     with (results / name).open(encoding="utf-8") as saved:
-        rows_text = saved.read()
-    (output / name).write_bytes(f"# {attribution}\n{rows_text}".encode("utf-8"))
+        saved_text = saved.read()
+    comments, rows_text = split_leading_comments(saved_text)
+    if not rows_text:
+        raise ValueError(f"{name}: no header below its comment lines")
+    header = rows_text.partition("\n")[0]
+    if not header.strip() or header.lstrip("﻿").startswith("#"):
+        raise ValueError(f"{name}: no header below its comment lines")
+    attribution_line = f"# {attribution}\n"
+    kept = comments_below_attribution(comments, attribution_line, name)
+    copied = attribution_line + "".join(kept) + rows_text
+    (output / name).write_bytes(copied.encode("utf-8"))
     return list(csv.DictReader(io.StringIO(rows_text)))
 
 
