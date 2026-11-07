@@ -1,0 +1,5 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Copied 7 November 2026 from the recorded checks; nothing was queried or called again. Check of 15 October 2026: 336 settlement-stack calls to Elexon (20:05 to 20:12 UTC) and BOALF read-only. Rerun of 25 October 2026: the corrected query on the same saved stack responses and BOALF captures, with no new call. Sample: settlement dates 21 to 27 September 2026, periods 1, 3, ..., 47, bids and offers; acceptances on cohort units; DMAT-removed rows excluded. Agreement: the query's under-10-minute flag against Elexon's cadlFlag.
+section,item,first_settlement_date,last_settlement_date,stack_responses,new_api_calls,acceptances_compared,agree,predicted_short_not_flagged,flagged_not_predicted,flagged_by_both,flagged_by_neither,label
+1,check of 15 October 2026: query before the correction,2026-09-21,2026-09-27,336,336,20680,20636,44,0,1779,18857,"check of the measure, not a registered result"
+1,"rerun of 25 October 2026: corrected query, the figures shown",2026-09-21,2026-09-27,336,0,20680,20680,0,0,1779,18901,"check of the measure, not a registered result"

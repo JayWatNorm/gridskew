@@ -1,0 +1,13 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Read 7 November 2026 16:57 UTC (read-only) on the data of Q25's read: BOALF rows captured by 15 October 2026 22:01 UTC, acceptances whose span starts before 30 September 2026 23:00 UTC, and the BM-unit register extract of 15 October 2026. Cohort: units with a published fuel type in that extract; fuel type OTHER is Q25's other group. Class: battery when the registered name contains batter, bess or storage (any case) or the National Grid ID ends in B, a hyphen and a number; else solar when the name contains solar or the word PV; else other or unnamed. No name in the window contains batter without battery or batteries. Counts only.
+section,item,unit_class,acceptances,units,label
+1,fuel type OTHER,battery by name or ID,730344,47,"context only: denominator, not a registered result"
+1,fuel type OTHER,solar by name,1176,6,"context only: denominator, not a registered result"
+1,fuel type OTHER,other or unnamed,64737,17,"context only: denominator, not a registered result"
+1,outside the cohort,battery by name or ID,1169425,69,"context only: denominator, not a registered result"
+1,outside the cohort,solar by name,0,0,"context only: denominator, not a registered result"
+1,outside the cohort,other or unnamed,851820,247,"context only: denominator, not a registered result"
+2,fuel type OTHER,all classes,796257,70,"context only: denominator, not a registered result"
+2,outside the cohort,all classes,2021245,316,"context only: denominator, not a registered result"
+2,"cohort, other fuel types",all classes,699088,302,"context only: denominator, not a registered result"
+2,outside the cohort: not in the register extract,all classes,2,1,"context only: denominator, not a registered result"
