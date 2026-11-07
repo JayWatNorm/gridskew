@@ -803,8 +803,10 @@ placebo and a minimum capture age are added. Not yet read.
   11 March, and rose 4.8% on 12 August and 1.3% on 20 September 2026 (as
   recomputed on 17 October 2026).
 - **Placebo.** The same figures with each unit's ABSVD taken from the same
-  settlement period of the previous day, beside the real figures on the
-  same unit-periods.
+  settlement period of the previous settlement date (0 where that unit has
+  none), beside the real figures on the same unit-periods. Unit-periods
+  whose previous date has no such period, or fails the capture-age bar,
+  are left out and counted.
 - **Edge.** N/A with its n where the denominator is zero.
 - **Capture age.** A settlement date counts when its latest ABSVD capture
   was made on a UTC date at least 35 days after it. Each unit's ABSVD for
