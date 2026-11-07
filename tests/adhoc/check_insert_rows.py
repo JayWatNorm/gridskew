@@ -132,6 +132,10 @@ def check_a_failed_later_row_leaves_no_row(writer, reader):
     broken_id, _label, amount, captured_at, settlement_date, evidence = rows[2100]
     rows[2100] = (broken_id, None, amount, captured_at, settlement_date, evidence)
 
+    print(
+        "expected: psycopg logs 'pipeline aborted' for the NULL label at row 2,100",
+        flush=True,
+    )
     try:
         with writer.cursor() as cursor:
             insert_rows(cursor, INSERT_SQL, rows)

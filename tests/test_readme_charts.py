@@ -562,6 +562,10 @@ def add_lines(path, lines):
         target.write("\n".join(lines) + "\n")
 
 
+def prepend_text(path, text):
+    path.write_text(text + path.read_text(encoding="utf-8"), encoding="utf-8")
+
+
 def saved_outputs_folder(folder):
     """A folder of the hand-made saved outputs, as the script reads them."""
     folder.mkdir()
@@ -1396,6 +1400,76 @@ def test_a_saved_output_is_copied_unchanged_after_its_attribution(tmp_path):
     assert (tmp_path / "out" / "q6_publication_lag.csv").read_bytes() == (
         BMRS_LINE + q6_rows
     ).encode("utf-8")
+
+
+def test_a_saved_output_already_carrying_its_attribution_writes_the_same_files(
+    tmp_path,
+):
+    # Q3's rows feed a chart, so the attribution must not reach the parsing,
+    # and the copy must not double it.
+    raw = saved_outputs_folder(tmp_path / "raw")
+    attributed = saved_outputs_folder(tmp_path / "attributed")
+    prepend_text(attributed / "q3_metered_vs_notified.csv", BMRS_LINE)
+    write_charts(raw, tmp_path / "from_raw")
+    write_charts(attributed, tmp_path / "from_attributed")
+
+    assert output_files(tmp_path / "from_attributed") == output_files(
+        tmp_path / "from_raw"
+    )
+
+
+def test_a_committed_context_file_keeps_its_second_comment_line(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    (saved / "context_q28_runs_held.csv").write_text(
+        BMRS_LINE
+        + "# Counts as held at a read-only query on 2 March 2027, 09:16 UTC.\n"
+        + "month,run_held,cohort_unit_periods,first_date,last_date\n"
+        + "2025-09,R2,250,2025-09-01,2025-09-30\n",
+        encoding="utf-8",
+    )
+    write_charts(saved, tmp_path / "out")
+
+    assert (tmp_path / "out" / "context_q28_runs_held.csv").read_bytes() == (
+        "# Contains BMRS data © Elexon Limited copyright and database right 2026.\n"
+        "# Counts as held at a read-only query on 2 March 2027, 09:16 UTC.\n"
+        "month,run_held,cohort_unit_periods,first_date,last_date\n"
+        "2025-09,R2,250,2025-09-01,2025-09-30\n"
+    ).encode("utf-8")
+
+
+def test_a_saved_output_carrying_another_attribution_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    prepend_text(
+        saved / "q6_publication_lag.csv",
+        "# Contains BMRS data © Elexon Limited copyright and database right 2025.\n",
+    )
+
+    with pytest.raises(ValueError, match="attribution"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_saved_output_carrying_its_attribution_below_another_comment_is_refused(
+    tmp_path,
+):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    (saved / "context_q28_runs_held.csv").write_text(
+        "# Counts as held at a read-only query on 2 March 2027, 09:16 UTC.\n"
+        + BMRS_LINE
+        + "month,run_held,cohort_unit_periods,first_date,last_date\n"
+        + "2025-09,R2,250,2025-09-01,2025-09-30\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="attribution"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_saved_output_with_no_header_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    (saved / "q6_publication_lag.csv").write_text(BMRS_LINE, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="no header"):
+        write_charts(saved, tmp_path / "out")
 
 
 def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
@@ -3450,19 +3524,11 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
 
 
 def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path):
-    # The saved outputs are the committed CSVs without their attribution line.
-    # PNGs are left out: their pixels depend on the platform's fonts.
+    # The committed folder is the input as it stands, attribution lines and
+    # all. PNGs are left out: their pixels depend on the platform's fonts.
     results = REPOSITORY / "docs" / "results"
-    saved = tmp_path / "saved"
-    saved.mkdir()
-    for committed in results.glob("*.csv"):
-        text = committed.read_text(encoding="utf-8")
-        if text.startswith("# "):
-            text = text.split("\n", 1)[1]
-        (saved / committed.name).write_text(text, encoding="utf-8")
-
     written = tmp_path / "written"
-    write_charts(saved, written)
+    write_charts(results, written)
 
     stale = []
     for path in sorted(written.iterdir()):

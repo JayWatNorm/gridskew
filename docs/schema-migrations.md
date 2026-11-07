@@ -37,12 +37,15 @@ both jobs, with the `flyway/flyway` image at the version pinned in
 
 ```powershell
 Get-ChildItem sql\migrations\V*.sql | Sort-Object Name | ForEach-Object {
-    psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 -f $_.FullName
+    psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 --single-transaction -f $_.FullName
+    if ($LASTEXITCODE) { throw "$($_.Name) failed" }
 }
 ```
 
-This creates the tables without a history table, which is enough for a
-disposable database.
+This is a recipe for a disposable database, not a replacement for Flyway.
+Each file runs in its own transaction, so a failing file leaves nothing
+behind, and the loop stops at the first failure. Nothing records which
+migrations ran: there is no history table.
 
 **Production** receives a migration as its own step, before the release of
 the code that needs it. The steps are in the platform runbook,
