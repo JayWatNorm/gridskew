@@ -175,8 +175,8 @@ SELECT retrieved_at - time_from AS observation_lag FROM raw.elexon_pn;
 ```
 
 A lag of three hundred days is a backfill; a lag of about a day is the daily
-job. **Do not store what can be derived** — and note that a backfill produces a
-*range* of lags, from a year down to nearly zero, so "backfill" is a property of
+job. **Do not store what can be derived** — a backfill produces a *range* of
+lags, from a year down to nearly zero, so "backfill" is a property of
 a run rather than of a row.
 
 ## The patterns in use

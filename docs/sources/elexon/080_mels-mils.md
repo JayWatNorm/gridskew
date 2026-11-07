@@ -68,8 +68,8 @@ Documented for MELS and MILS, unlike B1610.
 
 **`notificationSequence` is the revision axis.** A unit can resubmit its limits
 during a period, for instance after a fault reduces what it can deliver. Take
-the latest sequence per unit per time window, and note that the *sequence of
-revisions is itself informative*: a limit revised sharply downward mid-period
+the latest sequence per unit per time window. The *sequence of revisions is
+itself informative*: a limit revised sharply downward mid-period
 can signal a fault in progress.
 
 **Two datasets, one shape.** One parser parameterised by dataset name covers

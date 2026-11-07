@@ -9,7 +9,7 @@ inside information under REMIT, the market participant must publish it in a
 timely and effective manner. The resulting notices record expected capacity
 impact and duration. See [Ofgem's Article 4 guidance](https://www.ofgem.gov.uk/policy/publishing-inside-information-under-remit-article-4).
 
-Crucially it also says whether the outage was **planned** or **unplanned**.
+It also says whether the outage was **planned** or **unplanned**.
 
 That single field is the falsifiable core of this project. The claim is that
 *unplanned* shortfalls are what force gas plants to fill in at short notice,

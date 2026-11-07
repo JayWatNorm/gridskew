@@ -1813,7 +1813,7 @@ def at_or_below_zero(rows):
 def strata_read_day(rows):
     """The day the strata read records, from its label line."""
     label = strata_row(rows, "1", "1")["item"]
-    return re.search(rf"decided by James ({LONG_DATE})", label).group(1)
+    return re.search(rf"chosen on ({LONG_DATE})", label).group(1)
 
 
 def latest_day(*days):

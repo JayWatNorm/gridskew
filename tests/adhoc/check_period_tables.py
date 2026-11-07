@@ -1024,7 +1024,7 @@ def main():
         or os.getenv("DBT_DBNAME") != "gridskew_dev"
     ):
         raise RuntimeError(
-            "S6 checks require opt-in to a local disposable gridskew_dev"
+            "Period-table checks require opt-in to a local disposable gridskew_dev"
         )
     conn = disposable_connection()
     # Autocommit: an open read transaction would hold a lock on a model and

@@ -996,8 +996,8 @@ once on 27 October 2026, on data captured up to 14:03:55 UTC.
   absolute rho under about 0.2, is not a test.
 - **Already seen.** One day of wind values (22 August 2025), during
   endpoint checks.
-- **One look.** Read once, after the build review and the counts-only
-  coverage check.
+- **One look.** Read once, after the build checks and the counts-only
+  coverage check pass.
 - **Limitations stated with the result.** The carbon forecast is the
   stored forecast (see [Terms](#terms)), against a wind forecast up to
   hours old; metered wind only, with no embedded wind; an association, not
