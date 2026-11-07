@@ -1,0 +1,5 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+unit,moved_mwh,net_change_mwh,sf_abs_mwh
+gas unit A,25042.483,24436.131,12626.460
+gas unit B,8627.400,-8350.800,54640.000
+gas unit C,6203.950,-5907.550,46966.650

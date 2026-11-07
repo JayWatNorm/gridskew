@@ -215,6 +215,14 @@ NEW_SAVED_OUTPUTS = {
         "E,30,1,500.000",
         "V,20,3,10000.000",
     ],
+    # The three gas units: 23.4 GWh revised, 90% of the grid-connected 26 GWh,
+    # 23.4% of the 100 GWh revised and 39% of their own 60 GWh.
+    "q2_gas_units_revisions.csv": [
+        "unit,moved_mwh,net_change_mwh,sf_abs_mwh",
+        "gas unit A,15000.000,14000.000,10000.000",
+        "gas unit B,5000.000,-4500.000,30000.000",
+        "gas unit C,3400.000,-3000.000,20000.000",
+    ],
     # The reverse cut: 225 MWh is 0.45 GW, a half rounded up; fifth 2's mean
     # rounds to zero from below, fifth 3's (0.05) is a half rounded up.
     "q28_reverse_exploratory.csv": [
@@ -474,6 +482,7 @@ WRITTEN_FILES = [
     "q29_error_by_time_of_day.vl.json",
     "q29_final_forecast_error_by_month_and_block.csv",
     "q2_changes_by_unit_prefix.csv",
+    "q2_gas_units_revisions.csv",
     "q2_moved_energy_by_unit_type.csv",
     "q2_moved_energy_by_unit_type.png",
     "q2_moved_energy_by_unit_type.vl.json",
@@ -1302,6 +1311,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q29_context_demand_by_month.csv": BMRS_LINE,
         "q29_final_forecast_error_by_month_and_block.csv": CARBON_LINE,
         "q2_changes_by_unit_prefix.csv": BMRS_LINE,
+        "q2_gas_units_revisions.csv": BMRS_LINE,
         "q2_moved_energy_by_unit_type.csv": BMRS_LINE,
         "q2_settlement_run_changes.csv": BMRS_LINE,
         "q30_rank_correlations.csv": BMRS_AND_CARBON_LINE,
@@ -1998,7 +2008,13 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
     q5_unmetered = item_row(q5, "3", "cohort unit-periods: no_metered_value")
     q5_metered = item_row(q5, "3", "cohort unit-periods: determinable")
     low, high = wind_planned_range(capacity)
-    three_gas_units_gwh = Decimal("0.18") * Decimal(revised) / Decimal(1000)
+    gas_units = saved_output_rows("q2_gas_units_revisions.csv")
+    three_gas_units_mwh = Decimal(0)
+    three_gas_units_own_mwh = Decimal(0)
+    for row in gas_units:
+        three_gas_units_mwh += Decimal(row["moved_mwh"])
+        three_gas_units_own_mwh += Decimal(row["sf_abs_mwh"])
+    three_gas_units_gwh = three_gas_units_mwh / Decimal(1000)
     link_plan = one_row(plan, "fuel_group", "interconnector")
     link_zero_plan = int(link_plan["q3_unit_periods"]) - int(
         link_plan["q3_unit_periods_nonzero_plan"]
@@ -2029,9 +2045,14 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"its median gap moved from {first.quantize(Decimal('0.01'))} to "
         f"{latest.quantize(Decimal('0.01'))} MWh. The test cannot see",
         "revisions, up or down counted alike, came to about "
-        f"{nearest_ten(three_gas_units_gwh)} GWh, 18% of the energy revised",
+        f"{nearest_ten(three_gas_units_gwh)} GWh, "
+        f"{percent_of(three_gas_units_mwh, three_gas_units_own_mwh, 0)}% of their "
+        f"own {whole(three_gas_units_own_mwh / Decimal(1000))} GWh in the "
+        f"three-week run, and {percent_of(three_gas_units_mwh, revised, 0)}% of "
+        "the energy revised",
         "Among transmission-connected and embedded units, three gas units account "
-        "for 18% of all the energy revised",
+        f"for {percent_of(three_gas_units_mwh, revised, 0)}% of all the energy "
+        "revised",
         f"no meter reading ({percent_of(no_meter['unit_periods'], int(cohort['unit_periods']) + int(no_meter['unit_periods']), 1)}%), "
         f"and 283,242 with a meter reading and no plan "
         f"({percent_of(int(metered['unit_periods']) - int(cohort['unit_periods']), metered['unit_periods'], 1)}%).",
@@ -2266,14 +2287,43 @@ def test_q6s_on_the_hour_share_comes_from_its_context_count():
     )
 
 
-def test_q2s_gas_unit_details_say_their_output_is_not_published():
+def test_q2s_gas_units_are_lettered_and_their_share_of_the_group_is_derived():
+    gas_units = saved_output_rows("q2_gas_units_revisions.csv")
+    prefixes = saved_output_rows("q2_changes_by_unit_prefix.csv")
     article = article_text(PAGE.read_text(encoding="utf-8"), "q2")
-    gas_units = article.split("<dt>The three gas units</dt>", 1)[1]
-    gas_units = gas_units.split("</dd>", 1)[0]
-
-    assert gas_units.endswith(
-        " These figures come from a unit-level output that is not published."
+    details = article.split("<dt>The three gas units</dt>", 1)[1].split("</dd>", 1)[0]
+    gas_units_mwh = Decimal(0)
+    for row in gas_units:
+        gas_units_mwh += Decimal(row["moved_mwh"])
+    transmission_connected = one_row(prefixes, "unit_prefix", "T")
+    embedded = one_row(prefixes, "unit_prefix", "E")
+    grid_connected_mwh = Decimal(transmission_connected["moved_mwh"]) + Decimal(
+        embedded["moved_mwh"]
     )
+    tenths_of_group = (Decimal(10) * gas_units_mwh / grid_connected_mwh).quantize(
+        Decimal(1), rounding=ROUND_HALF_UP
+    )
+
+    assert [row["unit"] for row in gas_units] == [
+        "gas unit A",
+        "gas unit B",
+        "gas unit C",
+    ]
+    assert details.endswith(
+        "Each unit's revised energy, net change and three-week-run energy are in "
+        'a <a href="results/q2_gas_units_revisions.csv">saved output</a>; the '
+        "units are lettered, not named."
+    )
+    assert tenths_of_group == 9
+    assert "nine-tenths of this group" in article
+    assert (
+        '<a href="results/q2_gas_units_revisions.csv">the three gas units</a>'
+        in article
+    )
+    rose = []
+    for row in gas_units:
+        rose.append(Decimal(row["net_change_mwh"]) > 0)
+    assert rose == [True, False, False]
 
 
 def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
