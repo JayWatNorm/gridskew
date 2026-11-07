@@ -928,7 +928,9 @@ def compiled_wind_warning(capture_from, warn_today):
     dbt_vars = {"wind_capture_from": capture_from.isoformat()}
     if warn_today is not None:
         dbt_vars["wind_warn_today"] = warn_today.isoformat()
-    manifest = compile_analyses(dbt_vars, also_compiled=(WIND_WARNING_TEST,))
+    manifest = compile_analyses(
+        dbt_vars, also_compiled=(WIND_WARNING_TEST,), selected=()
+    )
     for node in manifest["nodes"].values():
         if node["resource_type"] == "test" and node["name"] == WIND_WARNING_TEST:
             return node["compiled_code"]
