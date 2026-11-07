@@ -4,8 +4,8 @@ exposures:
     owner:
       name: James
     description: >
-      The results the project README will quote. A mart is listed once its
-      definition is confirmed for the README.
+      The results the project README will quote. A mart is listed here once
+      the README uses it.
     depends_on:
       - ref('agg_delivery_by_fuel_group')
       - ref('agg_generation_coverage')

@@ -55,8 +55,8 @@
 -- fewer than q30_bootstrap_min_usable_draws usable draws an interval is
 -- unavailable. Resampling whole days keeps the correlation within a day.
 --
--- Read once, after the build review and the counts-only coverage check,
--- with n, the window and the coverage beside every number.
+-- Read once, after the build checks and the counts-only coverage check
+-- pass, with n, the window and the coverage beside every number.
 
 {% set window_from = var('q30_window_from') %}
 {% set window_until = var('q30_window_until') %}
