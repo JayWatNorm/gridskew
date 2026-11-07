@@ -29,6 +29,11 @@
 -- forecast, not every half-hour; the half-hours and matched days left out
 -- are counted in section 3, and the bootstrap resamples only matched days
 -- that hold at least one such half-hour.
+-- Amended 7 November 2026, before any read: a settlement date counts only
+-- once every determinable active cohort unit-period on it holds a metered
+-- value from SF or a later run at the read, and the 90 matched days count
+-- eligible dates only (research questions, Q4, "Settlement run"). This query
+-- does not apply that rule yet; it is built in before the read.
 --
 -- A half-hour has the cohort's unexplained shortfall when at least one
 -- determinable cohort unit-period holds a value (Q5's population: with or

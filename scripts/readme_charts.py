@@ -93,6 +93,19 @@ CONTEXT_Q25_CADL_RESULT = "context_q25_cadl_check.csv"
 CONTEXT_Q23_RUNS_RESULT = "context_q23_runs_by_month.csv"
 CONTEXT_Q28_RUNS_RESULT = "context_q28_runs_held.csv"
 CONTEXT_Q30_LATENESS_RESULT = "context_q30_outturn_lateness.csv"
+# Read 7 November 2026 on the data as held at each read, each with its basis
+# as a second comment line: Q5's under-delivery by whether the unit drew
+# power while expected at zero or below; when Q6's notices were first
+# published against their written start; the supplier and virtual lead party
+# units in Q3's, Q5's and Q23's half-hours; the registry's change since Q23's
+# read; zero readings on the one-week run; Q23's measure on the one-week and
+# later runs.
+CONTEXT_Q5_DRAWING_POWER_RESULT = "context_q5_drawing_power.csv"
+CONTEXT_Q6_TIMING_RESULT = "context_q6_publication_timing.csv"
+CONTEXT_UNIT_TYPES_RESULT = "context_cohort_unit_types.csv"
+CONTEXT_COHORT_CHANGE_RESULT = "context_cohort_change.csv"
+CONTEXT_ZERO_READINGS_RESULT = "context_ii_zero_readings.csv"
+CONTEXT_Q23_ONE_WEEK_RESULT = "context_q23_one_week_and_later_runs.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
 SPEC_DATA_FOLDER = "results"
@@ -3271,17 +3284,25 @@ def write_charts(result_folder, output_folder):
     )
     q3 = copy_saved_output(results, output, Q3_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, Q3_COVERAGE_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_UNIT_TYPES_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_COHORT_CHANGE_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, Q22_RESULT, BMRS_ATTRIBUTION)
     write_q3_chart(q3, plan, output)
     q12 = copy_saved_output(results, output, Q12_RESULT, BMRS_ATTRIBUTION)
     write_q12_chart(q12, q3, plan, output)
     q5 = copy_saved_output(results, output, Q5_RESULT, BMRS_ATTRIBUTION)
     write_q5_chart(q5, plan, output)
+    copy_saved_output(
+        results, output, CONTEXT_Q5_DRAWING_POWER_RESULT, BMRS_ATTRIBUTION
+    )
+    copy_saved_output(results, output, CONTEXT_ZERO_READINGS_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, Q6_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, CONTEXT_Q6_ALIGNMENT_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, CONTEXT_Q6_QUARTILES_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_Q6_TIMING_RESULT, BMRS_ATTRIBUTION)
     q23 = copy_saved_output(results, output, Q23_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, CONTEXT_Q23_RUNS_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_Q23_ONE_WEEK_RESULT, BMRS_ATTRIBUTION)
     write_q23_typical_chart(q23, capacity, output)
     write_q23_monthly_chart(q23, capacity, output)
     q24 = copy_saved_output(results, output, Q24_RESULT, BMRS_ATTRIBUTION)

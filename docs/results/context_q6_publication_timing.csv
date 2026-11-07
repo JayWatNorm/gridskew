@@ -1,0 +1,6 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Read 7 November 2026 18:33 UTC (read-only) on the REMIT rows as held at Q6's read (retrieved by 12 October 2026 15:31 UTC): first and current publications, classes and exclusions as Q6 and context_q6_lag_quartiles.csv. Lag: the first publication's time minus the written start; before the start means a negative lag. Notices equal q6_publication_lag.csv. Counts only.
+section,outage_class,notices,before_start,over_1h_before_start,at_start,after_start,up_to_30min_after_start,over_1h_after_start,over_1d_after_start,label
+1,Planned,8545,7913,6567,0,632,247,330,119,"context only: distribution, not a registered result"
+1,Unplanned,11811,5583,3212,3,6225,5066,893,148,"context only: distribution, not a registered result"
+1,,12,9,8,0,3,2,1,0,"context only: distribution, not a registered result"

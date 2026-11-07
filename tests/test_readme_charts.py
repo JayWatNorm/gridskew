@@ -114,6 +114,7 @@ BMRS_AND_CARBON_LINE = (
 # sum to round figures, with E beside T and C beside V.
 CONTEXT_LABEL = "context only: denominator, not a registered result"
 DISTRIBUTION_LABEL = "context only: distribution, not a registered result"
+BREAKDOWN_LABEL = "context only: breakdown, not a registered result"
 # Q23's chart months, for the planned-output context fixture.
 Q23_FIXTURE_MONTHS = [
     "2025-09-01",
@@ -218,6 +219,49 @@ NEW_SAVED_OUTPUTS = {
         "section,item,unit_class,acceptances,units,label",
         f'1,fuel type OTHER,battery by name or ID,900,9,"{CONTEXT_LABEL}"',
         f'2,fuel type OTHER,all classes,1000,12,"{CONTEXT_LABEL}"',
+    ],
+    # Read on the data held at each read, each with its basis as a second
+    # comment line, which the copy keeps.
+    "context_q5_drawing_power.csv": [
+        "# Read 1 January 2026 on the data held at Q5's read.",
+        "section,fuel_group,unit_periods,under_delivery_mwh,"
+        "drawing_power_expected_at_or_below_zero_mwh,"
+        "drawing_power_expected_at_or_below_zero_unit_periods,label",
+        f'1,wind,400,700.0,35.0,12,"{BREAKDOWN_LABEL}"',
+        f'2,,700,1000.0,90.0,40,"{BREAKDOWN_LABEL}"',
+    ],
+    "context_q6_publication_timing.csv": [
+        "# Read 1 January 2026 on the REMIT rows held at Q6's read.",
+        "section,outage_class,notices,before_start,over_1h_before_start,at_start,"
+        "after_start,up_to_30min_after_start,over_1h_after_start,"
+        "over_1d_after_start,label",
+        f'1,Unplanned,300,140,70,2,158,120,25,4,"{DISTRIBUTION_LABEL}"',
+    ],
+    "context_cohort_unit_types.csv": [
+        "# Read 1 January 2026 on the data held at each read.",
+        "section,question,fuel_group,unit_type,unit_periods,units,label",
+        f'1,Q3,,S,30,2,"{BREAKDOWN_LABEL}"',
+        f'1,Q3,,all,940,40,"{BREAKDOWN_LABEL}"',
+    ],
+    "context_cohort_change.csv": [
+        "# Read 1 January 2026 against the register of the read.",
+        "section,item,detail,fuel_group,units,unit_periods,label",
+        f'1,gained a fuel type,OCGT,gas_turbine,3,,"{BREAKDOWN_LABEL}"',
+        f'2,as held at the read,,,40,900,"{BREAKDOWN_LABEL}"',
+    ],
+    "context_ii_zero_readings.csv": [
+        "# Read 1 January 2026 on the data held at the reads.",
+        "section,item,detail,fuel_group,unit_periods,zero_readings,units,label",
+        "1,2025-09-01,first metered figure on the one-week run,gas_turbine,"
+        f'500,20,2,"{BREAKDOWN_LABEL}"',
+    ],
+    "context_q23_one_week_and_later_runs.csv": [
+        "# Read 1 January 2026 on Q23's population held at its read.",
+        "section,fuel_group,settlement_month,unit_months,half_hours,"
+        "median_absolute_pct_one_week,p90_absolute_pct_one_week,"
+        "median_absolute_pct_latest,p90_absolute_pct_latest,"
+        "median_absolute_pct_at_read,p90_absolute_pct_at_read,label",
+        f'1,wind,2025-09-01,20,9000,8.100,12.000,7.900,11.000,8.000,11.500,"{BREAKDOWN_LABEL}"',
     ],
     "context_q25_cadl_check.csv": [
         "# Copied 1 January 2026 from the recorded checks.",
@@ -482,15 +526,21 @@ EXPECTED_CHART_CSVS = {
 
 WRITTEN_FILES = [
     "context_carbon_intensity.csv",
+    "context_cohort_change.csv",
+    "context_cohort_unit_types.csv",
     "context_demand.csv",
+    "context_ii_zero_readings.csv",
     "context_plan_pct_capacity.csv",
     "context_plan_per_unit_half_hour.csv",
+    "context_q23_one_week_and_later_runs.csv",
     "context_q23_runs_by_month.csv",
     "context_q25_battery_named_units.csv",
     "context_q25_cadl_check.csv",
     "context_q28_runs_held.csv",
     "context_q30_outturn_lateness.csv",
+    "context_q5_drawing_power.csv",
     "context_q6_lag_quartiles.csv",
+    "context_q6_publication_timing.csv",
     "context_q6_start_alignment.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
@@ -1345,15 +1395,21 @@ def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
 def test_every_written_csv_starts_with_its_attribution(written):
     assert first_lines(written) == {
         "context_carbon_intensity.csv": CARBON_LINE,
+        "context_cohort_change.csv": BMRS_LINE,
+        "context_cohort_unit_types.csv": BMRS_LINE,
         "context_demand.csv": BMRS_LINE,
+        "context_ii_zero_readings.csv": BMRS_LINE,
         "context_plan_pct_capacity.csv": BMRS_LINE,
         "context_plan_per_unit_half_hour.csv": BMRS_LINE,
+        "context_q23_one_week_and_later_runs.csv": BMRS_LINE,
         "context_q23_runs_by_month.csv": BMRS_LINE,
         "context_q25_battery_named_units.csv": BMRS_LINE,
         "context_q25_cadl_check.csv": BMRS_LINE,
         "context_q28_runs_held.csv": BMRS_LINE,
         "context_q30_outturn_lateness.csv": BMRS_LINE,
+        "context_q5_drawing_power.csv": BMRS_LINE,
         "context_q6_lag_quartiles.csv": BMRS_LINE,
+        "context_q6_publication_timing.csv": BMRS_LINE,
         "context_q6_start_alignment.csv": BMRS_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
@@ -1870,7 +1926,7 @@ STRATA_RESULT = "q28_reverse_strata_exploratory.csv"
 STRATA_ABOVE_ZERO = "a positive slope remains within the same time of day and month"
 STRATA_INCLUDES_ZERO = "no clear slope remains within the same time of day and month"
 STRATA_BELOW_ZERO = "the sign reverses within the same time of day and month"
-NUMBER_WORDS = {4: "four", 6: "six", 17: "seventeen"}
+NUMBER_WORDS = {4: "four", 6: "six", 13: "thirteen", 17: "seventeen"}
 
 
 def strata_clause(low, high):
@@ -2431,7 +2487,7 @@ def test_q6s_on_the_hour_share_comes_from_its_context_count():
     assert (
         f"{percent_of(on_the_hour, notices, 0)}% ({on_the_hour:,} of {notices:,}) "
         "give a start exactly on the hour or half-hour, so this is not the time "
-        "from failure to notice.</p>" in article
+        "from failure to notice." in article
     )
     assert int(lag_unplanned["notices"]) == notices
     assert '<a href="results/context_q6_start_alignment.csv">context data</a>' in (
@@ -2720,6 +2776,347 @@ def test_q23s_settlement_runs_come_from_its_runs_by_month_count():
         f"{counted_at(name)}: the unit half-hour counts are as held then, not "
         "at the read.</dd>" in article_text(PAGE.read_text(encoding="utf-8"), "q23")
     )
+
+
+def read_day(name):
+    """'7 November 2026': the day a context file's counts were read, from its
+    second comment line."""
+    text = (REPOSITORY / "docs" / "results" / name).read_text(encoding="utf-8")
+    basis = text.split("\n")[1]
+    return re.match(rf"# Read ({LONG_DATE})", basis).group(1)
+
+
+def summed(rows, column):
+    total = Decimal(0)
+    for row in rows:
+        total += Decimal(row[column])
+    return total
+
+
+def section_rows(rows, section):
+    found = []
+    for row in rows:
+        if row["section"] == section:
+            found.append(row)
+    return found
+
+
+def test_q5s_drawing_power_share_comes_from_its_breakdown():
+    breakdown = saved_output_rows("context_q5_drawing_power.csv")
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    total = one_row(breakdown, "section", "2")
+    under_delivery = Decimal(total["under_delivery_mwh"])
+    drawing_power = Decimal(total["drawing_power_expected_at_or_below_zero_mwh"])
+    published = item_row(q5, "1", "total")
+    groups = section_rows(breakdown, "1")
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q5")
+
+    assert (
+        f'<p class="note">About {percent_of(drawing_power, under_delivery, 0)}% of '
+        f"this under-delivery ({tenths(drawing_power / 1_000_000)} of "
+        f"{tenths(under_delivery / 1_000_000)} TWh) comes from units drawing "
+        "power in half-hours when their expected output was zero or below"
+    ) in article
+    assert under_delivery == Decimal(published["positive_shortfall_mwh"])
+    assert total["unit_periods"] == published["unit_periods"]
+    assert summed(groups, "under_delivery_mwh") == under_delivery
+    assert summed(groups, "drawing_power_expected_at_or_below_zero_mwh") == (
+        drawing_power
+    )
+    assert '<a href="results/context_q5_drawing_power.csv">' in article
+
+
+def zero_reading_row(rows, section, item, fuel_group):
+    found = []
+    for row in rows:
+        same_item = row["item"] == item and row["fuel_group"] == fuel_group
+        if row["section"] == section and same_item:
+            found.append(row)
+    assert len(found) == 1
+    return found[0]
+
+
+def stored_row_checks(rows):
+    """Per span of section 3: the zero readings whose stored one-week row
+    holds 0, and the model's one-week values with no stored row."""
+    checks = {}
+    for row in section_rows(rows, "3"):
+        held = checks.get(row["item"], {})
+        held[row["detail"]] = int(row["unit_periods"])
+        checks[row["item"]] = held
+    return checks
+
+
+def test_q5s_one_week_zeros_come_from_their_count():
+    name = "context_ii_zero_readings.csv"
+    zeros = saved_output_rows(name)
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    gas = zero_reading_row(zeros, "2", "Q5", "gas_turbine")
+    every_group = zero_reading_row(zeros, "2", "Q5", "")
+    on_the_one_week_run = item_row(q5, "3", "population by metered run: II")
+    checks = stored_row_checks(zeros)
+    from_17_august = checks["2026-08-17 to 2026-09-27"]
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q5")
+
+    assert (
+        f"In those days, {gas['units']} gas units read exactly zero on the "
+        f"one-week run in {int(gas['zero_readings']):,} unit half-hours that the "
+        "three-week run, which arrived after the read, shows as not zero; "
+        "Elexon's one-week data, as stored, hold these zeros "
+        f'(<a href="results/{name}">zero readings</a>).</p>'
+    ) in article
+    assert every_group["unit_periods"] == on_the_one_week_run["unit_periods"]
+    assert (
+        int(gas["zero_readings"])
+        <= (from_17_august["zero readings whose stored one-week row holds 0"])
+    )
+    for held in checks.values():
+        assert held["model one-week values with no stored one-week row"] == 0
+
+
+def september_row(rows, section, fuel_group):
+    found = []
+    for row in rows:
+        september = row["settlement_month"] == "2026-09-01"
+        if row["section"] == section and row["fuel_group"] == fuel_group and september:
+            found.append(row)
+    assert len(found) == 1
+    return found[0]
+
+
+def test_q23s_september_rows_on_the_data_held_at_the_read_equal_its_output():
+    runs = saved_output_rows("context_q23_one_week_and_later_runs.csv")
+    q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
+    checks = section_rows(runs, "2")
+
+    assert len(checks) == 8
+    for check in checks:
+        saved = september_row(q23, "1", check["fuel_group"])
+        assert (
+            check["unit_months"],
+            check["half_hours"],
+            check["median_absolute_pct_at_read"],
+            check["p90_absolute_pct_at_read"],
+        ) == (
+            saved["units"],
+            saved["half_hours"],
+            saved["median_absolute_pct"],
+            saved["p90_absolute_pct"],
+        )
+
+
+def test_q23s_one_week_run_entry_comes_from_its_counts():
+    zeros_name = "context_ii_zero_readings.csv"
+    runs_name = "context_q23_one_week_and_later_runs.csv"
+    zeros = saved_output_rows(zeros_name)
+    runs = saved_output_rows(runs_name)
+    q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
+    gas = zero_reading_row(zeros, "2", "Q23", "gas_turbine")
+    every_group = zero_reading_row(zeros, "2", "Q23", "")
+    on_the_one_week_run = item_row(q23, "3", "population by metered run: II")
+    wind = september_row(runs, "1", "wind")
+    bioenergy = september_row(runs, "1", "bioenergy")
+    gas_measure = september_row(runs, "1", "gas_turbine")
+    wind_latest = Decimal(wind["median_absolute_pct_latest"])
+    bioenergy_latest = Decimal(bioenergy["median_absolute_pct_latest"])
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q23")
+
+    assert (
+        f"<dd>At the read, {gas['units']} gas units read exactly zero on the "
+        f"one-week run in {int(gas['zero_readings']):,} unit half-hours that the "
+        f"three-week run shows as not zero ({int(every_group['zero_readings']):,} "
+        f"of the {int(every_group['unit_periods']):,} unit half-hours then on the "
+        "one-week run, all groups together). On the September unit half-hours "
+        "that have both runs, the "
+        "three-week run leaves wind's and bioenergy's medians above their "
+        f"whole-month ranges ({tenths(wind_latest)}% and "
+        f"{tenths(bioenergy_latest)}% of capacity, against "
+        f"{tenths(wind['median_absolute_pct_one_week'])}% and "
+        f"{tenths(bioenergy['median_absolute_pct_one_week'])}% on the one-week "
+        "run) and lowers gas's 90th percentile from "
+        f"{tenths(gas_measure['p90_absolute_pct_one_week'])}% to "
+        f"{tenths(gas_measure['p90_absolute_pct_latest'])}%. Counted on "
+        f"{read_day(runs_name)} on the data held at the read: "
+        f'<a href="results/{zeros_name}">zero readings</a>, '
+        f'<a href="results/{runs_name}">one-week and later runs</a>.</dd>'
+    ) in article
+    assert every_group["unit_periods"] == on_the_one_week_run["half_hours"]
+    assert read_day(zeros_name) == read_day(runs_name)
+    assert wind_latest > max(whole_month_medians(q23, "wind"))
+    assert bioenergy_latest > max(whole_month_medians(q23, "bioenergy"))
+
+
+def q22_first_day():
+    first_day, rest = Q2_WEEK.split("–")
+    last_day, month, year = rest.split(" ")
+    return datetime.strptime(f"{first_day} {month} {year}", "%d %b %Y").date()
+
+
+def zero_readings_by_week(rows):
+    by_week = {}
+    for row in section_rows(rows, "1"):
+        week = datetime.strptime(row["item"], "%Y-%m-%d").date()
+        by_week[week] = int(row["zero_readings"])
+    return by_week
+
+
+def split_at_week(by_week, change_week):
+    """The weekly counts before the change week, and from it on."""
+    before = []
+    after = []
+    for week, zero_readings in by_week.items():
+        if week < change_week:
+            before.append(zero_readings)
+            continue
+        after.append(zero_readings)
+    return before, after
+
+
+def test_q22s_week_is_the_last_before_the_one_week_runs_change():
+    name = "context_ii_zero_readings.csv"
+    by_week = zero_readings_by_week(saved_output_rows(name))
+    q22_week = q22_first_day()
+    change_week = q22_week + timedelta(days=7)
+    before, after = split_at_week(by_week, change_week)
+    last_day = max(by_week) + timedelta(days=6)
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q3")
+
+    assert (
+        "This answer covers only that week, the last before a change in the "
+        "one-week run: gas units read exactly zero on it, and not zero on a later "
+        f"run, in {by_week[q22_week]:,} unit half-hours that week and in "
+        f"{min(after):,} to {max(after):,} in each week from "
+        f"{day_month(change_week)} to {day_month_year(last_day)} "
+        f'(<a href="results/{name}">zero readings by week</a>).</p>'
+    ) in article
+    assert max(before) < min(after)
+    assert last_day.year == change_week.year
+
+
+def test_q6s_early_and_late_notices_come_from_their_timing_count():
+    timing = saved_output_rows("context_q6_publication_timing.csv")
+    lag = saved_output_rows("q6_publication_lag.csv")
+    unplanned = one_row(timing, "outage_class", "Unplanned")
+    notices = int(unplanned["notices"])
+    before = int(unplanned["before_start"])
+    late = int(unplanned["over_1h_after_start"])
+    one_in = int(whole(Decimal(notices) / late))
+    article = article_text(PAGE.read_text(encoding="utf-8"), "q6")
+
+    assert (
+        f"About half of the unplanned notices ({before:,} of {notices:,}) were "
+        "published before their written start; about one in "
+        f"{NUMBER_WORDS[one_in]} ({late:,}) more than an hour after it.</p>"
+    ) in article
+    assert tenths(Decimal(before) / notices) == "0.5"
+    assert notices == int(
+        one_row(item_rows(lag, "1", ""), "outage_class", "Unplanned")["notices"]
+    )
+    for row in timing:
+        at_or_after = int(row["at_start"]) + int(row["after_start"])
+        assert int(row["before_start"]) + at_or_after == int(row["notices"])
+    assert '<a href="results/context_q6_publication_timing.csv">' in article
+
+
+def allocated_share(rows, question):
+    """The percentage of a question's half-hours at unit types S and V."""
+    allocated = 0
+    for row in section_rows(rows, "1"):
+        if row["question"] == question and row["unit_type"] in ("S", "V"):
+            allocated += int(row["unit_periods"])
+    return percent_of(allocated, question_total(rows, question), 0)
+
+
+def question_total(rows, question):
+    found = []
+    for row in section_rows(rows, "1"):
+        if row["question"] == question and row["unit_type"] == "all":
+            found.append(int(row["unit_periods"]))
+    assert len(found) == 1
+    return found[0]
+
+
+def q23_population_size(q23_rows):
+    total = 0
+    for row in section_rows(q23_rows, "3"):
+        if row["item"].startswith("population by metered run: "):
+            total += int(row["half_hours"])
+    return total
+
+
+def test_the_unit_glossary_states_the_supplier_and_virtual_unit_shares():
+    name = "context_cohort_unit_types.csv"
+    types = saved_output_rows(name)
+    q3 = saved_output_rows("q3_metered_vs_notified.csv")
+    q12 = saved_output_rows("q12_instructed_vs_residual.csv")
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        "Some of those are registered by suppliers or virtual lead parties: about "
+        f"{allocated_share(types, 'Q3')}% of the half-hours in Q3, Q5 and Q12, and "
+        f"{allocated_share(types, 'Q23')}% in Q23. Their metered figures are "
+        "settlement allocations, not a station's meter "
+        f'(<a href="results/{name}">unit types at each read</a>).</dd>'
+    ) in page
+    assert allocated_share(types, "Q5") == allocated_share(types, "Q3")
+    assert question_total(types, "Q3") == summed(q3, "unit_periods")
+    assert question_total(types, "Q3") == summed(q12, "unit_periods")
+    assert question_total(types, "Q5") == int(
+        item_row(q5, "1", "total")["unit_periods"]
+    )
+    assert question_total(types, "Q23") == q23_population_size(q23)
+
+
+def gained_fuel_types(rows):
+    """'15 other, 8 gas, 1 bioenergy': the fuel groups of the units that
+    gained a fuel type, most units first, and how many units in all."""
+    gained = []
+    for row in section_rows(rows, "1"):
+        if row["item"] == "gained a fuel type":
+            gained.append((int(row["units"]), row["fuel_group"]))
+    gained.sort(reverse=True)
+    parts = []
+    units = 0
+    for count, fuel_group in gained:
+        units += count
+        parts.append(f"{count} {FUEL_GROUP_DISPLAY_NAMES[fuel_group].lower()}")
+    return units, ", ".join(parts)
+
+
+def test_the_fuel_group_glossary_states_the_cohort_change_from_its_count():
+    name = "context_cohort_change.csv"
+    change = saved_output_rows(name)
+    q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
+    units, gained = gained_fuel_types(change)
+    unchanged = one_row(change, "item", "lost or changed its fuel type")
+    at_read = one_row(change, "item", "as held at the read")
+    own_units = one_row(
+        change, "detail", "units in the read's cohort, metered at the read"
+    )
+    metered_later = one_row(
+        change, "detail", "units in the read's cohort, first metered after the read"
+    )
+    new_units = one_row(change, "detail", "units given a fuel type after the read")
+    at_read_size = int(at_read["unit_periods"])
+    added = int(new_units["unit_periods"])
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        f"Since Q23's read on 15 October 2026, the registry has given {units} more "
+        f"units a fuel type ({gained}) and changed none. Counted on "
+        f"{read_day(name)}, Q23's half-hours would include {added:,} more at "
+        f"{new_units['units']} of those units "
+        f"({percent_of(added, at_read_size, 1)}%), and "
+        f"{int(metered_later['unit_periods']):,} more at the read's own units, "
+        "whose first meter figures arrived after the read "
+        f'(<a href="results/{name}">cohort change</a>).</dd>'
+    ) in page
+    assert unchanged["units"] == "0"
+    assert at_read_size == int(own_units["unit_periods"]) == q23_population_size(q23)
+    assert "Read 15 October 2026, 20:05 UTC." in article_text(page, "q23")
+    assert "<li>Fuel groups are the registry's at each read.</li>" in page
 
 
 def with_a_metered_value(rows):
@@ -3102,8 +3499,21 @@ def test_each_context_row_is_labelled_a_denominator_not_a_result():
 
 
 def test_each_lag_quartile_row_is_labelled_distribution_context_not_a_result():
-    for row in saved_output_rows("context_q6_lag_quartiles.csv"):
-        assert row["label"] == DISTRIBUTION_LABEL
+    for name in ["context_q6_lag_quartiles.csv", "context_q6_publication_timing.csv"]:
+        for row in saved_output_rows(name):
+            assert row["label"] == DISTRIBUTION_LABEL
+
+
+def test_each_breakdown_row_is_labelled_context_not_a_result():
+    for name in [
+        "context_q5_drawing_power.csv",
+        "context_cohort_unit_types.csv",
+        "context_cohort_change.csv",
+        "context_ii_zero_readings.csv",
+        "context_q23_one_week_and_later_runs.csv",
+    ]:
+        for row in saved_output_rows(name):
+            assert row["label"] == BREAKDOWN_LABEL
 
 
 def test_chart_reading_lines_give_scale_from_the_context_counts(written):
