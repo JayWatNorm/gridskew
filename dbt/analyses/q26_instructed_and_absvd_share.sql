@@ -57,8 +57,8 @@
 {% set minimum_capture_age_days = 35 %}
 {% set all_fuel_groups = 'all fuel groups' %}
 {% set not_applicable = 'N/A' %}
-{% set fall_label = 'not called pre-registered (exploration E5, 11 October)' %}
-{% set month_label = 'informed by exploration E5 (falls in winter, small rises in summer)' %}
+{% set fall_label = 'not called pre-registered (the exploration of 11 October 2026)' %}
+{% set month_label = 'informed by the exploration of 11 October 2026 (falls in winter, small rises in summer)' %}
 {% set placebo_detail = "no test: a placebo fall near the real fall says ABSVD''s apparent effect is not specific to the half-hour it belongs to" %}
 {% set young_capture = 'less than ' ~ minimum_capture_age_days ~ ' days after' %}
 

@@ -4702,11 +4702,11 @@ Q26_YOUNG = (
 )
 Q26_FALL = (
     "fall in unexplained energy once ABSVD is counted: not called "
-    "pre-registered (exploration E5, 11 October)"
+    "pre-registered (the exploration of 11 October 2026)"
 )
 Q26_MONTH = (
-    "by calendar month of the settlement date: informed by exploration E5 "
-    "(falls in winter, small rises in summer)"
+    "by calendar month of the settlement date: informed by the exploration of "
+    "11 October 2026 (falls in winter, small rises in summer)"
 )
 Q26_PLACEBO = (
     "placebo: ABSVD of the same unit and settlement period on the previous "
