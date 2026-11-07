@@ -2295,10 +2295,11 @@ def test_q2s_gas_units_are_lettered_and_their_share_of_the_group_is_derived():
     gas_units_mwh = Decimal(0)
     for row in gas_units:
         gas_units_mwh += Decimal(row["moved_mwh"])
-    grid_connected_mwh = Decimal(0)
-    for row in prefixes:
-        if row["unit_prefix"] in ("T", "E"):
-            grid_connected_mwh += Decimal(row["moved_mwh"])
+    transmission_connected = one_row(prefixes, "unit_prefix", "T")
+    embedded = one_row(prefixes, "unit_prefix", "E")
+    grid_connected_mwh = Decimal(transmission_connected["moved_mwh"]) + Decimal(
+        embedded["moved_mwh"]
+    )
     tenths_of_group = (Decimal(10) * gas_units_mwh / grid_connected_mwh).quantize(
         Decimal(1), rounding=ROUND_HALF_UP
     )
