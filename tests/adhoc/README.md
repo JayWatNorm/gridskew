@@ -48,6 +48,12 @@ They import from `ingestion/`, so they need the repo root on the path.
 The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
 database is a local `gridskew_dev`.
 
+Run the database checks from the repository root in the order shown in
+`.github/workflows/ci.yml`, with `DBT_DBNAME=gridskew_dev`,
+`GRIDSKEW_DISPOSABLE_TEST=1` and `PYTHONPATH=.`. Apply migrations before
+fixtures. Run `check_period_tables` in a separate database with migrations
+applied and no fixtures.
+
 ## SQL checks
 
 `period_source_checks.sql` and `period_zero_volume_checks.sql` are read-only

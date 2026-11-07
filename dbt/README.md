@@ -350,6 +350,8 @@ Make these environment variables available before running dbt:
 - `DBT_PORT`: production PostgreSQL port, normally `5435`
 - `DBT_USER`: restricted dbt role
 - `DBT_PASSWORD`: password for that role
+- `DBT_DBNAME`: database name, `gridskew_prod` on the homelab; `gridskew_dev`
+  for disposable checks
 
 Run dbt commands from the repository's `dbt` folder.
 
