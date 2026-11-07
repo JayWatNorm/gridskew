@@ -101,11 +101,12 @@ they do not establish a unit's actual fuel or emissions. See the
 [dbt guide](dbt/README.md) for their contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. Eleven
+Linux server, with separate development and production databases. Twelve
 Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
 three `B1610` settlement runs (`II`, `SF` and, from mid-November 2026, `RF`),
 the BM unit registry, balancing instructions (`BOALF`), outage notices
-(`REMIT`) and balancing services volume (`QAS`, ABSVD). Two more run dbt:
+(`REMIT`), balancing services volume (`QAS`, ABSVD) and wind forecast and
+outturn (`WINDFOR`, `FUELHH`). Two more run dbt:
 hourly source-freshness checks, and a nightly job that updates the period
 tables and runs the project's data tests.
 
@@ -129,12 +130,12 @@ Each ingested endpoint has an explicit field contract. Shared validation and
 routing report missing, null, incompatible and unexpected fields before typed
 parsing; Carbon contracts also validate the nested `intensity` object. Runtime
 validation and quarantine are deployed for PN, QPN, B1610, BOALF, REMIT, QAS,
-the NDF and INDO back-fill and both Carbon datasets. Carbon also checks that
-each response covers its periods completely.
+the NDF and INDO back-fill, WINDFOR, FUELHH and both Carbon datasets. Carbon
+also checks that each response covers its periods completely.
 The BM-unit registry uses a complete-response gate: a rejected or suspiciously
 small response publishes no successful extract.
 
-For those ten datasets, compatible rows continue to typed loading.
+For the twelve time-series datasets, compatible rows continue to typed loading.
 Rejected rows are committed to `raw.endpoint_quarantine` with their request
 context and complete payload;
 warning-only rows remain loadable and produce grouped logs. Tests cover the
@@ -151,6 +152,8 @@ calls:
 pip install -r requirements-dev.txt
 python -m pytest
 ```
+
+CI uses Python 3.12 and PostgreSQL 16.
 
 The dbt project has separate setup and test instructions in
 [dbt/README.md](dbt/README.md). Scripts under `tests/adhoc/` are excluded from
@@ -197,10 +200,10 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
 - `PN`, `QPN`, `B1610`, `BOALF`, `REMIT` and `QAS` ingestion, backfills and
   scheduled Airflow runs
 - Append-only raw storage
-- Runtime validation and quarantine for the ten time-series datasets, plus
+- Runtime validation and quarantine for the twelve time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
-- dbt sources, production freshness checks and eleven source-grain staging views
+- dbt sources, production freshness checks and fourteen source-grain staging views
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
