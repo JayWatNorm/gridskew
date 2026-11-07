@@ -557,6 +557,9 @@ def copy_saved_output(results, output, name, attribution):
     comments, rows_text = split_leading_comments(saved_text)
     if not rows_text:
         raise ValueError(f"{name}: no header below its comment lines")
+    header = rows_text.partition("\n")[0]
+    if not header.strip() or header.lstrip("﻿").startswith("#"):
+        raise ValueError(f"{name}: no header below its comment lines")
     attribution_line = f"# {attribution}\n"
     kept = comments_below_attribution(comments, attribution_line, name)
     copied = attribution_line + "".join(kept) + rows_text
