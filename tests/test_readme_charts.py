@@ -2815,7 +2815,7 @@ def test_q5s_drawing_power_share_comes_from_its_breakdown():
         f'<p class="note">About {percent_of(drawing_power, under_delivery, 0)}% of '
         f"this under-delivery ({tenths(drawing_power / 1_000_000)} of "
         f"{tenths(under_delivery / 1_000_000)} TWh) comes from units drawing "
-        "power in half-hours when they were expected to produce zero or less"
+        "power in half-hours when their expected output was zero or below"
     ) in article
     assert under_delivery == Decimal(published["positive_shortfall_mwh"])
     assert total["unit_periods"] == published["unit_periods"]
@@ -2926,7 +2926,8 @@ def test_q23s_one_week_run_entry_comes_from_its_counts():
         f"one-week run in {int(gas['zero_readings']):,} unit half-hours that the "
         f"three-week run shows as not zero ({int(every_group['zero_readings']):,} "
         f"of the {int(every_group['unit_periods']):,} unit half-hours then on the "
-        "one-week run). On the September unit half-hours that have both runs, the "
+        "one-week run, all groups together). On the September unit half-hours "
+        "that have both runs, the "
         "three-week run leaves wind's and bioenergy's medians above their "
         f"whole-month ranges ({tenths(wind_latest)}% and "
         f"{tenths(bioenergy_latest)}% of capacity, against "
@@ -2959,11 +2960,8 @@ def zero_readings_by_week(rows):
     return by_week
 
 
-def test_q22s_week_is_the_last_before_the_one_week_runs_change():
-    name = "context_ii_zero_readings.csv"
-    by_week = zero_readings_by_week(saved_output_rows(name))
-    q22_week = q22_first_day()
-    change_week = q22_week + timedelta(days=7)
+def split_at_week(by_week, change_week):
+    """The weekly counts before the change week, and from it on."""
     before = []
     after = []
     for week, zero_readings in by_week.items():
@@ -2971,6 +2969,16 @@ def test_q22s_week_is_the_last_before_the_one_week_runs_change():
             before.append(zero_readings)
             continue
         after.append(zero_readings)
+    return before, after
+
+
+def test_q22s_week_is_the_last_before_the_one_week_runs_change():
+    name = "context_ii_zero_readings.csv"
+    by_week = zero_readings_by_week(saved_output_rows(name))
+    q22_week = q22_first_day()
+    change_week = q22_week + timedelta(days=7)
+    before, after = split_at_week(by_week, change_week)
+    last_day = max(by_week) + timedelta(days=6)
     article = article_text(PAGE.read_text(encoding="utf-8"), "q3")
 
     assert (
@@ -2978,10 +2986,11 @@ def test_q22s_week_is_the_last_before_the_one_week_runs_change():
         "one-week run: gas units read exactly zero on it, and not zero on a later "
         f"run, in {by_week[q22_week]:,} unit half-hours that week and in "
         f"{min(after):,} to {max(after):,} in each week from "
-        f"{day_month_year(change_week)} "
+        f"{day_month(change_week)} to {day_month_year(last_day)} "
         f'(<a href="results/{name}">zero readings by week</a>).</p>'
     ) in article
     assert max(before) < min(after)
+    assert last_day.year == change_week.year
 
 
 def test_q6s_early_and_late_notices_come_from_their_timing_count():
