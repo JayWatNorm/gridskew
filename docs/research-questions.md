@@ -334,6 +334,14 @@ days. Amended before any read:
   beside them; half-hours left out for a stale final forecast are counted
   by weekday; ties at the top quintile's edge are reported; only active
   cohort units count, without interconnectors.
+- 7 November 2026: a half-hour alignment sensitivity is added beside the
+  primary pairing, which stays on the API's labels. This is before the read,
+  not before data: the window has held data since 17 August 2026. Seen
+  before the change: the alignment counts for 22 August 2025 to 16 August
+  2026 (on the results page) and, for one day in this window, 4 November
+  2026, the API's actual and stored forecast for its 48 half-hours and 18
+  archive forecast values from six polls; no error, quintile or shortfall
+  figure of this question.
 
 Waiting for 90 matched days.
 
@@ -376,6 +384,22 @@ Waiting for 90 matched days.
   with `analysis_read_until` on the first day the population reaches 90
   matched days, under the
   [forecast read controls](#forecast-read-controls).
+- **Half-hour alignment.** The primary pairs each carbon value with the
+  half-hour of its API label. Two sensitivities are reported beside it and
+  never change the verdict: for each Elexon half-hour P, (1) the API's
+  actual labelled 30 minutes before P, with the forecast at its own label P;
+  (2) the same actual with the forecast labelled 30 minutes after P. Each is
+  computed on the half-hours that the primary and the sensitivity share, and
+  the half-hours lost at the window's edges are counted. The basis is a
+  measured alignment, not a documented convention: against NESO's historic
+  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
+  of half-hours, the API's actual agrees best 30 minutes after its label in
+  each of the 13 months from 22 August 2025 to 16 August 2026 (share within
+  5 g/kWh and mean absolute difference), and the correlation of half-hour
+  changes is 0.61 there, against 0.43 at its own label; the same check of
+  half-hour changes against wind, run on NESO's series, peaks at that
+  series' own label. The API does not document which interval each value
+  describes; a question to NESO is outstanding.
 
 ### Q5. How much positive unexplained shortfall coincides with outages published in REMIT at the period start?
 
@@ -480,6 +504,15 @@ data was recorded on 26 October 2026, before the read. Read once on
   unavailable.
 - **One look.** Read once, after the demand back-fill and its counts-only
   coverage check.
+- **Half-hour alignment (added 7 November 2026, after the read).** This
+  result pairs each carbon value with the Elexon half-hour of the same API
+  label, as published. Against NESO's historic generation mix, whose wind
+  equals Elexon's at the same half-hour in 99.1% of 17,280 half-hours, the
+  API's actual is within 5 g/kWh in 45.8% of half-hours one half-hour after
+  its label, against 35.8% at its own label (correlation of half-hour
+  changes 0.61, against 0.43). This is a measured alignment, not a
+  documented convention. The result stands as read; no claim is made about
+  how the alignment bears on it.
 
 ### Q9. Is the grid shorter of power, and the system price higher, when units under-deliver most?
 
@@ -915,6 +948,15 @@ ordered by the same fixed pseudo-random number. Read once with Q8 on
   error of that forecast had already been seen in a September 2026
   exploration; settlement runs differ by date (R3 to SF, as held at the
   read).
+- **Half-hour alignment (added 7 November 2026, after the read).** This
+  result pairs each carbon value with the Elexon half-hour of the same API
+  label, as published. Against NESO's historic generation mix, whose wind
+  equals Elexon's at the same half-hour in 99.1% of 17,280 half-hours, the
+  API's actual is within 5 g/kWh in 45.8% of half-hours one half-hour after
+  its label, against 35.8% at its own label (correlation of half-hour
+  changes 0.61, against 0.43). This is a measured alignment, not a
+  documented convention. The result stands as read; no claim is made about
+  how the alignment bears on it.
 
 ### Q29. How does the error of the API's stored carbon forecast vary by month and by time of day, over a year of history?
 
@@ -948,6 +990,15 @@ Read once on 27 October 2026, 06:15 UTC.
 - **Limitations stated with the result.** The forecast is the stored
   forecast (see [Terms](#terms)); the outturn is NESO's estimate; each
   month is seen once; it is not a judgement of NESO's method.
+- **Half-hour alignment (added 7 November 2026, after the read).** This
+  result sets the API's actual against its forecast at the same label, as
+  published. Against NESO's historic generation mix, whose wind equals
+  Elexon's at the same half-hour in 99.1% of 17,280 half-hours, the API's
+  actual is within 5 g/kWh in 45.8% of half-hours one half-hour after its
+  label, against 35.8% at its own label (correlation of half-hour changes
+  0.61, against 0.43). This is a measured alignment, not a documented
+  convention, and how the forecast lines up is not settled. The result
+  stands as read; no claim is made about how the alignment bears on it.
 
 ### Q30. Is the size of the miss between wind outturn and NESO's latest wind forecast associated with the size of the error in the API's stored carbon forecast, from August 2025 to August 2026?
 
@@ -1004,6 +1055,15 @@ once on 27 October 2026, on data captured up to 14:03:55 UTC.
   stored forecast (see [Terms](#terms)), against a wind forecast up to
   hours old; metered wind only, with no embedded wind; an association, not
   a cause.
+- **Half-hour alignment (added 7 November 2026, after the read).** This
+  result pairs each carbon value with the Elexon half-hour of the same API
+  label, as published. Against NESO's historic generation mix, whose wind
+  equals Elexon's at the same half-hour in 99.1% of 17,280 half-hours, the
+  API's actual is within 5 g/kWh in 45.8% of half-hours one half-hour after
+  its label, against 35.8% at its own label (correlation of half-hour
+  changes 0.61, against 0.43). This is a measured alignment, not a
+  documented convention. The result stands as read; no claim is made about
+  how the alignment bears on it.
 
 ### Q31. When units' unexplained deviations add carbon, is the last carbon forecast too clean?
 
@@ -1013,6 +1073,11 @@ unexplained shortfall, and national demand outturn.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.
+
+Amended 7 November 2026, before any data in its window existed: a half-hour
+alignment sensitivity is added beside the primary pairing, which stays on
+the API's labels. The alignment counts behind it, for 22 August 2025 to 16
+August 2026, were seen; they use no data in this question's window.
 
 **Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at this direction: the stored carbon forecast's miss by how much units under-delivered, without carbon weights, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). A second exploratory cut, read on 6 November 2026, held time of day and month fixed: a slope of +2.4 g/kWh per GW (90% range +1.8 to +3.1) remained. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
@@ -1043,6 +1108,22 @@ existed.
   NESO instructs is not counted, nor is replacement by generation outside
   the cohort: a wind or nuclear unit's shortfall adds nothing, whatever
   fills it.
+- **Half-hour alignment.** The primary pairs each carbon value with the
+  half-hour of its API label. Two sensitivities are reported beside it and
+  never change the verdict: for each Elexon half-hour P, (1) the API's
+  actual labelled 30 minutes before P, with the forecast at its own label P;
+  (2) the same actual with the forecast labelled 30 minutes after P. Each is
+  computed on the half-hours that the primary and the sensitivity share, and
+  the half-hours lost at the window's edges are counted. The basis is a
+  measured alignment, not a documented convention: against NESO's historic
+  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
+  of half-hours, the API's actual agrees best 30 minutes after its label in
+  each of the 13 months from 22 August 2025 to 16 August 2026 (share within
+  5 g/kWh and mean absolute difference), and the correlation of half-hour
+  changes is 0.61 there, against 0.43 at its own label; the same check of
+  half-hour changes against wind, run on NESO's series, peaks at that
+  series' own label. The API does not document which interval each value
+  describes; a question to NESO is outstanding.
 
 ### Q32. When wind farms fall short of their plans, is the last carbon forecast too clean, and is there no such link for gas?
 
@@ -1052,6 +1133,11 @@ unexplained shortfall by fuel group.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.
+
+Amended 7 November 2026, before any data in its window existed: a half-hour
+alignment sensitivity is added beside the primary pairing, which stays on
+the API's labels. The alignment counts behind it, for 22 August 2025 to 16
+August 2026, were seen; they use no data in this question's window.
 
 **Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at a related direction: the stored carbon forecast's miss by how much all units together under-delivered, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It pools all fuels and holds no time of day or month fixed, so it says nothing about wind or gas apart. A second exploratory cut, read on 6 November 2026, held time of day and month fixed: a slope of +2.4 g/kWh per GW (90% range +1.8 to +3.1) remained. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
@@ -1068,6 +1154,22 @@ existed.
   outturn is dirtier than forecast: a positive link for wind, none for
   gas. Links are labelled as in Q31.
 - **One look.** Read once, with Q31.
+- **Half-hour alignment.** The primary pairs each carbon value with the
+  half-hour of its API label. Two sensitivities are reported beside it and
+  never change the verdict: for each Elexon half-hour P, (1) the API's
+  actual labelled 30 minutes before P, with the forecast at its own label P;
+  (2) the same actual with the forecast labelled 30 minutes after P. Each is
+  computed on the half-hours that the primary and the sensitivity share, and
+  the half-hours lost at the window's edges are counted. The basis is a
+  measured alignment, not a documented convention: against NESO's historic
+  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
+  of half-hours, the API's actual agrees best 30 minutes after its label in
+  each of the 13 months from 22 August 2025 to 16 August 2026 (share within
+  5 g/kWh and mean absolute difference), and the correlation of half-hour
+  changes is 0.61 there, against 0.43 at its own label; the same check of
+  half-hour changes against wind, run on NESO's series, peaks at that
+  series' own label. The API does not document which interval each value
+  describes; a question to NESO is outstanding.
 
 ### Q33. Does the stored final forecast line up better with the half-hour before its label, and does its error follow the local clock?
 
@@ -1076,6 +1178,15 @@ existed.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.
+
+Amended 7 November 2026, before any data in its window existed: a half-hour
+alignment sensitivity is added beside the primary pairing, which stays on
+the API's labels. The alignment counts behind it, for 22 August 2025 to 16
+August 2026, were seen; they use no data in this question's window. They
+include one figure bearing on this question's timing prediction: over that
+year the stored forecast's half-hour changes follow the actual's changes of
+an hour earlier most closely (correlation 0.61, against 0.44 at the same
+label).
 
 **Rule:**
 
@@ -1097,6 +1208,23 @@ existed.
   difference exceeds the half-hour before's by at least 0.5 g/kWh, with an
   interval above zero; the half-hour two before is described only.
 - **One look.** Read once, at least 8 days after the cutoff.
+- **Half-hour alignment.** The primary keeps the API's labels. Beside it,
+  never changing the verdict, the by-local-clock table is repeated with the
+  error for half-hour P taken as the actual labelled 30 minutes before P
+  minus the stored forecast labelled P, and, second, minus the forecast
+  labelled 30 minutes after P; the local half-hour is P's. Both are computed
+  on the half-hours the pairings share, and the half-hours lost at the
+  window's edges are counted. The timing lags already compare these offsets
+  and are unchanged. The basis is a measured alignment, not a documented
+  convention: against NESO's historic generation mix, whose wind equals
+  Elexon's at the same half-hour in 99.1% of half-hours, the API's actual
+  agrees best 30 minutes after its label in each of the 13 months from 22
+  August 2025 to 16 August 2026 (share within 5 g/kWh and mean absolute
+  difference), and the correlation of half-hour changes is 0.61 there,
+  against 0.43 at its own label; the same check of half-hour changes against
+  wind, run on NESO's series, peaks at that series' own label. The API does
+  not document which interval each value describes; a question to NESO is
+  outstanding.
 
 **For scale** (added 6 November 2026; not part of the rule). 0.5 g/kWh is
 about a twentieth of the stored forecast's mean miss size in Q29 (9.3 g/kWh);
@@ -1110,6 +1238,9 @@ unexplained shortfall.
 
 **Status:** registered 31 October 2026, before any export-limit data was
 held.
+
+Checked 7 November 2026 against the carbon API's half-hour alignment: this
+question uses no carbon value, so its rule does not change.
 
 **Rule:**
 
@@ -1140,6 +1271,11 @@ instructions, and NESO's carbon intensity of balancing actions.
 **Status:** registered 31 October 2026, before any data in its window
 existed.
 
+Amended 7 November 2026, before any data in its window existed: a half-hour
+alignment sensitivity is added beside the primary pairing, which stays on
+the API's labels. The alignment counts behind it, for 22 August 2025 to 16
+August 2026, were seen; they use no data in this question's window.
+
 **Rule:**
 
 - **Window and carbon error.** As Q31.
@@ -1153,6 +1289,22 @@ existed.
 - **Expected before reading.** More curtailment goes with outturn dirtier
   than forecast. Labelled as in Q31.
 - **One look.** Read once, at least 8 days after the cutoff.
+- **Half-hour alignment.** The primary pairs each carbon value with the
+  half-hour of its API label. Two sensitivities are reported beside it and
+  never change the verdict: for each Elexon half-hour P, (1) the API's
+  actual labelled 30 minutes before P, with the forecast at its own label P;
+  (2) the same actual with the forecast labelled 30 minutes after P. Each is
+  computed on the half-hours that the primary and the sensitivity share, and
+  the half-hours lost at the window's edges are counted. The basis is a
+  measured alignment, not a documented convention: against NESO's historic
+  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
+  of half-hours, the API's actual agrees best 30 minutes after its label in
+  each of the 13 months from 22 August 2025 to 16 August 2026 (share within
+  5 g/kWh and mean absolute difference), and the correlation of half-hour
+  changes is 0.61 there, against 0.43 at its own label; the same check of
+  half-hour changes against wind, run on NESO's series, peaks at that
+  series' own label. The API does not document which interval each value
+  describes; a question to NESO is outstanding.
 
 ### Q36. When NESO's wind forecast comes in short, how much dirtier than forecast does carbon intensity turn out, compared with when wind comes in over?
 
@@ -1163,6 +1315,11 @@ instructions.
 
 **Status:** registered 31 October 2026, before any data in its window
 existed.
+
+Amended 7 November 2026, before any data in its window existed: a half-hour
+alignment sensitivity is added beside the primary pairing, which stays on
+the API's labels. The alignment counts behind it, for 22 August 2025 to 16
+August 2026, were seen; they use no data in this question's window.
 
 **Already seen.** On 1 November 2026, after this rule was registered and after Q28 was read, an exploratory cut of Q28's window (22 August 2025 to 16 August 2026) looked at a related direction: the stored carbon forecast's miss by how much all units under-delivered, with a slope of +2.8 g/kWh per GW (90% range +2.1 to +3.5). It uses all fuels' under-delivery, not the wind forecast's misses, so its slope is not comparable with this question's 1.00 g/kWh per GW. It uses no data in this question's window and changes nothing in this rule; it is on the results page.
 
@@ -1190,6 +1347,22 @@ existed.
   whether a GW short moves the error more than a GW over, compared only
   when short goes with dirtier and over with cleaner.
 - **One look.** Read once, at least 8 days after the cutoff.
+- **Half-hour alignment.** The primary pairs each carbon value with the
+  half-hour of its API label. Two sensitivities are reported beside it and
+  never change the verdict: for each Elexon half-hour P, (1) the API's
+  actual labelled 30 minutes before P, with the forecast at its own label P;
+  (2) the same actual with the forecast labelled 30 minutes after P. Each is
+  computed on the half-hours that the primary and the sensitivity share, and
+  the half-hours lost at the window's edges are counted. The basis is a
+  measured alignment, not a documented convention: against NESO's historic
+  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
+  of half-hours, the API's actual agrees best 30 minutes after its label in
+  each of the 13 months from 22 August 2025 to 16 August 2026 (share within
+  5 g/kWh and mean absolute difference), and the correlation of half-hour
+  changes is 0.61 there, against 0.43 at its own label; the same check of
+  half-hour changes against wind, run on NESO's series, peaks at that
+  series' own label. The API does not document which interval each value
+  describes; a question to NESO is outstanding.
 
 **For scale** (added 6 November 2026; not part of the rule). In Q30, the
 middle fifth of wind-forecast misses was 0.4 to 0.7 GW, which at 1.00 g/kWh

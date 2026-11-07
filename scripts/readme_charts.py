@@ -93,6 +93,10 @@ CONTEXT_Q25_CADL_RESULT = "context_q25_cadl_check.csv"
 CONTEXT_Q23_RUNS_RESULT = "context_q23_runs_by_month.csv"
 CONTEXT_Q28_RUNS_RESULT = "context_q28_runs_held.csv"
 CONTEXT_Q30_LATENESS_RESULT = "context_q30_outturn_lateness.csv"
+# Computed 7 November 2026 from stored data and NESO's historic generation
+# mix: how the carbon API's values line up with Elexon's half-hours, counts
+# and correlations only.
+CONTEXT_CARBON_ALIGNMENT_RESULT = "context_carbon_label_alignment.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
 SPEC_DATA_FOLDER = "results"
@@ -3312,6 +3316,9 @@ def write_charts(result_folder, output_folder):
     q30 = copy_saved_output(results, output, Q30_RESULT, BMRS_AND_CARBON_ATTRIBUTION)
     copy_saved_output(results, output, CONTEXT_Q30_LATENESS_RESULT, BMRS_ATTRIBUTION)
     write_q30_chart(q30, output)
+    copy_saved_output(
+        results, output, CONTEXT_CARBON_ALIGNMENT_RESULT, BMRS_AND_CARBON_ATTRIBUTION
+    )
 
 
 if __name__ == "__main__":
