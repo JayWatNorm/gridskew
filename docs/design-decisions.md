@@ -154,11 +154,17 @@ rarely costs a forecast version.
 file, applied once, so the record of what has run lives with the code.
 [Schema migrations](schema-migrations.md)
 
-**Two tables that cannot be fetched again are copied; the rest is rebuilt.**
-The forecast archive and the unit registry's history are copied nightly.
+**Tables that cannot be fetched again, or would come back changed, are copied;
+the rest is rebuilt.** The forecast archive (`raw.carbon_intensity_forecast`),
+the unit registry's extracts, units and snapshot
+(`raw.elexon_bm_units_extracts`, `raw.elexon_bm_units`,
+`dbt_dev_snapshots.snap_elexon__bm_units`), the QAS history
+(`raw.elexon_qas`), the earlier captures of the carbon-intensity actuals
+(`raw.carbon_intensity_outturn`) and the wind forecast and wind outturn as
+first captured (`raw.elexon_windfor`, `raw.elexon_fuelhh`) are copied nightly.
 Data the sources still serve is fetched again after a loss, and dbt rebuilds
-everything derived from it. Settlement runs Elexon has since replaced are
-not copied.
+everything derived from it. Settlement runs Elexon has since replaced are not
+copied.
 [Operations](operations.md#if-the-database-is-lost)
 
 **Failures are found by a daily check, not alerts.** A one-person research

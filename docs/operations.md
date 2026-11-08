@@ -103,18 +103,23 @@ until a later run replaces its own; after that the run is gone. See
 
 ## If the database is lost
 
-The capture jobs fetch again the source data the public APIs still serve,
-and dbt rebuilds the derived models. Two things cannot be fetched again: the
-carbon-intensity forecast archive and the history of the BM-unit registry.
-They are copied nightly on the server, and a further copy is kept on a
-separate machine. Superseded settlement runs are not copied and would be
-lost.
+The capture jobs fetch again the source data the public APIs still serve, and
+dbt rebuilds the derived models. These tables cannot be fetched again or would
+come back changed: the carbon-intensity forecast archive
+(`raw.carbon_intensity_forecast`), the BM-unit registry's extracts, units and
+snapshot (`raw.elexon_bm_units_extracts`, `raw.elexon_bm_units`,
+`dbt_dev_snapshots.snap_elexon__bm_units`), the QAS history
+(`raw.elexon_qas`), the earlier captures of the carbon-intensity actuals
+(`raw.carbon_intensity_outturn`), and the wind forecast and wind outturn as
+first captured (`raw.elexon_windfor`, `raw.elexon_fuelhh`). They are copied
+nightly on the server, and a further copy is kept on a separate machine.
+Superseded settlement runs are not copied and would be lost.
 
 To rebuild:
 
 1. Apply the raw migrations ([schema migrations](schema-migrations.md)).
 2. Provision the dbt schemas ([deployment](deployment.md)).
-3. Restore the forecast archive and registry history from their copy.
+3. Restore the copied tables (above) from their copy.
 4. Build the dbt project once, as the deployment page describes.
 5. Let the capture DAGs catch up; backfill any long gap.
 6. Trigger one full refresh of the nightly dbt job.
