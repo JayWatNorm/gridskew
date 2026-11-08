@@ -26,18 +26,28 @@ records, with a checksum, in `raw.flyway_schema_history`.
   drops or renames the old shape, after no code reads it.
 - Grants and roles differ between environments, so they stay in
   `sql/provision/` and out of migrations.
+- A migration that adds a source table ships with the table's grant lines in
+  `sql/provision/004_loader_grants.sql`, which is re-run on the host before
+  that table's loader is released (the [deployment page](deployment.md)).
 
 ## Where migrations run
 
-**CI** applies every migration to an empty PostgreSQL before fixtures load, in
-both jobs, with the `flyway/flyway` image at the version pinned in
+Migrations run as `gridskew`, the role that owns every `raw` table and the
+function `raw.lock_bm_unit_registry()` (V014), which locks the registry
+tables on the owner's behalf and so must share their owner.
+
+**CI** creates a `gridskew` role with login and `CREATE` on the database,
+then applies every migration as it to an empty PostgreSQL before fixtures
+load, in both jobs, with the `flyway/flyway` image at the version pinned in
 `.github/workflows/ci.yml`.
 
-**A workstation without Docker** applies the same files in order with `psql`:
+**A workstation without Docker** creates the same role and applies the same
+files in order with `psql`:
 
 ```powershell
+psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 -c "CREATE ROLE gridskew LOGIN; GRANT CREATE ON DATABASE gridskew_dev TO gridskew;"
 Get-ChildItem sql\migrations\V*.sql | Sort-Object Name | ForEach-Object {
-    psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 --single-transaction -f $_.FullName
+    psql -h localhost -U gridskew -d gridskew_dev -v ON_ERROR_STOP=1 --single-transaction -f $_.FullName
     if ($LASTEXITCODE) { throw "$($_.Name) failed" }
 }
 ```

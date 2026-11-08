@@ -72,13 +72,26 @@ jobs:
       - name: Check DAG files compile
         run: python -m compileall -q dags/
 
+      - name: Install psql if the runner lacks it
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+
+      # The raw tables and the lock function share the owner they have on
+      # production; postgres stays the administrator connection.
+      - name: Create the gridskew owner role
+        env:
+          PGPASSWORD: password
+        run: >
+          psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1
+          -c "CREATE ROLE gridskew LOGIN PASSWORD 'password';
+          GRANT CREATE ON DATABASE gridskew_dev TO gridskew;"
+
       - name: Apply raw migrations with Flyway
         run: >
           docker run --rm --network host
           -v "${{ github.workspace }}/sql/migrations:/flyway/sql:ro"
           flyway/flyway:13.8.0
           -url=jdbc:postgresql://localhost:5432/gridskew_dev
-          -user=postgres -password=password
+          -user=gridskew -password=password
           -schemas=raw -locations=filesystem:/flyway/sql
           migrate
 
@@ -86,6 +99,7 @@ jobs:
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
+          DBT_USER: gridskew
         run: python -m tests.adhoc.load_ci_fixtures
 
       - name: Run dbt commands
@@ -131,6 +145,16 @@ jobs:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
         run: python -m tests.adhoc.check_one_look_analyses
+
+      - name: Provision and verify the loader role
+        env:
+          PGPASSWORD: password
+        run: |
+          for script in 002_loader_role 004_loader_grants 003_verify_loader_role; do
+            psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 \
+              -v loader_role=gridskew_loader_test -v expect_login=false \
+              -f "sql/provision/$script.sql"
+          done
 
       # After every step that reads the fixtures: the loaders it calls commit,
       # and no later step should read the rows it writes (it deletes them at
@@ -196,13 +220,24 @@ jobs:
           python -m pip install pip==26.2.1
           pip install -r requirements-dev.txt
 
+      - name: Install psql if the runner lacks it
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+
+      - name: Create the gridskew owner role
+        env:
+          PGPASSWORD: password
+        run: >
+          psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1
+          -c "CREATE ROLE gridskew LOGIN PASSWORD 'password';
+          GRANT CREATE ON DATABASE gridskew_dev TO gridskew;"
+
       - name: Apply raw migrations with Flyway
         run: >
           docker run --rm --network host
           -v "${{ github.workspace }}/sql/migrations:/flyway/sql:ro"
           flyway/flyway:13.8.0
           -url=jdbc:postgresql://localhost:5432/gridskew_dev
-          -user=postgres -password=password
+          -user=gridskew -password=password
           -schemas=raw -locations=filesystem:/flyway/sql
           migrate
 

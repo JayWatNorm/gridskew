@@ -309,18 +309,19 @@ def locked_extract(conn, expected_id):
     """Keep a verified current extract stable while dbt reads it.
 
     SHARE locks block inserts, updates and deletes from every database writer,
-    while allowing dbt's SELECTs from its separate connections. The caller must
-    use a dedicated connection and close it after this context exits.
+    while allowing dbt's SELECTs from its separate connections. The lock is
+    taken through raw.lock_bm_unit_registry(), a function the table owner
+    defines, because a direct LOCK TABLE needs an update, delete or truncate
+    right and the loader role has none; the lock is held by this
+    connection's transaction until it ends. The caller must use a dedicated
+    connection and close it after this context exits.
     """
 
     try:
         with conn.cursor() as cursor:
             cursor.execute("SET LOCAL lock_timeout = '30s'")
             cursor.execute("SET LOCAL idle_in_transaction_session_timeout = 0")
-            cursor.execute(
-                "LOCK TABLE raw.elexon_bm_units_extracts, raw.elexon_bm_units "
-                "IN SHARE MODE"
-            )
+            cursor.execute("SELECT raw.lock_bm_unit_registry()")
             cursor.execute(
                 "SELECT extract_id, row_count, unit_count "
                 "FROM raw.elexon_bm_units_extracts "

@@ -26,6 +26,17 @@ marked resolved by id; a quarantined WINDFOR day is held, with no request,
 until its row is marked resolved, and is then asked for and loaded; a row
 with one resolution column set is refused.
 
+The loader role checks need the role gridskew_loader_test provisioned by
+sql/provision/002_loader_role.sql and 004_loader_grants.sql, as CI does
+before this runs, and psql on the path. The verification script passes on
+it; as the loader, inserts succeed and every delete, update, truncate and
+direct lock is refused, while the lock function takes the SHARE lock on
+both registry tables; a role that exists with an update right makes the
+creation script fail; a stray table, column or PUBLIC grant makes the
+verification fail; the grants script re-run changes nothing and stops
+before any grant on a role with a wrong flag; and the owner keeps the
+update the resolution step and a payload change need.
+
 The loaders commit, so in the CI `test` job this runs after every step that
 reads the fixtures, and deletes its own rows at the end.
 
@@ -36,6 +47,7 @@ Run from the repository root with the dbt environment set, for example:
 
 import json
 import os
+import subprocess
 from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -46,6 +58,7 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 import requests
+from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from ingestion.carbon_intensity.forecast_poller import load as load_forecast
@@ -92,6 +105,14 @@ from tests.adhoc.check_analyses_compile import compile_analyses
 from tests.adhoc.remit_reread_checks import run_remit_reread_checks
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+PROVISION_DIR = Path(__file__).resolve().parents[2] / "sql" / "provision"
+# The loader role provisioned before this check runs, as CI does; the owner
+# of every raw table; and the roles the provisioning checks create and drop.
+LOADER_ROLE = "gridskew_loader_test"
+OWNER_ROLE = "gridskew"
+PRIOR_ROLE = "gridskew_loader_prior"
+WRONG_FLAGS_ROLE = "gridskew_loader_wrong_flags"
+INSUFFICIENT_PRIVILEGE = "42501"
 # A capture time no fixture uses, so every row this check writes is its own.
 CHECK_CAPTURE = datetime(2000, 1, 1, tzinfo=timezone.utc)
 CHECK_CONTEXT = {"source": "ci_read_back"}
@@ -320,6 +341,289 @@ def check_quarantine_evidence(writer, reader):
     assert stored["observed_fields"] == ["bmUnit", "intensity", "intensity.quantity"]
     # Exactly the digits given: a float on the way would drop the last zero.
     assert stored["quantity"] == "123.4560"
+
+
+def run_provision_script(script_name, loader_role):
+    """Run one provision script with psql as the administrator, as CI does."""
+
+    command = [
+        "psql",
+        "-h",
+        os.environ["DBT_HOST"],
+        "-p",
+        os.environ["DBT_PORT"],
+        "-U",
+        os.environ["DBT_USER"],
+        "-d",
+        os.environ["DBT_DBNAME"],
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-v",
+        f"loader_role={loader_role}",
+        "-v",
+        "expect_login=false",
+        "-f",
+        str(PROVISION_DIR / f"{script_name}.sql"),
+    ]
+    environment = dict(os.environ, PGPASSWORD=os.environ["DBT_PASSWORD"])
+    return subprocess.run(command, env=environment, capture_output=True, text=True)
+
+
+def provision_script_passes(script_name, loader_role):
+    return run_provision_script(script_name, loader_role).returncode == 0
+
+
+def set_local_role(cursor, role):
+    cursor.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(role)))
+
+
+def rolled_back_as(conn, role, statements, params=()):
+    """Run the statements as role in one transaction, then roll it back;
+    returns the rows and the row count of the last statement."""
+
+    try:
+        with conn.cursor() as cursor:
+            set_local_role(cursor, role)
+            for statement in statements:
+                cursor.execute(statement, params)
+            rows = []
+            if cursor.description:
+                rows = cursor.fetchall()
+            row_count = cursor.rowcount
+    finally:
+        conn.rollback()
+    return rows, row_count
+
+
+def refused_as(conn, role, statement, params=()):
+    """The statement is refused for role with InsufficientPrivilege, 42501."""
+
+    try:
+        with conn.cursor() as cursor:
+            set_local_role(cursor, role)
+            cursor.execute(statement, params)
+    except psycopg.Error as error:
+        conn.rollback()
+        assert error.sqlstate == INSUFFICIENT_PRIVILEGE, (statement, error)
+        return
+    conn.rollback()
+    raise AssertionError(f"{role} was allowed: {statement}")
+
+
+def run_as_administrator(conn, statement):
+    with conn.cursor() as cursor:
+        cursor.execute(statement)
+    conn.commit()
+
+
+def create_role(conn, role, options):
+    run_as_administrator(
+        conn, sql.SQL("CREATE ROLE {} " + options).format(sql.Identifier(role))
+    )
+
+
+def drop_role(conn, role):
+    run_as_administrator(
+        conn,
+        sql.SQL("DROP OWNED BY {role}; DROP ROLE {role}").format(
+            role=sql.Identifier(role)
+        ),
+    )
+
+
+def grant(conn, privilege, relation, grantee):
+    run_as_administrator(conn, sql.SQL(f"GRANT {privilege} ON {relation} TO {grantee}"))
+
+
+def revoke(conn, privilege, relation, grantee):
+    run_as_administrator(
+        conn, sql.SQL(f"REVOKE {privilege} ON {relation} FROM {grantee}")
+    )
+
+
+def table_grants_of(reader, role):
+    with reader.cursor() as cursor:
+        cursor.execute(
+            "SELECT table_schema, table_name, privilege_type "
+            "FROM information_schema.role_table_grants WHERE grantee = %s "
+            "ORDER BY table_schema, table_name, privilege_type",
+            (role,),
+        )
+        grants = cursor.fetchall()
+    reader.commit()
+    return grants
+
+
+def share_locks_held(cursor):
+    cursor.execute(
+        "SELECT relation::regclass::text FROM pg_locks "
+        "WHERE pid = pg_backend_pid() AND mode = 'ShareLock' ORDER BY 1"
+    )
+    return [relation for (relation,) in cursor.fetchall()]
+
+
+def check_loader_inserts_and_cannot_change_rows(writer):
+    """As the loader: an insert and a repeated insert with ON CONFLICT DO
+    NOTHING succeed, on a source table and on the quarantine (its identity
+    column draws from the sequence); delete, update and truncate on both are
+    refused with 42501, as is a direct SHARE lock on the registry."""
+
+    windfor_insert = (
+        "INSERT INTO raw.elexon_windfor (start_time, publish_time, generation, "
+        "retrieved_at) VALUES ('2099-12-31 00:00+00', '2099-12-31 00:00+00', 1, %s)"
+    )
+    _rows, inserted = rolled_back_as(
+        writer, LOADER_ROLE, [windfor_insert], (CHECK_CAPTURE,)
+    )
+    assert inserted == 1, inserted
+    _rows, ignored = rolled_back_as(
+        writer,
+        LOADER_ROLE,
+        [windfor_insert, windfor_insert + " ON CONFLICT DO NOTHING"],
+        (CHECK_CAPTURE,),
+    )
+    assert ignored == 0, ignored
+    _rows, quarantined = rolled_back_as(
+        writer,
+        LOADER_ROLE,
+        [QUARANTINE_INSERT.replace("%s", "(%s, %s, %s, %s, %s, %s)")],
+        quarantine_row_naming("CI_READ_BACK", CHECK_CONTEXT),
+    )
+    assert quarantined == 1, quarantined
+
+    for table in ("raw.elexon_windfor", "raw.endpoint_quarantine"):
+        refused_as(
+            writer,
+            LOADER_ROLE,
+            f"DELETE FROM {table} WHERE retrieved_at = %s",
+            (CHECK_CAPTURE,),
+        )
+        refused_as(
+            writer,
+            LOADER_ROLE,
+            f"UPDATE {table} SET retrieved_at = retrieved_at WHERE retrieved_at = %s",
+            (CHECK_CAPTURE,),
+        )
+        refused_as(writer, LOADER_ROLE, f"TRUNCATE {table}")
+    refused_as(
+        writer,
+        LOADER_ROLE,
+        "LOCK TABLE raw.elexon_bm_units_extracts, raw.elexon_bm_units IN SHARE MODE",
+    )
+
+
+def check_loader_locks_the_registry_through_the_function(writer):
+    """As the loader, raw.lock_bm_unit_registry() takes a SHARE lock on both
+    registry tables, held by the session until it rolls back."""
+
+    try:
+        with writer.cursor() as cursor:
+            set_local_role(cursor, LOADER_ROLE)
+            cursor.execute("SELECT raw.lock_bm_unit_registry()")
+            held = share_locks_held(cursor)
+    finally:
+        writer.rollback()
+    assert held == ["raw.elexon_bm_units", "raw.elexon_bm_units_extracts"], held
+    with writer.cursor() as cursor:
+        released = share_locks_held(cursor)
+    writer.rollback()
+    assert released == [], released
+
+
+def check_owner_keeps_the_update_right(writer):
+    """As the owner, the resolution update and a payload update both succeed:
+    the role change restrains the loader, not the owner, whose hand steps
+    stay a convention."""
+
+    resolution_update = (
+        "UPDATE raw.endpoint_quarantine "
+        "SET resolved_at = now(), resolved_by = 'owner: privilege check' "
+        "WHERE dataset = 'CI_READ_BACK' AND resolved_at IS NULL"
+    )
+    _rows, resolved = rolled_back_as(writer, OWNER_ROLE, [resolution_update])
+    assert resolved == 1, resolved
+    payload_update = (
+        "UPDATE raw.endpoint_quarantine SET payload = payload || '{\"changed\": true}' "
+        "WHERE dataset = 'CI_READ_BACK'"
+    )
+    _rows, changed = rolled_back_as(writer, OWNER_ROLE, [payload_update])
+    assert changed == 1, changed
+
+
+def check_creation_refuses_a_role_that_exists(writer):
+    """A role of the name that exists with an update right makes the creation
+    script fail; dropped, creation, grants and verification succeed."""
+
+    create_role(writer, PRIOR_ROLE, "NOLOGIN")
+    grant(writer, "UPDATE", "raw.elexon_windfor", PRIOR_ROLE)
+    try:
+        assert not provision_script_passes("002_loader_role", PRIOR_ROLE)
+    finally:
+        drop_role(writer, PRIOR_ROLE)
+
+    assert provision_script_passes("002_loader_role", PRIOR_ROLE)
+    try:
+        assert provision_script_passes("004_loader_grants", PRIOR_ROLE)
+        assert provision_script_passes("003_verify_loader_role", PRIOR_ROLE)
+    finally:
+        drop_role(writer, PRIOR_ROLE)
+
+
+def check_verification_catches_a_stray_grant(writer):
+    """A table grant, a column grant and a grant to PUBLIC each make the
+    verification script fail; revoked, it passes again."""
+
+    stray_grants = (
+        ("UPDATE", "raw.elexon_windfor", LOADER_ROLE),
+        ("UPDATE (payload)", "raw.endpoint_quarantine", LOADER_ROLE),
+        ("UPDATE", "raw.elexon_windfor", "PUBLIC"),
+    )
+    for privilege, relation, grantee in stray_grants:
+        grant(writer, privilege, relation, grantee)
+        try:
+            verified = provision_script_passes("003_verify_loader_role", LOADER_ROLE)
+        finally:
+            revoke(writer, privilege, relation, grantee)
+        assert not verified, f"a stray grant passed: {privilege} on {relation}"
+    assert provision_script_passes("003_verify_loader_role", LOADER_ROLE)
+
+
+def check_grants_rerun_changes_nothing(reader):
+    before = table_grants_of(reader, LOADER_ROLE)
+    assert provision_script_passes("004_loader_grants", LOADER_ROLE)
+    assert table_grants_of(reader, LOADER_ROLE) == before
+    assert provision_script_passes("003_verify_loader_role", LOADER_ROLE)
+
+
+def check_grants_stop_on_a_role_with_a_wrong_flag(writer, reader):
+    """The grants script refuses a role created with CREATEDB before it
+    grants anything."""
+
+    create_role(writer, WRONG_FLAGS_ROLE, "NOLOGIN CREATEDB")
+    try:
+        assert not provision_script_passes("004_loader_grants", WRONG_FLAGS_ROLE)
+        assert table_grants_of(reader, WRONG_FLAGS_ROLE) == []
+        usage = read_one_row(
+            reader,
+            "SELECT has_schema_privilege(%s, 'raw', 'USAGE') AS usage",
+            (WRONG_FLAGS_ROLE,),
+        )
+        assert usage == {"usage": False}, usage
+    finally:
+        drop_role(writer, WRONG_FLAGS_ROLE)
+
+
+def check_loader_role_privileges(writer, reader):
+    """The provisioned loader role's effective rights, on the real tables."""
+
+    assert provision_script_passes("003_verify_loader_role", LOADER_ROLE)
+    check_loader_inserts_and_cannot_change_rows(writer)
+    check_loader_locks_the_registry_through_the_function(writer)
+    check_owner_keeps_the_update_right(writer)
+    check_creation_refuses_a_role_that_exists(writer)
+    check_verification_catches_a_stray_grant(writer)
+    check_grants_rerun_changes_nothing(reader)
+    check_grants_stop_on_a_role_with_a_wrong_flag(writer, reader)
 
 
 def check_outturn_load(writer, reader):
@@ -1492,6 +1796,7 @@ def main():
         # First: a REMIT row left in quarantine by a later check holds the re-read.
         run_remit_reread_checks(writer, disposable_connection)
         check_quarantine_evidence(writer, reader)
+        check_loader_role_privileges(writer, reader)
         check_outturn_load(writer, reader)
         check_forecast_load(writer, reader)
         check_remit_quarantine_count(writer, reader)
@@ -1603,6 +1908,11 @@ def main():
     print(
         "Quarantine resolution: a row counts or holds only while unresolved, a "
         "resolved day is asked for again, and a half-resolved row is refused"
+    )
+    print(
+        "Loader role: inserts and the lock function succeed, every delete, "
+        "update, truncate and direct lock is refused, and the scripts refuse "
+        "a reused role, a stray grant and a wrong flag"
     )
 
 

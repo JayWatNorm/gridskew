@@ -51,7 +51,9 @@ required to occur in today's registry.
 The `gridskew_elexon_bmunits` DAG captures the registry, then loads the fuel
 seed, tests the registry and records the snapshot, writing only to `dbt_dev`
 and `dbt_dev_snapshots` and locking the raw registry tables against other
-writers while dbt runs. If capture fails, check the source and the quarantine
+writers while dbt runs, through a function the owner defines
+(`raw.lock_bm_unit_registry()`), so the loader role needs no update right.
+If capture fails, check the source and the quarantine
 and retry the DAG; if dbt fails after a good capture, fix the cause and retry
 the dbt task, which stops if a newer extract has arrived. In that case run
 from a fresh capture: the raw extracts keep every observation, but the
