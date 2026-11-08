@@ -2092,7 +2092,7 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         "window already seen, published whatever it showed. "
         f"{NUMBER_WORDS[len(blocks) + len(months)].capitalize()} slopes were read, "
         "none corrected for reading many. Wind output is not held fixed, and both "
-        "measures are associated with wind level:" in block
+        "measures are associated with wind level." in block
     )
     for other in sorted({STRATA_INCLUDES_ZERO, STRATA_BELOW_ZERO}):
         assert other not in block
@@ -3314,6 +3314,19 @@ def wind_level_shares(rows, measure):
     return shares
 
 
+def top_two_fifths_share(rows, measure):
+    """The exact share of all half-hours in the measure's top two fifths."""
+    in_top_two = 0
+    total = 0
+    for row in rows:
+        if row["measure"] != measure:
+            continue
+        total += int(row["half_hours"])
+        if int(row["measure_fifth"]) >= 4:
+            in_top_two += int(row["half_hours"])
+    return Decimal(100) * Decimal(in_top_two) / Decimal(total)
+
+
 def rises_at_every_step(values):
     for earlier, later in zip(values, values[1:], strict=False):
         if later <= earlier:
@@ -3343,7 +3356,8 @@ def test_q30s_wind_note_comes_from_its_wind_miss_counts():
         f"{percent_of(totals['no_instruction_delivered_below'], totals['no_wind_instruction'], 0)}%) "
         f"and above in {totals['no_instruction_delivered_above']:,}. A bias in the "
         "forecast, a difference in the wind farms each side covers (embedded "
-        "wind, for example) and wind farms cutting their own output without an "
+        "wind, for example), instructions to wind units outside those studied "
+        "and wind farms cutting their own output without an "
         "instruction could each produce this; these counts do not tell them "
         "apart, and neither Elexon nor NESO documents whether the forecast allows "
         f'for output turned down. <a href="results/{WIND_MISS_COUNTS}">Wind miss '
@@ -3364,9 +3378,21 @@ def test_q36s_split_reason_comes_from_the_wind_miss_counts():
         "half-hours with no wind instruction," in q36
     )
     assert (
-        "GridSkew does not yet capture system prices or export limits: each split "
-        "is reported only if its source is held for every date in the window at "
-        "the read, and otherwise as not available, with the reason." in q36
+        "Unknown half-hours are counted on their own and are in neither side. A "
+        "split is reported only if no half-hour of the primary's population is "
+        "unknown for it: for the price split, every half-hour has a price; for "
+        "the export-limit split, every active cohort wind unit has an MEL in "
+        "force and a final PN level in every half-hour. Otherwise it is reported "
+        "as not available, with the count of unknown half-hours" in q36
+    )
+    assert (
+        "GridSkew does not yet capture system prices or export limits (MEL), so "
+        "neither split can be made until they are captured." in q36
+    )
+    assert (
+        "whose MEL level in force at the half-hour's start, from the latest MEL "
+        "published before then, was below its final PN level at the half-hour's "
+        "start, and the rest." in q36
     )
 
 
@@ -3378,16 +3404,20 @@ def test_q28s_reverse_note_states_its_wind_level_counts():
     assert rises_at_every_step(dirtier)
     assert rises_at_every_step(under[:4])
     assert under[4] < under[3]
+    assert whole(top_two_fifths_share(rows, "signed carbon miss")) == "40"
+    assert whole(top_two_fifths_share(rows, "under-delivery")) == "40"
     assert (
         "Wind output is not held fixed, and both measures are associated with "
-        "wind level: sorting the same half-hours into fifths by metered wind, "
-        f"counted on {counts_day(WIND_LEVEL_COUNTS)} with the units studied then, "
-        "the share in the two fifths of misses furthest towards dirtier than "
-        f"forecast rises with each fifth of wind, from {whole(dirtier[0])}% in the "
-        f"calmest to {whole(dirtier[4])}% in the windiest, and the share in the "
-        "two fifths with the most under-delivery rises from "
-        f"{whole(under[0])}% in the calmest to {whole(under[3])}% in the fourth "
-        f"fifth, then falls to {whole(under[4])}% in the windiest. "
+        "wind level. Sorting the same half-hours into five groups of almost "
+        "equal size by metered wind, counted on "
+        f"{counts_day(WIND_LEVEL_COUNTS)} with the units studied then: "
+        f"{whole(dirtier[0])}% of the calmest group's half-hours are among the "
+        "40% of half-hours with the dirtiest misses against forecast, a share "
+        f"that rises with each group to {whole(dirtier[4])}% of the windiest; "
+        f"{whole(under[0])}% of the calmest group's half-hours are among the 40% "
+        f"with the most under-delivery, rising to {whole(under[3])}% of the "
+        f"fourth group, then falling to {whole(under[4])}% of the windiest. These "
+        "shares describe the counts; they are not a test. "
         f'<a href="results/{WIND_LEVEL_COUNTS}">Wind level counts</a></p>'
         in exploratory_block()
     )
@@ -3411,7 +3441,8 @@ def test_the_unread_carbon_rules_register_an_invalid_value_rule_first():
     bullet = (
         "No rule for carbon actuals that cannot be right is chosen yet; "
         "GridSkew's data already hold one, 0 g/kWh for 6 August 2026, 11:00 UTC. "
-        "Before the read, an exact rule is registered here, with a reason that "
+        "Before any carbon actual in the window is looked at, an exact rule is "
+        "registered here, with a reason that "
         "does not depend on this question's results. The half-hours it leaves "
         "out are counted and reported, and the result with none left out is "
         "reported beside the primary."
@@ -3439,8 +3470,12 @@ def test_q28_registers_a_seven_day_block_sensitivity_not_yet_run():
 
     assert (
         "recomputed by resampling blocks of seven consecutive days in place of "
-        "single days (1,000 draws). It is reported beside the registered results, "
-        "which stand whatever it shows," in q28
+        "single days (1,000 draws). The blocks do not overlap and start on the "
+        "window's first day; the window's 360 days are not a multiple of seven, so "
+        "the last block holds the remaining 3 days. Each draw takes blocks with "
+        "replacement until 360 days are filled, the last block drawn cut to fit. "
+        "It is reported beside the registered results, which stand whatever it "
+        "shows," in q28
     )
     assert "Not yet run:" in q28
 

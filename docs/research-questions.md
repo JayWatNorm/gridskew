@@ -985,10 +985,14 @@ ordered by the same fixed pseudo-random number. Read once with Q8 on
   sensitivity: the ratio's 90% interval, and the slope interval of the
   exploratory reverse cut on the results page, recomputed by resampling
   blocks of seven consecutive days in place of single days (1,000 draws).
-  It is reported beside the registered results, which stand whatever it
-  shows, and neither way of building an interval is chosen by whether a
-  result stays clear of 1 or 0. Not yet run: it reads Q28's half-hours
-  again, so it is run once, on its own, and reported as a second look.
+  The blocks do not overlap and start on the window's first day; the
+  window's 360 days are not a multiple of seven, so the last block holds the
+  remaining 3 days. Each draw takes blocks with replacement until 360 days
+  are filled, the last block drawn cut to fit. It is reported beside the
+  registered results, which stand whatever it shows, and neither way of building an interval is chosen by
+  whether a result stays clear of 1 or 0. Not yet run: it reads Q28's
+  half-hours again, so it is run once, on its own, and reported as a second
+  look.
 
 ### Q29. How does the error of the API's stored carbon forecast vary by month and by time of day, over a year of history?
 
@@ -1167,10 +1171,10 @@ beside the primary.
 - **Invalid carbon values (added 8 November 2026, before any data in its
   window existed).** No rule for carbon actuals that cannot be right is
   chosen yet; GridSkew's data already hold one, 0 g/kWh for 6 August 2026,
-  11:00 UTC. Before the read, an exact rule is registered here, with a
-  reason that does not depend on this question's results. The half-hours it
-  leaves out are counted and reported, and the result with none left out is
-  reported beside the primary.
+  11:00 UTC. Before any carbon actual in the window is looked at, an exact
+  rule is registered here, with a reason that does not depend on this
+  question's results. The half-hours it leaves out are counted and reported,
+  and the result with none left out is reported beside the primary.
 
 ### Q32. When wind farms fall short of their plans, is the last carbon forecast too clean, and is there no such link for gas?
 
@@ -1238,10 +1242,10 @@ no data in this question's window.
 - **Invalid carbon values (added 8 November 2026, before any data in its
   window existed).** No rule for carbon actuals that cannot be right is
   chosen yet; GridSkew's data already hold one, 0 g/kWh for 6 August 2026,
-  11:00 UTC. Before the read, an exact rule is registered here, with a
-  reason that does not depend on this question's results. The half-hours it
-  leaves out are counted and reported, and the result with none left out is
-  reported beside the primary.
+  11:00 UTC. Before any carbon actual in the window is looked at, an exact
+  rule is registered here, with a reason that does not depend on this
+  question's results. The half-hours it leaves out are counted and reported,
+  and the result with none left out is reported beside the primary.
 
 ### Q33. Does the stored final forecast line up better with the half-hour before its label, and does its error follow the local clock?
 
@@ -1308,10 +1312,10 @@ beside the primary.
 - **Invalid carbon values (added 8 November 2026, before any data in its
   window existed).** No rule for carbon actuals that cannot be right is
   chosen yet; GridSkew's data already hold one, 0 g/kWh for 6 August 2026,
-  11:00 UTC. Before the read, an exact rule is registered here, with a
-  reason that does not depend on this question's results. The half-hours it
-  leaves out are counted and reported, and the result with none left out is
-  reported beside the primary.
+  11:00 UTC. Before any carbon actual in the window is looked at, an exact
+  rule is registered here, with a reason that does not depend on this
+  question's results. The half-hours it leaves out are counted and reported,
+  and the result with none left out is reported beside the primary.
 
 **For scale** (added 6 November 2026; not part of the rule). 0.5 g/kWh is
 about a twentieth of the stored forecast's mean miss size in Q29 (9.3 g/kWh);
@@ -1406,10 +1410,10 @@ beside the primary.
 - **Invalid carbon values (added 8 November 2026, before any data in its
   window existed).** No rule for carbon actuals that cannot be right is
   chosen yet; GridSkew's data already hold one, 0 g/kWh for 6 August 2026,
-  11:00 UTC. Before the read, an exact rule is registered here, with a
-  reason that does not depend on this question's results. The half-hours it
-  leaves out are counted and reported, and the result with none left out is
-  reported beside the primary.
+  11:00 UTC. Before any carbon actual in the window is looked at, an exact
+  rule is registered here, with a reason that does not depend on this
+  question's results. The half-hours it leaves out are counted and reported,
+  and the result with none left out is reported beside the primary.
 
 ### Q36. When NESO's wind forecast comes in short, how much dirtier than forecast does carbon intensity turn out, compared with when wind comes in over?
 
@@ -1481,25 +1485,35 @@ August 2026, were seen; they use no data in this question's window.
   data in its window existed).** Beside the primary, never changing the
   registered primary verdict, the change per GW short and per GW over is
   fitted again, with the same cells and interval, on each side of two
-  splits: half-hours with a negative system price and the rest; and
-  half-hours in which an active cohort wind unit's export limit (MEL), the
-  latest published before the half-hour starts, was below its PN, and the
-  rest. The share of half-hours with no wind instruction in which wind came
-  in short is reported by month. GridSkew does not yet capture system
-  prices or export limits: each split is reported only if its source is
-  held for every date in the window at the read, and otherwise as not
-  available, with the reason. The reason for the splits: in Q30's year,
-  delivered wind was below the wind forecast in 65% of the 5,783 half-hours
-  with no wind instruction, which a bias in the forecast, a difference in
-  the wind farms covered, or wind farms cutting their own output (at
-  negative prices, for example) could each explain.
+  splits. Price split: half-hours whose system price for their settlement
+  period is below zero, and the rest. Export-limit split: half-hours with an
+  active cohort wind unit whose MEL level in force at the half-hour's start,
+  from the latest MEL published before then, was below its final PN level at
+  the half-hour's start, and the rest. A half-hour with no system price is
+  unknown for the price split; a half-hour in which any active cohort wind
+  unit has no MEL in force at its start, or no final PN level, is unknown
+  for the export-limit split. Unknown half-hours are counted on their own
+  and are in neither side. A split is reported only if no half-hour of the
+  primary's population is unknown for it: for the price split, every
+  half-hour has a price; for the export-limit split, every active cohort
+  wind unit has an MEL in force and a final PN level in every half-hour.
+  Otherwise it is reported as not available, with the count of unknown
+  half-hours and, for the export-limit split, the count of units with a
+  half-hour lacking an MEL or a PN. GridSkew does not yet capture system
+  prices or export limits (MEL), so neither split can be made until they are
+  captured. The share of half-hours with no wind instruction in which wind
+  came in short is reported by month. The reason for the splits: in Q30's
+  year, delivered wind was below the wind forecast in 65% of the 5,783
+  half-hours with no wind instruction, which a bias in the forecast, a
+  difference in the wind farms covered, or wind farms cutting their own
+  output (at negative prices, for example) could each explain.
 - **Invalid carbon values (added 8 November 2026, before any data in its
   window existed).** No rule for carbon actuals that cannot be right is
   chosen yet; GridSkew's data already hold one, 0 g/kWh for 6 August 2026,
-  11:00 UTC. Before the read, an exact rule is registered here, with a
-  reason that does not depend on this question's results. The half-hours it
-  leaves out are counted and reported, and the result with none left out is
-  reported beside the primary.
+  11:00 UTC. Before any carbon actual in the window is looked at, an exact
+  rule is registered here, with a reason that does not depend on this
+  question's results. The half-hours it leaves out are counted and reported,
+  and the result with none left out is reported beside the primary.
 
 **For scale** (added 6 November 2026; not part of the rule). In Q30, the
 middle fifth of wind-forecast misses was 0.4 to 0.7 GW, which at 1.00 g/kWh
