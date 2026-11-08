@@ -344,11 +344,17 @@ days. Amended before any read:
 - 7 November 2026: a half-hour alignment sensitivity is added beside the
   primary pairing, which stays on the API's labels. This is before the read,
   not before data: the window has held data since 17 August 2026. Seen
-  before the change: the alignment counts for 22 August 2025 to 16 August
-  2026 (on the results page) and, for one day in this window, 4 November
-  2026, the API's actual and stored forecast for its 48 half-hours and 18
-  archive forecast values from six polls; no error, quintile or shortfall
-  figure of this question.
+  before the change: the alignment counts (on the results page) for
+  settlement dates 22 August 2025 to 16 August 2026, whose comparisons one
+  and two half-hours after the label reach into 17 August 2026, and, for one
+  day in this window, 4 November 2026, the API's actual and stored forecast
+  for its 48 half-hours and 18 archive forecast values from six polls; and,
+  at that check's edge, the API's actual and stored forecast, Elexon wind
+  and demand for 17 August 2026 were extracted, of which two half-hours of
+  the actual and of Elexon wind enter the counts at one and two half-hours
+  after the label; Elexon wind and demand and NESO's generation mix for 4
+  November 2026 were also seen; no error, quintile or shortfall figure of
+  this question.
 
 Waiting for 90 matched days on dates held on the three-week run or later.
 
@@ -400,20 +406,23 @@ Waiting for 90 matched days on dates held on the three-week run or later.
   [forecast read controls](#forecast-read-controls).
 - **Half-hour alignment.** The primary pairs each carbon value with the
   half-hour of its API label. Two sensitivities are reported beside it and
-  never change the verdict: for each Elexon half-hour P, (1) the API's
-  actual labelled 30 minutes before P, with the forecast at its own label P;
-  (2) the same actual with the forecast labelled 30 minutes after P. Each is
-  computed on the half-hours that the primary and the sensitivity share, and
-  the half-hours lost at the window's edges are counted. The basis is a
-  measured alignment, not a documented convention: against NESO's historic
-  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
-  of half-hours, the API's actual agrees best 30 minutes after its label in
+  never change the registered primary verdict; a sensitivity whose
+  conclusion differs is reported as such. For each Elexon half-hour P, (1)
+  the API's actual labelled 30 minutes before P, with the forecast at its
+  own label P; (2) the same actual with the forecast labelled 30 minutes
+  after P. Each is computed on the half-hours that the primary and the
+  sensitivity share; the half-hours the primary has and a sensitivity lacks
+  are counted, at the window's edges and within it. The basis is a measured
+  alignment, not a documented convention: against NESO's historic generation
+  mix, whose wind equals Elexon's at the same half-hour in 99.1% of
+  half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; the same check of
-  half-hour changes against wind, run on NESO's series, peaks at that
-  series' own label. The API does not document which interval each value
-  describes; a question to NESO is outstanding.
+  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  intensity moves against large changes in Elexon's wind peaks one half-hour
+  after the label for the API's actual and at the label for NESO's series.
+  The API's documentation gives each value's start and end in UTC but does
+  not say what interval its actual is measured over.
 
 ### Q5. How much positive unexplained shortfall coincides with outages published in REMIT at the period start?
 
@@ -1124,20 +1133,23 @@ August 2026, were seen; they use no data in this question's window.
   fills it.
 - **Half-hour alignment.** The primary pairs each carbon value with the
   half-hour of its API label. Two sensitivities are reported beside it and
-  never change the verdict: for each Elexon half-hour P, (1) the API's
-  actual labelled 30 minutes before P, with the forecast at its own label P;
-  (2) the same actual with the forecast labelled 30 minutes after P. Each is
-  computed on the half-hours that the primary and the sensitivity share, and
-  the half-hours lost at the window's edges are counted. The basis is a
-  measured alignment, not a documented convention: against NESO's historic
-  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
-  of half-hours, the API's actual agrees best 30 minutes after its label in
+  never change the registered primary verdict; a sensitivity whose
+  conclusion differs is reported as such. For each Elexon half-hour P, (1)
+  the API's actual labelled 30 minutes before P, with the forecast at its
+  own label P; (2) the same actual with the forecast labelled 30 minutes
+  after P. Each is computed on the half-hours that the primary and the
+  sensitivity share; the half-hours the primary has and a sensitivity lacks
+  are counted, at the window's edges and within it. The basis is a measured
+  alignment, not a documented convention: against NESO's historic generation
+  mix, whose wind equals Elexon's at the same half-hour in 99.1% of
+  half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; the same check of
-  half-hour changes against wind, run on NESO's series, peaks at that
-  series' own label. The API does not document which interval each value
-  describes; a question to NESO is outstanding.
+  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  intensity moves against large changes in Elexon's wind peaks one half-hour
+  after the label for the API's actual and at the label for NESO's series.
+  The API's documentation gives each value's start and end in UTC but does
+  not say what interval its actual is measured over.
 
 ### Q32. When wind farms fall short of their plans, is the last carbon forecast too clean, and is there no such link for gas?
 
@@ -1170,20 +1182,23 @@ August 2026, were seen; they use no data in this question's window.
 - **One look.** Read once, with Q31.
 - **Half-hour alignment.** The primary pairs each carbon value with the
   half-hour of its API label. Two sensitivities are reported beside it and
-  never change the verdict: for each Elexon half-hour P, (1) the API's
-  actual labelled 30 minutes before P, with the forecast at its own label P;
-  (2) the same actual with the forecast labelled 30 minutes after P. Each is
-  computed on the half-hours that the primary and the sensitivity share, and
-  the half-hours lost at the window's edges are counted. The basis is a
-  measured alignment, not a documented convention: against NESO's historic
-  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
-  of half-hours, the API's actual agrees best 30 minutes after its label in
+  never change the registered primary verdict; a sensitivity whose
+  conclusion differs is reported as such. For each Elexon half-hour P, (1)
+  the API's actual labelled 30 minutes before P, with the forecast at its
+  own label P; (2) the same actual with the forecast labelled 30 minutes
+  after P. Each is computed on the half-hours that the primary and the
+  sensitivity share; the half-hours the primary has and a sensitivity lacks
+  are counted, at the window's edges and within it. The basis is a measured
+  alignment, not a documented convention: against NESO's historic generation
+  mix, whose wind equals Elexon's at the same half-hour in 99.1% of
+  half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; the same check of
-  half-hour changes against wind, run on NESO's series, peaks at that
-  series' own label. The API does not document which interval each value
-  describes; a question to NESO is outstanding.
+  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  intensity moves against large changes in Elexon's wind peaks one half-hour
+  after the label for the API's actual and at the label for NESO's series.
+  The API's documentation gives each value's start and end in UTC but does
+  not say what interval its actual is measured over.
 
 ### Q33. Does the stored final forecast line up better with the half-hour before its label, and does its error follow the local clock?
 
@@ -1197,10 +1212,11 @@ Amended 7 November 2026, before any data in its window existed: a half-hour
 alignment sensitivity is added beside the primary pairing, which stays on
 the API's labels. The alignment counts behind it, for 22 August 2025 to 16
 August 2026, were seen; they use no data in this question's window. They
-include one figure bearing on this question's timing prediction: over that
+include two figures bearing on this question's timing prediction: over that
 year the stored forecast's half-hour changes follow the actual's changes of
-an hour earlier most closely (correlation 0.61, against 0.44 at the same
-label).
+an hour earlier most closely (correlation 0.61, against 0.43 at the same
+label), and against NESO's generation mix, with the half-hour before (0.40,
+against 0.33).
 
 **Rule:**
 
@@ -1223,22 +1239,24 @@ label).
   interval above zero; the half-hour two before is described only.
 - **One look.** Read once, at least 8 days after the cutoff.
 - **Half-hour alignment.** The primary keeps the API's labels. Beside it,
-  never changing the verdict, the by-local-clock table is repeated with the
-  error for half-hour P taken as the actual labelled 30 minutes before P
-  minus the stored forecast labelled P, and, second, minus the forecast
-  labelled 30 minutes after P; the local half-hour is P's. Both are computed
-  on the half-hours the pairings share, and the half-hours lost at the
-  window's edges are counted. The timing lags already compare these offsets
-  and are unchanged. The basis is a measured alignment, not a documented
-  convention: against NESO's historic generation mix, whose wind equals
-  Elexon's at the same half-hour in 99.1% of half-hours, the API's actual
-  agrees best 30 minutes after its label in each of the 13 months from 22
-  August 2025 to 16 August 2026 (share within 5 g/kWh and mean absolute
-  difference), and the correlation of half-hour changes is 0.61 there,
-  against 0.43 at its own label; the same check of half-hour changes against
-  wind, run on NESO's series, peaks at that series' own label. The API does
-  not document which interval each value describes; a question to NESO is
-  outstanding.
+  never changing the registered primary verdict (a sensitivity whose
+  conclusion differs is reported as such), the by-local-clock table is
+  repeated with the error for half-hour P taken as the actual labelled 30
+  minutes before P minus the stored forecast labelled P, and, second, minus
+  the forecast labelled 30 minutes after P; the local half-hour is P's. Both
+  are computed on the half-hours the pairings share; the half-hours the
+  primary has and a sensitivity lacks are counted, at the window's edges and
+  within it. The timing lags already compare these offsets and are
+  unchanged. The basis is a measured alignment, not a documented convention:
+  against NESO's historic generation mix, whose wind equals Elexon's at the
+  same half-hour in 99.1% of half-hours, the API's actual agrees best 30
+  minutes after its label in each of the 13 months from 22 August 2025 to 16
+  August 2026 (share within 5 g/kWh and mean absolute difference), and the
+  correlation of half-hour changes is 0.61 there, against 0.43 at its own
+  label; a test of whether intensity moves against large changes in Elexon's
+  wind peaks one half-hour after the label for the API's actual and at the
+  label for NESO's series. The API's documentation gives each value's start
+  and end in UTC but does not say what interval its actual is measured over.
 
 **For scale** (added 6 November 2026; not part of the rule). 0.5 g/kWh is
 about a twentieth of the stored forecast's mean miss size in Q29 (9.3 g/kWh);
@@ -1305,20 +1323,23 @@ August 2026, were seen; they use no data in this question's window.
 - **One look.** Read once, at least 8 days after the cutoff.
 - **Half-hour alignment.** The primary pairs each carbon value with the
   half-hour of its API label. Two sensitivities are reported beside it and
-  never change the verdict: for each Elexon half-hour P, (1) the API's
-  actual labelled 30 minutes before P, with the forecast at its own label P;
-  (2) the same actual with the forecast labelled 30 minutes after P. Each is
-  computed on the half-hours that the primary and the sensitivity share, and
-  the half-hours lost at the window's edges are counted. The basis is a
-  measured alignment, not a documented convention: against NESO's historic
-  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
-  of half-hours, the API's actual agrees best 30 minutes after its label in
+  never change the registered primary verdict; a sensitivity whose
+  conclusion differs is reported as such. For each Elexon half-hour P, (1)
+  the API's actual labelled 30 minutes before P, with the forecast at its
+  own label P; (2) the same actual with the forecast labelled 30 minutes
+  after P. Each is computed on the half-hours that the primary and the
+  sensitivity share; the half-hours the primary has and a sensitivity lacks
+  are counted, at the window's edges and within it. The basis is a measured
+  alignment, not a documented convention: against NESO's historic generation
+  mix, whose wind equals Elexon's at the same half-hour in 99.1% of
+  half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; the same check of
-  half-hour changes against wind, run on NESO's series, peaks at that
-  series' own label. The API does not document which interval each value
-  describes; a question to NESO is outstanding.
+  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  intensity moves against large changes in Elexon's wind peaks one half-hour
+  after the label for the API's actual and at the label for NESO's series.
+  The API's documentation gives each value's start and end in UTC but does
+  not say what interval its actual is measured over.
 
 ### Q36. When NESO's wind forecast comes in short, how much dirtier than forecast does carbon intensity turn out, compared with when wind comes in over?
 
@@ -1363,20 +1384,23 @@ August 2026, were seen; they use no data in this question's window.
 - **One look.** Read once, at least 8 days after the cutoff.
 - **Half-hour alignment.** The primary pairs each carbon value with the
   half-hour of its API label. Two sensitivities are reported beside it and
-  never change the verdict: for each Elexon half-hour P, (1) the API's
-  actual labelled 30 minutes before P, with the forecast at its own label P;
-  (2) the same actual with the forecast labelled 30 minutes after P. Each is
-  computed on the half-hours that the primary and the sensitivity share, and
-  the half-hours lost at the window's edges are counted. The basis is a
-  measured alignment, not a documented convention: against NESO's historic
-  generation mix, whose wind equals Elexon's at the same half-hour in 99.1%
-  of half-hours, the API's actual agrees best 30 minutes after its label in
+  never change the registered primary verdict; a sensitivity whose
+  conclusion differs is reported as such. For each Elexon half-hour P, (1)
+  the API's actual labelled 30 minutes before P, with the forecast at its
+  own label P; (2) the same actual with the forecast labelled 30 minutes
+  after P. Each is computed on the half-hours that the primary and the
+  sensitivity share; the half-hours the primary has and a sensitivity lacks
+  are counted, at the window's edges and within it. The basis is a measured
+  alignment, not a documented convention: against NESO's historic generation
+  mix, whose wind equals Elexon's at the same half-hour in 99.1% of
+  half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; the same check of
-  half-hour changes against wind, run on NESO's series, peaks at that
-  series' own label. The API does not document which interval each value
-  describes; a question to NESO is outstanding.
+  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  intensity moves against large changes in Elexon's wind peaks one half-hour
+  after the label for the API's actual and at the label for NESO's series.
+  The API's documentation gives each value's start and end in UTC but does
+  not say what interval its actual is measured over.
 
 **For scale** (added 6 November 2026; not part of the rule). In Q30, the
 middle fifth of wind-forecast misses was 0.4 to 0.7 GW, which at 1.00 g/kWh

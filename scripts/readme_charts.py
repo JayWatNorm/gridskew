@@ -51,6 +51,12 @@ CARBON_ATTRIBUTION = (
     "modified: aggregated by GridSkew."
 )
 BMRS_AND_CARBON_ATTRIBUTION = f"{BMRS_ATTRIBUTION} {CARBON_ATTRIBUTION}"
+# NESO Open Data Licence v1.0 attribution, for the one output built partly
+# from NESO's historic generation mix.
+ALIGNMENT_ATTRIBUTION = (
+    f"{BMRS_AND_CARBON_ATTRIBUTION} Historic generation mix: Supported by "
+    "National Energy SO Open Data."
+)
 # How every attribution line starts, whatever its year or wording.
 ATTRIBUTION_OPENINGS = ("# Contains BMRS data", "# Carbon intensity data")
 
@@ -3338,7 +3344,7 @@ def write_charts(result_folder, output_folder):
     copy_saved_output(results, output, CONTEXT_Q30_LATENESS_RESULT, BMRS_ATTRIBUTION)
     write_q30_chart(q30, output)
     copy_saved_output(
-        results, output, CONTEXT_CARBON_ALIGNMENT_RESULT, BMRS_AND_CARBON_ATTRIBUTION
+        results, output, CONTEXT_CARBON_ALIGNMENT_RESULT, ALIGNMENT_ATTRIBUTION
     )
 
 
