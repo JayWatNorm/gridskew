@@ -155,13 +155,13 @@ def days_of(asked):
     return days
 
 
-def answers_with_a_failed_third_day(quarantined_by_it):
-    """The database's answers when the third day's request fails in the
-    parser: its count of rows quarantined before the failure in place of a
-    newly-stored count."""
+def answers_with_a_failed_day(failing_day, quarantined_by_it):
+    """The database's answers for 2 to 8 November when failing_day's request
+    fails in the parser: its count of rows quarantined before the failure in
+    place of a newly-stored count."""
 
-    answers = [NOTHING_NEWLY_STORED] * 7
-    answers[1] = (quarantined_by_it,)
+    answers = [NOTHING_NEWLY_STORED] * len(NOVEMBER_2_TO_8)
+    answers[NOVEMBER_2_TO_8.index(failing_day)] = (quarantined_by_it,)
     return answers
 
 
@@ -433,7 +433,9 @@ def test_a_malformed_publish_time_fails_its_day_and_quarantines_nothing():
     malformed = message_published_at("not a time", "REREAD-MALFORMED")
     conn = database(
         NORMAL_WATERMARK,
-        newly_stored_rows=answers_with_a_failed_third_day(quarantined_by_it=0),
+        newly_stored_rows=answers_with_a_failed_day(
+            date(2026, 11, 3), quarantined_by_it=0
+        ),
     )
 
     asked, error, _sleep = run_reread(
@@ -508,7 +510,9 @@ def test_a_rejected_row_and_a_malformed_time_in_one_response_hold_the_next_rerea
     caplog.set_level(logging.INFO, logger="ingestion.elexon.remit_poller")
     first_run = database(
         NORMAL_WATERMARK,
-        newly_stored_rows=answers_with_a_failed_third_day(quarantined_by_it=1),
+        newly_stored_rows=answers_with_a_failed_day(
+            date(2026, 11, 3), quarantined_by_it=1
+        ),
     )
 
     asked, error, _sleep = run_reread(

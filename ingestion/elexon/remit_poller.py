@@ -572,6 +572,7 @@ def raise_for_reread_failures(summary):
         raise ContractRejected(
             f"REMIT rows quarantined by the re-read on {', '.join(summary['quarantined'])}"
             f"; failed days: {json.dumps(summary['failed'])}"
+            f"; rows quarantined: {json.dumps(summary['quarantined_rows'])}"
         )
     if summary["stopped_at"] is not None:
         raise RuntimeError(

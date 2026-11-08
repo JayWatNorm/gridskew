@@ -483,17 +483,37 @@ def check_a_mixed_response_holds_the_next_reread(conn, connect):
         **message("2152-11-05T10:00:00Z", "MIXED-MALFORMED"),
         "publishTime": "y",
     }
-    get, asked = elexon_serving([], extra_by_day={MIXED_DAY: [rejected, malformed]})
+    rejected_alone = {
+        **message("2152-11-03T09:00:00Z", "MIXED-REJECTED-ALONE"),
+        "revisionNumber": "x",
+    }
+    rejected_alone_too = {
+        **message("2152-11-03T09:30:00Z", "MIXED-REJECTED-ALONE-TOO"),
+        "revisionNumber": "x",
+    }
+    # Two rows rejected two days earlier are already in the quarantine when
+    # the mixed day fails: only the mixed day's own row may be counted for it
+    # (counting every row gives 3, every other row 2).
+    get, asked = elexon_serving(
+        [],
+        extra_by_day={
+            date(2152, 11, 3): [rejected_alone, rejected_alone_too],
+            MIXED_DAY: [rejected, malformed],
+        },
+    )
     first_request = datetime(2152, 11, 12, 4, 40, tzinfo=timezone.utc)
     error, _readings = run_reread(conn, SEQUENCE_LAST_DAY, get, first_request)
 
     assert len(asked) == 7
+    assert isinstance(error, ContractRejected), error
     assert str(error) == (
-        'REMIT re-read days failed: {"2152-11-05": "ValueError"}; rows '
-        "quarantined before the failure, which hold the next re-read: "
-        '{"2152-11-05": 1}'
+        "REMIT rows quarantined by the re-read on 2152-11-03; failed days: "
+        '{"2152-11-05": "ValueError"}; rows quarantined: '
+        '{"2152-11-03": 2, "2152-11-05": 1}'
     ), str(error)
     assert quarantined_with_mrid(connect, "MIXED-REJECTED") == 1
+    assert quarantined_with_mrid(connect, "MIXED-REJECTED-ALONE") == 1
+    assert quarantined_with_mrid(connect, "MIXED-REJECTED-ALONE-TOO") == 1
     assert stored_retrieved_at(conn, "MIXED-MALFORMED") == []
 
     get, asked = elexon_serving([])

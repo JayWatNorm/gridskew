@@ -128,8 +128,9 @@ not later than that time. So the re-read never asks for or stores anything
 past the hourly run's newest stored message: after an outage that began
 before the seven days it asks nothing, and when that message lies inside
 the seven days only the days and part of a day before it are asked. The
-hourly run's window is the same after a re-read as before. Rows a response returns outside the requested day are
-left out and counted, not quarantined.
+hourly run's window is the same after a re-read as before. Rows a response
+returns outside the requested day are left out and counted, not
+quarantined.
 
 **What a late row shows.** A row the re-read stores was not in the hourly
 run's reads. Its `retrieved_at` says when GridSkew stored it, not when
@@ -161,7 +162,8 @@ never evidence that the message was available at its publish time.
   failed with the count of rows quarantined; the task fails after the last
   day, and the following re-read is held until the quarantine is cleared.
   Nothing is lost: no row of that response is stored, the rejected rows are
-  kept in the quarantine, and the day is asked again once it is dealt with.
+  kept in the quarantine, and the day is asked again once the quarantine is
+  cleared, within the seven days or by backfill (above).
 
 **Record.** Each run logs one JSON summary: the watermark, the days skipped
 or shortened by it, the days asked, the rows served, left out and newly
