@@ -989,8 +989,9 @@ ordered by the same fixed pseudo-random number. Read once with Q8 on
   day, without overlap; the window's 360 days are not a multiple of seven,
   so the last block holds the remaining 3 days. Each draw takes blocks, each
   equally likely, with replacement until 360 days are filled; the last block
-  drawn keeps only its first days needed to reach 360. It is reported beside
-  the registered results, which stand whatever it shows, and neither way of
+  drawn keeps only its first days needed to reach 360. The seed and the
+  saved input snapshot are recorded at the run. It is reported beside the
+  registered results, which stand whatever it shows, and neither way of
   building an interval is chosen by whether a result stays clear of 1 or 0.
   Not yet run: it reads Q28's half-hours again, so it is run once, on its
   own, and reported as a second look.

@@ -3478,8 +3478,8 @@ def test_q28_registers_a_seven_day_block_sensitivity_not_yet_run():
         "days are not a multiple of seven, so the last block holds the remaining "
         "3 days. Each draw takes blocks, each equally likely, with replacement "
         "until 360 days are filled; the last block drawn keeps only its first "
-        "days needed to reach 360. "
-        "It is reported beside the registered results, which stand whatever it "
+        "days needed to reach 360. The seed and the saved input snapshot are "
+        "recorded at the run. It is reported beside the registered results, which stand whatever it "
         "shows," in q28
     )
     assert "Not yet run:" in q28
