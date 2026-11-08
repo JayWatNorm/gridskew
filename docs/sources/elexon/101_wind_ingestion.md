@@ -103,11 +103,11 @@ look-back, after asking for its other days. To release a held day:
 2. If Elexon legitimately sends a null `generation`, the contract, the
    tables' `NOT NULL` and the Q36 analysis must change together before the
    day can load.
-3. Delete that day's quarantine rows, by `dataset` and the day in
-   `request_context`, after counting them. The pollers hold a day for as
-   long as any quarantine row names it, so the day is not asked for again
-   until its rows are gone; deleting them also removes the record of the
-   rejection.
+3. List that day's rows, by `dataset` and the day in `request_context`,
+   and mark them resolved by id, with who and why
+   ([operations](../../operations.md#the-quarantine)). The pollers hold a
+   day for as long as an unresolved row names it, so the day is not asked
+   for again until its rows are marked; the record of the rejection stays.
 4. The next run asks for the day while it is in the look-back; for an older
    day, backfill the run whose target it is
    ([operations](../../operations.md#running-past-days-again)).

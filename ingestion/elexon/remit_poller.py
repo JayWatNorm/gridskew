@@ -134,12 +134,13 @@ def newest_stored_publish_time(conn):
 
 
 def quarantined_row_count(conn):
-    """Count quarantined REMIT rows whose message is still not stored.
+    """Count unresolved quarantined REMIT rows whose message is still not
+    stored.
 
-    A row whose message a later load stored is resolved and no longer
-    counts, so no one has to delete it. The match compares text and converts
-    nothing from the payload, so a malformed row matches nothing and still
-    counts.
+    A row whose message a later load stored no longer counts, with no hand
+    step; a row marked resolved by hand no longer counts either. The match
+    compares text and converts nothing from the payload, so a malformed row
+    matches nothing and still counts.
     """
 
     with conn.cursor() as cursor:
@@ -148,6 +149,7 @@ def quarantined_row_count(conn):
             SELECT count(*)
             FROM raw.endpoint_quarantine AS quarantined
             WHERE quarantined.dataset = 'REMIT'
+              AND quarantined.resolved_at IS NULL
               AND NOT EXISTS (
                   SELECT 1
                   FROM raw.elexon_remit AS stored

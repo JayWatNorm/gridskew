@@ -46,9 +46,9 @@ first load and the daily load use the same code.
 **A row that breaks its source's rules is kept aside, not dropped.**
 Validation inserts it into a quarantine table with the request and the full
 payload, so it is not lost silently and the cause can be fixed and the data
-reloaded. Releasing a held wind day means deleting its quarantine rows, and
-the one recovery so far, of REMIT rows, deleted them too; a change to keep
-them is under consideration.
+reloaded. Rows are never deleted: a held wind day or a given-up message is
+released by marking its rows resolved, and the record of the rejection
+stays.
 [Endpoint validation](sources/endpoint-validation.md),
 [the quarantine](operations.md#the-quarantine)
 

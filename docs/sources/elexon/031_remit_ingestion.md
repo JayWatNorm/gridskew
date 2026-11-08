@@ -92,11 +92,12 @@ A row is matched to its stored message on `mrid`, `revisionNumber`,
 or missing key field matches nothing and keeps counting.
 
 A row that keeps counting was not recovered: its message is still missing,
-and the run keeps failing for it. Delete a `REMIT` quarantine row only when
-the message is knowingly given up.
+and the run keeps failing for it. Mark it resolved by id, with why, only
+when the message is knowingly given up; a resolved row no longer counts,
+and its record stays.
 
-The poller never deletes a quarantine row. What has happened to quarantine
-rows so far, and the change under consideration, is in
+The poller never updates or deletes a quarantine row. Listing rows and
+marking them resolved is in
 [operations](../../operations.md#the-quarantine).
 
 A message leaves out a field that has no value, so the run does not log a

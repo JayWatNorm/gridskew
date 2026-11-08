@@ -166,6 +166,38 @@ def quarantined_records(conn):
     return records
 
 
+def quarantine_row(
+    request_context=None, payload=None, resolved_at=None, resolved_by=None
+):
+    """A row of a fake raw.endpoint_quarantine for the readers to find. The
+    resolution columns are null, as the writer leaves them, unless the test
+    marks the row resolved."""
+
+    if request_context is None:
+        request_context = {}
+    if payload is None:
+        payload = {}
+    return {
+        "request_context": request_context,
+        "payload": payload,
+        "resolved_at": resolved_at,
+        "resolved_by": resolved_by,
+    }
+
+
+def quarantine_rows_read_by(query, quarantine_rows):
+    """The rows of a fake quarantine that a reading query finds: only the
+    unresolved ones when it asks for resolved_at IS NULL, else every row."""
+
+    if "resolved_at IS NULL" not in query:
+        return list(quarantine_rows)
+    unresolved = []
+    for row in quarantine_rows:
+        if row["resolved_at"] is None:
+            unresolved.append(row)
+    return unresolved
+
+
 def waits_before_each_retry(retry_policy, jitter):
     """Airflow waits retry_delay * 2**(n-1) before retry n, capped at
     max_retry_delay; its jitter adds up to the same again before the cap."""
