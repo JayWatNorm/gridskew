@@ -49,7 +49,7 @@ docs/sources/
     020_b1610.md              The receipt                              [running]
     021_b1610_ingestion.md      II at 14d, SF at 35d, RF at 450d; one R1 week
     030_remit.md              The outage notice                        [running]
-    031_remit_ingestion.md      hourly, window from the table, every publication kept
+    031_remit_ingestion.md      hourly, window from the table; a daily seven-day re-read
     040_boalf.md              The intervention                         [running]
     041_boalf_ingestion.md      daily, catchup=True, every poll kept
     050_demand.md             Expected versus actual usage             [NDF, INDO]

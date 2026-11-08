@@ -85,7 +85,7 @@ Numbered in build order, not alphabetically.
 | [010_pn.md](010_pn.md) | [011](011_pn_ingestion.md) | `PN` | The promise | Running |
 | [015_qpn.md](015_qpn.md) | [016](016_qpn_ingestion.md) | `QPN` | Dynamic Data only; not in the shortfall | Running |
 | [020_b1610.md](020_b1610.md) | [021](021_b1610_ingestion.md) | `B1610` | The receipt | Running |
-| [030_remit.md](030_remit.md) | [031](031_remit_ingestion.md) | `REMIT` | Outage notice, planned or unplanned | Running |
+| [030_remit.md](030_remit.md) | [031](031_remit_ingestion.md) | `REMIT` | Outage notice, planned or unplanned | Running: hourly, and a daily re-read of the previous seven days |
 | [040_boalf.md](040_boalf.md) | [041](041_boalf_ingestion.md) | `BOALF` | The intervention | Running |
 | [050_demand.md](050_demand.md) | [051](051_demand_ingestion.md) | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | `NDF` and `INDO`: one-off back-fill |
 | [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Later |
