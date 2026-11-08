@@ -418,7 +418,10 @@ Waiting for 90 matched days on dates held on the three-week run or later.
   half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  changes is 0.61 there, against 0.43 at its own label; the API's actual
+  also moves with NESO's metered gas output one half-hour after its label
+  (correlation of half-hour changes 0.84, against 0.63 at the label), in
+  every season and on both sides of each clock change; a test of whether
   intensity moves against large changes in Elexon's wind peaks one half-hour
   after the label for the API's actual and at the label for NESO's series.
   The API's documentation gives each value's start and end in UTC but does
@@ -1165,7 +1168,10 @@ beside the primary.
   half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  changes is 0.61 there, against 0.43 at its own label; the API's actual
+  also moves with NESO's metered gas output one half-hour after its label
+  (correlation of half-hour changes 0.84, against 0.63 at the label), in
+  every season and on both sides of each clock change; a test of whether
   intensity moves against large changes in Elexon's wind peaks one half-hour
   after the label for the API's actual and at the label for NESO's series.
   The API's documentation gives each value's start and end in UTC but does
@@ -1227,7 +1233,10 @@ no data in this question's window.
   half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  changes is 0.61 there, against 0.43 at its own label; the API's actual
+  also moves with NESO's metered gas output one half-hour after its label
+  (correlation of half-hour changes 0.84, against 0.63 at the label), in
+  every season and on both sides of each clock change; a test of whether
   intensity moves against large changes in Elexon's wind peaks one half-hour
   after the label for the API's actual and at the label for NESO's series.
   The API's documentation gives each value's start and end in UTC but does
@@ -1404,7 +1413,10 @@ beside the primary.
   half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  changes is 0.61 there, against 0.43 at its own label; the API's actual
+  also moves with NESO's metered gas output one half-hour after its label
+  (correlation of half-hour changes 0.84, against 0.63 at the label), in
+  every season and on both sides of each clock change; a test of whether
   intensity moves against large changes in Elexon's wind peaks one half-hour
   after the label for the API's actual and at the label for NESO's series.
   The API's documentation gives each value's start and end in UTC but does
@@ -1478,7 +1490,10 @@ August 2026, were seen; they use no data in this question's window.
   half-hours, the API's actual agrees best 30 minutes after its label in
   each of the 13 months from 22 August 2025 to 16 August 2026 (share within
   5 g/kWh and mean absolute difference), and the correlation of half-hour
-  changes is 0.61 there, against 0.43 at its own label; a test of whether
+  changes is 0.61 there, against 0.43 at its own label; the API's actual
+  also moves with NESO's metered gas output one half-hour after its label
+  (correlation of half-hour changes 0.84, against 0.63 at the label), in
+  every season and on both sides of each clock change; a test of whether
   intensity moves against large changes in Elexon's wind peaks one half-hour
   after the label for the API's actual and at the label for NESO's series.
   The API's documentation gives each value's start and end in UTC but does
