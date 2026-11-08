@@ -1,0 +1,11 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Read 7 November 2026 18:34 to 18:41 UTC (read-only). Section 1: units with a fuel type in the BM-unit register extract in force at Q23's read (15 October 2026 00:00 UTC) against the extract of 7 November 2026 00:00 UTC. Section 2: Q23's population (determinable, uninstructed, not interconnectors, positive registered capacity, half-hours to 30 September 2026 22:30 UTC) as held at the read (register and metered values of the read), and the same half-hours counted with the register and metered values held on 7 November 2026. Counts only.
+section,item,detail,fuel_group,units,unit_periods,label
+1,gained a fuel type,BIOMASS,bioenergy,1,,"context only: breakdown, not a registered result"
+1,gained a fuel type,OCGT,gas_turbine,8,,"context only: breakdown, not a registered result"
+1,gained a fuel type,OTHER,other,15,,"context only: breakdown, not a registered result"
+1,lost or changed its fuel type,,,0,,"context only: breakdown, not a registered result"
+2,as held at the read,,,452,7337115,"context only: breakdown, not a registered result"
+2,held on 7 November 2026,"units in the read's cohort, metered at the read",,452,7337115,"context only: breakdown, not a registered result"
+2,held on 7 November 2026,"units in the read's cohort, first metered after the read",,405,801,"context only: breakdown, not a registered result"
+2,held on 7 November 2026,units given a fuel type after the read,,23,344950,"context only: breakdown, not a registered result"

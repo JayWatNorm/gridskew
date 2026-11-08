@@ -1,0 +1,13 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Read 7 November 2026 18:32 UTC (read-only) on the data as held at Q5's read (12 October 2026 21:19 UTC): the BM-unit register extract of 12 October 2026, metered values captured by the read (no plan or instruction in the window was captured after it), half-hours to 27 September 2026 22:30 UTC; Q5's population, determinable cohort unit half-hours. Under-delivery: the positive part of expected minus metered energy, MWh. Drawing power while expected at zero or below: a half-hour whose expected output (the plan, or the instructed level while an instruction applied) is zero or below and whose metered figure is below zero. The total row equals q5_shortfall_with_known_outage.csv.
+section,fuel_group,unit_periods,under_delivery_mwh,drawing_power_expected_at_or_below_zero_mwh,drawing_power_expected_at_or_below_zero_unit_periods,label
+1,bioenergy,212212,959341.7,18064.0,12831,"context only: breakdown, not a registered result"
+1,coal,115752,85.1,85.1,13,"context only: breakdown, not a registered result"
+1,gas_turbine,1504776,3403797.7,788267.9,640014,"context only: breakdown, not a registered result"
+1,hydro,424424,100687.9,1660.9,21084,"context only: breakdown, not a registered result"
+1,interconnector,154313,51546.9,0.0,0,"context only: breakdown, not a registered result"
+1,nuclear,270088,1651258.9,229251.4,44242,"context only: breakdown, not a registered result"
+1,other,1377993,780067.6,265385.8,579545,"context only: breakdown, not a registered result"
+1,pumped_storage,308672,148508.5,87359.5,93627,"context only: breakdown, not a registered result"
+1,wind,4307424,9314453.4,120818.9,368497,"context only: breakdown, not a registered result"
+2,,8675654,16409747.7,1510893.5,1759853,"context only: breakdown, not a registered result"

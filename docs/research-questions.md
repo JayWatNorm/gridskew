@@ -334,6 +334,13 @@ days. Amended before any read:
   beside them; half-hours left out for a stale final forecast are counted
   by weekday; ties at the top quintile's edge are reported; only active
   cohort units count, without interconnectors.
+- 7 November 2026: each settlement date counts only once the three-week
+  run (SF) or a later run holds its metered values. Dates still on the
+  one-week run at the read are left out and counted, and the 90 matched
+  days are counted on the remaining dates, so the read may come later.
+  Seen before this change: from 17 August 2026, the one-week run held
+  readings of exactly zero at some gas units that later runs show as not
+  zero.
 - 7 November 2026: a half-hour alignment sensitivity is added beside the
   primary pairing, which stays on the API's labels. This is before the read,
   not before data: the window has held data since 17 August 2026. Seen
@@ -343,7 +350,7 @@ days. Amended before any read:
   archive forecast values from six polls; no error, quintile or shortfall
   figure of this question.
 
-Waiting for 90 matched days.
+Waiting for 90 matched days on dates held on the three-week run or later.
 
 **Rule:**
 
@@ -352,6 +359,13 @@ Waiting for 90 matched days.
   at any horizon; not the API's stored forecast) and the cohort's
   unexplained shortfall for at least 46 half-hours; at least 90 matched
   days, up to a fixed `analysis_read_until` recorded before the read.
+- **Settlement run.** A settlement date is eligible when every
+  determinable active cohort unit-period on it has its metered value from
+  the three-week run (SF) or a later run at the read. Dates still on the
+  one-week run are left out and reported with their half-hours. Matched
+  days and the 90-day gate count eligible dates only. Eligibility uses the
+  meter data captured by the read time, and a rerun is limited to the same
+  captures.
 - **Fresh final forecast.** The quintiles and the bootstrap use only
   half-hours whose final forecast was made at most 30 minutes ahead (Q1's
   "final"). Matched days are still counted at any final horizon, so a stall

@@ -1,0 +1,20 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Read 7 November 2026 18:36 to 18:41 UTC (read-only). One-week run: Elexon's interim settlement run (II); a zero reading: exactly 0 MWh on it and not 0 on a later run. Section 1: gas units in Q5's population as held at its read (register extract of 12 October 2026, metered values captured by 12 October 2026 21:19 UTC), by settlement week: unit half-hours whose first metered figure is from the one-week run, and the zero readings among them against the latest run held on 7 November 2026. Section 2: Q5's and Q23's populations as held at their reads: unit half-hours resting on the one-week run at the read, and the zero readings among them against the three-week run (SF) that arrived after the read. Section 3: the gas units with zero readings from 17 August to 27 September 2026 (cohort as held on 7 November 2026), each unit half-hour matched on its unit, date and period with the rows GridSkew stored from Elexon: zero readings whose stored one-week row holds 0 (the value the model selected), and model one-week values with no stored one-week row. Counts only.
+section,item,detail,fuel_group,unit_periods,zero_readings,units,label
+1,2026-07-27,first metered figure on the one-week run,gas_turbine,11232,0,0,"context only: breakdown, not a registered result"
+1,2026-08-03,first metered figure on the one-week run,gas_turbine,26208,480,2,"context only: breakdown, not a registered result"
+1,2026-08-10,first metered figure on the one-week run,gas_turbine,26208,172,3,"context only: breakdown, not a registered result"
+1,2026-08-17,first metered figure on the one-week run,gas_turbine,26208,1701,6,"context only: breakdown, not a registered result"
+1,2026-08-24,first metered figure on the one-week run,gas_turbine,26208,1002,6,"context only: breakdown, not a registered result"
+1,2026-08-31,first metered figure on the one-week run,gas_turbine,26208,1536,5,"context only: breakdown, not a registered result"
+1,2026-09-07,first metered figure on the one-week run,gas_turbine,22464,1344,6,"context only: breakdown, not a registered result"
+1,2026-09-14,first metered figure on the one-week run,gas_turbine,26208,2514,13,"context only: breakdown, not a registered result"
+1,2026-09-21,first metered figure on the one-week run,gas_turbine,26208,1346,13,"context only: breakdown, not a registered result"
+2,Q5,on the one-week run at the read,gas_turbine,71136,5156,14,"context only: breakdown, not a registered result"
+2,Q5,on the one-week run at the read,,428029,8940,42,"context only: breakdown, not a registered result"
+2,Q23,on the one-week run at the read,gas_turbine,59272,4764,16,"context only: breakdown, not a registered result"
+2,Q23,on the one-week run at the read,,345916,8247,38,"context only: breakdown, not a registered result"
+3,2026-07-27 to 2026-08-16,zero readings whose stored one-week row holds 0,gas_turbine,748,748,3,"context only: breakdown, not a registered result"
+3,2026-07-27 to 2026-08-16,model one-week values with no stored one-week row,gas_turbine,0,,,"context only: breakdown, not a registered result"
+3,2026-08-17 to 2026-09-27,zero readings whose stored one-week row holds 0,gas_turbine,9466,9466,16,"context only: breakdown, not a registered result"
+3,2026-08-17 to 2026-09-27,model one-week values with no stored one-week row,gas_turbine,0,,,"context only: breakdown, not a registered result"
