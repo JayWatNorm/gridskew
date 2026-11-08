@@ -78,7 +78,8 @@ PN.
 
 ## Pre-registered test: do QPNs restate?
 
-**Status: designed, not run**, as for PN.
+**Status: a bounded two-day check, run once on 8 November 2026**, with PN:
+the same two days and the same result.
 
 Same as PN, same rule, same ladder — see
 [011_pn_ingestion.md](011_pn_ingestion.md). QPN carries no revision marker
