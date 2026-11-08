@@ -9,6 +9,7 @@ REMIT row in quarantine, and every row they commit is deleted at the end.
 
 import json
 from datetime import date, datetime, timedelta, timezone
+from datetime import time as time_of_day
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -100,6 +101,9 @@ EXPECTED_A = [
     (date(2000, 2, 14), 1, 1, 7201, 7201),
 ]
 EXPECTED_B = [(date(2000, 1, 17), 1, 1, 86400, 86400)]
+# Evaluation C: the nightly's null evaluation day, today's UTC date; an early
+# floor so that only the 30 days bind.
+EVALUATION_C = {"remit_late_check_from": "2000-01-01"}
 
 
 def message_template():
@@ -489,6 +493,60 @@ def check_the_late_warning_on_fixed_evaluation_days(connect):
         conn.close()
 
 
+def store_rows_around_today_uncommitted(conn, utc_today):
+    """Late rows on today's UTC date, on yesterday and 31 days back. Only
+    yesterday's is in the range when the evaluation day is today's UTC
+    date."""
+
+    rows = []
+    for label, publish_time in (
+        ("TODAY", datetime.combine(utc_today, time_of_day(0, 0, 30), timezone.utc)),
+        (
+            "YESTERDAY",
+            datetime.combine(utc_today, time_of_day(12), timezone.utc)
+            - timedelta(days=1),
+        ),
+        (
+            "DAY-31",
+            datetime.combine(utc_today, time_of_day(12), timezone.utc)
+            - timedelta(days=31),
+        ),
+    ):
+        publish_text = publish_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        one_message = message(publish_text, f"WARN-C-{label}")
+        rows.extend(parse([one_message], publish_time + timedelta(hours=3)))
+    with conn.cursor() as cursor:
+        insert_rows(cursor, REMIT_INSERT, rows)
+
+
+def database_utc_today(conn):
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT (now() AT TIME ZONE 'UTC')::date")
+        (utc_today,) = cursor.fetchone()
+    return utc_today
+
+
+def check_the_late_warning_counts_back_from_the_utc_date(connect):
+    """With remit_late_check_today null, the range ends yesterday by the UTC
+    date in every session zone: at any hour one of Etc/GMT-14 and
+    Etc/GMT+12 is on another date than UTC. The rows are rolled back."""
+
+    warning_sql = compiled_late_warning(EVALUATION_C)
+    conn = connect(None)
+    try:
+        utc_today = database_utc_today(conn)
+        store_rows_around_today_uncommitted(conn, utc_today)
+        expected = [(utc_today - timedelta(days=1), 1, 1, 10800, 10800)]
+        for zone in SESSION_ZONES:
+            with conn.cursor() as cursor:
+                cursor.execute(f"SET TIME ZONE '{zone}'")
+            listed = rows_the_warning_lists(conn, warning_sql)
+            assert listed == expected, f"evaluation C, {zone}: {listed}"
+    finally:
+        conn.rollback()
+        conn.close()
+
+
 def run_remit_reread_checks(writer, connect):
     """Every re-read check; connect(zone) opens a disposable connection."""
 
@@ -500,6 +558,7 @@ def run_remit_reread_checks(writer, connect):
         check_two_runs_across_a_failure_and_a_malformed_time(writer)
         check_the_queries_agree_in_every_session_zone(connect)
         check_the_late_warning_on_fixed_evaluation_days(connect)
+        check_the_late_warning_counts_back_from_the_utc_date(connect)
     finally:
         delete_reread_check_rows(writer)
     print(
