@@ -94,10 +94,9 @@ A row that keeps counting was not recovered: its message is still missing,
 and the run keeps failing for it. Delete a `REMIT` quarantine row only when
 the message is knowingly given up.
 
-The poller never deletes a quarantine row. The one recovery so far, of 23
-rows in October 2026, deleted them after the messages were reloaded, so the
-database keeps no record of that rejection. A change that keeps resolved
-rows is under consideration.
+The poller never deletes a quarantine row. What has happened to quarantine
+rows so far, and the change under consideration, is in
+[operations](../../operations.md#the-quarantine).
 
 A message leaves out a field that has no value, so the run does not log a
 warning for an absent optional field. An unexpected field still logs one.

@@ -138,12 +138,14 @@ be wrong during a partial backfill.
 Neither API publishes a number for its rate limit, and neither returns
 rate-limit headers, so a client cannot see how close it is to one. Both have
 a limit. Elexon's API definition documents an HTTP 429 (too many requests)
-response on the endpoints GridSkew reads, and NESO's Carbon Intensity terms
-say a rate limit applies and heavy callers may be blocked. Every poller calls
-`raise_for_status()`, so a 429 fails the request; in a scheduled task that
-fails the try, and Airflow's retries run it again later. The wind look-back
-tasks and the wind back-fill stop at once on a 429, and the outturn's Monday
-history re-fetch logs the failed window and goes on to the next.
+response on the endpoints checked, and NESO's Carbon Intensity terms say a
+rate limit applies and heavy callers may be blocked. Every poller calls
+`raise_for_status()`, so a 429 fails the request. In most scheduled tasks
+that fails the try, and Airflow's retries run it again later. The wind
+look-back tasks have no retries: they stop at once on a 429, and the next
+day's run asks again. The outturn's Monday history re-fetch logs the failed
+window and goes on to the next. The wind back-fill stops at the first
+failure; the QAS and demand back-fills log a failed day and go on.
 
 - **Scheduled daily runs**: one or two requests. No delay needed.
 - **Backfills**: Airflow runs daily intervals one at a time through the one-slot

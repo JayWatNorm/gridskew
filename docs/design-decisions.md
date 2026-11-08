@@ -18,9 +18,9 @@ since a complete date is not fetched again.
 [Raw layer conventions](README.md#raw-layer-conventions)
 
 **The loaders only insert into the source tables.** That is how they are
-written and a convention, not a rule the database enforces. The database
-bars only the dbt role, `gridskew_dbt`, from updating or deleting `raw`
-rows; the role the loaders write with owns the tables.
+written and a convention, not a rule the database enforces. The dbt role,
+`gridskew_dbt`, cannot update or delete `raw` rows, but the role the loaders
+write with owns the tables, so the database does not stop it.
 
 **The forecast is polled every half-hour and can never be backfilled.** The
 Carbon Intensity API only ever shows its latest forecast, so a missed poll
@@ -46,9 +46,9 @@ first load and the daily load use the same code.
 **A row that breaks its source's rules is kept aside, not dropped.**
 Validation inserts it into a quarantine table with the request and the full
 payload, so it is not lost silently and the cause can be fixed and the data
-reloaded. A quarantine row can be deleted once its data is recovered, and the
-one recovery so far deleted its rows; a change to keep them is under
-consideration.
+reloaded. Releasing a held wind day means deleting its quarantine rows, and
+the one recovery so far, of REMIT rows, deleted them too; a change to keep
+them is under consideration.
 [Endpoint validation](sources/endpoint-validation.md),
 [the quarantine](operations.md#the-quarantine)
 
