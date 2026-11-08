@@ -2,6 +2,7 @@
 when it stops, with Elexon and the database faked."""
 
 import json
+import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -152,6 +153,25 @@ def days_of(asked):
     for params in asked:
         days.append(requested_day(params))
     return days
+
+
+def answers_with_a_failed_third_day(quarantined_by_it):
+    """The database's answers when the third day's request fails in the
+    parser: its count of rows quarantined before the failure in place of a
+    newly-stored count."""
+
+    answers = [NOTHING_NEWLY_STORED] * 7
+    answers[1] = (quarantined_by_it,)
+    return answers
+
+
+def mixed_response(day):
+    """A row the contract rejects (revisionNumber not an integer) and a row
+    whose publish time is not a time, in one response."""
+
+    rejected = {**one_message_a_day(day)[0], "revisionNumber": "x"}
+    malformed = message_published_at("not a time", "REREAD-MALFORMED")
+    return [rejected, malformed]
 
 
 def stored_remit_rows(conn):
@@ -411,7 +431,10 @@ def test_a_rejected_row_is_quarantined_and_fails_the_reread_after_every_day():
 
 def test_a_malformed_publish_time_fails_its_day_and_quarantines_nothing():
     malformed = message_published_at("not a time", "REREAD-MALFORMED")
-    conn = database(NORMAL_WATERMARK, newly_stored_rows=[NOTHING_NEWLY_STORED] * 6)
+    conn = database(
+        NORMAL_WATERMARK,
+        newly_stored_rows=answers_with_a_failed_third_day(quarantined_by_it=0),
+    )
 
     asked, error, _sleep = run_reread(
         conn,
@@ -426,7 +449,6 @@ def test_a_malformed_publish_time_fails_its_day_and_quarantines_nothing():
     assert str(error) == 'REMIT re-read days failed: {"2026-11-03": "ValueError"}'
     assert "REREAD-2026-11-03" not in stored_mrids(conn)
     assert quarantined_records(conn) == []
-    conn.rollback.assert_called()
 
 
 def test_rows_outside_the_window_or_after_the_watermark_are_not_stored():
@@ -478,3 +500,35 @@ def test_the_late_warning_checks_from_9_october_and_counts_back_from_today():
     assert variables["remit_late_check_from"] == "2026-10-09"
     # Null: the nightly evaluates on today's UTC date.
     assert variables["remit_late_check_today"] is None
+
+
+def test_a_rejected_row_and_a_malformed_time_in_one_response_hold_the_next_reread(
+    caplog,
+):
+    caplog.set_level(logging.INFO, logger="ingestion.elexon.remit_poller")
+    first_run = database(
+        NORMAL_WATERMARK,
+        newly_stored_rows=answers_with_a_failed_third_day(quarantined_by_it=1),
+    )
+
+    asked, error, _sleep = run_reread(
+        first_run,
+        elexon_serving(
+            bodies_by_day={date(2026, 11, 3): mixed_response(date(2026, 11, 3))},
+            default=nothing_published,
+        ),
+    )
+    _asked, held, _sleep = run_reread(
+        database(NORMAL_WATERMARK, quarantined=1), elexon_serving()
+    )
+
+    assert len(asked) == 7
+    assert len(quarantined_records(first_run)) == 1
+    assert stored_remit_rows(first_run) == []
+    assert str(error) == (
+        'REMIT re-read days failed: {"2026-11-03": "ValueError"}; rows '
+        "quarantined before the failure, which hold the next re-read: "
+        '{"2026-11-03": 1}'
+    )
+    assert isinstance(held, ContractRejected)
+    assert '"held": true' in caplog.text

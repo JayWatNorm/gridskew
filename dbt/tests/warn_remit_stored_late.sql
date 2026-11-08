@@ -32,7 +32,9 @@ messages as (
     select
         (publish_time at time zone 'UTC')::date as publish_day,
         retrieved_at - publish_time > interval '2 hours' as is_late,
-        extract(epoch from retrieved_at - publish_time)::bigint as seconds_late
+        -- Rounded up: a message 7,200.4 seconds late shows 7201, never 7200.
+        ceil(extract(epoch from retrieved_at - publish_time))::bigint
+            as seconds_late
     from {{ ref('stg_elexon__remit') }}
     where
         publish_time >= (

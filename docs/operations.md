@@ -48,6 +48,13 @@ asks again for every day before its target that is not complete, so a day
 one run leaves short is asked again by the next run within minutes: backfill
 only the runs the gap needs.
 
+`gridskew_elexon_remit_reread` re-reads, in each run, the seven UTC publish
+days up to its interval start's UTC date, so a day stays in range for seven
+mornings. For an older day, backfill the runs whose ranges hold it, with
+`--max-active-runs 1`; add `--dry-run` first and check that it lists exactly
+those runs. A backfilled run asks nothing past the hourly run's newest
+stored message, and makes no request while a REMIT row is in quarantine.
+
 ## The quarantine
 
 A row that breaks its source's field contract is stored in

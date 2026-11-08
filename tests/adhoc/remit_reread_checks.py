@@ -26,6 +26,7 @@ from ingestion.elexon.remit_poller import (
     quarantined_row_count,
     reread,
 )
+from ingestion.routing import ContractRejected
 from ingestion.source_api import (
     decimal_json_dumps,
     utc_from_text_to_the_minute,
@@ -57,7 +58,8 @@ OUTAGE_WATERMARK = datetime(2150, 10, 1, 12, 0, tzinfo=timezone.utc)
 OUTAGE_LAST_DAY = date(2150, 11, 8)
 HOURLY_RESTART = datetime(2150, 11, 9, 4, 30, tzinfo=timezone.utc)
 RESTARTED_WATERMARK = datetime(2150, 11, 9, 4, 0, tzinfo=timezone.utc)
-FIRST_REREAD_REQUEST = datetime(2150, 11, 9, 4, 40, 1, tzinfo=timezone.utc)
+# A fraction of a second, so the seconds late are rounded up, not to the nearest.
+FIRST_REREAD_REQUEST = datetime(2150, 11, 9, 4, 40, 1, 400000, tzinfo=timezone.utc)
 LATE_MESSAGE_DAY = date(2150, 11, 3)
 # The hourly read stopped exactly at midnight starting 5 November 2151.
 MIDNIGHT_WATERMARK = datetime(2151, 11, 5, 0, 0, tzinfo=timezone.utc)
@@ -71,6 +73,7 @@ SEQUENCE_LAST_DAY = date(2152, 11, 8)
 FAILING_DAY = date(2152, 11, 4)
 MISSED_MESSAGE_DAY = date(2152, 11, 6)
 MALFORMED_DAY = date(2152, 11, 7)
+MIXED_DAY = date(2152, 11, 5)
 
 # Evaluation A of the warning test: the range is 16 January to 14 February 2000.
 EVALUATION_A = {
@@ -82,13 +85,14 @@ EVALUATION_B = {
     "remit_late_check_today": "2000-01-20",
     "remit_late_check_from": "2000-01-17",
 }
-# (publish_time, retrieved_at), UTC.
+# (publish_time, retrieved_at), UTC; one retrieved_at has a fraction of a second.
 WARNING_FIXTURE = (
     ("2000-01-15T23:59:59Z", "2000-01-16T03:00:00Z"),
     ("2000-01-16T00:00:00Z", "2000-01-16T02:00:01Z"),
     ("2000-01-17T12:00:00Z", "2000-01-18T12:00:00Z"),
     ("2000-02-01T10:00:00Z", "2000-02-01T12:00:00Z"),
     ("2000-02-01T11:00:00Z", "2000-02-01T13:00:01Z"),
+    ("2000-02-03T10:00:00Z", "2000-02-03T12:00:00.400000Z"),
     ("2000-02-05T08:00:00Z", "2000-02-05T08:30:00Z"),
     ("2000-02-14T23:59:59Z", "2000-02-15T02:00:00Z"),
     ("2000-02-15T00:00:00Z", "2000-02-15T03:00:00Z"),
@@ -98,6 +102,8 @@ EXPECTED_A = [
     (date(2000, 1, 16), 1, 1, 7201, 7201),
     (date(2000, 1, 17), 1, 1, 86400, 86400),
     (date(2000, 2, 1), 1, 2, 7201, 7201),
+    # 7,200.4 seconds: late, shown rounded up.
+    (date(2000, 2, 3), 1, 1, 7201, 7201),
     (date(2000, 2, 14), 1, 1, 7201, 7201),
 ]
 EXPECTED_B = [(date(2000, 1, 17), 1, 1, 86400, 86400)]
@@ -335,6 +341,8 @@ def check_outage_and_restart(conn):
         "2150-11-08": 0,
     }, summary
     assert summary["left_out"]["2150-11-08"] == 2, summary
+    # 3 November 15:00:00 to 9 November 04:41:01.4 is 481,261.4 seconds.
+    assert summary["seconds_late"] == {"2150-11-03": [481262, 481262]}, summary
     assert stored_retrieved_at(conn, "LATE-2150-11-03") == [(readings[1],)]
     assert stored_retrieved_at(conn, "HOURLY-2150-11-03") == hourly_capture
     assert stored_retrieved_at(conn, "NEXT-DAY") == []
@@ -445,6 +453,57 @@ def check_the_queries_agree_in_every_session_zone(connect):
         assert stored == found["UTC"][1], (zone, stored)
 
 
+def quarantined_with_mrid(connect, label):
+    """Read from a second connection, so a row counts only if committed."""
+
+    reader = connect(None)
+    try:
+        with reader.cursor() as cursor:
+            cursor.execute(
+                "SELECT count(*) FROM raw.endpoint_quarantine "
+                "WHERE dataset = 'REMIT' AND payload ->> 'mrid' = %s",
+                (f"{MRID_PREFIX}{label}",),
+            )
+            (row_count,) = cursor.fetchone()
+    finally:
+        reader.close()
+    return row_count
+
+
+def check_a_mixed_response_holds_the_next_reread(conn, connect):
+    """A rejected row and a malformed time in one response: the rejected row
+    is quarantined and committed, no row is stored, the day is failed with
+    its quarantined count, and the next re-read is held with no request."""
+
+    rejected = {
+        **message("2152-11-05T09:00:00Z", "MIXED-REJECTED"),
+        "revisionNumber": "x",
+    }
+    malformed = {
+        **message("2152-11-05T10:00:00Z", "MIXED-MALFORMED"),
+        "publishTime": "y",
+    }
+    get, asked = elexon_serving([], extra_by_day={MIXED_DAY: [rejected, malformed]})
+    first_request = datetime(2152, 11, 12, 4, 40, tzinfo=timezone.utc)
+    error, _readings = run_reread(conn, SEQUENCE_LAST_DAY, get, first_request)
+
+    assert len(asked) == 7
+    assert str(error) == (
+        'REMIT re-read days failed: {"2152-11-05": "ValueError"}; rows '
+        "quarantined before the failure, which hold the next re-read: "
+        '{"2152-11-05": 1}'
+    ), str(error)
+    assert quarantined_with_mrid(connect, "MIXED-REJECTED") == 1
+    assert stored_retrieved_at(conn, "MIXED-MALFORMED") == []
+
+    get, asked = elexon_serving([])
+    held, _readings = run_reread(
+        conn, SEQUENCE_LAST_DAY, get, first_request + timedelta(days=1)
+    )
+    assert isinstance(held, ContractRejected), held
+    assert asked == []
+
+
 def compiled_late_warning(dbt_vars):
     manifest = compile_analyses(
         dbt_vars, also_compiled=(LATE_WARNING_TEST,), selected=()
@@ -459,7 +518,7 @@ def store_warning_fixture_uncommitted(conn):
     rows = []
     for number, (publish_text, retrieved_text) in enumerate(WARNING_FIXTURE, start=1):
         one_message = message(publish_text, f"WARN-R{number}")
-        retrieved_at = utc_from_text_with_seconds(retrieved_text)
+        retrieved_at = datetime.fromisoformat(retrieved_text)
         rows.extend(parse([one_message], retrieved_at))
     with conn.cursor() as cursor:
         insert_rows(cursor, REMIT_INSERT, rows)
@@ -557,6 +616,7 @@ def run_remit_reread_checks(writer, connect):
         check_a_watermark_at_midnight_skips_its_day(writer)
         check_two_runs_across_a_failure_and_a_malformed_time(writer)
         check_the_queries_agree_in_every_session_zone(connect)
+        check_a_mixed_response_holds_the_next_reread(writer, connect)
         check_the_late_warning_on_fixed_evaluation_days(connect)
         check_the_late_warning_counts_back_from_the_utc_date(connect)
     finally:
@@ -564,6 +624,6 @@ def run_remit_reread_checks(writer, connect):
     print(
         "REMIT re-read: never moves the hourly watermark (outage and restart, "
         "midnight, two runs across a failure); a malformed time fails its day "
-        "without a quarantine row; the late warning lists its literal rows in "
+        "without a quarantine row; a mixed response holds the next re-read; the late warning lists its literal rows in "
         "four session zones"
     )

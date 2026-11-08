@@ -124,9 +124,11 @@ not a complete history.
 hourly run's newest stored `publish_time`. A day starting at or after that
 time is not asked; a day running past it is asked only up to it; and a row
 is stored only if its `publish_time` lies inside its requested day and is
-not later than that time. So after an outage the re-read asks nothing until
-the hourly run has caught up, and the hourly run's window is the same after
-a re-read as before. Rows a response returns outside the requested day are
+not later than that time. So the re-read never asks for or stores anything
+past the hourly run's newest stored message: after an outage that began
+before the seven days it asks nothing, and when that message lies inside
+the seven days only the days and part of a day before it are asked. The
+hourly run's window is the same after a re-read as before. Rows a response returns outside the requested day are
 left out and counted, not quarantined.
 
 **What a late row shows.** A row the re-read stores was not in the hourly
@@ -153,14 +155,24 @@ never evidence that the message was available at its publish time.
   hold them reads them.
 - A message the contract rejects is quarantined, the remaining days are
   asked, and the task fails; the hourly run then fails too, by its own count.
+- A response holding both a row the contract rejects (a value of the wrong
+  type) and a malformed time: the rejected rows are quarantined and
+  committed first, then the parser fails the day, which is recorded as
+  failed with the count of rows quarantined; the task fails after the last
+  day, and the following re-read is held until the quarantine is cleared.
+  Nothing is lost: no row of that response is stored, the rejected rows are
+  kept in the quarantine, and the day is asked again once it is dealt with.
 
 **Record.** Each run logs one JSON summary: the watermark, the days skipped
 or shortened by it, the days asked, the rows served, left out and newly
-stored per day, the seconds late of newly stored rows, and the failed days.
-The nightly test `warn_remit_stored_late` lists each UTC publish day, from
-9 October 2026 and within the last 30 days up to yesterday, that holds a
-message stored more than two hours after its `publish_time`, with counts and
-seconds only. It warns and never fails the nightly.
+stored per day, how late the newly stored rows were (rounded up to whole
+seconds), the failed days and any rows quarantined. The nightly test
+`warn_remit_stored_late` lists each UTC publish day, from 9 October 2026 and
+within the last 30 days up to yesterday, that holds a message stored more
+than two hours after its `publish_time`. The two hours are decided on the
+exact interval; the seconds late it shows are rounded up to whole seconds,
+so a message 7,200.4 seconds late shows 7201. Counts and seconds only. It
+warns and never fails the nightly.
 
 ## Limit
 

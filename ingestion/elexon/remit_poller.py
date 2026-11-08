@@ -398,6 +398,7 @@ def new_reread_summary(last_day):
         "newly_stored": {},
         "seconds_late": {},
         "quarantined": [],
+        "quarantined_rows": {},
         "failed": {},
         "stopped_at": None,
         "not_asked": [],
@@ -421,7 +422,13 @@ def ask_each_day_once(conn, windows, watermark, summary):
             summary["failed"][day_text] = reason
             logger.warning(
                 "%s",
-                json.dumps({"day": day_text, "failed": reason, "error": str(error)}),
+                json.dumps(
+                    {
+                        "day": day_text,
+                        "failed": reason,
+                        "quarantined": summary["quarantined_rows"].get(day_text, 0),
+                    }
+                ),
             )
             if stops_the_reread(error):
                 summary["stopped_at"] = day_text
@@ -445,23 +452,31 @@ def ask_publish_day(conn, window, watermark, summary):
     summary["left_out"][day_text] = left_out
     rejected_count = 0
     if kept:
-        rejected_count = process_rows(
-            kept,
-            spec=REMIT_SPEC,
-            dataset="REMIT",
-            conn=conn,
-            retrieved_at=retrieved_at,
-            request_context={
-                "publishDateTimeFrom": window["start"].isoformat(),
-                "publishDateTimeTo": window["request_end"].isoformat(),
-            },
-            parse_rows=parse,
-            load_rows=load,
-            payload_dumps=decimal_json_dumps,
-            log_missing_optional_fields=False,
-        )
+        try:
+            rejected_count = process_rows(
+                kept,
+                spec=REMIT_SPEC,
+                dataset="REMIT",
+                conn=conn,
+                retrieved_at=retrieved_at,
+                request_context={
+                    "publishDateTimeFrom": window["start"].isoformat(),
+                    "publishDateTimeTo": window["request_end"].isoformat(),
+                },
+                parse_rows=parse,
+                load_rows=load,
+                payload_dumps=decimal_json_dumps,
+                log_missing_optional_fields=False,
+            )
+        except Exception:
+            conn.rollback()
+            record_rows_quarantined_before_a_failure(
+                conn, day_text, retrieved_at, summary
+            )
+            raise
     if rejected_count:
         summary["quarantined"].append(day_text)
+        summary["quarantined_rows"][day_text] = rejected_count
 
     stored = newly_stored(conn, window["start"], window["day_end"], retrieved_at)
     conn.rollback()
@@ -484,15 +499,33 @@ def ask_publish_day(conn, window, watermark, summary):
         )
 
 
+def record_rows_quarantined_before_a_failure(conn, day_text, retrieved_at, summary):
+    """Record the rows of a failed request that the contract rejected and
+    the quarantine committed before the parser failed: the rollback cannot
+    undo them, and they hold the next re-read."""
+
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT count(*) FROM raw.endpoint_quarantine "
+            "WHERE dataset = 'REMIT' AND retrieved_at = %s",
+            (retrieved_at,),
+        )
+        (quarantined_count,) = cursor.fetchone()
+    conn.rollback()
+    if quarantined_count:
+        summary["quarantined_rows"][day_text] = quarantined_count
+
+
 def newly_stored(conn, window_start, day_end, retrieved_at):
     """The rows of the window this request stored, and how many seconds after
-    its publish time the earliest and latest of them was stored."""
+    its publish time the earliest and latest of them was stored, rounded up to
+    whole seconds."""
 
     with conn.cursor() as cursor:
         cursor.execute(
             "SELECT count(*), "
-            "min(extract(epoch FROM retrieved_at - publish_time))::bigint, "
-            "max(extract(epoch FROM retrieved_at - publish_time))::bigint "
+            "min(ceil(extract(epoch FROM retrieved_at - publish_time)))::bigint, "
+            "max(ceil(extract(epoch FROM retrieved_at - publish_time)))::bigint "
             "FROM raw.elexon_remit "
             "WHERE publish_time >= %s AND publish_time < %s AND retrieved_at = %s",
             (window_start, day_end, retrieved_at),
@@ -547,9 +580,13 @@ def raise_for_reread_failures(summary):
             f"{', '.join(summary['not_asked']) or 'none'}"
         )
     if summary["failed"]:
-        raise RuntimeError(
-            f"REMIT re-read days failed: {json.dumps(summary['failed'])}"
-        )
+        message = f"REMIT re-read days failed: {json.dumps(summary['failed'])}"
+        if summary["quarantined_rows"]:
+            message += (
+                "; rows quarantined before the failure, which hold the next "
+                f"re-read: {json.dumps(summary['quarantined_rows'])}"
+            )
+        raise RuntimeError(message)
 
 
 def iso_dates(days):
