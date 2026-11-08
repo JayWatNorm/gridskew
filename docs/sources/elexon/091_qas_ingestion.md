@@ -40,14 +40,18 @@ rejection.
 
 The DAG has three tasks, capturing the settlement dates 14, 35 and 450 days
 before each run's data interval, the ages of the B1610 II, SF and RF
-captures. NESO sends QAS by the second business day, so every target is past
-publication and an empty response is a failed capture. Each task retries for
-about four days. A target before 22 August 2025, the first settlement date
-GridSkew holds, is skipped.
+captures. NESO normally sends QAS by the second business day, so a target is
+normally past publication and an empty response is a failed capture. A date
+can come much later: 11 October 2026 still had no QAS on 8 November 2026,
+after its 14-day capture had used its retries. Each task retries for about
+four days. A target before 22 August 2025, the first settlement date GridSkew
+holds, is skipped.
 
 Every capture is kept: `retrieved_at` is part of the key, and the source has
-no version to compare. `int_shortfall_by_unit_period` reads each unit-period
-from the latest capture that holds it. `dbt/analyses/qas_resubmissions.sql`
+no version to compare. Only the version in force at each capture is seen; a
+resubmission sent and replaced between two captures is not.
+`int_shortfall_by_unit_period` reads each unit-period from the latest capture
+that holds it. `dbt/analyses/qas_resubmissions.sql`
 counts, for dates captured more than once, the unit-periods that changed,
 appeared or were dropped between captures.
 

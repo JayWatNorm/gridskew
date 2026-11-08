@@ -43,7 +43,9 @@ conversion to binary floats or strings. See
 
 Each daily run captures one British settlement date, names its run in the
 request and then checks what is stored. See
-[One settlement date per run](#one-settlement-date-per-run).
+[One settlement date per run](#one-settlement-date-per-run). A run starts
+when its data interval ends, so the II and SF captures begin 15.0 and 36.0
+days after the start of their settlement date: 14 and 35 days after it ends.
 
 The three rungs keep the first (II), the settled (SF) and the final (RF)
 position of every settlement date; analysis compares the first with the

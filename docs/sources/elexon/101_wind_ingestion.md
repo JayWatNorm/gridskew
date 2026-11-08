@@ -30,10 +30,11 @@ eight issues of 73 hourly points each, 584 rows. FUELHH, asked for one
 settlement date and fuel type WIND, returned one row per settlement period.
 
 `raw.elexon_windfor` keeps every issue: `publish_time` is part of its key.
-`raw.elexon_fuelhh` keeps every publication: `publish_time` is part of its
-key too, so a later value for a period lands beside the first. In both,
-`retrieved_at` records when a row was first stored, and fetching a window or
-a date again inserts nothing.
+`raw.elexon_fuelhh` keeps every publication it stores: `publish_time` is
+part of its key too, so a later value for a period would land beside the
+first if the date were fetched again. A complete date is not fetched again.
+In both, `retrieved_at` records when a row was first stored, and fetching a
+window or a date again inserts nothing.
 
 ## One request at a time
 
@@ -103,7 +104,10 @@ look-back, after asking for its other days. To release a held day:
    tables' `NOT NULL` and the Q36 analysis must change together before the
    day can load.
 3. Delete that day's quarantine rows, by `dataset` and the day in
-   `request_context`, after counting them.
+   `request_context`, after counting them. The pollers hold a day for as
+   long as any quarantine row names it, so the day is not asked for again
+   until its rows are gone; deleting them also removes the record of the
+   rejection.
 4. The next run asks for the day while it is in the look-back; for an older
    day, backfill the run whose target it is
    ([operations](../../operations.md#running-past-days-again)).

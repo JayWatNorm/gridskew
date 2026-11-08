@@ -51,10 +51,12 @@ explicitly rather than computing it at parse time.
 Nearly every dataset in this domain revises, so "does it revise" does not
 discriminate. Two things do.
 
-**Is re-polling structural or exceptional?** Carbon intensity actuals arrive late
-for *every* period, so re-polling is how the data completes — structural. A PN
-restatement, if it happens at all, would affect a small minority of rows —
-exceptional.
+**Is re-polling structural or exceptional?** The carbon intensity outturn is
+read again on each of seven days as a matter of course — structural. Its first
+capture of a period comes 24.5 to 48 hours after the period starts, and in the
+2,883 half-hours from 1 September 2026 to early on 31 October the stored
+actual changed in 40, each first at the second capture. A PN restatement, if
+it happens at all, would affect a small minority of rows — exceptional.
 
 **What does re-polling cost?** This varies by three orders of magnitude:
 
@@ -133,9 +135,17 @@ be wrong during a partial backfill.
 
 ## Politeness
 
-Neither API publishes a rate limit, and neither returns rate-limit headers, so a
-client cannot see how close it is to one. Backing off gracefully is impossible;
-you would simply be blocked.
+Neither API publishes a number for its rate limit, and neither returns
+rate-limit headers, so a client cannot see how close it is to one. Both have
+a limit. Elexon's API definition documents an HTTP 429 (too many requests)
+response on the endpoints checked, and NESO's Carbon Intensity terms say a
+rate limit applies and heavy callers may be blocked. Every poller calls
+`raise_for_status()`, so a 429 fails the request. In most scheduled tasks
+that fails the try, and Airflow's retries run it again later. The wind
+look-back tasks have no retries: they stop at once on a 429, and the next
+day's run asks again. The outturn's Monday history re-fetch logs the failed
+window and goes on to the next. The wind back-fill stops at the first
+failure; the QAS and demand back-fills log a failed day and go on.
 
 - **Scheduled daily runs**: one or two requests. No delay needed.
 - **Backfills**: Airflow runs daily intervals one at a time through the one-slot
@@ -184,8 +194,8 @@ a run rather than of a row.
 | DAG | Setting | Why |
 |---|---|---|
 | Carbon intensity forecast | `catchup=False`, poll now | Source not addressable. History does not exist |
-| Carbon intensity outturn | `catchup=False`, rolling 7-day window, weekly re-fetch of any gap in history | Addressable, but actuals arrive late for every period. Volume so small the overlap is free |
-| Elexon PN, QPN and B1610 II | `catchup=True`, daily chunks | Addressable, high volume, and responsible for the historical load |
+| Carbon intensity outturn | `catchup=False`, rolling 7-day window, weekly re-fetch of any gap in history | Addressable; a small share of actuals changes after the first capture. Volume so small the overlap is free |
+| Elexon PN and QPN | `catchup=True`, daily chunks | Addressable, high volume, and responsible for the historical load |
 | Elexon B1610 II, SF, RF | `catchup=True`, fixed lags of 14, 35 and 450 days, about four days of retries | Each run is captured while it is in force; RF is final, so its long lag loses nothing |
 | Elexon B1610 R1 cohort | captured once, 5 to 11 October 2026 | One week (10 to 16 August 2026) held at II, SF and R1 to measure restatement; RF reaches it through the RF rung |
 | Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |

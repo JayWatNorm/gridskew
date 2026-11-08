@@ -52,13 +52,17 @@ populated, and the API's own examples reach back to 2017.
 | `from` | `str` | Period start |
 | `to` | `str` | Period end |
 | `intensity.forecast` | `int` | **The final revision**, not a horizon-resolved forecast |
-| `intensity.actual` | `int` or `None` | Null until the period has settled |
+| `intensity.actual` | `int` or `None` | Null before the actual is published; never null in this table |
 | `intensity.index` | `str` | Band at time of publication |
 
 **`actual` appears roughly 15 minutes after a period closes.** The API does not
 document whether it is revised later. Every poll is kept, so a revision that a
-poll captures stays visible in this table's history; a revision made after the
-7-day look-back is not captured.
+poll captures stays visible in this table's history; a value revised and
+replaced between two daily polls, or revised after the 7-day look-back, is
+not captured. The first poll of a period comes 24.5 to 48 hours after it
+starts. In the 2,883 half-hours from 1 September 2026 to early on 31 October
+the stored actual changed in 40 (1.4%), each first at the second poll. That
+measures when a value first changed, not whether it changed again.
 
 ## Table
 
