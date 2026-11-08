@@ -233,20 +233,36 @@ for a given day executes after that day has ended.
 
 ## Pre-registered test: do PNs restate?
 
-**Status: designed, not run.** Since 1 September 2026 no PN or QPN day has
-been captured later than 24.1 hours after it ends, so a PN republished after
-that would not be seen.
+**Status: a bounded two-day check, run once on 8 November 2026.** Since 1
+September 2026 no PN or QPN day has been captured later than 24.1 hours after
+it ends, so a PN republished after that is not seen without a re-poll. Two
+days were re-polled, PN and QPN, with the daily request's own windows: 31
+October 2026 at 8 days old and 9 October 2026 at 30 days old, 124,848 and
+124,148 PN unit-periods and 119,040 and 118,340 QPN unit-periods, compared
+with the stored captures without storing the re-polls. No time end point and
+no level differed in any unit-period, and none was missing or new. The only
+field that differed was `bmUnit`: null at capture and an Elexon ID in the
+re-poll, on two and five units new to the market, in every period of the day.
+That is a change in identity metadata with no change to any plan segment;
+`int_elexon__pn_period_mwh` does not use `bm_unit` when it tests whether a
+capture repeats an earlier one, so such a capture is an echo. Whether the
+stream fills `bmUnit` from the registry when a request is served or the field
+was corrected later is not documented. By the decision rule this is no genuine
+change: the single daily fetch stays. Two days at different ages do not test
+the same day at several lags, and the registered four-week ladder has not run.
 
 Gate Closure constrains when a PN is submitted. It does not establish that the
 endpoint never republishes or corrects a past period. PN has no explicit
 revision marker; `retrieved_at` identifies each captured response.
 
 **Design.** Re-poll the same settlement days at lags of 1, 8, 30 and 90 days
-for four weeks, then compare the captures.
+for four weeks, then compare the captures. What ran is the bounded two-day
+check above, not the ladder.
 
 **Comparison.** Compare complete, ordered segment sets within
 `national_grid_bm_unit, settlement_date, settlement_period, retrieved_at`:
-both time endpoints, both level endpoints and the source unit identity. A
+both time endpoints and both level endpoints. The model's echo test uses the
+same fields; `bmUnit` is identity metadata, not part of a plan segment. A
 later capture made up entirely of previously seen segments is an echo, not a
 new submission. `int_elexon__pn_period_mwh` applies the same rule when it
 chooses a capture. Segments from different captures are never mixed into one
