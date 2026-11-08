@@ -51,9 +51,11 @@ The three rungs keep the first (II), the settled (SF) and the final (RF)
 position of every settlement date; analysis compares the first with the
 latest held. RF is the last run and stays in force once published, so its
 450-day offset needs no margin: it is after RF under today's 14-month
-timetable and under any shorter one. `R1` to `R3` are not standing rungs;
-Elexon stops serving a run once a later run replaces it, so a run not
-captured in its window cannot be recovered. The dbt var
+timetable and under any shorter one. The seven-month RF approved on
+15 September 2026 for settlement days from 1 October 2026 is one such
+shorter timetable; the capture is still after it. `R1` to `R3` are not
+standing rungs; Elexon stops serving a run once a later run replaces it, so
+a run not captured in its window cannot be recovered. The dbt var
 `b1610_rf_capture_offset_days` mirrors the RF DAG's `LAG`, so the Q2-RF
 analysis can say when each date's RF is due, and a test keeps the two equal.
 
