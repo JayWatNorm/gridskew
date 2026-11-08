@@ -15,7 +15,7 @@ from ingestion.elexon.bmunits_poller import (
     run,
     validate_extract,
 )
-from tests.fakes import connection_returning
+from tests.fakes import connection_returning, connection_returning_in_turn, cursor_of
 
 FIXTURE = Path(__file__).parent / "fixtures" / "elexon" / "bmunits_truncated.json"
 RETRIEVED_AT = datetime(2026, 9, 23, 19, 0, tzinfo=timezone.utc)
@@ -189,6 +189,33 @@ def test_locked_extract_rejects_missing_or_changed_manifest(manifest):
             pytest.fail("dbt must not start")
 
     conn.rollback.assert_called_once()
+
+
+def statements_executed_by(conn):
+    statements = []
+    for call in cursor_of(conn).execute.call_args_list:
+        statements.append(call.args[0])
+    return statements
+
+
+def test_locked_extract_locks_the_registry_through_the_owner_function():
+    """The loader role has no update right, so a direct LOCK TABLE would be
+    refused; the lock is taken by the function the owner defines."""
+
+    manifest = (str(UUID(int=1)), 10, 10)
+    raw_counts = (10, 10)
+    conn = connection_returning_in_turn(manifest, raw_counts)
+
+    with locked_extract(conn, UUID(int=1)):
+        pass
+
+    statements = statements_executed_by(conn)
+    assert statements[:3] == [
+        "SET LOCAL lock_timeout = '30s'",
+        "SET LOCAL idle_in_transaction_session_timeout = 0",
+        "SELECT raw.lock_bm_unit_registry()",
+    ]
+    assert "LOCK TABLE" not in " ".join(statements)
 
 
 def test_accept_shrink_lets_one_run_publish_a_smaller_extract(caplog):
