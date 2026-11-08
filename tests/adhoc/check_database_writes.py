@@ -19,6 +19,13 @@ re-read and hourly run across an outage and restart, two runs across a
 failure and a malformed time, with HTTP faked, and the warning test
 warn_remit_stored_late on fixed evaluation days in the four session zones.
 
+The quarantine resolution checks run the runbook's steps on the real table:
+a REMIT row stops counting once its message is stored, with its resolution
+columns still null; an unresolved row fails the hourly run until it is
+marked resolved by id; a quarantined WINDFOR day is held, with no request,
+until its row is marked resolved, and is then asked for and loaded; a row
+with one resolution column set is refused.
+
 The loaders commit, so in the CI `test` job this runs after every step that
 reads the fixtures, and deletes its own rows at the end.
 
@@ -49,6 +56,7 @@ from ingestion.database import insert_rows
 from ingestion.elexon import (
     demand_backfill,
     qas_poller,
+    remit_poller,
     wind_backfill,
     wind_poller,
 )
@@ -244,6 +252,11 @@ SEQUENCE_YEARS_FROM = date(2099, 1, 1)
 FIRST_RUN_TARGET = date(2099, 6, 10)
 SECOND_RUN_TARGET = date(2099, 6, 11)
 OUT_OF_RANGE_DAY = date(2100, 1, 1)
+# The WINDFOR publish day quarantined, resolved and loaded by the resolution
+# check; no other check asks for it.
+RESOLUTION_DAY = date(2099, 8, 1)
+# The quarantined REMIT message the resolution check stores, at its own time.
+RELOADED_MRID = "CI-RB-RELOADED"
 
 
 def disposable_connection(time_zone=None):
@@ -358,16 +371,102 @@ def check_forecast_load(writer, reader):
     }
 
 
-def check_remit_quarantine_count(writer):
-    """A quarantined message counts until the same publication is stored."""
+def unresolved_quarantine_ids(reader, dataset, names_the_row):
+    """The runbook's listing: the dataset's unresolved rows in id order, kept
+    to those names_the_row accepts by their request context and payload."""
+
+    with reader.cursor() as cursor:
+        cursor.execute(
+            "select quarantine_id, dataset, retrieved_at, request_context, "
+            "validation_errors, payload from raw.endpoint_quarantine "
+            "where dataset = %s and resolved_at is null order by quarantine_id",
+            (dataset,),
+        )
+        listed = cursor.fetchall()
+    reader.commit()
+    ids = []
+    for quarantine_id, _dataset, _retrieved_at, context, _errors, payload in listed:
+        if names_the_row(context, payload):
+            ids.append(quarantine_id)
+    return ids
+
+
+def mark_resolved(writer, quarantine_ids, resolved_by):
+    """The runbook's update, by the ids read first; returns the rows marked."""
+
+    with writer.cursor() as cursor:
+        cursor.execute(
+            "update raw.endpoint_quarantine "
+            "set resolved_at = now(), resolved_by = %s "
+            "where quarantine_id = any(%s) and resolved_at is null",
+            (resolved_by, quarantine_ids),
+        )
+        marked = cursor.rowcount
+    writer.commit()
+    return marked
+
+
+def resolution_columns(reader, quarantine_id):
+    return read_one_row(
+        reader,
+        "select resolved_at, resolved_by from raw.endpoint_quarantine "
+        "where quarantine_id = %s",
+        (quarantine_id,),
+    )
+
+
+def check_a_half_resolved_row_is_refused(writer, quarantine_id):
+    """The CHECK refuses resolved_at without resolved_by, and the reverse."""
+
+    half_updates = (
+        "update raw.endpoint_quarantine set resolved_at = now() "
+        "where quarantine_id = %s",
+        "update raw.endpoint_quarantine set resolved_by = 'owner: half' "
+        "where quarantine_id = %s",
+    )
+    for half_update in half_updates:
+        try:
+            with writer.cursor() as cursor:
+                cursor.execute(half_update, (quarantine_id,))
+        except psycopg.errors.CheckViolation:
+            writer.rollback()
+            continue
+        writer.rollback()
+        raise AssertionError(f"a half-resolved row was accepted: {half_update}")
+
+
+def has_mrid(mrid):
+    def names_the_row(_context, payload):
+        return payload["mrid"] == mrid
+
+    return names_the_row
+
+
+def run_the_hourly_remit_read_with_no_message(writer):
+    """The real hourly run on the real tables, with Elexon serving nothing."""
+
+    with (
+        patch("ingestion.elexon.remit_poller.fetch", return_value=[]),
+        patch("ingestion.elexon.remit_poller.time.sleep"),
+    ):
+        remit_poller.run(writer)
+
+
+def check_remit_quarantine_count(writer, reader):
+    """A quarantined message counts while it is unresolved and not stored.
+    Once the same publication is stored it stops counting with its resolution
+    columns still null; the hourly run fails for the one still counting until
+    that row is listed and marked resolved by id, and then succeeds."""
 
     before = quarantined_row_count(writer)
-    stored_message = fixture_rows("elexon/remit_publications.json")[0]
-    never_stored = deepcopy(stored_message)
-    never_stored["mrid"] = "CI-READ-BACK-NEVER-STORED"
+    template = fixture_rows("elexon/remit_publications.json")[0]
+    reloaded = deepcopy(template)
+    reloaded["mrid"] = RELOADED_MRID
+    given_up = deepcopy(template)
+    given_up["mrid"] = "CI-RB-GIVEN-UP"
     findings = [
-        {"row": stored_message, "index": 0, "errors": []},
-        {"row": never_stored, "index": 1, "errors": []},
+        {"row": reloaded, "index": 0, "errors": []},
+        {"row": given_up, "index": 1, "errors": []},
     ]
     quarantine_rows(
         findings,
@@ -377,8 +476,32 @@ def check_remit_quarantine_count(writer):
         CHECK_CONTEXT,
         payload_dumps=decimal_json_dumps,
     )
+    assert quarantined_row_count(writer) == before + 2
 
+    load_remit(parse_remit([reloaded], datetime.now(timezone.utc)), writer)
     assert quarantined_row_count(writer) == before + 1
+    (reloaded_id,) = unresolved_quarantine_ids(reader, "REMIT", has_mrid(RELOADED_MRID))
+    assert resolution_columns(reader, reloaded_id) == {
+        "resolved_at": None,
+        "resolved_by": None,
+    }
+
+    try:
+        run_the_hourly_remit_read_with_no_message(writer)
+    except ContractRejected as error:
+        assert f"{before + 1} REMIT rows are in quarantine" in str(error), error
+    else:
+        raise AssertionError("the hourly run succeeded with an unresolved row")
+
+    (given_up_id,) = unresolved_quarantine_ids(
+        reader, "REMIT", has_mrid("CI-RB-GIVEN-UP")
+    )
+    assert mark_resolved(writer, [given_up_id], "owner: check, message given up") == 1
+    assert quarantined_row_count(writer) == before
+    run_the_hourly_remit_read_with_no_message(writer)
+    assert resolution_columns(reader, given_up_id)["resolved_by"] == (
+        "owner: check, message given up"
+    )
 
 
 def stored_row_named(reader, table, columns, key_columns, parsed_row):
@@ -1232,6 +1355,61 @@ def check_wind_capture_across_two_runs(writer):
         assert (asked, raised) == (asked_again, None), (dataset, asked, raised)
 
 
+def names_the_publish_day(publish_day):
+    def names_the_row(context, _payload):
+        return wind_poller.utc_day_of(context["publishDateTimeFrom"]) == publish_day
+
+    return names_the_row
+
+
+def check_a_resolved_wind_day_is_asked_for_again(writer, reader):
+    """A WINDFOR day with a null generation is quarantined and then held,
+    with no request, until its rows are listed and marked resolved by id;
+    the next capture asks for the day and loads it, and the quarantine keeps
+    the resolved row."""
+
+    day = RESOLUTION_DAY
+    reply_with_a_null = whole_windfor_day(day)
+    reply_with_a_null[5]["generation"] = None
+    asked, raised = run_capture(
+        wind_poller.capture_windfor_target, writer, day, {day: reply_with_a_null}
+    )
+    assert asked == [day], asked
+    assert isinstance(raised, ContractRejected), raised
+
+    asked, raised = run_capture(
+        wind_poller.capture_windfor_target, writer, day, {day: whole_windfor_day(day)}
+    )
+    assert asked == [], f"a held day was asked for: {asked}"
+    assert isinstance(raised, ContractRejected), raised
+    assert day.isoformat() in str(raised), raised
+
+    (quarantine_id,) = unresolved_quarantine_ids(
+        reader, "WINDFOR", names_the_publish_day(day)
+    )
+    check_a_half_resolved_row_is_refused(writer, quarantine_id)
+    assert mark_resolved(writer, [quarantine_id], "owner: check, day reloaded") == 1
+    assert (
+        unresolved_quarantine_ids(reader, "WINDFOR", names_the_publish_day(day)) == []
+    )
+
+    asked, raised = run_capture(
+        wind_poller.capture_windfor_target, writer, day, {day: whole_windfor_day(day)}
+    )
+    assert (asked, raised) == ([day], None), (asked, raised)
+    window_start, window_end = wind_poller.utc_day_window(day)
+    loaded = read_one_row(
+        reader,
+        "select count(*) as points from raw.elexon_windfor "
+        "where publish_time >= %s and publish_time < %s",
+        (window_start, window_end),
+    )
+    assert loaded["points"] == 584, loaded
+    assert resolution_columns(reader, quarantine_id)["resolved_by"] == (
+        "owner: check, day reloaded"
+    )
+
+
 def delete_wind_sequence_rows(cursor):
     first_instant = datetime(SEQUENCE_YEARS_FROM.year, 1, 1, tzinfo=timezone.utc)
     cursor.execute(
@@ -1281,7 +1459,11 @@ def delete_check_rows(writer):
             cursor.execute(
                 f"DELETE FROM {table} WHERE retrieved_at = %s", (CHECK_CAPTURE,)
             )
-        cursor.execute("DELETE FROM raw.elexon_remit WHERE mrid LIKE 'CI-RB-NEWEST-%'")
+        cursor.execute(
+            "DELETE FROM raw.elexon_remit WHERE mrid LIKE 'CI-RB-NEWEST-%%' "
+            "OR mrid = %s",
+            (RELOADED_MRID,),
+        )
         cursor.execute(
             "DELETE FROM raw.elexon_qas WHERE retrieved_at IN (%s, %s)",
             (CHECK_CAPTURE, CHECK_CAPTURE + timedelta(days=1)),
@@ -1312,7 +1494,7 @@ def main():
         check_quarantine_evidence(writer, reader)
         check_outturn_load(writer, reader)
         check_forecast_load(writer, reader)
-        check_remit_quarantine_count(writer)
+        check_remit_quarantine_count(writer, reader)
         check_b1610_coverage_and_unit_baseline(writer)
         check_b1610_keeps_the_first_capture(writer, reader)
         check_remit_window_ignores_a_future_dated_message(writer)
@@ -1407,6 +1589,7 @@ def main():
         check_wind_warning_agrees_with_the_poller()
         check_wind_warning_agrees_with_the_poller(WARNING_DAY_AFTER_CLOCK_CHANGE)
         check_wind_capture_across_two_runs(writer)
+        check_a_resolved_wind_day_is_asked_for_again(writer, reader)
     finally:
         writer.rollback()
         delete_check_rows(writer)
@@ -1416,6 +1599,10 @@ def main():
     print(
         "Wind capture: the queries agree in four session zones, and a second "
         "run asks again only for the days the first left not complete"
+    )
+    print(
+        "Quarantine resolution: a row counts or holds only while unresolved, a "
+        "resolved day is asked for again, and a half-resolved row is refused"
     )
 
 
