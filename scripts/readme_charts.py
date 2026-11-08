@@ -51,6 +51,12 @@ CARBON_ATTRIBUTION = (
     "modified: aggregated by GridSkew."
 )
 BMRS_AND_CARBON_ATTRIBUTION = f"{BMRS_ATTRIBUTION} {CARBON_ATTRIBUTION}"
+# NESO Open Data Licence v1.0 attribution, for the one output built partly
+# from NESO's historic generation mix.
+ALIGNMENT_ATTRIBUTION = (
+    f"{BMRS_AND_CARBON_ATTRIBUTION} Historic generation mix: Supported by "
+    "National Energy SO Open Data."
+)
 # How every attribution line starts, whatever its year or wording.
 ATTRIBUTION_OPENINGS = ("# Contains BMRS data", "# Carbon intensity data")
 
@@ -93,6 +99,10 @@ CONTEXT_Q25_CADL_RESULT = "context_q25_cadl_check.csv"
 CONTEXT_Q23_RUNS_RESULT = "context_q23_runs_by_month.csv"
 CONTEXT_Q28_RUNS_RESULT = "context_q28_runs_held.csv"
 CONTEXT_Q30_LATENESS_RESULT = "context_q30_outturn_lateness.csv"
+# Computed 7 November 2026 from stored data and NESO's historic generation
+# mix: how the carbon API's values line up with Elexon's half-hours, counts
+# and correlations only.
+CONTEXT_CARBON_ALIGNMENT_RESULT = "context_carbon_label_alignment.csv"
 # Read 7 November 2026 on the data as held at each read, each with its basis
 # as a second comment line: Q5's under-delivery by whether the unit drew
 # power while expected at zero or below; when Q6's notices were first
@@ -3333,6 +3343,9 @@ def write_charts(result_folder, output_folder):
     q30 = copy_saved_output(results, output, Q30_RESULT, BMRS_AND_CARBON_ATTRIBUTION)
     copy_saved_output(results, output, CONTEXT_Q30_LATENESS_RESULT, BMRS_ATTRIBUTION)
     write_q30_chart(q30, output)
+    copy_saved_output(
+        results, output, CONTEXT_CARBON_ALIGNMENT_RESULT, ALIGNMENT_ATTRIBUTION
+    )
 
 
 if __name__ == "__main__":

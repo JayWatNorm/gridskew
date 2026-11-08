@@ -106,6 +106,12 @@ BMRS_AND_CARBON_LINE = (
     "Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, "
     "modified: aggregated by GridSkew.\n"
 )
+ALIGNMENT_LINE = (
+    "# Contains BMRS data © Elexon Limited copyright and database right 2026. "
+    "Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, "
+    "modified: aggregated by GridSkew. Historic generation mix: Supported by "
+    "National Energy SO Open Data.\n"
+)
 
 # Hand-made saved outputs for the reads the fixture folder does not hold.
 # Q3's groups come in an order the chart keeps; coal is a closed unit the
@@ -205,6 +211,13 @@ NEW_SAVED_OUTPUTS = {
         "section,breakdown,item,half_hours,zero_outturn,first_start_utc,last_start_utc",
         "1,lateness,over 2 h after the half-hour ends,5,2,"
         "2025-09-03 10:00:00+00:00,2025-09-03 12:00:00+00:00",
+    ],
+    "context_carbon_label_alignment.csv": [
+        "# Measured alignment, not a documented convention. Computed 2 March 2027.",
+        "section,comparison,group,offset_half_hours,common_rows,exactly_equal,"
+        "within_5,mean_abs_diff,step_correlation,unit",
+        "2,API actual against NESO historic generation mix CARBON_INTENSITY,all,1,"
+        "500,30,250,12.50,0.7000,g/kWh",
     ],
     # Saved with a second comment line, the read's time and basis, which the
     # copy keeps below the attribution.
@@ -526,6 +539,7 @@ EXPECTED_CHART_CSVS = {
 
 WRITTEN_FILES = [
     "context_carbon_intensity.csv",
+    "context_carbon_label_alignment.csv",
     "context_cohort_change.csv",
     "context_cohort_unit_types.csv",
     "context_demand.csv",
@@ -1395,6 +1409,7 @@ def test_titles_that_state_a_figure_take_it_from_the_saved_output(written):
 def test_every_written_csv_starts_with_its_attribution(written):
     assert first_lines(written) == {
         "context_carbon_intensity.csv": CARBON_LINE,
+        "context_carbon_label_alignment.csv": ALIGNMENT_LINE,
         "context_cohort_change.csv": BMRS_LINE,
         "context_cohort_unit_types.csv": BMRS_LINE,
         "context_demand.csv": BMRS_LINE,
@@ -3215,6 +3230,363 @@ def test_q30s_late_outturn_counts_come_from_its_lateness_count():
         f'<a href="results/{name}">Lateness counts</a>, counted on '
         f"{counted_at(name)}; no wind outturn for these dates arrived after "
         "the read." in article
+    )
+
+
+ALIGNMENT_COUNTS = "context_carbon_label_alignment.csv"
+WIND_CLOCK = "1"
+ACTUAL_WHOLE = "2"
+ACTUAL_BY_SEASON = "3"
+ACTUAL_BY_MONTH = "4"
+FORECAST_STEPS = "5"
+SIGN_TEST = "6"
+FORECAST_AGAINST_MIX = "7"
+SAME_LABEL = "0"
+HALF_HOUR_AFTER = "1"
+HALF_HOUR_BEFORE = "-1"
+AN_HOUR_BEFORE = "-2"
+UNREAD_CARBON_RULES = ["Q4", "Q31", "Q32", "Q33", "Q35", "Q36"]
+READ_CARBON_RESULTS = ["Q8", "Q28", "Q29", "Q30"]
+
+
+def alignment_file():
+    """The committed alignment counts: the line giving their basis, and the
+    rows below it."""
+    text = (REPOSITORY / "docs" / "results" / ALIGNMENT_COUNTS).read_text(
+        encoding="utf-8"
+    )
+    attribution, basis, rows = text.split("\n", 2)
+    assert attribution + "\n" == ALIGNMENT_LINE
+    assert basis.startswith("# Measured alignment, not a documented convention.")
+    return {"basis": basis, "rows": list(csv.DictReader(io.StringIO(rows)))}
+
+
+def alignment_rows():
+    return alignment_file()["rows"]
+
+
+def alignment_window():
+    """The first and last settlement dates the basis line gives."""
+    found = re.search(
+        rf"settlement dates ({LONG_DATE}) to ({LONG_DATE})", alignment_file()["basis"]
+    )
+    return found.group(1), found.group(2)
+
+
+def by_offset(rows, section, group):
+    """One comparison's rows, by offset in half-hours."""
+    found = {}
+    for row in rows:
+        if row["section"] == section and row["group"] == group:
+            found[row["offset_half_hours"]] = row
+    return found
+
+
+def groups_in(rows, section):
+    groups = []
+    for row in rows:
+        if row["section"] == section and row["group"] not in groups:
+            groups.append(row["group"])
+    return groups
+
+
+def strictly_best_offset(values, higher_is_better):
+    """The offset whose value beats every other offset's; None on a tie."""
+    ranked = sorted(values, key=values.get, reverse=higher_is_better)
+    best = ranked[0]
+    runner_up = ranked[1]
+    if values[best] == values[runner_up]:
+        return None
+    return best
+
+
+def column_values(offsets, column):
+    values = {}
+    for offset, row in offsets.items():
+        values[offset] = Decimal(row[column])
+    return values
+
+
+def opposite_shares(offsets):
+    """Each offset's share of moved half-hours whose step went the opposite
+    way to the wind step, exact."""
+    shares = {}
+    for offset, row in offsets.items():
+        shares[offset] = Decimal(row["opposite_sign"]) / Decimal(row["common_rows"])
+    return shares
+
+
+def offset_with_highest(offsets, column):
+    return strictly_best_offset(column_values(offsets, column), True)
+
+
+def offset_with_lowest(offsets, column):
+    return strictly_best_offset(column_values(offsets, column), False)
+
+
+def groups_not_best_after_the_label(rows, section, highest, lowest):
+    """The groups of a section in which a measure does not peak strictly one
+    half-hour after the label: the highest for each column in highest, the
+    lowest for each column in lowest."""
+    not_best = []
+    for group in groups_in(rows, section):
+        offsets = by_offset(rows, section, group)
+        best = set()
+        for column in highest:
+            best.add(offset_with_highest(offsets, column))
+        for column in lowest:
+            best.add(offset_with_lowest(offsets, column))
+        if best != {HALF_HOUR_AFTER}:
+            not_best.append(group)
+    return not_best
+
+
+def share_of_common(row, column):
+    return percent_of(row[column], row["common_rows"], 1)
+
+
+def step_pair(rows, section, group, first_offset, second_offset):
+    """A comparison's correlation of half-hour changes at two offsets, as the
+    page gives them."""
+    offsets = by_offset(rows, section, group)
+    return (
+        hundredths(offsets[first_offset]["step_correlation"]),
+        hundredths(offsets[second_offset]["step_correlation"]),
+    )
+
+
+def wind_clock_row(rows):
+    return by_offset(rows, WIND_CLOCK, "all")[SAME_LABEL]
+
+
+def limitations_section(page):
+    return page.split('<section id="limitations"', 1)[1].split("</section>", 1)[0]
+
+
+def flattened(text):
+    return " ".join(text.split())
+
+
+def sections_without(questions, question_ids, phrase):
+    missing = []
+    for question_id in question_ids:
+        if phrase not in flattened(register_section(questions, question_id)):
+            missing.append(question_id)
+    return missing
+
+
+def articles_without(page, article_ids, phrase):
+    missing = []
+    for article_id in article_ids:
+        if phrase not in article_text(page, article_id):
+            missing.append(article_id)
+    return missing
+
+
+def test_the_api_actual_agrees_best_one_half_hour_after_its_label():
+    rows = alignment_rows()
+    whole = by_offset(rows, ACTUAL_WHOLE, "all")
+
+    assert offset_with_highest(whole, "exactly_equal") == HALF_HOUR_AFTER
+    assert offset_with_highest(whole, "within_5") == HALF_HOUR_AFTER
+    assert offset_with_lowest(whole, "mean_abs_diff") == HALF_HOUR_AFTER
+    assert offset_with_highest(whole, "step_correlation") == HALF_HOUR_AFTER
+    assert groups_in(rows, ACTUAL_BY_SEASON) == ["BST", "GMT"]
+    assert (
+        groups_not_best_after_the_label(
+            rows, ACTUAL_BY_SEASON, ["within_5", "step_correlation"], []
+        )
+        == []
+    )
+    assert (
+        groups_not_best_after_the_label(
+            rows, ACTUAL_BY_MONTH, ["within_5"], ["mean_abs_diff"]
+        )
+        == []
+    )
+    assert (
+        offset_with_highest(by_offset(rows, WIND_CLOCK, "all"), "exactly_equal")
+        == SAME_LABEL
+    )
+
+
+def test_the_sign_test_peaks_after_the_label_for_the_api_and_at_it_for_nesos_mix():
+    rows = alignment_rows()
+    api = opposite_shares(by_offset(rows, SIGN_TEST, "API actual"))
+    neso = opposite_shares(by_offset(rows, SIGN_TEST, "NESO historic generation mix"))
+
+    assert strictly_best_offset(api, True) == HALF_HOUR_AFTER
+    assert strictly_best_offset(neso, True) == SAME_LABEL
+
+
+def test_the_carbon_alignment_limitation_comes_from_its_alignment_counts():
+    rows = alignment_rows()
+    wind = wind_clock_row(rows)
+    whole = by_offset(rows, ACTUAL_WHOLE, "all")
+    after = whole[HALF_HOUR_AFTER]
+    same = whole[SAME_LABEL]
+    whole_after, whole_same = step_pair(
+        rows, ACTUAL_WHOLE, "all", HALF_HOUR_AFTER, SAME_LABEL
+    )
+    gmt_after, gmt_same = step_pair(
+        rows, ACTUAL_BY_SEASON, "GMT", HALF_HOUR_AFTER, SAME_LABEL
+    )
+    bst_after, bst_same = step_pair(
+        rows, ACTUAL_BY_SEASON, "BST", HALF_HOUR_AFTER, SAME_LABEL
+    )
+    first, last = alignment_window()
+    limitations = limitations_section(PAGE.read_text(encoding="utf-8"))
+
+    assert (
+        "whose wind figures equal Elexon's at the same half-hour in "
+        f"{share_of_common(wind, 'exactly_equal')}% of the "
+        f"{int(wind['common_rows']):,} half-hours from {first} to {last}, the "
+        "API's actual agrees most closely one half-hour after its own label: "
+        f"within 5 g/kWh in {share_of_common(after, 'within_5')}% of half-hours, "
+        f"against {share_of_common(same, 'within_5')}% at the same label; "
+        f"exactly equal in {share_of_common(after, 'exactly_equal')}%, against "
+        f"{share_of_common(same, 'exactly_equal')}%; a mean absolute difference "
+        f"of {tenths(after['mean_abs_diff'])} g/kWh, against "
+        f"{tenths(same['mean_abs_diff'])}; and a correlation of half-hour "
+        f"changes of {whole_after}, against {whole_same} ({gmt_after} against "
+        f"{gmt_same} in GMT, {bst_after} against {bst_same} in BST). The share "
+        "within 5 g/kWh and the mean absolute difference are best one half-hour "
+        f"after the label in all {len(groups_in(rows, ACTUAL_BY_MONTH))} months."
+        in limitations
+    )
+    assert (
+        f'<a href="results/{ALIGNMENT_COUNTS}">Alignment counts</a></li>' in limitations
+    )
+
+
+def test_the_page_credits_nesos_historic_generation_mix_under_its_licence():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        '<p>Historic generation mix: <a href="https://www.neso.energy/data-portal/'
+        'historic-generation-mix">NESO Data Portal</a>, Supported by National '
+        'Energy SO Open Data. <a href="https://www.neso.energy/data-portal/'
+        'ngeso-open-licence">NESO Open Data Licence v1.0</a></p>' in page
+    )
+
+
+def test_each_read_carbon_result_points_to_the_alignment_limitation():
+    whole = by_offset(alignment_rows(), ACTUAL_WHOLE, "all")
+    pointer = (
+        "<dd>Added 7 November 2026: the carbon API's actual agrees most closely "
+        "with NESO's Elexon-aligned generation mix one half-hour after its label "
+        f"(within 5 g/kWh in {share_of_common(whole[HALF_HOUR_AFTER], 'within_5')}% "
+        "of half-hours, against "
+        f"{share_of_common(whole[SAME_LABEL], 'within_5')}% at the label); this "
+        "result pairs values by label, as published. "
+        '<a href="#carbon-label-alignment">Limitations</a></dd>'
+    )
+    article_ids = []
+    for question_id in READ_CARBON_RESULTS:
+        article_ids.append(question_id.lower())
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert articles_without(page, article_ids, pointer) == []
+    assert '<li id="carbon-label-alignment">' in page
+
+
+def test_the_unread_carbon_rules_state_the_alignment_basis_from_its_counts():
+    rows = alignment_rows()
+    wind_share = share_of_common(wind_clock_row(rows), "exactly_equal")
+    first, last = alignment_window()
+    whole_after, whole_same = step_pair(
+        rows, ACTUAL_WHOLE, "all", HALF_HOUR_AFTER, SAME_LABEL
+    )
+    months = len(groups_in(rows, ACTUAL_BY_MONTH))
+    missingness = (
+        "the half-hours the primary has and a sensitivity lacks are counted, at "
+        "the window's edges and within it."
+    )
+    basis = (
+        "The basis is a measured alignment, "
+        "not a documented convention: against NESO's historic generation mix, "
+        f"whose wind equals Elexon's at the same half-hour in {wind_share}% of "
+        "half-hours, the API's actual agrees best 30 minutes after its label in "
+        f"each of the {months} months from {first} to {last} (share within "
+        "5 g/kWh and mean absolute difference), and the correlation of half-hour "
+        f"changes is {whole_after} there, against {whole_same} at its own label; "
+        "a test of whether intensity moves against large changes in Elexon's "
+        "wind peaks one half-hour after the label for the API's actual and at "
+        "the label for NESO's series. The API's documentation gives each value's "
+        "start and end in UTC but does not say what interval its actual is "
+        "measured over."
+    )
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    assert sections_without(questions, UNREAD_CARBON_RULES, missingness) == []
+    assert sections_without(
+        questions,
+        UNREAD_CARBON_RULES,
+        "registered primary verdict; a sensitivity whose conclusion differs "
+        "is reported as such",
+    ) == ["Q33"]
+    assert (
+        sections_without(
+            questions,
+            ["Q33"],
+            "never changing the registered primary verdict (a sensitivity whose "
+            "conclusion differs is reported as such)",
+        )
+        == []
+    )
+    assert sections_without(questions, UNREAD_CARBON_RULES, basis) == []
+
+
+def test_the_read_carbon_results_state_the_alignment_limitation_from_its_counts():
+    rows = alignment_rows()
+    wind = wind_clock_row(rows)
+    whole = by_offset(rows, ACTUAL_WHOLE, "all")
+    whole_after, whole_same = step_pair(
+        rows, ACTUAL_WHOLE, "all", HALF_HOUR_AFTER, SAME_LABEL
+    )
+    limitation = (
+        "Against NESO's historic generation mix, whose wind equals Elexon's at the "
+        f"same half-hour in {share_of_common(wind, 'exactly_equal')}% of "
+        f"{int(wind['common_rows']):,} half-hours, the API's actual is within "
+        f"5 g/kWh in {share_of_common(whole[HALF_HOUR_AFTER], 'within_5')}% of "
+        "half-hours one half-hour after its label, against "
+        f"{share_of_common(whole[SAME_LABEL], 'within_5')}% at its own label "
+        f"(correlation of half-hour changes {whole_after}, against {whole_same})."
+    )
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    assert sections_without(questions, READ_CARBON_RESULTS, limitation) == []
+
+
+def test_q33s_disclosure_of_the_forecasts_timing_comes_from_the_alignment_counts():
+    rows = alignment_rows()
+    actual_before, actual_same = step_pair(
+        rows, FORECAST_STEPS, "all", AN_HOUR_BEFORE, SAME_LABEL
+    )
+    mix_before, mix_same = step_pair(
+        rows, FORECAST_AGAINST_MIX, "all", HALF_HOUR_BEFORE, SAME_LABEL
+    )
+    disclosure = (
+        "over that year the stored forecast's half-hour changes follow the "
+        "actual's changes of an hour earlier most closely (correlation "
+        f"{actual_before}, against {actual_same} at the same label), and against "
+        f"NESO's generation mix, with the half-hour before ({mix_before}, against "
+        f"{mix_same})."
+    )
+
+    assert (
+        offset_with_highest(by_offset(rows, FORECAST_STEPS, "all"), "step_correlation")
+        == AN_HOUR_BEFORE
+    )
+    assert (
+        offset_with_highest(
+            by_offset(rows, FORECAST_AGAINST_MIX, "all"), "step_correlation"
+        )
+        == HALF_HOUR_BEFORE
+    )
+    assert (
+        sections_without(QUESTIONS.read_text(encoding="utf-8"), ["Q33"], disclosure)
+        == []
     )
 
 
