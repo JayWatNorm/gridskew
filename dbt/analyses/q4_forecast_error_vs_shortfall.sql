@@ -40,19 +40,25 @@
 -- 90.
 --
 -- How the query reads it. The read passes shortfall_error_capture_cutoff,
--- its own time with an explicit UTC offset. Each unit-period's run and
--- metered value come from its B1610 rows stored at or before that time: the
--- latest run among them. Its unexplained shortfall is the shortfall table's
--- expected energy minus that metered value, so the measure uses the meter
--- data held at the read and a rerun with the same cutoff reads the same
--- meter data. A unit-period with no row stored by then is left out and
--- counted. "The date holds one" means at least one determinable active
--- cohort unit-period on it is on SF or later. Eligibility is judged on the
--- unit-periods the measure reads (up to analysis_read_until), and the dates
--- left out are those with both values in at least one half-hour, listed
--- with those half-hours. Without the cutoff the query reads rows stored up
--- to its own time and returns counts and no result. Forecast and outturn
--- captures are not limited by it: a rerun limits them by hand, as before.
+-- its own time with an explicit UTC offset. Every decision that rests on
+-- B1610 reads only the rows stored at or before it, ranked and mapped to the
+-- registry as the period model and its mapped view do: whether a unit is
+-- active on metered output, whether a unit-period has a metered value mapped
+-- to the unit, its run (the latest held) and that value. A unit-period is
+-- read when it has an expected energy (the PN side, from the shortfall
+-- table) and such a held value; its unexplained shortfall is the expected
+-- energy minus that value. So a rerun with the same cutoff reads the same
+-- meter data, whatever B1610 arrived later. A unit-period with an expected
+-- energy and no held value is left out and counted. "The date holds one"
+-- means at least one such unit-period on it is on SF or later. Eligibility
+-- is judged on the unit-periods the measure reads, on the settlement dates
+-- from the window's first to analysis_read_until; the dates left out are
+-- those with both values in at least one half-hour, listed with those
+-- half-hours. Section 3 also gives the B1610 rows read, the shortfall
+-- table's latest capture and the date the gate is reached. Without the
+-- cutoff the query reads rows stored up to its own time and returns counts
+-- and no result. Forecast and outturn captures are not limited by it: a
+-- rerun limits them by hand, as before.
 --
 -- A half-hour has the cohort's unexplained shortfall when at least one
 -- determinable cohort unit-period holds a value (Q5's population: with or
@@ -104,6 +110,7 @@
 {% set capture_cutoff = utc_instant_var('shortfall_error_capture_cutoff') %}
 {% set stored_until %}{% if capture_cutoff is none %}now(){% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
 {% set capture_cutoff_recorded = 'false' if capture_cutoff is none else 'true' %}
+{% set window_start = '(select min(period_start) from errors)' %}
 
 with errors as (
     select
@@ -123,19 +130,128 @@ errors_left_out as (
     where not is_fresh
 ),
 
+-- The B1610 rows of cohort Elexon IDs stored by the capture cutoff, on the
+-- settlement dates around the window, each ranked as the period model ranks
+-- them: first stored (ties by run order) and latest run.
+held_b1610_rows as (
+    select
+        b1610.bm_unit,
+        b1610.settlement_date,
+        b1610.settlement_period,
+        b1610.period_start_utc,
+        b1610.national_grid_bm_unit_id,
+        b1610.quantity,
+        run_codes.run_order,
+        row_number() over (
+            partition by b1610.bm_unit, b1610.settlement_date, b1610.settlement_period
+            order by b1610.retrieved_at, run_codes.run_order
+        ) as first_rank,
+        row_number() over (
+            partition by b1610.bm_unit, b1610.settlement_date, b1610.settlement_period
+            order by run_codes.run_order desc
+        ) as latest_rank
+    from {{ ref('stg_elexon__b1610') }} as b1610
+    inner join {{ ref('elexon_settlement_run_codes') }} as run_codes
+        on b1610.settlement_run_type = run_codes.settlement_run_code
+    where b1610.retrieved_at <= {{ stored_until }}
+        and b1610.bm_unit in (
+            select elexon_bm_unit
+            from {{ ref('int_elexon__bm_unit_cohort') }}
+            where elexon_bm_unit is not null
+        )
+        and b1610.settlement_date >= ({{ window_start }} at time zone 'Europe/London')::date - 1
+{% if read_until is not none %}
+        and b1610.settlement_date <= (timestamptz '{{ read_until }}' at time zone 'Europe/London')::date + 1
+{% endif %}
+),
+
+-- Each of those unit-periods as int_elexon__b1610_period_mapped gives it, but
+-- from the rows held at the cutoff only: the first stored and the latest run,
+-- and the mapping to the registry. Mapped needs exactly one registry unit for
+-- the Elexon ID and no National Grid ID on either row that differs from it
+-- (letter case ignored), as in that view; it cannot read the cutoff itself.
+held_metered_periods as (
+    select
+        periods.bm_unit,
+        periods.settlement_date,
+        periods.settlement_period,
+        periods.period_start_utc,
+        periods.first_quantity_mwh,
+        periods.latest_quantity_mwh,
+        periods.latest_run_order,
+        case
+            when registry.candidate_count is null then 'unmapped'
+            when registry.candidate_count > 1 then 'ambiguous'
+            when lower(periods.first_source_national_grid_bm_unit_id)
+                <> lower(registry.national_grid_bm_unit)
+                or lower(periods.latest_source_national_grid_bm_unit_id)
+                <> lower(registry.national_grid_bm_unit)
+                then 'conflict'
+            else 'mapped'
+        end as mapping_status,
+        registry.national_grid_bm_unit as registry_national_grid_bm_unit
+    from (
+        select
+            bm_unit,
+            settlement_date,
+            settlement_period,
+            min(period_start_utc) as period_start_utc,
+            max(quantity) filter (where first_rank = 1) as first_quantity_mwh,
+            max(national_grid_bm_unit_id) filter (where first_rank = 1)
+                as first_source_national_grid_bm_unit_id,
+            max(quantity) filter (where latest_rank = 1) as latest_quantity_mwh,
+            max(run_order) filter (where latest_rank = 1) as latest_run_order,
+            max(national_grid_bm_unit_id) filter (where latest_rank = 1)
+                as latest_source_national_grid_bm_unit_id
+        from held_b1610_rows
+        group by bm_unit, settlement_date, settlement_period
+    ) as periods
+    left join (
+        select
+            elexon_bm_unit,
+            count(*) as candidate_count,
+            min(national_grid_bm_unit) as national_grid_bm_unit
+        from {{ ref('int_elexon__bm_units_current') }}
+        where elexon_bm_unit is not null
+        group by elexon_bm_unit
+    ) as registry
+        on periods.bm_unit = registry.elexon_bm_unit
+),
+
+-- The same in the shape active_cohort_units reads: the mapped unit only when
+-- mapped.
+held_metered_mapped as (
+    select
+        bm_unit,
+        settlement_date,
+        settlement_period,
+        period_start_utc,
+        first_quantity_mwh,
+        latest_quantity_mwh,
+        latest_run_order,
+        mapping_status,
+        case when mapping_status = 'mapped'
+            then registry_national_grid_bm_unit
+        end as mapped_national_grid_bm_unit
+    from held_metered_periods
+),
+
 -- Every cohort unit with its status in the window from the first half-hour
--- with an error_final to the cutoff.
+-- with an error_final to the cutoff: PN from the period view, metered output
+-- from the rows held at the capture cutoff.
 cohort_units as (
     select
         national_grid_bm_unit,
         fuel_type,
         cohort_status,
         has_row_in_window
-    from {{ active_cohort_units('(select min(period_start) from errors)', cohort_window_end) }}
+    from {{ active_cohort_units(window_start, cohort_window_end, 'held_metered_mapped') }}
         as units
 ),
 
--- The determinable active cohort unit-periods the measure reads.
+-- The active cohort unit-periods the measure can read, on the settlement
+-- dates from the window's first: an expected energy (the PN side of
+-- determinability, as the shortfall table judges it).
 read_unit_periods as (
     select
         shortfall.national_grid_bm_unit,
@@ -143,50 +259,43 @@ read_unit_periods as (
         shortfall.settlement_date,
         shortfall.settlement_period,
         shortfall.period_start_utc,
-        shortfall.expected_mwh
+        shortfall.expected_mwh,
+        shortfall.pn_mwh
     from {{ ref('int_shortfall_by_unit_period') }} as shortfall
     inner join cohort_units as cohort
         on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
         and cohort.cohort_status = 'active'
-    where shortfall.determinability = 'determinable'
-        and shortfall.unexplained_shortfall_mwh is not null
+    where shortfall.expected_mwh is not null
         and shortfall.period_start_utc is not null
+        and shortfall.settlement_date >= ({{ window_start }} at time zone 'Europe/London')::date
 {% if read_until is not none %}
         and shortfall.period_start_utc <= timestamptz '{{ read_until }}'
 {% endif %}
 ),
 
--- Each unit-period's metered value held at the read: of its B1610 rows
--- stored by the capture cutoff, the latest run. The shortfall table reads the
--- same Elexon ID for the unit.
+-- The metered side of determinability, at the cutoff: a held unit-period of
+-- the unit's Elexon ID mapped to the unit itself, as the shortfall table
+-- requires of its metered row. Its latest run gives the metered value.
 held_runs as (
-    select distinct on (
-        read_unit_periods.national_grid_bm_unit,
-        read_unit_periods.settlement_date,
-        read_unit_periods.settlement_period
-    )
+    select
         read_unit_periods.settlement_date,
         read_unit_periods.period_start_utc,
-        round(read_unit_periods.expected_mwh - b1610.quantity, 6)
+        read_unit_periods.pn_mwh,
+        held.latest_quantity_mwh as metered_mwh,
+        round(read_unit_periods.expected_mwh - held.latest_quantity_mwh, 6)
             as unexplained_shortfall_mwh,
-        run_codes.run_order >= (
+        held.latest_run_order >= (
             select sf.run_order
             from {{ ref('elexon_settlement_run_codes') }} as sf
             where sf.settlement_run_code = 'SF'
         ) as is_sf_or_later
     from read_unit_periods
-    inner join {{ source('elexon', 'elexon_b1610') }} as b1610
-        on b1610.bm_unit = read_unit_periods.elexon_bm_unit
-        and b1610.settlement_date = read_unit_periods.settlement_date
-        and b1610.settlement_period = read_unit_periods.settlement_period
-    inner join {{ ref('elexon_settlement_run_codes') }} as run_codes
-        on b1610.settlement_run_type = run_codes.settlement_run_code
-    where b1610.retrieved_at <= {{ stored_until }}
-    order by
-        read_unit_periods.national_grid_bm_unit,
-        read_unit_periods.settlement_date,
-        read_unit_periods.settlement_period,
-        run_codes.run_order desc
+    inner join held_metered_mapped as held
+        on held.bm_unit = read_unit_periods.elexon_bm_unit
+        and held.settlement_date = read_unit_periods.settlement_date
+        and held.settlement_period = read_unit_periods.settlement_period
+        and held.mapping_status = 'mapped'
+        and held.mapped_national_grid_bm_unit = read_unit_periods.national_grid_bm_unit
 ),
 
 unit_periods_without_held_run as (
@@ -278,6 +387,18 @@ population as (
     inner join bootstrap_days
         on both_values.settlement_date = bootstrap_days.settlement_date
     where both_values.is_fresh
+),
+
+-- The eligible matched day on which the gate is reached, if it is.
+gate_day as (
+    select settlement_date
+    from (
+        select
+            settlement_date,
+            row_number() over (order by settlement_date) as day_order
+        from matched_days
+    ) as ordered
+    where day_order = {{ days_needed }}
 ),
 
 -- The result needs the matched days, the slot polls after the cutoff and a
@@ -713,10 +834,47 @@ settlement_run_rows as (
     union all
 
     select 3, null,
-        'determinable active cohort unit-periods with no B1610 row stored by the cutoff, left out '
-            || '(value: unit-periods)',
+        'active cohort unit-periods with an expected energy but no B1610 row mapped to the unit '
+            || 'stored by the cutoff, left out (value: unit-periods)',
         null, null, null, null, null, unit_periods, null
     from unit_periods_without_held_run
+
+    union all
+
+    select 3, null,
+        'B1610 rows read: stored by the cutoff, cohort Elexon IDs, the window''s settlement dates '
+            || '(value: rows)',
+        null, null, null, null, null, count(*), null
+    from held_b1610_rows
+
+    union all
+
+    select 3, null,
+        'shortfall table: its latest capture, max(last_captured_at), beside the cutoff (result: UTC)',
+        null, null, null, null, null, null,
+        to_char(max(last_captured_at) at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS') || '+00'
+    from {{ ref('int_shortfall_by_unit_period') }}
+
+    union all
+
+    select 3, null,
+        'eligible matched day number {{ days_needed }}: the date the gate is reached (first_date)',
+        null, null, null, gate_day.settlement_date, null, null,
+        case
+            when gate_day.settlement_date is null then 'not reached'
+{% if read_until is none %}
+            else 'no analysis_read_until to compare'
+{% else %}
+            when gate_day.settlement_date
+                = (timestamptz '{{ read_until }}' at time zone 'Europe/London')::date
+                then 'the settlement date of analysis_read_until'
+            else 'not the settlement date of analysis_read_until, '
+                || to_char((timestamptz '{{ read_until }}' at time zone 'Europe/London')::date, 'YYYY-MM-DD')
+{% endif %}
+        end
+    from (select 1) as one_row
+    left join gate_day
+        on true
 ),
 
 listed_weekdays as (
@@ -783,22 +941,19 @@ stale_final_rows as (
 ),
 
 -- The active units' determinable unit-periods behind the population
--- half-hours, and the idle ones among them: PN 0 and metered 0, both exact.
+-- half-hours (those the measure sums, with a metered value held at the
+-- capture cutoff), and the idle ones among them: PN 0 and that metered value
+-- 0, both exact.
 population_unit_periods as (
     select
-        count(*) filter (where shortfall.determinability = 'determinable')
-            as determinable_unit_periods,
+        count(*) as determinable_unit_periods,
         count(*) filter (
-            where shortfall.determinability = 'determinable'
-                and shortfall.pn_mwh = 0
-                and shortfall.metered_mwh = 0
+            where held_runs.pn_mwh = 0
+                and held_runs.metered_mwh = 0
         ) as idle_unit_periods
-    from {{ ref('int_shortfall_by_unit_period') }} as shortfall
-    inner join cohort_units as cohort
-        on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
-        and cohort.cohort_status = 'active'
+    from held_runs
     inner join population
-        on shortfall.period_start_utc = population.period_start
+        on held_runs.period_start_utc = population.period_start
 ),
 
 -- Active units with no unit-period in the shortfall table (no PN) in the

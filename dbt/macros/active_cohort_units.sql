@@ -19,7 +19,12 @@
     shortfall table maps them, not from the shortfall table, which holds
     only unit-periods with a PN. window_start and window_end are SQL
     expressions for inclusive timestamptz bounds on period_start_utc;
-    window_end none means no upper bound. A period with no period_start_utc
+    window_end none means no upper bound. metered_periods, if given, names a
+    relation of the calling query with int_elexon__b1610_period_mapped's
+    columns (bm_unit, settlement_date, period_start_utc, first_quantity_mwh,
+    latest_quantity_mwh, mapping_status, mapped_national_grid_bm_unit) read
+    in its place, such as one built from the rows held at a capture cutoff.
+    A period with no period_start_utc
     falls in no window. A settlement-date range one day wider than the
     window on each side lets the period tables' indexes on unit and date
     serve each test; the period_start_utc test decides.
@@ -34,7 +39,12 @@
     {%- endif %}
 {% endmacro %}
 
-{% macro active_cohort_units(window_start, window_end) %}
+{% macro active_cohort_units(window_start, window_end, metered_periods=none) %}
+    {%- if metered_periods is none -%}
+        {%- set metered_relation = ref('int_elexon__b1610_period_mapped') -%}
+    {%- else -%}
+        {%- set metered_relation = metered_periods -%}
+    {%- endif %}
     (
         select
             cohort.national_grid_bm_unit,
@@ -52,7 +62,7 @@
                 )
                     or exists (
                         select 1
-                        from {{ ref('int_elexon__b1610_period_mapped') }} as metered
+                        from {{ metered_relation }} as metered
                         where metered.bm_unit = cohort.elexon_bm_unit
                             and metered.mapping_status = 'mapped'
                             and metered.mapped_national_grid_bm_unit = cohort.national_grid_bm_unit
@@ -71,7 +81,7 @@
             )
                 or exists (
                     select 1
-                    from {{ ref('int_elexon__b1610_period_mapped') }} as metered
+                    from {{ metered_relation }} as metered
                     where metered.bm_unit = cohort.elexon_bm_unit
                         and metered.mapping_status = 'mapped'
                         and metered.mapped_national_grid_bm_unit = cohort.national_grid_bm_unit
