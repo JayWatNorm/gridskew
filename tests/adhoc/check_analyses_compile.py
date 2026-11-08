@@ -24,7 +24,10 @@ PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 # The repository profile reads the guarded DBT_* variables; pinning it and the
 # target stops an inherited DBT_PROFILES_DIR sending dbt to another database.
 PROFILES_DIR = Path(__file__).resolve().parents[2] / "dbt_profiles"
-CAPTURE_CUTOFF_VAR = "rf_restatement_capture_cutoff"
+CAPTURE_CUTOFF_VARS = (
+    "rf_restatement_capture_cutoff",
+    "shortfall_error_capture_cutoff",
+)
 # Without its offset a cutoff would be read in the session's time zone; with
 # another offset it is not the UTC instant recorded for the read.
 CUTOFFS_NOT_IN_UTC = ("2026-11-30 00:00:00", "2026-11-30 00:00:00+01")
@@ -97,17 +100,18 @@ def compile_analyses(
 
 
 def cutoffs_compiled_anyway():
-    """The capture cutoffs not in UTC that compile without dbt naming the var."""
+    """The (var, cutoff) pairs not in UTC that compile without dbt naming the var."""
 
     compiled_anyway = []
-    for cutoff in CUTOFFS_NOT_IN_UTC:
-        with TemporaryDirectory(prefix="analyses-") as target_dir:
-            result = run_compile(
-                {CAPTURE_CUTOFF_VAR: cutoff}, (), target_dir, excluded=NEEDS_READ_UNTIL
-            )
-        if result.returncode != 0 and CAPTURE_CUTOFF_VAR in result.stdout:
-            continue
-        compiled_anyway.append(cutoff)
+    for cutoff_var in CAPTURE_CUTOFF_VARS:
+        for cutoff in CUTOFFS_NOT_IN_UTC:
+            with TemporaryDirectory(prefix="analyses-") as target_dir:
+                result = run_compile(
+                    {cutoff_var: cutoff}, (), target_dir, excluded=NEEDS_READ_UNTIL
+                )
+            if result.returncode != 0 and cutoff_var in result.stdout:
+                continue
+            compiled_anyway.append((cutoff_var, cutoff))
     return compiled_anyway
 
 
@@ -210,9 +214,9 @@ def main():
     compiled_anyway = cutoffs_compiled_anyway()
     if compiled_anyway:
         raise SystemExit(
-            f"{CAPTURE_CUTOFF_VAR} not in UTC compiled anyway: {compiled_anyway}"
+            f"capture cutoffs not in UTC compiled anyway: {compiled_anyway}"
         )
-    print(f"Analyses: {CAPTURE_CUTOFF_VAR} not in UTC stops the compile")
+    print(f"Analyses: {', '.join(CAPTURE_CUTOFF_VARS)} not in UTC stop the compile")
 
     compiled_anyway = compiled_without_read_until()
     if compiled_anyway:

@@ -85,6 +85,12 @@ vars:
   shortfall_error_matched_days_needed: 90
   # Q4's bootstrap interval needs this many of its 1,000 draws to form a ratio.
   shortfall_error_bootstrap_min_usable_draws: 900
+  # Q4's read time, with an explicit UTC offset, passed at the read: B1610 rows
+  # stored at or before it decide each settlement date's run and give the
+  # metered values, so a rerun with the same instant reads the same meter
+  # data. Null counts rows stored up to the query's own time and shows no
+  # result.
+  shortfall_error_capture_cutoff: null
   # Q8 and Q28 read one fixed window of history: settlement dates from and
   # until these, both included, ending the day before the forecast archive
   # starts. Each bootstrap interval needs this many of its 1,000 draws.
