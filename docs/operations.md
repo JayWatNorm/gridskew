@@ -20,7 +20,7 @@ model's and test's result in `dbt_dev.dbt_node_results`.
 | `gridskew_elexon_qas` | 00:00 | The API was unavailable | Retries continue for about four days; then clear the task. Each run captures the dates 14, 35 and 450 days before its interval, so a date missed at one age is captured at the next, and an Airflow backfill fetches those earlier dates, not the days it names. [QAS ingestion](sources/elexon/091_qas_ingestion.md#three-captures-of-every-date) |
 | `gridskew_elexon_remit` | :15 | A row in quarantine, which keeps every run failing | Read the quarantined rows' `validation_errors` (below) and fix the contract or parser, then load again from the earliest `publishDateTimeFrom` in their `request_context`. [REMIT ingestion](sources/elexon/031_remit_ingestion.md#a-quarantined-row-keeps-the-run-failing) |
 | `gridskew_elexon_remit_reread` | 04:40 | HTTP 429 or an unavailable API; a REMIT row in quarantine, which holds it with no request; a response the parser cannot read | Usually none: the next morning asks the seven days again. A quarantine hold ends when the hourly run's quarantine is dealt with; a hold of more than seven days leaves days unread, so backfill the runs whose ranges hold them (below). [REMIT re-read](sources/elexon/031_remit_ingestion.md#daily-re-read) |
-| `gridskew_elexon_wind` | 06:00 | The API was unavailable, or a day is held in quarantine | Usually none: a target retries for up to ten hours, and each run's look-back asks again for the seven days before its target. A quarantined day fails its task each morning, with no request for it, until its quarantine rows are deleted ([wind ingestion](sources/elexon/101_wind_ingestion.md#daily-capture)). A day older than the look-back needs a backfill (below) |
+| `gridskew_elexon_wind` | 06:00 | The API was unavailable, or a day is held in quarantine | Usually none: a target retries for up to ten hours, and each run's look-back asks again for the seven days before its target. A quarantined day fails its task each morning, with no request for it, until its quarantine rows are marked resolved ([wind ingestion](sources/elexon/101_wind_ingestion.md#daily-capture)). A day older than the look-back needs a backfill (below) |
 | `gridskew_elexon_bmunits` | 00:00 | The registry capture or its dbt step failed | Inspect the source and quarantine evidence, fix the cause, then retry the DAG, or only its dbt task if the capture succeeded. [BM-unit recovery](sources/elexon/071_bmunits_ingestion.md#recovery) |
 | `gridskew__dbt_freshness_dag` | :20 | A source is later than its threshold in the dbt source files | Look for that source's own failed run; freshness passes again once it catches up |
 | `gridskew__dbt_nightly` | 02:30 | A model or test failed, or the run refused because a period table changed | For a failed model or test, read `dbt_dev.dbt_node_results`. A refusal happens before dbt runs, so its task log names the changed models or missing tables; trigger one full refresh. [dbt guide](../dbt/README.md#period-facts) |
@@ -62,21 +62,37 @@ A row that breaks its source's field contract is stored in
 the full payload ([endpoint validation](sources/endpoint-validation.md#routing)):
 
 ```sql
-select dataset, retrieved_at, validation_errors, request_context
+select quarantine_id, dataset, retrieved_at, validation_errors, request_context, resolved_at
 from raw.endpoint_quarantine
 order by quarantined_at desc
 limit 20;
 ```
 
-Validation inserts these rows, and no loader deletes them. The REMIT run
-stops counting a row once its message is stored, but the wind pollers hold a
-day for as long as any quarantine row names it, so releasing a wind day
-means deleting its rows
-([wind ingestion](sources/elexon/101_wind_ingestion.md#daily-capture)). The
-one recovery so far, of 23 REMIT rows in October 2026, deleted them after
-the messages were reloaded, so the database keeps no record of that
-rejection. A change that marks a row resolved instead of deleting it is
-under consideration.
+Validation inserts these rows; no loader updates or deletes them. A row is
+unresolved while `resolved_at` is null. The REMIT run stops counting a row
+once its message is stored, with no hand step. The wind pollers hold a day
+for as long as an unresolved row names it
+([wind ingestion](sources/elexon/101_wind_ingestion.md#daily-capture)), and
+a REMIT row whose message is knowingly given up keeps the run failing
+([REMIT ingestion](sources/elexon/031_remit_ingestion.md#a-quarantined-row-keeps-the-run-failing)).
+Both are released by marking the rows resolved, by id, after listing them;
+rows are never deleted, so the record of the rejection stays (the one
+recovery before resolution existed, of 23 REMIT rows in October 2026,
+deleted them after the messages were reloaded):
+
+```sql
+select quarantine_id, dataset, retrieved_at, request_context, validation_errors
+  from raw.endpoint_quarantine
+ where dataset = '<dataset>' and resolved_at is null
+ order by quarantine_id;
+
+update raw.endpoint_quarantine
+   set resolved_at = now(), resolved_by = '<who>: <why, a few words>'
+ where quarantine_id in (<the ids read above>) and resolved_at is null;
+```
+
+`resolved_at` and `resolved_by` are set together or not at all; the table
+refuses one without the other.
 
 ## A missed settlement-run capture
 
