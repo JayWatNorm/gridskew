@@ -94,18 +94,20 @@ checks AS (
            has_table_privilege(:'loader_role', table_name, 'INSERT')
     FROM raw_tables WHERE relname <> 'flyway_schema_history'
     UNION ALL
-    SELECT 'no INSERT on ' || table_name,
+    SELECT 'no INSERT or column INSERT on ' || table_name,
            NOT has_table_privilege(:'loader_role', table_name, 'INSERT')
+           AND NOT has_any_column_privilege(:'loader_role', table_name, 'INSERT')
     FROM raw_tables WHERE relname = 'flyway_schema_history'
     UNION ALL
-    SELECT 'no UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER or column UPDATE on '
-           || table_name,
+    SELECT 'no UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, column UPDATE or '
+           || 'column REFERENCES on ' || table_name,
            NOT has_table_privilege(:'loader_role', table_name, 'UPDATE')
            AND NOT has_table_privilege(:'loader_role', table_name, 'DELETE')
            AND NOT has_table_privilege(:'loader_role', table_name, 'TRUNCATE')
            AND NOT has_table_privilege(:'loader_role', table_name, 'REFERENCES')
            AND NOT has_table_privilege(:'loader_role', table_name, 'TRIGGER')
            AND NOT has_any_column_privilege(:'loader_role', table_name, 'UPDATE')
+           AND NOT has_any_column_privilege(:'loader_role', table_name, 'REFERENCES')
     FROM raw_tables
     UNION ALL
     SELECT 'EXECUTE on raw.lock_bm_unit_registry()',

@@ -569,16 +569,36 @@ def check_creation_refuses_a_role_that_exists(writer):
         drop_role(writer, PRIOR_ROLE)
 
 
-def check_verification_catches_a_stray_grant(writer):
-    """A table grant, a column grant and a grant to PUBLIC each make the
-    verification script fail; revoked, it passes again."""
+def table_exists(reader, relation):
+    found = read_one_row(
+        reader, "SELECT to_regclass(%s) IS NOT NULL AS found", (relation,)
+    )
+    return found["found"]
 
-    stray_grants = (
+
+def stray_grants_to_catch(reader):
+    """A table grant, a column UPDATE grant, a column REFERENCES grant, a
+    grant to PUBLIC and, where Flyway's history table exists, a column
+    INSERT grant on it."""
+
+    stray_grants = [
         ("UPDATE", "raw.elexon_windfor", LOADER_ROLE),
         ("UPDATE (payload)", "raw.endpoint_quarantine", LOADER_ROLE),
+        ("REFERENCES (quarantine_id)", "raw.endpoint_quarantine", LOADER_ROLE),
         ("UPDATE", "raw.elexon_windfor", "PUBLIC"),
-    )
-    for privilege, relation, grantee in stray_grants:
+    ]
+    if table_exists(reader, "raw.flyway_schema_history"):
+        stray_grants.append(
+            ("INSERT (installed_rank)", "raw.flyway_schema_history", LOADER_ROLE)
+        )
+    return stray_grants
+
+
+def check_verification_catches_a_stray_grant(writer, reader):
+    """Each stray grant makes the verification script fail; revoked, it
+    passes again."""
+
+    for privilege, relation, grantee in stray_grants_to_catch(reader):
         grant(writer, privilege, relation, grantee)
         try:
             verified = provision_script_passes("003_verify_loader_role", LOADER_ROLE)
@@ -621,7 +641,7 @@ def check_loader_role_privileges(writer, reader):
     check_loader_locks_the_registry_through_the_function(writer)
     check_owner_keeps_the_update_right(writer)
     check_creation_refuses_a_role_that_exists(writer)
-    check_verification_catches_a_stray_grant(writer)
+    check_verification_catches_a_stray_grant(writer, reader)
     check_grants_rerun_changes_nothing(reader)
     check_grants_stop_on_a_role_with_a_wrong_flag(writer, reader)
 
