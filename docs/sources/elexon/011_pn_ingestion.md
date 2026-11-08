@@ -242,14 +242,15 @@ October 2026 at 8 days old and 9 October 2026 at 30 days old, 124,848 and
 with the stored captures without storing the re-polls. No time end point and
 no level differed in any unit-period, and none was missing or new. The only
 field that differed was `bmUnit`: null at capture and an Elexon ID in the
-re-poll, on two and five units new to the market, in every period of the day.
-That is a change in identity metadata with no change to any plan segment;
-`int_elexon__pn_period_mwh` does not use `bm_unit` when it tests whether a
-capture repeats an earlier one, so such a capture is an echo. Whether the
-stream fills `bmUnit` from the registry when a request is served or the field
-was corrected later is not documented. By the decision rule this is no genuine
-change: the single daily fetch stays. Two days at different ages do not test
-the same day at several lags, and the registered four-week ladder has not run.
+re-poll, on two and five units that had no Elexon ID at capture, in every
+period of the day. That is a change in identity metadata with no change to any
+plan segment; `int_elexon__pn_period_mwh` does not use `bm_unit` when it tests
+whether a capture repeats an earlier one, so such a capture is an echo.
+Whether the stream fills `bmUnit` from the registry when a request is served
+or the field was corrected later is not documented. By the decision rule this
+is no genuine change: the single daily fetch stays. Two days at different ages
+do not test the same day at several lags, and the registered four-week ladder
+has not run.
 
 Gate Closure constrains when a PN is submitted. It does not establish that the
 endpoint never republishes or corrects a past period. PN has no explicit
