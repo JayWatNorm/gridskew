@@ -3378,21 +3378,23 @@ def test_q36s_split_reason_comes_from_the_wind_miss_counts():
         "half-hours with no wind instruction," in q36
     )
     assert (
-        "Unknown half-hours are counted on their own and are in neither side. A "
-        "split is reported only if no half-hour of the primary's population is "
-        "unknown for it: for the price split, every half-hour has a price; for "
-        "the export-limit split, every active cohort wind unit has an MEL in "
-        "force and a final PN level in every half-hour. Otherwise it is reported "
-        "as not available, with the count of unknown half-hours" in q36
-    )
-    assert (
-        "GridSkew does not yet capture system prices or export limits (MEL), so "
-        "neither split can be made until they are captured." in q36
-    )
-    assert (
-        "whose MEL level in force at the half-hour's start, from the latest MEL "
-        "published before then, was below its final PN level at the half-hour's "
-        "start, and the rest." in q36
+        "Price split: half-hours whose system price for their settlement period "
+        "is below zero, and the rest. Export-limit split: half-hours with an "
+        "active cohort wind unit whose MEL level in force at the half-hour's "
+        "start, from the latest MEL published before then, was below its final "
+        "PN level at the half-hour's start, and the rest. A half-hour with no "
+        "system price is unknown for the price split; a half-hour in which any "
+        "active cohort wind unit has no MEL in force at its start, or no final "
+        "PN level, is unknown for the export-limit split. Unknown half-hours are "
+        "counted on their own and are in neither side. A split is reported only "
+        "if no half-hour of the primary's population is unknown for it: for the "
+        "price split, every half-hour has a price; for the export-limit split, "
+        "every active cohort wind unit has an MEL in force and a final PN level "
+        "in every half-hour. Otherwise it is reported as not available, with the "
+        "count of unknown half-hours and, for the export-limit split, the count "
+        "of units with a half-hour lacking an MEL or a PN. GridSkew does not yet "
+        "capture system prices or export limits (MEL), so neither split can be "
+        "made until they are captured." in q36
     )
 
 
@@ -3404,18 +3406,19 @@ def test_q28s_reverse_note_states_its_wind_level_counts():
     assert rises_at_every_step(dirtier)
     assert rises_at_every_step(under[:4])
     assert under[4] < under[3]
-    assert whole(top_two_fifths_share(rows, "signed carbon miss")) == "40"
-    assert whole(top_two_fifths_share(rows, "under-delivery")) == "40"
+    dirtiest_share = whole(top_two_fifths_share(rows, "signed carbon miss"))
+    most_under_share = whole(top_two_fifths_share(rows, "under-delivery"))
     assert (
         "Wind output is not held fixed, and both measures are associated with "
         "wind level. Sorting the same half-hours into five groups of almost "
         "equal size by metered wind, counted on "
         f"{counts_day(WIND_LEVEL_COUNTS)} with the units studied then: "
         f"{whole(dirtier[0])}% of the calmest group's half-hours are among the "
-        "40% of half-hours with the dirtiest misses against forecast, a share "
-        f"that rises with each group to {whole(dirtier[4])}% of the windiest; "
-        f"{whole(under[0])}% of the calmest group's half-hours are among the 40% "
-        f"with the most under-delivery, rising to {whole(under[3])}% of the "
+        f"{dirtiest_share}% of half-hours with the dirtiest misses against "
+        "forecast, a share that rises with each group to "
+        f"{whole(dirtier[4])}% of the windiest; {whole(under[0])}% of the calmest "
+        f"group's half-hours are among the {most_under_share}% with the most "
+        f"under-delivery, rising to {whole(under[3])}% of the "
         f"fourth group, then falling to {whole(under[4])}% of the windiest. These "
         "shares describe the counts; they are not a test. "
         f'<a href="results/{WIND_LEVEL_COUNTS}">Wind level counts</a></p>'
@@ -3470,10 +3473,12 @@ def test_q28_registers_a_seven_day_block_sensitivity_not_yet_run():
 
     assert (
         "recomputed by resampling blocks of seven consecutive days in place of "
-        "single days (1,000 draws). The blocks do not overlap and start on the "
-        "window's first day; the window's 360 days are not a multiple of seven, so "
-        "the last block holds the remaining 3 days. Each draw takes blocks with "
-        "replacement until 360 days are filled, the last block drawn cut to fit. "
+        "single days (1,000 draws). The window is cut into blocks of seven "
+        "consecutive days from its first day, without overlap; the window's 360 "
+        "days are not a multiple of seven, so the last block holds the remaining "
+        "3 days. Each draw takes blocks, each equally likely, with replacement "
+        "until 360 days are filled; the last block drawn keeps only its first "
+        "days needed to reach 360. "
         "It is reported beside the registered results, which stand whatever it "
         "shows," in q28
     )

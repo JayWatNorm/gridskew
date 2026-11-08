@@ -985,14 +985,15 @@ ordered by the same fixed pseudo-random number. Read once with Q8 on
   sensitivity: the ratio's 90% interval, and the slope interval of the
   exploratory reverse cut on the results page, recomputed by resampling
   blocks of seven consecutive days in place of single days (1,000 draws).
-  The blocks do not overlap and start on the window's first day; the
-  window's 360 days are not a multiple of seven, so the last block holds the
-  remaining 3 days. Each draw takes blocks with replacement until 360 days
-  are filled, the last block drawn cut to fit. It is reported beside the
-  registered results, which stand whatever it shows, and neither way of building an interval is chosen by
-  whether a result stays clear of 1 or 0. Not yet run: it reads Q28's
-  half-hours again, so it is run once, on its own, and reported as a second
-  look.
+  The window is cut into blocks of seven consecutive days from its first
+  day, without overlap; the window's 360 days are not a multiple of seven,
+  so the last block holds the remaining 3 days. Each draw takes blocks, each
+  equally likely, with replacement until 360 days are filled; the last block
+  drawn keeps only its first days needed to reach 360. It is reported beside
+  the registered results, which stand whatever it shows, and neither way of
+  building an interval is chosen by whether a result stays clear of 1 or 0.
+  Not yet run: it reads Q28's half-hours again, so it is run once, on its
+  own, and reported as a second look.
 
 ### Q29. How does the error of the API's stored carbon forecast vary by month and by time of day, over a year of history?
 
