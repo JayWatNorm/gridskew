@@ -54,11 +54,14 @@
 -- is judged on the unit-periods the measure reads, on the settlement dates
 -- from the window's first to analysis_read_until; the dates left out are
 -- those with both values in at least one half-hour, listed with those
--- half-hours. Section 3 also gives the B1610 rows read, the shortfall
--- table's latest capture and the date the gate is reached. Without the
--- cutoff the query reads rows stored up to its own time and returns counts
--- and no result. Forecast and outturn captures are not limited by it: a
--- rerun limits them by hand, as before.
+-- half-hours. The cohort and the registry side of the mapping come from the
+-- latest registry extract, which the cutoff does not limit: a later extract
+-- can change them on a rerun, so section 3 gives the extract's time. Section
+-- 3 also gives the B1610 rows read, the shortfall table's latest capture and
+-- the date the gate is reached. Without the cutoff the query reads rows
+-- stored up to its own time and returns counts and no result. Forecast and
+-- outturn captures are not limited by it: a rerun limits them by hand, as
+-- before.
 --
 -- A half-hour has the cohort's unexplained shortfall when at least one
 -- determinable cohort unit-period holds a value (Q5's population: with or
@@ -131,8 +134,9 @@ errors_left_out as (
 ),
 
 -- The B1610 rows of cohort Elexon IDs stored by the capture cutoff, on the
--- settlement dates around the window, each ranked as the period model ranks
--- them: first stored (ties by run order) and latest run.
+-- window's settlement dates (no period of another date falls in the window),
+-- each ranked as the period model ranks them: first stored (ties by run
+-- order) and latest run.
 held_b1610_rows as (
     select
         b1610.bm_unit,
@@ -151,6 +155,8 @@ held_b1610_rows as (
             order by run_codes.run_order desc
         ) as latest_rank
     from {{ ref('stg_elexon__b1610') }} as b1610
+    -- Inner, where the period model's join is left: a row with an unknown run
+    -- code would rank latest here and count as SF or later, so it is not read.
     inner join {{ ref('elexon_settlement_run_codes') }} as run_codes
         on b1610.settlement_run_type = run_codes.settlement_run_code
     where b1610.retrieved_at <= {{ stored_until }}
@@ -159,9 +165,9 @@ held_b1610_rows as (
             from {{ ref('int_elexon__bm_unit_cohort') }}
             where elexon_bm_unit is not null
         )
-        and b1610.settlement_date >= ({{ window_start }} at time zone 'Europe/London')::date - 1
+        and b1610.settlement_date >= ({{ window_start }} at time zone 'Europe/London')::date
 {% if read_until is not none %}
-        and b1610.settlement_date <= (timestamptz '{{ read_until }}' at time zone 'Europe/London')::date + 1
+        and b1610.settlement_date <= (timestamptz '{{ read_until }}' at time zone 'Europe/London')::date
 {% endif %}
 ),
 
@@ -850,10 +856,23 @@ settlement_run_rows as (
     union all
 
     select 3, null,
-        'shortfall table: its latest capture, max(last_captured_at), beside the cutoff (result: UTC)',
+        'shortfall table: its latest capture, max(last_captured_at), on settlement dates up to '
+            || 'analysis_read_until''s, beside the cutoff (result: UTC)',
         null, null, null, null, null, null,
         to_char(max(last_captured_at) at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS') || '+00'
     from {{ ref('int_shortfall_by_unit_period') }}
+{% if read_until is not none %}
+    where settlement_date <= (timestamptz '{{ read_until }}' at time zone 'Europe/London')::date
+{% endif %}
+
+    union all
+
+    select 3, null,
+        'registry extract read for the cohort and the B1610 mapping, not limited by the cutoff '
+            || '(result: its retrieved_at, UTC)',
+        null, null, null, null, null, null,
+        to_char(max(retrieved_at) at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS') || '+00'
+    from {{ ref('int_elexon__bm_units_current') }}
 
     union all
 

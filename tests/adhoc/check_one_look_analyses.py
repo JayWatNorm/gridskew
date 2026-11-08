@@ -766,28 +766,48 @@ def q10_project_values_fixtures(gate_open=True):
 # -2 only. Z1 (CCGT) has PN 0 and an SF row of 0 at A's period 2: inactive,
 # with a row in the window, so its determinable unit-period there is not read.
 #
-# Left out with an expected energy and no held row mapped to the unit, four:
-# U5 at C's period 20 (9 MWh), whose only row is stored an hour after the
-# cutoff; and U5 at C's period 30 (8 MWh), whose II row (0 MWh, U5) is
-# followed by an SF row of 4 MWh carrying another National Grid ID,
-# 'U5-OTHER', and an R1 row (U5) two hours after the cutoff: at the cutoff the
-# first and latest held rows disagree on the unit, a conflict, as the mapped
-# view would show then. Two more on C's period 40: U5 (6 MWh), whose II row
-# carries an old National Grid ID, 'U5-OLD', before its SF row (U5): the
-# first held row conflicts; and Y1 (2 MWh, active on a PN of 2 there), whose
-# Elexon ID has two registry units, Y1 and Y1B: ambiguous. U1 has a determinable unit-period on 30 August,
-# before the window, with no stored row: it counts nowhere. The expected
-# energy is the unexplained shortfall plus the metered value, and null where
-# the table cannot judge the PN side, so every value above is the one the
-# analysis computes.
+# Left out with an expected energy and no held row mapped to the unit, six:
+#   U5 at C's period 20 (9 MWh): its only row is stored an hour after the
+#     cutoff;
+#   U5 at C's period 30 (8 MWh): its II row (0 MWh, U5) is followed by an SF
+#     row of 4 MWh carrying another National Grid ID, 'U5-OTHER', and an R1
+#     row (U5) two hours after the cutoff: at the cutoff the first and latest
+#     held rows disagree on the unit, a conflict, as the mapped view would
+#     show then;
+#   U5 at C's period 40 (6 MWh): its II row carries an old National Grid ID,
+#     'U5-OLD', before its SF row (U5): the first held row conflicts;
+#   U5 at C's period 42 (5 MWh): its SF row (U5) and a II row carrying
+#     'U5-TIE' are stored at the same time, so the first held row is the II
+#     one (ties by run order): a conflict;
+#   Y1 at C's period 40 (2 MWh, active on a PN of 2 there): its Elexon ID has
+#     two registry units, Y1 and Y1B: ambiguous;
+#   U2 at A's 12:15 UTC half-hour (3 MWh), a stale row of the shortfall table
+#     still carrying U1's Elexon ID, 'E_U1': U1's held row there is mapped to
+#     U1, not U2.
+# Read although they look odd: U5 at C's period 41 (5 MWh), whose SF row (U5)
+# is stored a day before a II row carrying 'U5-PRE' (the first stored row is
+# SF, so it is mapped), and U5 at C's period 43 (5 MWh), whose SF row carries
+# 'u5' (letter case is ignored). A row of an unknown run code, 'XX' (999 MWh
+# for A's U1 at period 5), is not read. U5's unit-period at A's period 2 (PN
+# 0) holds 0 at the cutoff while the table now shows 4 there: it is idle on
+# the held value. U1 has a determinable unit-period on 30 August, before the
+# window, with no stored row: it counts nowhere. The expected energy is the
+# unexplained shortfall plus the metered value, and null where the table
+# cannot judge the PN side, so every value above is the one the analysis
+# computes.
 #
-# B1610 rows read: one per unit-period of a cohort unit on 31 August to 6
-# September, 389 (U1 and U2: 48 + 46 + 45 + 48 each, 374; U1's null B47 and
-# 12:15 rows, U4, U5 at A's period 2 and C's period 30, IE1, IF1, P1, F1,
-# IM1, EP1, OP1, Z1, and U5 and Y1 at C's period 40: 15; U5 at C's period 20
-# is stored after the cutoff), with A's 49 U1 SF rows, B's U1 II row, F1's
-# II row, M1's two rows and U5's II rows at C's periods 30 and 40: 444. The shortfall table's latest capture is 25
-# September 06:00 UTC.
+# B1610 rows read, on 1 to 5 September (the London dates of the window's
+# first half-hour and of analysis_read_until): one per unit-period of a
+# cohort unit there stored by the cutoff, 295 (U1 and U2: 48 + 46 + 45 each,
+# 278; U1's null B47 and 12:15 rows, U4, U5 at A's period 2 and C's periods
+# 30, 40, 41, 42 and 43, IE1, IF1, P1, F1, IM1, EP1, Z1 and Y1: 17; U5 at C's
+# period 20 is stored after the cutoff; OP1 is on 31 August and E on 6
+# September), with A's 49 U1 SF rows, B's U1 II row, F1's II row, M1's two
+# rows and U5's II rows at C's periods 30, 40, 41 and 42: 352. The 'XX' row
+# is not read. The shortfall table's latest capture on settlement dates up to
+# 5 September is 25 September 06:00 UTC; E's rows (6 September) were
+# captured at 11:00. The registry extract was retrieved on 24 September at
+# 05:00 UTC.
 Q4_FIXTURES = """
 create temporary table synthetic_carbon_error (
     period_start timestamptz,
@@ -815,7 +835,8 @@ create temporary table synthetic_cohort (
 ) on commit drop;
 create temporary table synthetic_q4_registry (
     national_grid_bm_unit text,
-    elexon_bm_unit text
+    elexon_bm_unit text,
+    retrieved_at timestamptz default '2026-09-24 05:00:00+00'
 ) on commit drop;
 create temporary table synthetic_q4_b1610 (
     bm_unit text,
@@ -962,6 +983,10 @@ select 'U5', settlement_date, period_start, 6, 'determinable'
 from synthetic_periods
 where settlement_date = date '2026-09-03' and period = 40
 union all
+select 'U5', settlement_date, period_start, 5, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-03' and period between 41 and 43
+union all
 select 'Y1', settlement_date, period_start, 2, 'determinable'
 from synthetic_periods
 where settlement_date = date '2026-09-03' and period = 40
@@ -1062,7 +1087,21 @@ insert into synthetic_q4_b1610 values
     ('E_M1', 'M1', '2026-09-05', 3, '2026-09-05 00:00+00', 'R1', 2, '2026-09-24 08:00:00+00'),
     ('E_U5', 'U5', '2026-09-03', 30, '2026-09-03 13:30+00', 'II', 0, '2026-09-09 10:00:00+00'),
     ('E_U5', 'U5', '2026-09-03', 30, '2026-09-03 13:30+00', 'R1', 0, '2026-09-25 14:00:00+00'),
-    ('E_U5', 'U5-OLD', '2026-09-03', 40, '2026-09-03 18:30+00', 'II', 0, '2026-09-09 10:00:00+00');
+    ('E_U5', 'U5-OLD', '2026-09-03', 40, '2026-09-03 18:30+00', 'II', 0, '2026-09-09 10:00:00+00'),
+    ('E_U5', 'U5-PRE', '2026-09-03', 41, '2026-09-03 19:00+00', 'II', 0, '2026-09-21 10:00:00+00'),
+    ('E_U5', 'U5-TIE', '2026-09-03', 42, '2026-09-03 19:30+00', 'II', 0, '2026-09-20 10:00:00+00'),
+    ('E_U1', 'U1', '2026-09-01', 5, '2026-09-01 01:00+00', 'XX', 999, '2026-09-20 10:00:00+00');
+update synthetic_q4_b1610 set national_grid_bm_unit_id = 'u5'
+where bm_unit = 'E_U5' and settlement_date = date '2026-09-03' and settlement_period = 43;
+update synthetic_shortfall set metered_mwh = 4, unexplained_shortfall_mwh = -4
+where national_grid_bm_unit = 'U5' and settlement_date = date '2026-09-01'
+    and settlement_period = 2;
+update synthetic_shortfall set last_captured_at = '2026-09-25 11:00:00+00'
+where settlement_date = date '2026-09-06';
+insert into synthetic_shortfall (
+    national_grid_bm_unit, settlement_date, period_start_utc, unexplained_shortfall_mwh,
+    determinability, pn_mwh, metered_mwh, settlement_period, elexon_bm_unit, expected_mwh
+) values ('U2', '2026-09-01', '2026-09-01 12:15:00+00', 3, 'determinable', 1, 1, 50, 'E_U1', 4);
 {settlement_runs}
 create temporary table synthetic_slot_polls (
     poll_slot timestamptz,
@@ -1592,8 +1631,14 @@ ROWS_READ = (
 )
 TABLE_CAPTURE = (
     3,
-    "shortfall table: its latest capture, max(last_captured_at), beside the cutoff "
-    "(result: UTC)",
+    "shortfall table: its latest capture, max(last_captured_at), on settlement "
+    "dates up to analysis_read_until's, beside the cutoff (result: UTC)",
+    None,
+)
+REGISTRY_EXTRACT = (
+    3,
+    "registry extract read for the cohort and the B1610 mapping, not limited by "
+    "the cutoff (result: its retrieved_at, UTC)",
     None,
 )
 TABLE_CAPTURED_AT = "2026-09-25 06:00:00+00"
@@ -1621,12 +1666,13 @@ def gate_day_key(days_needed):
 
 
 # Every date on SF or later at the cutoff: A partly on R1, B with its period-1
-# SF row stored exactly at the cutoff, and C. Four unit-periods are left out
-# for no held row mapped to the unit (U5 at C's periods 20, 30 and 40, Y1 at
-# 40), not U1's before the window. B, the second eligible matched day, reaches
+# SF row stored exactly at the cutoff, and C. Six unit-periods are left out
+# for no held row mapped to the unit (U5 at C's periods 20, 30, 40 and 42,
+# Y1 at 40, and the stale U2 row), not U1's before the window. B, the second eligible matched day, reaches
 # the gate.
 Q4_ALL_ELIGIBLE_EXPECTED = {
-    ROWS_READ: dict(value="444"),
+    ROWS_READ: dict(value="352"),
+    REGISTRY_EXTRACT: dict(result="2026-09-24 05:00:00+00"),
     TABLE_CAPTURE: dict(result=TABLE_CAPTURED_AT),
     gate_day_key(2): dict(first_date="2026-09-02", result=NOT_THE_READ_UNTIL_DATE),
     CAPTURE_CUTOFF_ROW: dict(result=Q4_CAPTURE_CUTOFF),
@@ -1638,7 +1684,7 @@ Q4_ALL_ELIGIBLE_EXPECTED = {
     HELD_BACK_WITHOUT_SF: dict(
         half_hours=0, days=0, first_date=None, last_date=None, value="0"
     ),
-    NO_ROW_BY_CUTOFF: dict(value="4"),
+    NO_ROW_BY_CUTOFF: dict(value="6"),
 }
 
 # Q4 with A's and B's first ten half-hours at 1 except A10 at 3; 11 to 38 at
@@ -1724,13 +1770,15 @@ Q4_EXPECTED = {
 }
 
 # B's U2 at period 5 holds only II, and all of C is on II: C's SF rows become
-# II rows, and where a II row is already stored (F1 at period 10, U5 at period
-# 30) the SF row is not stored at all. B leaves (46 half-hours with both
-# values; one unit-period on II, while the rest of B is on SF: held back by a
-# unit-period with no SF row), and so does C (45 half-hours; U1 and U2 in
-# each, F1 at period 10 and U5 at period 30, now mapped on its II row alone:
-# 92 unit-periods on II; U5's row at period 20, stored after the cutoff, and
-# U5's and Y1's at period 40 are left out for no held row). Only A is a
+# II rows, and where a II row is already stored (F1 at period 10, U5 at
+# periods 30, 40, 41 and 42) the SF row is not stored at all. B leaves (46
+# half-hours with both values; one unit-period on II, while the rest of B is
+# on SF: held back by a unit-period with no SF row), and so does C (45
+# half-hours; U1 and U2 in each, F1 at period 10, U5 at period 30, now mapped
+# on its II row alone, and U5 at period 43: 93 unit-periods on II). Six are
+# left out for no held row mapped to the unit: U5 at C's period 20 (stored
+# after the cutoff), U5 at 40, 41 and 42 (each now holds only a II row with
+# another National Grid ID), Y1 at 40 and the stale U2 row. Only A is a
 # matched day, one of the two needed, although B has 46 half-hours with both
 # values, so the gate is not reached. A's 48 population half-hours hold U1
 # and U2, and U5 at period 2.
@@ -1767,7 +1815,7 @@ Q4_ON_II_EXPECTED = {
         days=2,
         first_date="2026-09-02",
         last_date="2026-09-03",
-        value="93",
+        value="94",
     ),
     HELD_BACK_WITHOUT_SF: dict(
         half_hours=46,
@@ -1789,10 +1837,10 @@ Q4_ON_II_EXPECTED = {
         days=1,
         first_date="2026-09-03",
         last_date="2026-09-03",
-        value="92",
+        value="93",
         result=WHOLLY_ON_II,
     ),
-    NO_ROW_BY_CUTOFF: dict(value="3"),
+    NO_ROW_BY_CUTOFF: dict(value="6"),
     gate_day_key(2): dict(first_date=None, result="not reached"),
     NO_FRESH_DAYS: dict(days=0),
     (3, "on matched days: error_final without the cohort measure", None): dict(
@@ -1826,7 +1874,7 @@ Q4_WITHOUT_CAPTURE_CUTOFF_EXPECTED = {
     POPULATION: dict(days=2, result="not reached"),
     VERDICT: dict(result="population not reached: no result"),
     ELIGIBLE_MATCHED_DAYS: dict(days=2, result="met"),
-    NO_ROW_BY_CUTOFF: dict(value="2"),
+    NO_ROW_BY_CUTOFF: dict(value="4"),
     gate_day_key(2): dict(first_date="2026-09-02", result=NOT_THE_READ_UNTIL_DATE),
 }
 
