@@ -212,6 +212,21 @@ NEW_SAVED_OUTPUTS = {
         "1,lateness,over 2 h after the half-hour ends,5,2,"
         "2025-09-03 10:00:00+00:00,2025-09-03 12:00:00+00:00",
     ],
+    "context_q28_wind_level.csv": [
+        "# Counts as held at a read-only query on 2 March 2027, 09:18 UTC.",
+        "measure,wind_fifth,measure_fifth,half_hours,label",
+        f'under-delivery,2,5,40,"{BREAKDOWN_LABEL}"',
+        f'signed carbon miss,4,1,35,"{BREAKDOWN_LABEL}"',
+    ],
+    "context_q30_wind_miss_sign.csv": [
+        "# Counts as held at read-only queries on 2 March 2027, 09:19 to 09:20 UTC.",
+        "month,half_hours,delivered_below,delivered_equal,delivered_above,"
+        "delivered_below_by_over_1gw,delivered_above_by_over_1gw,add_back_below,"
+        "add_back_above,add_back_below_by_over_1gw,add_back_above_by_over_1gw,"
+        "no_wind_instruction,no_instruction_delivered_below,"
+        "no_instruction_delivered_above,label",
+        f'2025-09,100,70,1,29,30,2,45,54,9,11,20,13,6,"{BREAKDOWN_LABEL}"',
+    ],
     "context_carbon_label_alignment.csv": [
         "# Measured alignment, not a documented convention. Computed 2 March 2027.",
         "section,comparison,group,offset_half_hours,common_rows,exactly_equal,"
@@ -551,7 +566,9 @@ WRITTEN_FILES = [
     "context_q25_battery_named_units.csv",
     "context_q25_cadl_check.csv",
     "context_q28_runs_held.csv",
+    "context_q28_wind_level.csv",
     "context_q30_outturn_lateness.csv",
+    "context_q30_wind_miss_sign.csv",
     "context_q5_drawing_power.csv",
     "context_q6_lag_quartiles.csv",
     "context_q6_publication_timing.csv",
@@ -1421,7 +1438,9 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_q25_battery_named_units.csv": BMRS_LINE,
         "context_q25_cadl_check.csv": BMRS_LINE,
         "context_q28_runs_held.csv": BMRS_LINE,
+        "context_q28_wind_level.csv": BMRS_AND_CARBON_LINE,
         "context_q30_outturn_lateness.csv": BMRS_LINE,
+        "context_q30_wind_miss_sign.csv": BMRS_LINE,
         "context_q5_drawing_power.csv": BMRS_LINE,
         "context_q6_lag_quartiles.csv": BMRS_LINE,
         "context_q6_publication_timing.csv": BMRS_LINE,
@@ -2072,8 +2091,8 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         '<p class="note">Exploratory and association only: a further look at a '
         "window already seen, published whatever it showed. "
         f"{NUMBER_WORDS[len(blocks) + len(months)].capitalize()} slopes were read, "
-        "none corrected for reading many. Wind output is not held fixed, and a "
-        "windy period may raise both under-delivery and the carbon miss.</p>" in block
+        "none corrected for reading many. Wind output is not held fixed, and both "
+        "measures are associated with wind level." in block
     )
     for other in sorted({STRATA_INCLUDES_ZERO, STRATA_BELOW_ZERO}):
         assert other not in block
@@ -3233,6 +3252,239 @@ def test_q30s_late_outturn_counts_come_from_its_lateness_count():
     )
 
 
+WIND_MISS_COUNTS = "context_q30_wind_miss_sign.csv"
+WIND_LEVEL_COUNTS = "context_q28_wind_level.csv"
+UNREAD_RULES_WITH_A_CARBON_ACTUAL = ["Q31", "Q32", "Q33", "Q35", "Q36"]
+
+
+def counts_day(name):
+    """'7 November 2026': the day a counts file's read-only queries ran, from
+    its basis line."""
+    text = (REPOSITORY / "docs" / "results" / name).read_text(encoding="utf-8")
+    basis = text.split("\n")[1]
+    return re.match(
+        rf"# Counts as held at (?:a )?read-only quer(?:y|ies) on ({LONG_DATE})", basis
+    ).group(1)
+
+
+def wind_miss_totals(rows):
+    """Q30's half-hours summed over the months, by column."""
+    totals = {}
+    for column in (
+        "half_hours",
+        "add_back_below",
+        "add_back_above",
+        "no_wind_instruction",
+        "no_instruction_delivered_below",
+        "no_instruction_delivered_above",
+    ):
+        totals[column] = int(summed(rows, column))
+    return totals
+
+
+def monthly_delivered_below_shares(rows):
+    shares = []
+    for row in rows:
+        shares.append(
+            Decimal(100) * Decimal(row["delivered_below"]) / Decimal(row["half_hours"])
+        )
+    return shares
+
+
+def wind_level_shares(rows, measure):
+    """Per wind fifth, 1 (calmest) to 5, the exact share of its half-hours
+    in the measure's top two fifths."""
+    in_top_two = {}
+    in_fifth = {}
+    for row in rows:
+        if row["measure"] != measure:
+            continue
+        wind_fifth = int(row["wind_fifth"])
+        half_hours = int(row["half_hours"])
+        in_fifth[wind_fifth] = in_fifth.get(wind_fifth, 0) + half_hours
+        if int(row["measure_fifth"]) >= 4:
+            in_top_two[wind_fifth] = in_top_two.get(wind_fifth, 0) + half_hours
+    shares = []
+    for wind_fifth in sorted(in_fifth):
+        shares.append(
+            Decimal(100)
+            * Decimal(in_top_two[wind_fifth])
+            / Decimal(in_fifth[wind_fifth])
+        )
+    return shares
+
+
+def top_two_fifths_share(rows, measure):
+    """The exact share of all half-hours in the measure's top two fifths."""
+    in_top_two = 0
+    total = 0
+    for row in rows:
+        if row["measure"] != measure:
+            continue
+        total += int(row["half_hours"])
+        if int(row["measure_fifth"]) >= 4:
+            in_top_two += int(row["half_hours"])
+    return Decimal(100) * Decimal(in_top_two) / Decimal(total)
+
+
+def rises_at_every_step(values):
+    for earlier, later in zip(values, values[1:], strict=False):
+        if later <= earlier:
+            return False
+    return True
+
+
+def test_q30s_wind_note_comes_from_its_wind_miss_counts():
+    rows = saved_output_rows(WIND_MISS_COUNTS)
+    totals = wind_miss_totals(rows)
+    shares = monthly_delivered_below_shares(rows)
+    imbalance = abs(totals["add_back_below"] - totals["add_back_above"])
+
+    assert len(rows) == 13
+    assert Decimal(imbalance) / Decimal(totals["half_hours"]) < Decimal("0.05")
+    assert (
+        f"<dd>Counted on {counts_day(WIND_MISS_COUNTS)}, after the read: delivered "
+        "wind, with nothing added back, was below the forecast point in "
+        f"{whole(min(shares))}% to {whole(max(shares))}% of each month's "
+        "half-hours. With the wind NESO turned down added back, as this result "
+        "measures, the two are roughly balanced: below in "
+        f"{totals['add_back_below']:,} of the {totals['half_hours']:,} half-hours "
+        f"and above in {totals['add_back_above']:,}. In the "
+        f"{totals['no_wind_instruction']:,} half-hours in which NESO instructed "
+        "none of the studied wind units, delivered wind was still below the "
+        f"forecast in {totals['no_instruction_delivered_below']:,} ("
+        f"{percent_of(totals['no_instruction_delivered_below'], totals['no_wind_instruction'], 0)}%) "
+        f"and above in {totals['no_instruction_delivered_above']:,}. A bias in the "
+        "forecast, a difference in the wind farms each side covers (embedded "
+        "wind, for example), instructions to wind units outside those studied "
+        "and wind farms cutting their own output without an "
+        "instruction could each produce this; these counts do not tell them "
+        "apart, and neither Elexon nor NESO documents whether the forecast allows "
+        f'for output turned down. <a href="results/{WIND_MISS_COUNTS}">Wind miss '
+        "counts</a></dd>" in article_text(PAGE.read_text(encoding="utf-8"), "q30")
+    )
+
+
+def test_q36s_split_reason_comes_from_the_wind_miss_counts():
+    totals = wind_miss_totals(saved_output_rows(WIND_MISS_COUNTS))
+    share = percent_of(
+        totals["no_instruction_delivered_below"], totals["no_wind_instruction"], 0
+    )
+    q36 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q36"))
+
+    assert (
+        "The reason for the splits: in Q30's year, delivered wind was below the "
+        f"wind forecast in {share}% of the {totals['no_wind_instruction']:,} "
+        "half-hours with no wind instruction," in q36
+    )
+    assert (
+        "Price split: half-hours whose system price for their settlement period "
+        "is below zero, and the rest. Export-limit split: half-hours with an "
+        "active cohort wind unit whose MEL level in force at the half-hour's "
+        "start, from the latest MEL published before then, was below its final "
+        "PN level at the half-hour's start, and the rest. A half-hour with no "
+        "system price is unknown for the price split; a half-hour in which any "
+        "active cohort wind unit has no MEL in force at its start, or no final "
+        "PN level, is unknown for the export-limit split. Unknown half-hours are "
+        "counted on their own and are in neither side. A split is reported only "
+        "if no half-hour of the primary's population is unknown for it: for the "
+        "price split, every half-hour has a price; for the export-limit split, "
+        "every active cohort wind unit has an MEL in force and a final PN level "
+        "in every half-hour. Otherwise it is reported as not available, with the "
+        "count of unknown half-hours and, for the export-limit split, the count "
+        "of units with a half-hour lacking an MEL or a PN. GridSkew does not yet "
+        "capture system prices or export limits (MEL), so neither split can be "
+        "made until they are captured." in q36
+    )
+
+
+def test_q28s_reverse_note_states_its_wind_level_counts():
+    rows = saved_output_rows(WIND_LEVEL_COUNTS)
+    dirtier = wind_level_shares(rows, "signed carbon miss")
+    under = wind_level_shares(rows, "under-delivery")
+
+    assert rises_at_every_step(dirtier)
+    assert rises_at_every_step(under[:4])
+    assert under[4] < under[3]
+    dirtiest_share = whole(top_two_fifths_share(rows, "signed carbon miss"))
+    most_under_share = whole(top_two_fifths_share(rows, "under-delivery"))
+    assert (
+        "Wind output is not held fixed, and both measures are associated with "
+        "wind level. Sorting the same half-hours into five groups of almost "
+        "equal size by metered wind, counted on "
+        f"{counts_day(WIND_LEVEL_COUNTS)} with the units studied then: "
+        f"{whole(dirtier[0])}% of the calmest group's half-hours are among the "
+        f"{dirtiest_share}% of half-hours with the dirtiest misses against "
+        "forecast, a share that rises with each group to "
+        f"{whole(dirtier[4])}% of the windiest; {whole(under[0])}% of the calmest "
+        f"group's half-hours are among the {most_under_share}% with the most "
+        f"under-delivery, rising to {whole(under[3])}% of the "
+        f"fourth group, then falling to {whole(under[4])}% of the windiest. These "
+        "shares describe the counts; they are not a test. "
+        f'<a href="results/{WIND_LEVEL_COUNTS}">Wind level counts</a></p>'
+        in exploratory_block()
+    )
+
+
+def test_each_read_carbon_result_sharing_q28s_half_hours_notes_the_zero_actual():
+    coverage = (
+        "<dt>Coverage</dt>\n        <dd>GridSkew's data hold an impossible "
+        "0 g/kWh actual for 6 August 2026, 11:00 UTC, which also falls in Q29's "
+        "August 2026 cell.</dd>"
+    )
+
+    assert (
+        articles_without(PAGE.read_text(encoding="utf-8"), ["q8", "q28"], coverage)
+        == []
+    )
+
+
+def test_the_unread_carbon_rules_register_an_invalid_value_rule_first():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    bullet = (
+        "No rule for carbon actuals that cannot be right is chosen yet; "
+        "GridSkew's data already hold one, 0 g/kWh for 6 August 2026, 11:00 UTC. "
+        "Before any carbon actual in the window is looked at, an exact rule is "
+        "registered here, with a reason that "
+        "does not depend on this question's results. The half-hours it leaves "
+        "out are counted and reported, and the result with none left out is "
+        "reported beside the primary."
+    )
+
+    assert sections_without(questions, UNREAD_RULES_WITH_A_CARBON_ACTUAL, bullet) == []
+    assert (
+        "the rule for invalid carbon values added to Q31 to Q36 does not apply to it."
+        in flattened(register_section(questions, "Q34"))
+    )
+
+
+def test_q32_registers_a_split_by_wind_level_beside_its_primary():
+    q32 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q32"))
+
+    assert (
+        "Beside the primary, never changing the registered primary verdict, each "
+        "group's correlation is repeated within each fifth of metered wind" in q32
+    )
+    assert "a split by wind level is added beside the primary" in q32
+
+
+def test_q28_registers_a_seven_day_block_sensitivity_not_yet_run():
+    q28 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q28"))
+
+    assert (
+        "recomputed by resampling blocks of seven consecutive days in place of "
+        "single days (1,000 draws). The window is cut into blocks of seven "
+        "consecutive days from its first day, without overlap; the window's 360 "
+        "days are not a multiple of seven, so the last block holds the remaining "
+        "3 days. Each draw takes blocks, each equally likely, with replacement "
+        "until 360 days are filled; the last block drawn keeps only its first "
+        "days needed to reach 360. The seed and the saved input snapshot are "
+        "recorded at the run. It is reported beside the registered results, which stand whatever it "
+        "shows," in q28
+    )
+    assert "Not yet run:" in q28
+
+
 ALIGNMENT_COUNTS = "context_carbon_label_alignment.csv"
 WIND_CLOCK = "1"
 ACTUAL_WHOLE = "2"
@@ -3883,6 +4135,8 @@ def test_each_breakdown_row_is_labelled_context_not_a_result():
         "context_cohort_change.csv",
         "context_ii_zero_readings.csv",
         "context_q23_one_week_and_later_runs.csv",
+        "context_q28_wind_level.csv",
+        "context_q30_wind_miss_sign.csv",
     ]:
         for row in saved_output_rows(name):
             assert row["label"] == BREAKDOWN_LABEL

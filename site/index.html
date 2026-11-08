@@ -691,7 +691,7 @@
         </div>
       </details>
       <p class="note">Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; read once on 6 November 2026. Month intervals resample whole days from the whole year, so a month's day count varies between draws. <a href="results/q28_reverse_strata_exploratory.csv">Saved output</a></p>
-      <p class="note">Exploratory and association only: a further look at a window already seen, published whatever it showed. Seventeen slopes were read, none corrected for reading many. Wind output is not held fixed, and a windy period may raise both under-delivery and the carbon miss.</p>
+      <p class="note">Exploratory and association only: a further look at a window already seen, published whatever it showed. Seventeen slopes were read, none corrected for reading many. Wind output is not held fixed, and both measures are associated with wind level. Sorting the same half-hours into five groups of almost equal size by metered wind, counted on 7 November 2026 with the units studied then: 30% of the calmest group's half-hours are among the 40% of half-hours with the dirtiest misses against forecast, a share that rises with each group to 49% of the windiest; 24% of the calmest group's half-hours are among the 40% with the most under-delivery, rising to 51% of the fourth group, then falling to 34% of the windiest. These shares describe the counts; they are not a test. <a href="results/context_q28_wind_level.csv">Wind level counts</a></p>
       <p class="note">Exploratory: asked after Q28 was read, so not pre-registered. It shows association, not cause; Q31 and Q32 test this direction on new data.</p>
     </section>
     <details class="method">
@@ -723,6 +723,8 @@
         <dd>For each half-hour I rank how far the stored carbon forecast missed, how far the last demand forecast missed, and total under-delivery. One link counts as stronger only if its rank correlation beats the other by 0.1 or more. The demand miss is the first Initial National Demand Outturn (INDO) minus NESO's last national demand forecast (NDF) before the half-hour.</dd>
         <dt>Data</dt>
         <dd>The same 17,278 half-hours as Q28, 22 August 2025 to 16 August 2026. Read 26 October 2026, 11:21 UTC.</dd>
+        <dt>Coverage</dt>
+        <dd>GridSkew's data hold an impossible 0 g/kWh actual for 6 August 2026, 11:00 UTC, which also falls in Q29's August 2026 cell.</dd>
         <dt>Half-hour alignment</dt>
         <dd>Added 7 November 2026: the carbon API's actual agrees most closely with NESO's Elexon-aligned generation mix one half-hour after its label (within 5 g/kWh in 45.8% of half-hours, against 35.8% at the label); this result pairs values by label, as published. <a href="#carbon-label-alignment">Limitations</a></dd>
         <dt>Rule</dt>
@@ -747,6 +749,8 @@
         <dd>17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Forecast ages from the issue time on each forecast: up to 1 hour for 5,756 half-hours, 1 to 2 hours for 5,756, 2 to 4 hours for 5,766 and over 4 hours for 2. The carbon forecast is the stored one, set against a wind forecast up to hours old. Metered wind only, with no embedded wind; an association, not a cause. Read 27 October 2026, on data captured up to 14:03:55 UTC.</dd>
         <dt>Coverage</dt>
         <dd>21 first wind outturns were published more than 30 minutes late, 3 of them zero; those over an hour late or zero all fall on six dates (27 November 2025; 15 January, 24 February, 4 June, 7 July and 6 August 2026); they are included in the correlations. <a href="results/context_q30_outturn_lateness.csv">Lateness counts</a>, counted on 7 November 2026, 16:54 UTC; no wind outturn for these dates arrived after the read. GridSkew's data also hold an impossible 0 g/kWh carbon actual for 6 August 2026, 11:00 UTC, which falls in Q29's August 2026 cell.</dd>
+        <dt>Wind against its forecast</dt>
+        <dd>Counted on 7 November 2026, after the read: delivered wind, with nothing added back, was below the forecast point in 73% to 90% of each month's half-hours. With the wind NESO turned down added back, as this result measures, the two are roughly balanced: below in 8,795 of the 17,280 half-hours and above in 8,483. In the 5,783 half-hours in which NESO instructed none of the studied wind units, delivered wind was still below the forecast in 3,773 (65%) and above in 2,008. A bias in the forecast, a difference in the wind farms each side covers (embedded wind, for example), instructions to wind units outside those studied and wind farms cutting their own output without an instruction could each produce this; these counts do not tell them apart, and neither Elexon nor NESO documents whether the forecast allows for output turned down. <a href="results/context_q30_wind_miss_sign.csv">Wind miss counts</a></dd>
         <dt>Half-hour alignment</dt>
         <dd>Added 7 November 2026: the carbon API's actual agrees most closely with NESO's Elexon-aligned generation mix one half-hour after its label (within 5 g/kWh in 45.8% of half-hours, against 35.8% at the label); this result pairs values by label, as published. <a href="#carbon-label-alignment">Limitations</a></dd>
         <dt>Rule</dt>

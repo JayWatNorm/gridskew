@@ -103,6 +103,12 @@ CONTEXT_Q30_LATENESS_RESULT = "context_q30_outturn_lateness.csv"
 # mix: how the carbon API's values line up with Elexon's half-hours, counts
 # and correlations only.
 CONTEXT_CARBON_ALIGNMENT_RESULT = "context_carbon_label_alignment.csv"
+# Read 7 November 2026, after Q28 and Q30 were read, counts of half-hours
+# only, each with its basis as a second comment line: Q28's carbon miss and
+# under-delivery by fifth of metered wind, and the sign of Q30's wind miss
+# by month.
+CONTEXT_Q28_WIND_LEVEL_RESULT = "context_q28_wind_level.csv"
+CONTEXT_Q30_WIND_MISS_SIGN_RESULT = "context_q30_wind_miss_sign.csv"
 # Read 7 November 2026 on the data as held at each read, each with its basis
 # as a second comment line: Q5's under-delivery by whether the unit drew
 # power while expected at zero or below; when Q6's notices were first
@@ -3336,12 +3342,18 @@ def write_charts(result_folder, output_folder):
     copy_saved_output(
         results, output, Q28_REVERSE_STRATA_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
+    copy_saved_output(
+        results, output, CONTEXT_Q28_WIND_LEVEL_RESULT, BMRS_AND_CARBON_ATTRIBUTION
+    )
     q29 = copy_saved_output(results, output, Q29_RESULT, CARBON_ATTRIBUTION)
     write_q29_time_chart(q29, carbon, output)
     write_q29_month_chart(q29, carbon, output)
     write_q29_demand_chart(demand, output)
     q30 = copy_saved_output(results, output, Q30_RESULT, BMRS_AND_CARBON_ATTRIBUTION)
     copy_saved_output(results, output, CONTEXT_Q30_LATENESS_RESULT, BMRS_ATTRIBUTION)
+    copy_saved_output(
+        results, output, CONTEXT_Q30_WIND_MISS_SIGN_RESULT, BMRS_ATTRIBUTION
+    )
     write_q30_chart(q30, output)
     copy_saved_output(
         results, output, CONTEXT_CARBON_ALIGNMENT_RESULT, ALIGNMENT_ATTRIBUTION

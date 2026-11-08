@@ -1,0 +1,16 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Counts as held at read-only queries on 7 November 2026, 18:21 to 18:22 UTC, after Q30 was read: Q30's half-hours, settlement dates 22 August 2025 to 16 August 2026, by settlement month. Delivered: the first metered wind outturn minus the WINDFOR point Q30 pairs with it. Add-back: the same plus the studied wind units' instructed change, as Q30's primary. No wind instruction: half-hours in which no studied wind unit had an acceptance. Counts of half-hours by sign only.
+month,half_hours,delivered_below,delivered_equal,delivered_above,delivered_below_by_over_1gw,delivered_above_by_over_1gw,add_back_below,add_back_above,add_back_below_by_over_1gw,add_back_above_by_over_1gw,no_wind_instruction,no_instruction_delivered_below,no_instruction_delivered_above,label
+2025-08,480,394,1,85,146,4,304,175,66,49,253,210,42,"context only: breakdown, not a registered result"
+2025-09,1440,1167,0,273,718,38,621,819,122,306,267,214,53,"context only: breakdown, not a registered result"
+2025-10,1490,1193,0,297,801,34,690,800,152,167,465,260,205,"context only: breakdown, not a registered result"
+2025-11,1440,1157,0,283,739,75,729,711,199,223,506,354,152,"context only: breakdown, not a registered result"
+2025-12,1488,1110,0,378,697,82,790,698,166,171,620,329,291,"context only: breakdown, not a registered result"
+2026-01,1488,1291,0,197,921,69,688,800,208,268,365,238,127,"context only: breakdown, not a registered result"
+2026-02,1344,1085,0,259,780,55,635,709,170,223,373,224,149,"context only: breakdown, not a registered result"
+2026-03,1486,1342,0,144,1034,33,703,783,249,274,231,172,59,"context only: breakdown, not a registered result"
+2026-04,1440,1067,0,373,699,79,696,744,151,211,546,291,255,"context only: breakdown, not a registered result"
+2026-05,1488,1190,0,298,608,16,833,655,206,116,608,406,202,"context only: breakdown, not a registered result"
+2026-06,1440,1195,0,245,625,44,819,621,181,123,580,430,150,"context only: breakdown, not a registered result"
+2026-07,1488,1085,1,402,490,36,790,697,106,92,659,382,276,"context only: breakdown, not a registered result"
+2026-08,768,645,1,122,322,14,497,271,101,47,310,263,47,"context only: breakdown, not a registered result"
