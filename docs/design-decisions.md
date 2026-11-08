@@ -5,12 +5,22 @@ that holds the detail.
 
 ## Capturing the data
 
-**Every version is kept; nothing is overwritten.** The sources revise their
-data, and the forecast is replaced every half-hour. Each capture is stored
-as a new row with the time it was fetched; where the source labels its own
-versions, as settlement runs do, reading the same version again adds
-nothing. A revision is something to measure rather than something lost.
+**Every capture is kept; nothing stored is overwritten.** The sources revise
+their data, and the forecast is replaced every half-hour. Each capture is
+stored as a new row with the time it was fetched; where the source labels its
+own versions, as settlement runs do, reading the same version again adds
+nothing. A revision that a capture sees is something to measure rather than
+something lost. A version the source publishes and replaces between two
+captures is not seen: the settlement runs R1 to R3 (R1 is held for one week
+only), a QAS resubmission replaced before the next capture, an outturn value
+revised between daily reads or after the seventh, and a later FUELHH value,
+since a complete date is not fetched again.
 [Raw layer conventions](README.md#raw-layer-conventions)
+
+**The loaders only insert into the source tables.** That is how they are
+written and a convention, not a rule the database enforces. The database
+bars only the dbt role, `gridskew_dbt`, from updating or deleting `raw`
+rows; the role the loaders write with owns the tables.
 
 **The forecast is polled every half-hour and can never be backfilled.** The
 Carbon Intensity API only ever shows its latest forecast, so a missed poll
@@ -19,8 +29,9 @@ is a version gone for good.
 
 **Settlement runs are captured at fixed ages.** Elexon serves only the
 settlement run currently in force for a date, so each run is fetched while
-it is available: the interim run (II) at 14 days, the initial settlement run
-(SF) at 35 and the final reconciliation run (RF) at 450. A run missed in its
+it is available: the interim run (II) 14 days after the settlement date
+ends, the initial settlement run (SF) 35 days after and the final
+reconciliation run (RF) 450 days after. A run missed in its
 window cannot be fetched later.
 [B1610 ingestion](sources/elexon/021_b1610_ingestion.md)
 
@@ -32,10 +43,14 @@ first load and the daily load use the same code.
 [REMIT ingestion](sources/elexon/031_remit_ingestion.md),
 [outturn ingestion](sources/carbon-intensity/021_outturn_ingestion.md)
 
-**A row that breaks its source's rules is kept aside, not dropped.** It goes
-to a quarantine table with the request and the full payload, so nothing is
-lost silently and the cause can be fixed and the data reloaded.
-[Endpoint validation](sources/endpoint-validation.md)
+**A row that breaks its source's rules is kept aside, not dropped.**
+Validation inserts it into a quarantine table with the request and the full
+payload, so it is not lost silently and the cause can be fixed and the data
+reloaded. A quarantine row can be deleted once its data is recovered, and the
+one recovery so far deleted its rows; a change to keep them is under
+consideration.
+[Endpoint validation](sources/endpoint-validation.md),
+[the quarantine](operations.md#the-quarantine)
 
 ## Modelling
 

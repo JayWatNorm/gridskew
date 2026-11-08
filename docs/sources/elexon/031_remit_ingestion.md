@@ -84,8 +84,7 @@ To clear it:
    `run(conn, first_publish_time=datetime.fromisoformat('<that value>'))`.
    The key makes the rows already stored a no-op. A quarantined row whose
    message this load stores no longer counts, so the run succeeds once every
-   message is stored. The quarantine rows stay as the record of what was
-   rejected.
+   message is stored, without deleting the quarantine rows.
 
 A row is matched to its stored message on `mrid`, `revisionNumber`,
 `publishTime` and `createdTime`, compared as text, so a row with a malformed
@@ -94,6 +93,11 @@ or missing key field matches nothing and keeps counting.
 A row that keeps counting was not recovered: its message is still missing,
 and the run keeps failing for it. Delete a `REMIT` quarantine row only when
 the message is knowingly given up.
+
+The poller never deletes a quarantine row. The one recovery so far, of 23
+rows in October 2026, deleted them after the messages were reloaded, so the
+database keeps no record of that rejection. A change that keeps resolved
+rows is under consideration.
 
 A message leaves out a field that has no value, so the run does not log a
 warning for an absent optional field. An unexpected field still logs one.

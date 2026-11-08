@@ -78,6 +78,8 @@ PN.
 
 ## Pre-registered test: do QPNs restate?
 
+**Status: designed, not run**, as for PN.
+
 Same as PN, same rule, same ladder — see
 [011_pn_ingestion.md](011_pn_ingestion.md). QPN carries no revision marker
 either, so `retrieved_at` is again the only instrument.

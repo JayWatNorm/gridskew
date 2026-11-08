@@ -233,6 +233,10 @@ for a given day executes after that day has ended.
 
 ## Pre-registered test: do PNs restate?
 
+**Status: designed, not run.** Since 1 September 2026 no PN or QPN day has
+been captured later than 24.1 hours after it ends, so a PN republished after
+that would not be seen.
+
 Gate Closure constrains when a PN is submitted. It does not establish that the
 endpoint never republishes or corrects a past period. PN has no explicit
 revision marker; `retrieved_at` identifies each captured response.
