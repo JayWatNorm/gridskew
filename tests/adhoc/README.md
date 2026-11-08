@@ -46,7 +46,19 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `check_insert_rows.py` | The shared insert helper: every row lands, each value type binds to its column, a repeated load is ignored and a failed row leaves nothing once rolled back | Disposable PostgreSQL |
 
 The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
-database is a local `gridskew_dev`.
+database is a local `gridskew_dev`. They connect as `postgres`, the
+administrator; the migrations and the fixture load run as `gridskew`, so the
+`raw` tables and the lock function share that owner
+([schema migrations](../../docs/schema-migrations.md)). Before
+`check_database_writes.py`, the loader role it exercises is provisioned
+as CI does:
+
+```powershell
+foreach ($script in "002_loader_role", "004_loader_grants", "003_verify_loader_role") {
+    psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 -v loader_role=gridskew_loader_test -v expect_login=false -f sql\provision\$script.sql
+    if ($LASTEXITCODE) { throw "$script failed" }
+}
+```
 
 ## SQL checks
 
