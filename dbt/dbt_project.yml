@@ -128,6 +128,12 @@ vars:
   # runs it, is today's UTC date; a check sets a fixed day to hold a clock
   # change in the test's range.
   wind_warn_today: null
+  # The first REMIT publish day warn_remit_stored_late checks: the day after
+  # the history load, whose every message was stored late by design.
+  remit_late_check_from: '2026-10-09'
+  # The day warn_remit_stored_late counts back from. Null, as the nightly runs
+  # it, is today's UTC date; a check sets a fixed day.
+  remit_late_check_today: null
 
 # Writes nothing unless the invocation passes --vars '{audit: true}'.
 on-run-end:
