@@ -14,6 +14,11 @@ days the poller's rule names, on rows inside its range, counting back from
 today and from 28 October 2026; and run the capture functions twice across
 a failure, with HTTP faked, on days in 2099.
 
+The REMIT re-read checks (remit_reread_checks.py) run first: the real
+re-read and hourly run across an outage and restart, two runs across a
+failure and a malformed time, with HTTP faked, and the warning test
+warn_remit_stored_late on fixed evaluation days in the four session zones.
+
 The loaders commit, so in the CI `test` job this runs after every step that
 reads the fixtures, and deletes its own rows at the end.
 
@@ -76,6 +81,7 @@ from ingestion.elexon.wind_poller import (
 )
 from ingestion.routing import ContractRejected, quarantine_rows
 from tests.adhoc.check_analyses_compile import compile_analyses
+from tests.adhoc.remit_reread_checks import run_remit_reread_checks
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 # A capture time no fixture uses, so every row this check writes is its own.
@@ -1301,6 +1307,8 @@ def main():
     writer = disposable_connection()
     reader = disposable_connection()
     try:
+        # First: a REMIT row left in quarantine by a later check holds the re-read.
+        run_remit_reread_checks(writer, disposable_connection)
         check_quarantine_evidence(writer, reader)
         check_outturn_load(writer, reader)
         check_forecast_load(writer, reader)

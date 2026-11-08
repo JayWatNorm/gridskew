@@ -142,8 +142,8 @@ response on the endpoints checked, and NESO's Carbon Intensity terms say a
 rate limit applies and heavy callers may be blocked. Every poller calls
 `raise_for_status()`, so a 429 fails the request. In most scheduled tasks
 that fails the try, and Airflow's retries run it again later. The wind
-look-back tasks have no retries: they stop at once on a 429, and the next
-day's run asks again. The outturn's Monday history re-fetch logs the failed
+look-back tasks and the REMIT re-read have no retries: they stop at once on
+a 429, and the next day's run asks again. The outturn's Monday history re-fetch logs the failed
 window and goes on to the next. The wind back-fill stops at the first
 failure; the QAS and demand back-fills log a failed day and go on.
 
@@ -201,7 +201,7 @@ a run rather than of a row.
 | Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |
 | Elexon QAS | `catchup=True`, settlement dates 14, 35 and 450 days back, about four days of retries; earlier dates from a one-off backfill | ABSVD has no version marker, so each capture beside the matching B1610 run is the only way to see a resubmission |
 | Elexon NDF and INDO | no DAG; a one-off back-fill of UTC publish days 20 August 2025 to 17 August 2026 | Elexon keeps every forecast issue, so a past year is read as it was forecast, for one analysis |
-| Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap | Event stream with no cadence; the overlap catches late rows, and the key skips repeats |
+| Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap; a daily re-read of the previous seven UTC publish days | Event stream with no cadence; the overlap catches rows up to about an hour late, and the re-read later ones within seven days, never past the hourly watermark; the key skips repeats |
 | Elexon BM units | `catchup=False`, daily complete extract | A reference set published whole; a partial response is never published |
 
 The differences follow from source behaviour, volume and whether the DAG

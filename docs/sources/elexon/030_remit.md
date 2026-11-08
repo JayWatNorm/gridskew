@@ -106,6 +106,17 @@ faithful to what the source sent.
   current one when current state is required.
 - **Nested.** The outage profile array.
 
+## Traps
+
+**A message stored late looks as if it was always there.** The daily
+re-read ([031](031_remit_ingestion.md#daily-re-read)) stores a message the
+hourly read missed, with `retrieved_at` set to the re-read's time. Such a
+message is found by its `retrieved_at`, hours or days after its
+`publish_time`. A read that filters on `publish_time` alone treats it as
+held from its publish time; a read "as of" a moment must filter on
+`retrieved_at`, which says when GridSkew stored it, not when Elexon began
+serving it.
+
 ## The key
 
 `(mrid, revisionNumber)` does not identify a row. In the 5,497 messages
