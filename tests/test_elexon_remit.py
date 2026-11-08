@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,6 +12,7 @@ from ingestion.elexon.remit_poller import (
     build_windows,
     fetch,
     parse,
+    quarantined_row_count,
 )
 from ingestion.elexon.remit_poller import run as run_poller
 from ingestion.routing import ContractRejected
@@ -19,6 +20,8 @@ from ingestion.validation import validate_rows
 from tests.fakes import (
     connection_returning_in_turn,
     cursor_of,
+    quarantine_row,
+    quarantine_rows_read_by,
     quarantined_records,
     rows_inserted_by_table,
 )
@@ -63,6 +66,42 @@ def database_with(newest_stored_publish_time, quarantined_rows=0):
     return connection_returning_in_turn(
         (newest_stored_publish_time,), (quarantined_rows,)
     )
+
+
+def message_key(message):
+    """The four fields the count matches a quarantined message on, as text."""
+
+    return (
+        message["mrid"],
+        str(message["revisionNumber"]),
+        message["publishTime"],
+        message["createdTime"],
+    )
+
+
+def database_holding_quarantine(quarantine_rows, stored_messages):
+    """A fake connection for quarantined_row_count: its quarantine holds
+    quarantine_rows, each with a REMIT message as its payload, and its REMIT
+    table holds stored_messages. The count answers the query's own clauses:
+    it leaves out a resolved row when the query asks for unresolved rows, and
+    a row whose message is stored when the query asks for ones that are not."""
+
+    stored_keys = set()
+    for message in stored_messages:
+        stored_keys.add(message_key(message))
+    conn = MagicMock()
+    cursor = cursor_of(conn)
+
+    def answer(query, params=None):
+        counted = 0
+        for row in quarantine_rows_read_by(query, quarantine_rows):
+            if "NOT EXISTS" in query and message_key(row["payload"]) in stored_keys:
+                continue
+            counted += 1
+        cursor.fetchone.return_value = (counted,)
+
+    cursor.execute.side_effect = answer
+    return conn
 
 
 def run_at_run_time(conn, first_publish_time=None):
@@ -218,6 +257,48 @@ def test_run_stores_valid_messages_and_quarantines_the_rest_with_published_digit
     assert len(stored_rows) == 1
     assert record["dataset"] == "REMIT"
     assert '"normalCapacity": 49.920' in payload.dumps(payload.obj)
+
+
+def quarantined_unresolved(message):
+    return quarantine_row(payload=message)
+
+
+def quarantined_and_resolved(message):
+    return quarantine_row(
+        payload=message,
+        resolved_at=datetime(2026, 10, 9, 8, 0, tzinfo=timezone.utc),
+        resolved_by="owner: message given up",
+    )
+
+
+@pytest.mark.parametrize(
+    ("quarantined", "counted"),
+    [
+        pytest.param(quarantined_unresolved, 1, id="unresolved-and-not-stored"),
+        pytest.param(quarantined_and_resolved, 0, id="resolved-and-not-stored"),
+    ],
+)
+def test_a_quarantined_message_not_stored_counts_only_while_unresolved(
+    source_rows, quarantined, counted
+):
+    stored_message = message_with_mrid(
+        source_rows, "48X000000000284H-ELXP-RMT-00105746"
+    )
+    never_stored = {**stored_message, "mrid": "48X000000000284H-ELXP-RMT-NEVER"}
+    conn = database_holding_quarantine([quarantined(never_stored)], [stored_message])
+
+    assert quarantined_row_count(conn) == counted
+
+
+def test_an_unresolved_row_stops_counting_once_its_message_is_stored(source_rows):
+    stored_message = message_with_mrid(
+        source_rows, "48X000000000284H-ELXP-RMT-00105746"
+    )
+    conn = database_holding_quarantine(
+        [quarantined_unresolved(stored_message)], [stored_message]
+    )
+
+    assert quarantined_row_count(conn) == 0
 
 
 def test_run_reads_the_newest_publish_time_only_from_rows_stored_after_it():

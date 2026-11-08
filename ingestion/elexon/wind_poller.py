@@ -575,14 +575,14 @@ def fuelhh_stored_periods(conn, first_day, last_day):
 
 
 def held_days(conn, dataset, days):
-    """The days among `days` named by a row of the dataset's in
+    """The days among `days` named by an unresolved row of the dataset's in
     raw.endpoint_quarantine. Asking again would quarantine the same rows."""
 
     context_field, day_named = QUARANTINE_CONTEXT[dataset]
     with conn.cursor() as cursor:
         cursor.execute(
             "SELECT DISTINCT request_context ->> %s FROM raw.endpoint_quarantine "
-            "WHERE dataset = %s",
+            "WHERE dataset = %s AND resolved_at IS NULL",
             (context_field, dataset),
         )
         named = cursor.fetchall()

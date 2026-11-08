@@ -12,7 +12,7 @@ import yaml
 
 from ingestion.elexon import wind_backfill, wind_poller
 from ingestion.routing import ContractRejected
-from tests.fakes import cursor_of
+from tests.fakes import cursor_of, quarantine_row, quarantine_rows_read_by
 
 DBT_PROJECT = Path(__file__).parent.parent / "dbt" / "dbt_project.yml"
 ELEXON_FIXTURES = Path(__file__).parent / "fixtures" / "elexon"
@@ -783,22 +783,33 @@ def whole_fuelhh_dates(settlement_dates):
     return rows
 
 
-def windfor_quarantine_row(publish_day):
-    """A quarantine query row: publishDateTimeFrom as run_windfor stores it."""
+def windfor_quarantine_row(publish_day, resolved_at=None, resolved_by=None):
+    """A quarantine row naming the day in publishDateTimeFrom, as run_windfor
+    stores it."""
 
-    return (f"{publish_day.isoformat()}T00:00:00+00:00",)
+    return quarantine_row(
+        {"publishDateTimeFrom": f"{publish_day.isoformat()}T00:00:00+00:00"},
+        resolved_at=resolved_at,
+        resolved_by=resolved_by,
+    )
 
 
-def fuelhh_quarantine_row(settlement_date):
-    """A quarantine query row: settlementDate as run_fuelhh stores it."""
+def fuelhh_quarantine_row(settlement_date, resolved_at=None, resolved_by=None):
+    """A quarantine row naming the date in settlementDate, as run_fuelhh
+    stores it."""
 
-    return (settlement_date.isoformat(),)
+    return quarantine_row(
+        {"settlementDate": settlement_date.isoformat()},
+        resolved_at=resolved_at,
+        resolved_by=resolved_by,
+    )
 
 
 def database_holding(stored=(), stored_after=None, quarantined=()):
     """A fake connection for the capture functions. The completeness query
     returns `stored` before the requests and `stored_after` (by default the
-    same rows) after them; the quarantine query returns `quarantined`."""
+    same rows) after them; the quarantine query finds the rows of
+    `quarantined` it asks for and returns the context field it names."""
 
     if stored_after is None:
         stored_after = stored
@@ -808,7 +819,11 @@ def database_holding(stored=(), stored_after=None, quarantined=()):
 
     def answer(query, params):
         if "raw.endpoint_quarantine" in query:
-            cursor.fetchall.return_value = list(quarantined)
+            context_field = params[0]
+            named = []
+            for row in quarantine_rows_read_by(query, quarantined):
+                named.append((row["request_context"][context_field],))
+            cursor.fetchall.return_value = named
             return
         cursor.fetchall.return_value = completeness_answers.pop(0)
 
@@ -907,6 +922,21 @@ def test_a_target_held_in_quarantine_fails_the_task_without_a_request(capture):
             capture.target(conn, NOVEMBER_5)
 
     get.assert_not_called()
+
+
+@pytest.mark.parametrize("capture", CAPTURES)
+def test_a_target_whose_quarantine_row_is_resolved_is_asked_for_again(capture):
+    resolved_row = capture.quarantine_row(
+        NOVEMBER_5,
+        resolved_at=datetime(2026, 11, 7, 9, 0, tzinfo=timezone.utc),
+        resolved_by="owner: contract widened, day reloaded",
+    )
+    conn = database_holding(quarantined=[resolved_row])
+
+    with http_answering(response_with(recorded(capture.reply))) as get:
+        capture.target(conn, NOVEMBER_5)
+
+    assert requested(get) == [capture.request(NOVEMBER_5)]
 
 
 def test_the_look_back_asks_every_day_but_the_held_one_then_fails_without_a_retry():
