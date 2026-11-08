@@ -29,11 +29,30 @@
 -- forecast, not every half-hour; the half-hours and matched days left out
 -- are counted in section 3, and the bootstrap resamples only matched days
 -- that hold at least one such half-hour.
--- Amended 7 November 2026, before any read: a settlement date counts only
--- once every determinable active cohort unit-period on it holds a metered
--- value from SF or a later run at the read, and the 90 matched days count
--- eligible dates only (research questions, Q4, "Settlement run"). This query
--- does not apply that rule yet; it is built in before the read.
+-- Amended 7 November 2026, before any read: settlement runs. A settlement
+-- date is eligible when every determinable active cohort unit-period on it
+-- takes its metered value from the three-week run (SF) or a later run at the
+-- read. Dates still wholly or partly on the one-week run (II) are left out
+-- and listed in section 3 with their half-hours; the dates among them held
+-- back by unit-periods with no SF or later row, while the date holds one,
+-- are counted on their own line. Matched days and the gate count eligible
+-- dates only, so analysis_read_until is the first date on which they reach
+-- 90.
+--
+-- How the query reads it. The read passes shortfall_error_capture_cutoff,
+-- its own time with an explicit UTC offset. Each unit-period's run and
+-- metered value come from its B1610 rows stored at or before that time: the
+-- latest run among them. Its unexplained shortfall is the shortfall table's
+-- expected energy minus that metered value, so the measure uses the meter
+-- data held at the read and a rerun with the same cutoff reads the same
+-- meter data. A unit-period with no row stored by then is left out and
+-- counted. "The date holds one" means at least one determinable active
+-- cohort unit-period on it is on SF or later. Eligibility is judged on the
+-- unit-periods the measure reads (up to analysis_read_until), and the dates
+-- left out are those with both values in at least one half-hour, listed
+-- with those half-hours. Without the cutoff the query reads rows stored up
+-- to its own time and returns counts and no result. Forecast and outturn
+-- captures are not limited by it: a rerun limits them by hand, as before.
 --
 -- A half-hour has the cohort's unexplained shortfall when at least one
 -- determinable cohort unit-period holds a value (Q5's population: with or
@@ -82,6 +101,9 @@
 {% else %}
     {% set cohort_window_end = none %}
 {% endif %}
+{% set capture_cutoff = utc_instant_var('shortfall_error_capture_cutoff') %}
+{% set stored_until %}{% if capture_cutoff is none %}now(){% else %}timestamptz '{{ capture_cutoff }}'{% endif %}{% endset %}
+{% set capture_cutoff_recorded = 'false' if capture_cutoff is none else 'true' %}
 
 with errors as (
     select
@@ -113,12 +135,15 @@ cohort_units as (
         as units
 ),
 
-cohort_shortfall as (
+-- The determinable active cohort unit-periods the measure reads.
+read_unit_periods as (
     select
+        shortfall.national_grid_bm_unit,
+        shortfall.elexon_bm_unit,
         shortfall.settlement_date,
-        shortfall.period_start_utc as period_start,
-        sum(greatest(shortfall.unexplained_shortfall_mwh, 0)) as positive_shortfall_mwh,
-        count(*) as unit_periods
+        shortfall.settlement_period,
+        shortfall.period_start_utc,
+        shortfall.expected_mwh
     from {{ ref('int_shortfall_by_unit_period') }} as shortfall
     inner join cohort_units as cohort
         on shortfall.national_grid_bm_unit = cohort.national_grid_bm_unit
@@ -129,7 +154,65 @@ cohort_shortfall as (
 {% if read_until is not none %}
         and shortfall.period_start_utc <= timestamptz '{{ read_until }}'
 {% endif %}
-    group by shortfall.settlement_date, shortfall.period_start_utc
+),
+
+-- Each unit-period's metered value held at the read: of its B1610 rows
+-- stored by the capture cutoff, the latest run. The shortfall table reads the
+-- same Elexon ID for the unit.
+held_runs as (
+    select distinct on (
+        read_unit_periods.national_grid_bm_unit,
+        read_unit_periods.settlement_date,
+        read_unit_periods.settlement_period
+    )
+        read_unit_periods.settlement_date,
+        read_unit_periods.period_start_utc,
+        round(read_unit_periods.expected_mwh - b1610.quantity, 6)
+            as unexplained_shortfall_mwh,
+        run_codes.run_order >= (
+            select sf.run_order
+            from {{ ref('elexon_settlement_run_codes') }} as sf
+            where sf.settlement_run_code = 'SF'
+        ) as is_sf_or_later
+    from read_unit_periods
+    inner join {{ source('elexon', 'elexon_b1610') }} as b1610
+        on b1610.bm_unit = read_unit_periods.elexon_bm_unit
+        and b1610.settlement_date = read_unit_periods.settlement_date
+        and b1610.settlement_period = read_unit_periods.settlement_period
+    inner join {{ ref('elexon_settlement_run_codes') }} as run_codes
+        on b1610.settlement_run_type = run_codes.settlement_run_code
+    where b1610.retrieved_at <= {{ stored_until }}
+    order by
+        read_unit_periods.national_grid_bm_unit,
+        read_unit_periods.settlement_date,
+        read_unit_periods.settlement_period,
+        run_codes.run_order desc
+),
+
+unit_periods_without_held_run as (
+    select (select count(*) from read_unit_periods) - (select count(*) from held_runs)
+        as unit_periods
+),
+
+cohort_shortfall as (
+    select
+        settlement_date,
+        period_start_utc as period_start,
+        sum(greatest(unexplained_shortfall_mwh, 0)) as positive_shortfall_mwh,
+        count(*) as unit_periods,
+        count(*) filter (where not is_sf_or_later) as unit_periods_on_ii
+    from held_runs
+    group by settlement_date, period_start_utc
+),
+
+-- Each settlement date's unit-periods on II and on SF or later at the read.
+date_runs as (
+    select
+        settlement_date,
+        sum(unit_periods_on_ii) as unit_periods_on_ii,
+        sum(unit_periods) - sum(unit_periods_on_ii) as unit_periods_sf_or_later
+    from cohort_shortfall
+    group by settlement_date
 ),
 
 both_values as (
@@ -145,14 +228,34 @@ both_values as (
         on cohort_shortfall.period_start = errors.period_start
 ),
 
-matched_days as (
-    select settlement_date
+-- Dates with both values in at least one half-hour, each eligible or left
+-- out at the read.
+both_values_dates as (
+    select
+        both_values.settlement_date,
+        count(*) as half_hours,
+        date_runs.unit_periods_on_ii,
+        date_runs.unit_periods_on_ii = 0 as is_eligible,
+        date_runs.unit_periods_sf_or_later > 0 as holds_sf_or_later
     from both_values
-    group by settlement_date
-    having count(*) >= {{ matched_day_min_half_hours }}
+    inner join date_runs
+        on both_values.settlement_date = date_runs.settlement_date
+    group by
+        both_values.settlement_date,
+        date_runs.unit_periods_on_ii,
+        date_runs.unit_periods_sf_or_later
 ),
 
-eligible_days as (
+matched_days as (
+    select settlement_date
+    from both_values_dates
+    where is_eligible
+        and half_hours >= {{ matched_day_min_half_hours }}
+),
+
+-- Matched days holding at least one half-hour with a fresh final forecast:
+-- the days the bootstrap resamples.
+bootstrap_days as (
     select
         both_values.settlement_date,
         row_number() over (order by both_values.settlement_date) as day_number
@@ -170,19 +273,23 @@ population as (
         both_values.error_final,
         both_values.positive_shortfall_mwh,
         both_values.unit_periods,
-        eligible_days.day_number
+        bootstrap_days.day_number
     from both_values
-    inner join eligible_days
-        on both_values.settlement_date = eligible_days.settlement_date
+    inner join bootstrap_days
+        on both_values.settlement_date = bootstrap_days.settlement_date
     where both_values.is_fresh
 ),
 
+-- The result needs the matched days, the slot polls after the cutoff and a
+-- recorded capture cutoff.
 gate as (
     select
         count(*) as matched_days,
-        (select count(*) from eligible_days) as eligible_days,
+        (select count(*) from bootstrap_days) as bootstrap_days,
+        count(*) >= {{ days_needed }} as is_met,
         count(*) >= {{ days_needed }}
-            and {{ forecast_look_ahead_reached(read_until) }} as is_reached
+            and {{ forecast_look_ahead_reached(read_until) }}
+            and {{ capture_cutoff_recorded }} as is_reached
     from matched_days
 ),
 
@@ -249,12 +356,12 @@ picks as (
     select
         draws.draw,
         picked.pick,
-        {{ bootstrap_date_number(bootstrap_seed, 'draws.draw', 'picked.pick', 'gate.eligible_days') }}
+        {{ bootstrap_date_number(bootstrap_seed, 'draws.draw', 'picked.pick', 'gate.bootstrap_days') }}
             as day_number
     from gate
     cross join observed
     cross join generate_series(1, {{ bootstrap_draws }}) as draws (draw)
-    cross join generate_series(1, gate.eligible_days) as picked (pick)
+    cross join generate_series(1, gate.bootstrap_days) as picked (pick)
     where gate.is_reached
         and observed.bottom_sum > 0
 ),
@@ -476,7 +583,7 @@ coverage_rows as (
 
     select 3, null, 'matched days with no half-hour whose final forecast is within '
         || {{ final_horizon_limit_seconds // 60 }} || ' minutes', null, null,
-        gate.matched_days - gate.eligible_days, null, null, null, null
+        gate.matched_days - gate.bootstrap_days, null, null, null, null
     from gate
 
     union all
@@ -530,6 +637,86 @@ coverage_rows as (
     select 3, null, 'cohort unit-periods per population half-hour: max', null, count(*), null, null, null,
         max(unit_periods), null
     from population
+),
+
+-- Settlement runs at the read: the cutoff, the eligible dates, the gate on
+-- them, the dates left out with their half-hours and the unit-periods with
+-- no row stored by the cutoff. Counts and dates only.
+settlement_run_rows as (
+    select
+        3 as section,
+        null::integer as position,
+        'B1610 rows read: stored at or before shortfall_error_capture_cutoff (result: that cutoff)'
+            as item,
+        null::integer as quintile,
+        null::bigint as half_hours,
+        null::bigint as days,
+        null::date as first_date,
+        null::date as last_date,
+        null::numeric as value,
+{% if capture_cutoff is none %}
+        'not recorded: rows stored up to the query''s own time; no result' as result
+{% else %}
+        '{{ capture_cutoff }}' as result
+{% endif %}
+
+    union all
+
+    select 3, null,
+        'settlement dates with both values in any half-hour: eligible, every determinable active '
+            || 'cohort unit-period on the three-week run (SF) or later',
+        null, null, count(*), min(settlement_date), max(settlement_date), null, null
+    from both_values_dates
+    where is_eligible
+
+    union all
+
+    select 3, null, 'matched days on eligible dates ({{ days_needed }} needed)', null, null,
+        matched_days, null, null, null,
+        case when is_met then 'met' else 'not met' end
+    from gate
+
+    union all
+
+    select 3, null,
+        'settlement dates left out: a determinable active cohort unit-period on the one-week '
+            || 'run (II) (value: those unit-periods)',
+        null, coalesce(sum(half_hours), 0)::bigint, count(*), min(settlement_date), max(settlement_date),
+        coalesce(sum(unit_periods_on_ii), 0), null
+    from both_values_dates
+    where not is_eligible
+
+    union all
+
+    select 3, null,
+        'settlement dates left out: of those, held back by unit-periods with no SF or later row '
+            || 'while the date holds one (value: those unit-periods)',
+        null, coalesce(sum(half_hours), 0)::bigint, count(*), min(settlement_date), max(settlement_date),
+        coalesce(sum(unit_periods_on_ii), 0), null
+    from both_values_dates
+    where not is_eligible
+        and holds_sf_or_later
+
+    union all
+
+    select 3, null,
+        'left out, on the one-week run (II): ' || to_char(settlement_date, 'YYYY-MM-DD')
+            || ' (value: unit-periods on II)',
+        null, half_hours, 1, settlement_date, settlement_date, unit_periods_on_ii,
+        case
+            when holds_sf_or_later then 'partly on II: the date holds SF or a later run'
+            else 'wholly on II'
+        end
+    from both_values_dates
+    where not is_eligible
+
+    union all
+
+    select 3, null,
+        'determinable active cohort unit-periods with no B1610 row stored by the cutoff, left out '
+            || '(value: unit-periods)',
+        null, null, null, null, null, unit_periods, null
+    from unit_periods_without_held_run
 ),
 
 listed_weekdays as (
@@ -716,6 +903,9 @@ all_rows as (
     union all
     select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
     from coverage_rows
+    union all
+    select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
+    from settlement_run_rows
     union all
     select section, position, item, quintile, half_hours, days, first_date, last_date, value, result
     from stale_final_rows

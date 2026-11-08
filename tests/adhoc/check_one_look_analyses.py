@@ -28,6 +28,8 @@ Q2RF = "q2rf_restatement_r3_to_rf"
 Q25 = "q25_instruction_fragmentation"
 Q27 = "q27_forecast_stalls"
 READ_UNTIL = "2026-09-05 00:00:00+00"
+# Q4's read time: B1610 rows stored at or before it count.
+Q4_CAPTURE_CUTOFF = "2026-09-25 12:00:00+00"
 STALLS_FROM = "2026-09-01 00:00:00+00"
 STALLS_WINDOW_VARS = {
     "forecast_stalls_from": STALLS_FROM,
@@ -46,6 +48,7 @@ REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 7,
     "shortfall_error_matched_days_needed": 2,
+    "shortfall_error_capture_cutoff": Q4_CAPTURE_CUTOFF,
     "rf_restatement_dates_needed": 2,
     # Not the project's 450, so a 450 typed into the SQL fails; the two
     # manifests' cutoffs differ, so a typed cutoff fails one of them.
@@ -60,9 +63,20 @@ NOT_REACHED_VARS = {
     "analysis_read_until": READ_UNTIL,
     "forecast_drift_half_hours_needed": 8,
     "shortfall_error_matched_days_needed": 3,
+    "shortfall_error_capture_cutoff": Q4_CAPTURE_CUTOFF,
     "rf_restatement_capture_cutoff": "2026-11-30 00:00:00+00",
     "forecast_stalls_days_needed": 5,
     **STALLS_WINDOW_VARS,
+}
+# Q4 compiled without one of the read's two instants, the gate otherwise
+# open: no result either way.
+Q4_WITHOUT_READ_UNTIL_VARS = {
+    "shortfall_error_matched_days_needed": 2,
+    "shortfall_error_capture_cutoff": Q4_CAPTURE_CUTOFF,
+}
+Q4_WITHOUT_CAPTURE_CUTOFF_VARS = {
+    "analysis_read_until": READ_UNTIL,
+    "shortfall_error_matched_days_needed": 2,
 }
 # The bootstrap's fixed seed and draw count, as in the Q4 analysis.
 BOOTSTRAP_SEED = 20261012
@@ -715,6 +729,22 @@ def q10_project_values_fixtures(gate_open=True):
 # 0) is idle; U2's at A's third half-hour (PN 0, metered 1) is not, nor is
 # U4's (PN 0 and metered 0 but not determinable). 94 half-hours of U1 and U2
 # and U5's one make 189 determinable unit-periods: an idle share of 1 / 189.
+#
+# Settlement runs. Each unit-period's metered value is a stored B1610 row:
+# SF, stored on 20 September, except A's U1 values, which are R1 rows stored
+# on 24 September beside an earlier SF row 7 MWh higher, so A is partly on R1
+# and partly on SF (eligible) and the latest run held gives the value. A's U1
+# at period 4 has its SF row stored an hour after its R1 row (24 September
+# 09:00): the run, not the storing time, decides. U1's metered value is its period
+# number plus 100 times the day of the month, so a row read from another
+# period or date gives another value. The capture cutoff is 25 September
+# 12:00:00 UTC. B's U1 at period 1 has a II row (4 MWh) from 9 September and
+# its SF row stored exactly at the cutoff (held). A's U1 at period 3 has an RF
+# row of 1,000 MWh stored a second after it (not held). U5 has a determinable
+# unit-period at C's period 20 (9 MWh) whose only row is stored an hour after
+# the cutoff: left out, counted. The expected energy is the unexplained
+# shortfall plus the metered value, so every value above is the one the
+# analysis computes.
 Q4_FIXTURES = """
 create temporary table synthetic_carbon_error (
     period_start timestamptz,
@@ -728,7 +758,10 @@ create temporary table synthetic_shortfall (
     unexplained_shortfall_mwh numeric,
     determinability text,
     pn_mwh numeric default 1,
-    metered_mwh numeric default 1
+    metered_mwh numeric default 1,
+    settlement_period integer,
+    elexon_bm_unit text,
+    expected_mwh numeric
 ) on commit drop;
 create temporary table synthetic_cohort (
     national_grid_bm_unit text,
@@ -736,6 +769,20 @@ create temporary table synthetic_cohort (
     fuel_type text,
     fuel_group text
 ) on commit drop;
+create temporary table synthetic_q4_b1610 (
+    bm_unit text,
+    settlement_date date,
+    settlement_period integer,
+    settlement_run_type text,
+    quantity numeric,
+    retrieved_at timestamptz
+) on commit drop;
+create temporary table synthetic_run_codes (
+    settlement_run_code text,
+    run_order integer
+) on commit drop;
+insert into synthetic_run_codes values
+    ('II', 1), ('SF', 2), ('R1', 3), ('R2', 4), ('R3', 5), ('RF', 6), ('DF', 7);
 create temporary table synthetic_pn_periods (
     national_grid_bm_unit text,
     settlement_date date,
@@ -846,6 +893,10 @@ select 'U5', settlement_date, period_start, 0, 'determinable'
 from synthetic_periods
 where settlement_date = date '2026-09-01' and period = 2
 union all
+select 'U5', settlement_date, period_start, 9, 'determinable'
+from synthetic_periods
+where settlement_date = date '2026-09-03' and period = 20
+union all
 select 'U1', date '2026-09-01', timestamptz '2026-09-01 12:15:00+00', 5, 'determinable'
 union all
 select 'IE1', settlement_date, period_start, 100, 'determinable'
@@ -878,7 +929,53 @@ update synthetic_shortfall set pn_mwh = 0
 where national_grid_bm_unit = 'U2' and period_start_utc = timestamptz '2026-09-01 00:00+00';
 update synthetic_shortfall set pn_mwh = 0, metered_mwh = -2
 where national_grid_bm_unit = 'IM1';
+update synthetic_shortfall
+set
+    elexon_bm_unit = 'E_' || national_grid_bm_unit,
+    settlement_period = 1 + floor(
+        extract(epoch from period_start_utc
+            - (settlement_date::timestamp at time zone 'Europe/London')) / 1800
+    );
+update synthetic_shortfall set settlement_period = 50
+where period_start_utc = timestamptz '2026-09-01 12:15:00+00';
+update synthetic_shortfall
+set metered_mwh = settlement_period + 100 * extract(day from settlement_date)
+where national_grid_bm_unit = 'U1';
+update synthetic_shortfall set expected_mwh = unexplained_shortfall_mwh + metered_mwh;
 
+insert into synthetic_q4_b1610
+select
+    elexon_bm_unit,
+    settlement_date,
+    settlement_period,
+    case
+        when national_grid_bm_unit = 'U1' and settlement_date = date '2026-09-01'
+            then 'R1'
+        else 'SF'
+    end,
+    metered_mwh,
+    case
+        when national_grid_bm_unit = 'U1' and settlement_date = date '2026-09-01'
+            then timestamptz '2026-09-24 08:00:00+00'
+        else timestamptz '2026-09-20 10:00:00+00'
+    end
+from synthetic_shortfall;
+insert into synthetic_q4_b1610
+select elexon_bm_unit, settlement_date, settlement_period, 'SF', metered_mwh + 7,
+    timestamptz '2026-09-20 10:00:00+00'
+from synthetic_shortfall
+where national_grid_bm_unit = 'U1' and settlement_date = date '2026-09-01';
+update synthetic_q4_b1610 set retrieved_at = timestamptz '2026-09-25 12:00:00+00'
+where bm_unit = 'E_U1' and settlement_date = date '2026-09-02' and settlement_period = 1;
+update synthetic_q4_b1610 set retrieved_at = timestamptz '2026-09-25 13:00:00+00'
+where bm_unit = 'E_U5' and settlement_date = date '2026-09-03' and settlement_period = 20;
+insert into synthetic_q4_b1610 values
+    ('E_U1', '2026-09-02', 1, 'II', 4, '2026-09-09 10:00:00+00'),
+    ('E_U1', '2026-09-01', 3, 'RF', 1000, '2026-09-25 12:00:01+00');
+update synthetic_q4_b1610 set retrieved_at = timestamptz '2026-09-24 09:00:00+00'
+where bm_unit = 'E_U1' and settlement_date = date '2026-09-01' and settlement_period = 4
+    and settlement_run_type = 'SF';
+{settlement_runs}
 create temporary table synthetic_slot_polls (
     poll_slot timestamptz,
     is_first_poll_in_slot boolean
@@ -899,6 +996,8 @@ Q4_TABLES = {
     "int_elexon__pn_period_mapped": "pg_temp.synthetic_pn_periods",
     "int_elexon__b1610_period_mapped": "pg_temp.synthetic_metered_periods",
     "int_carbon_forecast__revisions": "pg_temp.synthetic_slot_polls",
+    "elexon_b1610": "pg_temp.synthetic_q4_b1610",
+    "elexon_settlement_run_codes": "pg_temp.synthetic_run_codes",
 }
 
 FIRST = "2026-08-28 10:00:00+00:00"
@@ -1365,6 +1464,66 @@ Q4_COHORT_EXPECTED = {
     IDLE_SHARE: dict(value="0.005291"),
 }
 
+CAPTURE_CUTOFF_ROW = (
+    3,
+    "B1610 rows read: stored at or before shortfall_error_capture_cutoff "
+    "(result: that cutoff)",
+    None,
+)
+ELIGIBLE_DATES = (
+    3,
+    "settlement dates with both values in any half-hour: eligible, every "
+    "determinable active cohort unit-period on the three-week run (SF) or later",
+    None,
+)
+ELIGIBLE_MATCHED_DAYS = (3, "matched days on eligible dates (2 needed)", None)
+LEFT_OUT_ON_II = (
+    3,
+    "settlement dates left out: a determinable active cohort unit-period on the "
+    "one-week run (II) (value: those unit-periods)",
+    None,
+)
+HELD_BACK_WITHOUT_SF = (
+    3,
+    "settlement dates left out: of those, held back by unit-periods with no SF or "
+    "later row while the date holds one (value: those unit-periods)",
+    None,
+)
+NO_ROW_BY_CUTOFF = (
+    3,
+    "determinable active cohort unit-periods with no B1610 row stored by the "
+    "cutoff, left out (value: unit-periods)",
+    None,
+)
+WHOLLY_ON_II = "wholly on II"
+PARTLY_ON_II = "partly on II: the date holds SF or a later run"
+
+
+def left_out_date_key(settlement_date):
+    return (
+        3,
+        f"left out, on the one-week run (II): {settlement_date} "
+        "(value: unit-periods on II)",
+        None,
+    )
+
+
+# Every date on SF or later at the cutoff: A partly on R1, B with its period-1
+# SF row stored exactly at the cutoff, and C. U5's row at C stored after it is
+# the one unit-period left out.
+Q4_ALL_ELIGIBLE_EXPECTED = {
+    CAPTURE_CUTOFF_ROW: dict(result=Q4_CAPTURE_CUTOFF),
+    ELIGIBLE_DATES: dict(days=3, first_date="2026-09-01", last_date="2026-09-03"),
+    ELIGIBLE_MATCHED_DAYS: dict(days=2, result="met"),
+    LEFT_OUT_ON_II: dict(
+        half_hours=0, days=0, first_date=None, last_date=None, value="0"
+    ),
+    HELD_BACK_WITHOUT_SF: dict(
+        half_hours=0, days=0, first_date=None, last_date=None, value="0"
+    ),
+    NO_ROW_BY_CUTOFF: dict(value="1"),
+}
+
 # Q4 with A's and B's first ten half-hours at 1 except A10 at 3; 11 to 38 at
 # 1; 39 onwards at 1.25. A10 and B10 share an error of 10 at the edge of
 # quintile 1, and the tie order (md5 of the seed, draw 0, pick 0 and the
@@ -1444,7 +1603,118 @@ Q4_EXPECTED = {
     ),
     (3, "cohort unit-periods per population half-hour: median", None): dict(value="2"),
     (3, "cohort unit-periods per population half-hour: max", None): dict(value="3"),
+    **Q4_ALL_ELIGIBLE_EXPECTED,
 }
+
+# B's U2 at period 5 holds only II, and all of C is on II. B leaves (46
+# half-hours with both values; one unit-period on II, while the rest of B is
+# on SF: held back by a unit-period with no SF row), and so does C (45
+# half-hours; U1 and U2 in each, and F1 at period 10: 91 unit-periods on II;
+# U5's row there is stored after the cutoff). Only A is a matched day, one of
+# the two needed, although B has 46 half-hours with both values. A's 48
+# population half-hours hold U1 and U2, and U5 at period 2.
+Q4_ON_II_RUNS = """
+update synthetic_q4_b1610 set settlement_run_type = 'II'
+where bm_unit = 'E_U2' and settlement_date = date '2026-09-02' and settlement_period = 5;
+update synthetic_q4_b1610 set settlement_run_type = 'II'
+where settlement_date = date '2026-09-03';
+"""
+Q4_ON_II_EXPECTED = {
+    POPULATION: dict(
+        half_hours=48,
+        days=1,
+        first_date="2026-09-01",
+        last_date="2026-09-01",
+        result="not reached",
+    ),
+    VERDICT: dict(result="population not reached: no result"),
+    ELIGIBLE_DATES: dict(days=1, first_date="2026-09-01", last_date="2026-09-01"),
+    ELIGIBLE_MATCHED_DAYS: dict(days=1, result="not met"),
+    LEFT_OUT_ON_II: dict(
+        half_hours=91,
+        days=2,
+        first_date="2026-09-02",
+        last_date="2026-09-03",
+        value="92",
+    ),
+    HELD_BACK_WITHOUT_SF: dict(
+        half_hours=46,
+        days=1,
+        first_date="2026-09-02",
+        last_date="2026-09-02",
+        value="1",
+    ),
+    left_out_date_key("2026-09-02"): dict(
+        half_hours=46,
+        days=1,
+        first_date="2026-09-02",
+        last_date="2026-09-02",
+        value="1",
+        result=PARTLY_ON_II,
+    ),
+    left_out_date_key("2026-09-03"): dict(
+        half_hours=45,
+        days=1,
+        first_date="2026-09-03",
+        last_date="2026-09-03",
+        value="91",
+        result=WHOLLY_ON_II,
+    ),
+    NO_FRESH_DAYS: dict(days=0),
+    (3, "on matched days: error_final without the cohort measure", None): dict(
+        half_hours=0, days=0
+    ),
+    (3, "cohort unit-periods per population half-hour: min", None): dict(
+        half_hours=48, value="2"
+    ),
+    (3, "cohort unit-periods per population half-hour: max", None): dict(value="3"),
+    **stale_finals_expected({"Tuesday": 48}, {}),
+}
+
+# Compiled without analysis_read_until: E (6 September, 48 half-hours on SF)
+# joins A and B, three matched days of the two needed, and still no result.
+Q4_WITHOUT_READ_UNTIL_EXPECTED = {
+    POPULATION: dict(days=3, result="not reached"),
+    VERDICT: dict(result="population not reached: no result"),
+    ELIGIBLE_MATCHED_DAYS: dict(days=3, result="met"),
+}
+
+# Compiled without the capture cutoff: every row stored up to the query's own
+# time counts (U5's row at C too), two matched days of the two needed, and no
+# result.
+Q4_WITHOUT_CAPTURE_CUTOFF_EXPECTED = {
+    CAPTURE_CUTOFF_ROW: dict(
+        result="not recorded: rows stored up to the query's own time; no result"
+    ),
+    POPULATION: dict(days=2, result="not reached"),
+    VERDICT: dict(result="population not reached: no result"),
+    ELIGIBLE_MATCHED_DAYS: dict(days=2, result="met"),
+    NO_ROW_BY_CUTOFF: dict(value="0"),
+}
+
+# A rerun after the RF row of A's U1 at period 3 (1,000 MWh, stored a second
+# after the cutoff) has reached the shortfall table: the table now holds
+# metered 1,000 and an unexplained shortfall of 104 - 1,000 = -896 there, but
+# the analysis still reads R1's 103 held at the cutoff (104 - 103 = 1), so the
+# verdict and the quintiles are as in the main case.
+Q4_RERUN_ROWS = """
+update synthetic_shortfall
+set metered_mwh = 1000, unexplained_shortfall_mwh = expected_mwh - 1000
+where national_grid_bm_unit = 'U1'
+    and settlement_date = date '2026-09-01'
+    and settlement_period = 3;
+"""
+
+
+def verdict_and_quintile_cells(expected):
+    """The worked values of sections 1 and 2 only."""
+
+    cells = {}
+    for key, columns in expected.items():
+        if key[0] in (1, 2):
+            cells[key] = columns
+    return cells
+
 
 # B's first ten half-hours at 0, A's at 1: the tie at 10 puts B10 in
 # quintile 1, so its bottom mean is A1 to A9 over 19, 9 / 19, and the ratio
@@ -3574,7 +3844,13 @@ SESSION_TIME_ZONES = ("UTC", "Europe/London")
 
 
 def q4_fixtures(
-    a_bottom, b_bottom, a_tenth, stale_b_half_hours=0, extra_days="", b39_error=39
+    a_bottom,
+    b_bottom,
+    a_tenth,
+    stale_b_half_hours=0,
+    extra_days="",
+    b39_error=39,
+    settlement_runs="",
 ):
     return Q4_FIXTURES.format(
         a_bottom=a_bottom,
@@ -3583,6 +3859,7 @@ def q4_fixtures(
         stale_b_half_hours=stale_b_half_hours,
         extra_days=extra_days,
         b39_error=b39_error,
+        settlement_runs=settlement_runs,
     )
 
 
@@ -4193,6 +4470,73 @@ def q4_mismatches(conn, reached, not_reached, boundary, time_zone):
             **stale_finals_expected({"Tuesday": 48, "Wednesday": 46}, {"Monday": 48}),
         },
     )
+
+    on_ii_run = run_analysis(
+        conn,
+        q4_fixtures(1, 1, 3, settlement_runs=Q4_ON_II_RUNS),
+        reached,
+        Q4,
+        Q4_TABLES,
+        time_zone,
+    )
+    on_ii_title = f"{title} dates on the one-week run"
+    found += mismatches(on_ii_title, on_ii_run, Q4_ON_II_EXPECTED)
+    found += gated_values_left_null(on_ii_title, on_ii_run, Q4_GATED)
+    found += unexpected_left_out_dates(on_ii_title, on_ii_run, Q4_ON_II_EXPECTED)
+
+    rerun_run = run_analysis(
+        conn,
+        q4_fixtures(1, 1, 3, settlement_runs=Q4_RERUN_ROWS),
+        reached,
+        Q4,
+        Q4_TABLES,
+        time_zone,
+    )
+    found += mismatches(
+        f"{title} rerun after a later run is stored",
+        rerun_run,
+        verdict_and_quintile_cells(Q4_EXPECTED),
+    )
+    return found
+
+
+def unexpected_left_out_dates(title, run, expected):
+    """Left-out date rows the worked values do not list."""
+
+    rows, error = run
+    if error is not None:
+        return []
+    found = []
+    for key in rows:
+        if key[1].startswith("left out, on the one-week run") and key not in expected:
+            found.append(f"{title}: unexpected row {key}")
+    return found
+
+
+def q4_refusal_mismatches(conn, without_read_until, without_capture_cutoff, time_zone):
+    """Q4 gives no result without analysis_read_until or the capture cutoff."""
+
+    title = f"[{time_zone}] Q4"
+    found = []
+    cases = (
+        (
+            "without analysis_read_until",
+            without_read_until,
+            Q4_WITHOUT_READ_UNTIL_EXPECTED,
+        ),
+        (
+            "without the capture cutoff",
+            without_capture_cutoff,
+            Q4_WITHOUT_CAPTURE_CUTOFF_EXPECTED,
+        ),
+    )
+    for case_name, manifest, expected in cases:
+        run = run_analysis(
+            conn, q4_fixtures(1, 1, 3), manifest, Q4, Q4_TABLES, time_zone
+        )
+        found += mismatches(f"{title} {case_name}", run, expected)
+        found += gated_values_left_null(f"{title} {case_name}", run, Q4_GATED)
+        found += gated_values_left_null(f"{title} {case_name}", run, Q4_QUINTILES_GATED)
     return found
 
 
@@ -4995,14 +5339,25 @@ def q26_mismatches(conn, reached, time_zone):
     return found
 
 
-def check_all(reached, not_reached, boundary, project_values, schedule_window):
+def check_all(
+    reached,
+    not_reached,
+    boundary,
+    project_values,
+    schedule_window,
+    q4_refusals,
+):
     """Every mismatch between the analyses on the fixtures and the worked values.
 
     reached, not_reached, boundary, project_values and schedule_window are
     manifests compiled with REACHED_VARS, NOT_REACHED_VARS, boundary_vars(),
-    PROJECT_VALUES_VARS and Q27_SCHEDULE_VARS. Each case runs in a UTC
-    session and in a Europe/London one.
+    PROJECT_VALUES_VARS and Q27_SCHEDULE_VARS; q4_refusals is the pair of Q4
+    manifests compiled with Q4_WITHOUT_READ_UNTIL_VARS and
+    Q4_WITHOUT_CAPTURE_CUTOFF_VARS. Each case runs in a UTC session and in a
+    Europe/London one.
     """
+
+    without_read_until, without_capture_cutoff = q4_refusals
 
     conn = disposable_connection()
     found = known_pick_mismatches()
@@ -5013,6 +5368,9 @@ def check_all(reached, not_reached, boundary, project_values, schedule_window):
             found += q10_mismatches(conn, reached, not_reached, time_zone)
             found += q10_project_values_mismatches(conn, project_values, time_zone)
             found += q4_mismatches(conn, reached, not_reached, boundary, time_zone)
+            found += q4_refusal_mismatches(
+                conn, without_read_until, without_capture_cutoff, time_zone
+            )
             found += q2rf_mismatches(
                 conn, reached, not_reached, project_values, time_zone
             )
@@ -5057,6 +5415,10 @@ def main():
         compile_analyses(boundary_vars()),
         compile_analyses(PROJECT_VALUES_VARS),
         compile_analyses(Q27_SCHEDULE_VARS),
+        (
+            compile_analyses(Q4_WITHOUT_READ_UNTIL_VARS, selected=(Q4,)),
+            compile_analyses(Q4_WITHOUT_CAPTURE_CUTOFF_VARS, selected=(Q4,)),
+        ),
     )
     for mismatch in found:
         print(mismatch)
