@@ -174,9 +174,11 @@ PN, QPN, BOALF, QAS and both Carbon Intensity tables. Each poll can then store a
 new observation of the same source row.
 
 B1610 and REMIT carry revision markers (`settlementRunType`, `revisionNumber`),
-and NDF and INDO a publish time, so their primary keys use those instead.
-Excluding `retrieved_at` makes a re-poll of the same revision idempotent while
-still recording when it was first seen.
+and NDF, INDO, WINDFOR and FUELHH a publish time, so their primary keys use
+those instead. WINDFOR keys on the hour forecast and the issue's publish time;
+FUELHH on the settlement date, period, fuel type and publish time. Excluding
+`retrieved_at` makes a re-poll of the same revision idempotent while still
+recording when it was first seen.
 
 It also means backfill rows and daily rows need no flag to tell apart:
 
@@ -201,6 +203,7 @@ a run rather than of a row.
 | Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |
 | Elexon QAS | `catchup=True`, settlement dates 14, 35 and 450 days back, about four days of retries; earlier dates from a one-off backfill | ABSVD has no version marker, so each capture beside the matching B1610 run is the only way to see a resubmission |
 | Elexon NDF and INDO | no DAG; a one-off back-fill of UTC publish days 20 August 2025 to 17 August 2026 | Elexon keeps every forecast issue, so a past year is read as it was forecast, for one analysis |
+| Elexon WINDFOR and FUELHH | `catchup=False`, daily at 06:00 UTC for the previous day, with a look-back over the seven days before it; earlier days from a one-off back-fill | Elexon keeps every WINDFOR issue and every FUELHH publication; a day is stored whole or not at all, so the look-back asks again only for a day not yet complete |
 | Elexon REMIT | `catchup=False`, hourly, watermark on `publish_time` with a one-hour overlap; a daily re-read of the previous seven UTC publish days | Event stream with no cadence; the overlap catches rows up to about an hour late, and the re-read later ones within seven days, never past the hourly watermark; the key skips repeats |
 | Elexon BM units | `catchup=False`, daily complete extract | A reference set published whole; a partial response is never published |
 
