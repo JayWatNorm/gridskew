@@ -5,8 +5,8 @@ The validator is offline and source-independent: callers provide decoded rows
 and the matching contract.
 
 Validation and quarantine cover PN, QPN, B1610, BOALF, REMIT, QAS, NDF,
-INDO, both Carbon datasets and the BM-unit registry. Carbon forecast and
-outturn also have period-completeness checks.
+INDO, WINDFOR, FUELHH, both Carbon datasets and the BM-unit registry. Carbon
+forecast and outturn also have period-completeness checks.
 
 ## Behavior
 
@@ -91,7 +91,7 @@ also block suspiciously small responses. See
 | File | Responsibility |
 |---|---|
 | [`validation.py`](../../ingestion/validation.py) | Generic flat and nested contract checks |
-| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN, B1610, BOALF, REMIT, QAS, NDF, INDO and BM-unit contracts |
+| [`contracts.py`](../../ingestion/elexon/contracts.py) | PN, QPN, B1610, BOALF, REMIT, QAS, NDF, INDO, WINDFOR, FUELHH and BM-unit contracts |
 | [`contracts.py`](../../ingestion/carbon_intensity/contracts.py) | Forecast and outturn contracts |
 | [`routing.py`](../../ingestion/routing.py) | Shared warning, quarantine and compatible-row routing |
 | [`pn_poller.py`](../../ingestion/elexon/pn_poller.py) | PN response window, parser and loader |
