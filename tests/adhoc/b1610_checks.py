@@ -31,9 +31,11 @@ RUNS = ("II", "SF", "R1", "R2", "R3", "RF")
 
 
 def fetch(from_date, to_date, run_type=None):
+    # settlementDateFrom and settlementDateTo filter on the UTC start of each
+    # period, both ends included, whatever their names say.
     params = {
-        "from": from_date.strftime("%Y-%m-%dT%H:%MZ"),
-        "to": to_date.strftime("%Y-%m-%dT%H:%MZ"),
+        "settlementDateFrom": from_date.strftime("%Y-%m-%dT%H:%MZ"),
+        "settlementDateTo": to_date.strftime("%Y-%m-%dT%H:%MZ"),
     }
     if run_type:
         params["settlementRunType"] = run_type

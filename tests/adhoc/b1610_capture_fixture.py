@@ -108,8 +108,8 @@ def fetch(from_date, to_date):
     response = requests.get(
         URL,
         params={
-            "from": from_date.strftime("%Y-%m-%dT%H:%MZ"),
-            "to": to_date.strftime("%Y-%m-%dT%H:%MZ"),
+            "settlementDateFrom": from_date.strftime("%Y-%m-%dT%H:%MZ"),
+            "settlementDateTo": to_date.strftime("%Y-%m-%dT%H:%MZ"),
         },
         headers=HEADERS,
         timeout=60,
