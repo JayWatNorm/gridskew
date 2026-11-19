@@ -124,8 +124,12 @@ bounds are local midnight through the next local midnight minus 30 minutes,
 converted to UTC. For 2026-08-10 this is `2026-08-09T23:00Z` through
 `2026-08-10T22:30Z`. Bounds built from period end times would skip period 1
 and include the first period of the following settlement date; bounds set to
-the date itself (`2026-08-10T00:00Z` twice) would return one period. Clock-change
-days have 46 or 50 periods rather than 48.
+the date itself select one period: `2026-10-07T00:00Z` twice returned period 3
+alone (SF, queried 19 November 2026). Clock-change days have 46 or 50 periods
+rather than 48: the window for 2026-10-25 (`2026-10-24T23:00Z` through
+`2026-10-25T23:30Z`) returned its 50 periods (queried 19 November 2026); the
+46-period window is not measured on these parameters and follows from the
+same rule.
 
 Before routing or writing, the capture refuses a response containing a typed
 settlement date different from the requested date or an integer period outside

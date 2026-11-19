@@ -161,7 +161,7 @@ def test_expected_period_count_follows_uk_clock_changes(settlement_date, count):
 
 
 def test_fetch_sends_the_window_as_settlement_date_parameters():
-    # Elexon's stream takes settlementDateFrom/To, not from/to, and filters
+    # Elexon's stream takes settlementDateFrom/To and filters
     # them on the UTC start of each period: 2026-10-07T00:00Z to
     # 2026-10-07T00:00Z returned period 3 of that BST date alone.
     response = Mock(text="[]")
