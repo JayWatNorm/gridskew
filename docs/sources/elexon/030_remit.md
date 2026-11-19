@@ -36,8 +36,8 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/REMIT/stream
     ?publishDateTimeFrom=...&publishDateTimeTo=...
 ```
 
-**Both publish-time parameters are required on the stream variant.** Unlike PN
-and B1610, REMIT's stream does not take `from`/`to`; it filters on when the
+**Both publish-time parameters are required on the stream variant.** Unlike
+PN, REMIT's stream does not take `from`/`to`; it filters on when the
 message was published, not when the outage occurs. The base `/datasets/REMIT`
 takes the same parameters.
 

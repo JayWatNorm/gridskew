@@ -31,7 +31,7 @@ GET https://data.elexon.co.uk/bmrs/api/v1/datasets/MELS/stream?from=&to=
 GET https://data.elexon.co.uk/bmrs/api/v1/datasets/MILS/stream?from=&to=
 ```
 
-Takes `from` and `to`, as PN and B1610 do.
+Takes `from` and `to`, as PN does.
 
 ## Response fields
 

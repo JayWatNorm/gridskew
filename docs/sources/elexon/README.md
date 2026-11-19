@@ -121,9 +121,12 @@ endpoints wrap them in `{"metadata": {...}, "data": [...]}`. A parse copied
 between modules without checking which shape it faces will fail, or worse,
 silently iterate the wrong thing.
 
-**Not every stream takes `from`/`to`.** PN, B1610, BOALF, MELS and MILS do.
-REMIT's stream requires `publishDateTimeFrom`/`To`, and the demand forecasts'
-streams take the same publish-time pair optionally. Check per dataset.
+**Not every stream takes `from`/`to`.** PN, BOALF, MELS and MILS do. B1610's
+takes `settlementDateFrom`/`settlementDateTo`, which filter on the UTC start
+of each period as `from`/`to` do elsewhere, despite their names; without them
+(or the publish-time pair) it answers HTTP 400. REMIT's stream requires
+`publishDateTimeFrom`/`To`, and the demand forecasts' streams take the same
+publish-time pair optionally. Check per dataset.
 
 **Repeating the `bmUnit` parameter is untested.** The spec types it as an
 array. Ingestion does not filter by unit.
@@ -178,10 +181,12 @@ So `2026-06-01T00:00Z` and `2026-06-01T11:11Z` are both read as the date
 `2026-06-01` once a period parameter is present. That is a mode switch, not an
 extra filter.
 
-**It did not take effect on B1610 in testing.** Periods 1 to 1 across a 61 day
-window returned all 48 periods per day. B1610's endpoint description does not
-carry the paragraph above, unlike BOALF and MELS, so **the behaviour appears to
-differ by dataset**. Test per dataset before relying on it.
+**It does not take effect on B1610.** Periods 1 to 1 across a 61 day window
+returned all 48 periods per day, and B1610's window parameters
+(`settlementDateFrom`/`To`) filter on time with or without them. B1610's
+endpoint description does not carry the paragraph above, unlike BOALF and
+MELS, so **the behaviour differs by dataset**. Test per dataset before relying
+on it.
 
 **Row order is inconsistent between datasets.** PN returned descending by
 settlement period, B1610 ascending. Sort downstream if it matters.
