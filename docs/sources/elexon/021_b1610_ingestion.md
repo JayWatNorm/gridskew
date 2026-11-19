@@ -116,13 +116,20 @@ the SF rows that were current when it ran.
 The daily II, SF and RF runs all call
 `capture_settlement_date` with one British settlement date and one run type.
 
-The request names the run (`settlementRunType`). The British-day window
-includes half-hour **start** times, despite the response field being named
-`halfHourEndTime`. The inclusive API bounds are local midnight through the
-next local midnight minus 30 minutes, converted to UTC. For 2026-08-10 this is
-`2026-08-09T23:00Z` through `2026-08-10T22:30Z`. Bounds built from period end
-times would skip period 1 and include the first period of the following
-settlement date. Clock-change days have 46 or 50 periods rather than 48.
+The request names the run (`settlementRunType`) and the window
+(`settlementDateFrom`, `settlementDateTo`). The window parameters are UTC
+instants despite their names, and they select half-hour **start** times,
+despite the response field being named `halfHourEndTime`. The inclusive API
+bounds are local midnight through the next local midnight minus 30 minutes,
+converted to UTC. For 2026-08-10 this is `2026-08-09T23:00Z` through
+`2026-08-10T22:30Z`. Bounds built from period end times would skip period 1
+and include the first period of the following settlement date; bounds set to
+the date itself select one period: `2026-10-07T00:00Z` twice returned period 3
+alone (SF, queried 19 November 2026). Clock-change days have 46 or 50 periods
+rather than 48: the window for 2026-10-25 (`2026-10-24T23:00Z` through
+`2026-10-25T23:30Z`) returned its 50 periods (queried 19 November 2026); the
+46-period window is not measured on these parameters and follows from the
+same rule.
 
 Before routing or writing, the capture refuses a response containing a typed
 settlement date different from the requested date or an integer period outside
@@ -254,8 +261,8 @@ hour had collapsed you would see 48 and would have silently lost an hour of
 metered output across 9,000 units.
 
 Note the first day shows **46** here where PN's shows 47 — the two datasets
-timestamp differently (`timeFrom` versus `halfHourEndTime`), so the same `from`
-parameter lands on a different boundary.
+timestamp differently (`timeFrom` versus `halfHourEndTime`), so the same window
+start lands on a different boundary.
 
 ## Period and unit coverage are checked
 

@@ -58,7 +58,7 @@ Relevant where forecast horizon matters for demand, as it does for carbon.
 
 **All of these filter on publish time.** The `/stream` variants of NDF and TSDF
 take optional `publishDateTimeFrom` / `publishDateTimeTo` rather than the
-`from`/`to` used by PN and B1610. Omit them to get the latest published
+`from`/`to` used by PN. Omit them to get the latest published
 forecast.
 
 Every documented cap is on the base endpoint. The spec documents none for the

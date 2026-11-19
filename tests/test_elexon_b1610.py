@@ -105,8 +105,8 @@ def test_run_quarantines_an_invalid_row_with_its_request_and_published_digits(
     payload = record["payload"]
     assert record["dataset"] == "B1610"
     assert record["request_context"].obj == {
-        "from": WINDOW_START.isoformat(),
-        "to": WINDOW_END.isoformat(),
+        "settlementDateFrom": WINDOW_START.isoformat(),
+        "settlementDateTo": WINDOW_END.isoformat(),
         "settlementRunType": "R1",
     }
     assert '"quantity": 0.000' in payload.dumps(payload.obj)
@@ -158,6 +158,27 @@ def test_british_day_window_covers_one_settlement_date(settlement_date, expected
 )
 def test_expected_period_count_follows_uk_clock_changes(settlement_date, count):
     assert expected_period_count(settlement_date) == count
+
+
+def test_fetch_sends_the_window_as_settlement_date_parameters():
+    # Elexon's stream takes settlementDateFrom/To and filters
+    # them on the UTC start of each period: 2026-10-07T00:00Z to
+    # 2026-10-07T00:00Z returned period 3 of that BST date alone.
+    response = Mock(text="[]")
+    with patch(
+        "ingestion.elexon.b1610_poller.requests.get", return_value=response
+    ) as mock_get:
+        fetch(
+            datetime(2026, 10, 6, 23, 0, tzinfo=timezone.utc),
+            datetime(2026, 10, 7, 22, 30, tzinfo=timezone.utc),
+            "SF",
+        )
+
+    assert mock_get.call_args.kwargs["params"] == {
+        "settlementDateFrom": "2026-10-06T23:00Z",
+        "settlementDateTo": "2026-10-07T22:30Z",
+        "settlementRunType": "SF",
+    }
 
 
 def test_fetch_sends_the_settlement_run_type_only_when_requested():

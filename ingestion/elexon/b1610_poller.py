@@ -27,11 +27,16 @@ RUN_ORDER = ("II", "SF", "R1", "R2", "R3", "RF", "DF")
 
 
 def fetch(from_date, to_date, settlement_run_type=None):
-    """Fetch B1610 rows while preserving source decimal precision."""
+    """Fetch B1610 rows while preserving source decimal precision.
+
+    settlementDateFrom and settlementDateTo are UTC instants, whatever their
+    names say: the stream returns the periods whose start lies between them,
+    both ends included.
+    """
 
     params = {
-        "from": from_date.strftime("%Y-%m-%dT%H:%MZ"),
-        "to": to_date.strftime("%Y-%m-%dT%H:%MZ"),
+        "settlementDateFrom": from_date.strftime("%Y-%m-%dT%H:%MZ"),
+        "settlementDateTo": to_date.strftime("%Y-%m-%dT%H:%MZ"),
     }
     if settlement_run_type is not None:
         params["settlementRunType"] = settlement_run_type
@@ -115,8 +120,8 @@ def run(
         validate_settlement_date_response(rows, expected_settlement_date)
 
     request_context = {
-        "from": from_date.isoformat(),
-        "to": to_date.isoformat(),
+        "settlementDateFrom": from_date.isoformat(),
+        "settlementDateTo": to_date.isoformat(),
     }
     if settlement_run_type is not None:
         request_context["settlementRunType"] = settlement_run_type
