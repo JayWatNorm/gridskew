@@ -175,9 +175,12 @@ jobs:
 
   # Every DAG file is imported by the Airflow the platform deploys, so a
   # module that the real Airflow 3.3.2 does not have, or a DAG that fails to
-  # build, fails here and not on the host. The platform's image adds only
-  # task-time libraries to this base image; the DAG files import none of
-  # them at module level. Parsing touches no database.
+  # build, fails here and not on the host. The platform's Dockerfile.airflow
+  # builds on this same image tag and adds only task-time libraries
+  # (psycopg2-binary, requests, python-dotenv, simplejson, a dbt venv); the
+  # DAG files import none of them at module level. The tag is pinned here
+  # and in that Dockerfile, and the two change together. The image's default
+  # SQLite needs no setup.
   dag-import:
     runs-on: ubuntu-latest
     timeout-minutes: 10
