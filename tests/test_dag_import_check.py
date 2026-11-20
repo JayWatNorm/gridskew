@@ -1,7 +1,7 @@
 """The DAG import check CI runs in the Airflow image."""
 
-from tests.adhoc.check_dag_import import dag_import_problems, declared_dag_ids
 from tests.fakes import DAGS_DIRECTORY
+from tests.integration.check_dag_import import dag_import_problems, declared_dag_ids
 
 DECLARED = {
     "gridskew_elexon_pn_dag.py": ["gridskew_elexon_pn"],

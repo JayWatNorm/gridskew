@@ -7,7 +7,7 @@ needs no setup. Every file must declare exactly one dag_id, Airflow must
 parse every file (its safe mode skips a file without "airflow" and "dag" in
 its text) and load every declared DAG, and the folder must not be empty.
 
-    python tests/adhoc/check_dag_import.py dags
+    python tests/integration/check_dag_import.py dags
 """
 
 import re

@@ -18,7 +18,7 @@ from pathlib import Path
 
 import psycopg
 
-from tests.adhoc.check_scheduled_set import nightly_default_commands
+from tests.integration.check_scheduled_set import nightly_default_commands
 
 PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 AUDIT_TABLE = "dbt_dev.dbt_node_results"

@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.adhoc.check_scheduled_set import (
+from tests.integration.check_scheduled_set import (
     scheduled_set_problems,
     unguarded_incremental_models,
 )

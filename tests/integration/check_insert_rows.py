@@ -7,7 +7,7 @@ read-back uses a second connection, so it also proves what was committed.
 
 Run from the repository root on the disposable CI database, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
-    python -m tests.adhoc.check_insert_rows
+    python -m tests.integration.check_insert_rows
 """
 
 import os

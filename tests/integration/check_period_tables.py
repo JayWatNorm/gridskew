@@ -12,7 +12,7 @@ apply sql/migrations to the empty database.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
-    python -m tests.adhoc.check_period_tables
+    python -m tests.integration.check_period_tables
 """
 
 import os
@@ -26,7 +26,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 from psycopg import errors
 
-from tests.adhoc.check_scheduled_set import bmunit_job_commands
+from tests.integration.check_scheduled_set import bmunit_job_commands
 
 PROJECT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 # The repository profile reads the guarded DBT_* variables; pinning it and the

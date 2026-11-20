@@ -10,7 +10,7 @@ build that table in full; and a model built at analysis_read_until that is not
 tagged results_mart, which a nightly full refresh would rebuild without it.
 
 Run after `dbt parse`, from the repository root, with PYTHONPATH set to it:
-    python tests/adhoc/check_scheduled_set.py dbt/target/manifest.json
+    python tests/integration/check_scheduled_set.py dbt/target/manifest.json
 """
 
 import json
