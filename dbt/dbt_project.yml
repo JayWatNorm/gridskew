@@ -38,7 +38,7 @@ vars:
     - from_slot: null
       label: 'on the half-hour'
       full_poll_rows: 97
-      basis: 'decision 016, note of 25 October 2026'
+      basis: 'docs/sources/carbon-intensity/011_forecast_ingestion.md'
     - from_slot: '2026-09-10 11:00:00+00'
       label: ':05 and :35'
       full_poll_rows: 96

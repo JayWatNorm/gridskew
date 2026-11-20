@@ -27,13 +27,14 @@ environment variables. The profile in this repository, `dbt_profiles/`, is
 for a workstation and for CI: its default target, `dev`, is the local
 disposable database (`localhost`, `gridskew_dev`, both fixed), and its
 `prod` target is selected only by `--target prod` or `DBT_TARGET=prod`. A
-GridSkew release changes nothing
-about which profile the host uses.
+GridSkew release changes nothing about which profile the host uses.
 
-The ingestion connection (`gridskew_prod` in Airflow) uses a loader role
-that can insert into the `raw` tables and read them, and nothing more; the
-owner, `gridskew`, keeps the hand steps such as marking a quarantine row
-resolved. An administrator creates the role with
+The ingestion connection (`gridskew_prod` in Airflow) logs in as the loader
+role `gridskew_loader`, which can insert into the `raw` tables and read
+them, and nothing more, so the database refuses an update or delete of a
+source row by a loader; the owner, `gridskew`, keeps the migrations and the
+hand steps such as marking a quarantine row resolved. An administrator
+creates the role with
 `sql/provision/002_loader_role.sql`, which refuses a role that already
 exists, grants it with `004_loader_grants.sql` and proves its effective
 rights with `003_verify_loader_role.sql`, each with

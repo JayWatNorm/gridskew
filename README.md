@@ -7,6 +7,35 @@ GridSkew is a working data platform built around a real analytical question,
 not a tutorial dataset. It applies Python ingestion, PostgreSQL, dbt and Airflow
 to live public APIs and preserves the revisions that those APIs overwrite.
 
+**Results:** <https://jaywatnorm.github.io/gridskew>
+
+## What it found
+
+Each result is read once under a rule recorded first; the
+[results page](https://jaywatnorm.github.io/gridskew) gives every figure
+with its method, data window and saved output.
+
+- **Wind strays furthest from its own plan.** With no NESO instruction in
+  force, the median wind farm missed its plan by 6.3 to 8.0% of its capacity
+  in every whole month from September 2025 to August 2026; the median unit of
+  every other type, by under 3.5% (Q23).
+- **Most under-delivery comes with no published outage.** About a quarter
+  (24%) of the 16.4 TWh of under-delivery in 8,675,654 unit half-hours from
+  22 August 2025 to 27 September 2026 came with one; for wind, about a tenth
+  (Q5).
+- **NESO flags almost all the energy its instructions move at wind farms as
+  system actions**, possibly for network reasons: 97% of 13.4 TWh over the
+  settlement months August 2025 to September 2026 (Q24).
+- **The carbon forecast's misses barely track under-delivery.** In the fifth
+  of 17,278 half-hours (22 August 2025 to 16 August 2026) with the biggest
+  carbon misses, under-delivery was only 5% larger than in the fifth with
+  the smallest; the test needed 25% (Q28; the final forecast, not the
+  day-ahead one).
+- **Nor do demand-forecast misses track them more.** Over the same 17,278
+  half-hours, the demand forecast's miss and under-delivery have rank
+  correlations of only 0.04 and 0.05 with the size of the carbon miss, no
+  clear difference between them (Q8).
+
 ## The question
 
 1. **Find the shortfalls.** Where did generating units commit to produce power
@@ -74,7 +103,9 @@ missed revisions cannot be recovered.
 
 | Source | Role |
 |---|---|
-| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions, balancing services volume and outage notices |
+| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions, balancing services volume, outage notices and the BM-unit registry |
+| **Elexon Insights, demand** | NESO's national demand forecast (`NDF`) and initial outturn (`INDO`), a one-off back-fill of a year |
+| **Elexon Insights, wind** | NESO's wind generation forecast (`WINDFOR`) and metered wind outturn (`FUELHH`), daily beside a year's back-fill |
 | **NESO Carbon Intensity API** | Half-hourly national carbon intensity forecasts and outturn |
 
 The platform uses a medallion structure inside PostgreSQL:
@@ -101,13 +132,14 @@ they do not establish a unit's actual fuel or emissions. See the
 [dbt guide](dbt/README.md) for their contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. Eleven
-Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
-three `B1610` settlement runs (`II`, `SF` and, from mid-November 2026, `RF`),
-the BM unit registry, balancing instructions (`BOALF`), outage notices
-(`REMIT`) and balancing services volume (`QAS`, ABSVD). Two more run dbt:
-hourly source-freshness checks, and a nightly job that updates the period
-tables and runs the project's data tests.
+Linux server, with separate development and production databases. As of
+20 November 2026, thirteen Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
+three `B1610` settlement runs (`II`, `SF` and `RF`), the BM unit registry,
+balancing instructions (`BOALF`), outage notices (`REMIT`, hourly, with a
+daily re-read of the last seven days), balancing services volume (`QAS`,
+ABSVD) and wind forecast and outturn (`WINDFOR`, `FUELHH`). Two more run
+dbt: hourly source-freshness checks, and a nightly job that updates the
+period tables and runs the project's data tests.
 
 The sources use different scheduling and backfill strategies because their
 time behaviour differs. See
@@ -129,12 +161,12 @@ Each ingested endpoint has an explicit field contract. Shared validation and
 routing report missing, null, incompatible and unexpected fields before typed
 parsing; Carbon contracts also validate the nested `intensity` object. Runtime
 validation and quarantine are deployed for PN, QPN, B1610, BOALF, REMIT, QAS,
-the NDF and INDO back-fill and both Carbon datasets. Carbon also checks that
-each response covers its periods completely.
+the NDF and INDO back-fill, WINDFOR, FUELHH and both Carbon datasets. Carbon
+also checks that each response covers its periods completely.
 The BM-unit registry uses a complete-response gate: a rejected or suspiciously
 small response publishes no successful extract.
 
-For those ten datasets, compatible rows continue to typed loading.
+For those twelve datasets, compatible rows continue to typed loading.
 Rejected rows are committed to `raw.endpoint_quarantine` with their request
 context and complete payload;
 warning-only rows remain loadable and produce grouped logs. Tests cover the
@@ -156,6 +188,12 @@ The dbt project has separate setup and test instructions in
 [dbt/README.md](dbt/README.md). Scripts under `tests/adhoc/` are excluded from
 pytest; some are checks that CI runs.
 
+Much of the code supports the results rather than the pipeline. The chart
+script renders every figure on the results page from the saved outputs, and
+its tests check each figure's values and the page's text against them; the
+one-look checks prove each analysis's arithmetic on hand-worked rows before
+its single read.
+
 ## Repository guide
 
 ```text
@@ -172,7 +210,7 @@ docs/results/   Saved results, with each chart's PNG and Vega-Lite spec
 .github/        Continuous-integration and Pages workflows
 ```
 
-- [Data source documentation](docs/README.md)
+- [Documentation index](docs/README.md)
 - [Ingestion patterns](docs/sources/ingestion-patterns.md)
 - [Endpoint validation](docs/sources/endpoint-validation.md)
 - [Design decisions](docs/design-decisions.md)
@@ -181,26 +219,31 @@ docs/results/   Saved results, with each chart's PNG and Vega-Lite spec
 
 ## Deployment
 
-The Airflow instance is maintained in a separate homelab repository, which
-mounts this project's DAG, ingestion and dbt directories. A release names a
-commit of each repository.
+The Airflow instance is maintained in a separate, private homelab repository,
+which mounts this project's DAG, ingestion and dbt directories. A release is
+a workflow in that repository, dispatched by hand with the exact commit of
+each repository, and it needs a passing CI run on the GridSkew commit. It
+pauses the affected DAGs and lets their runs drain, updates both host
+checkouts, verifies Airflow and restores the schedules.
 
 The [homelab CD overview](docs/deployment.md) explains the release boundary.
-Host SQL, Airflow pools and the observed rollout sequence are documented in
-`homelab-platform/docs/gridskew-release.md` in the platform checkout.
+Host SQL, Airflow pools and the observed rollout sequence are in that
+repository's release runbook, which is not public.
 
 ## Status
 
 **Complete and running**
 
 - Carbon intensity forecast and outturn collection
-- `PN`, `QPN`, `B1610`, `BOALF`, `REMIT` and `QAS` ingestion, backfills and
-  scheduled Airflow runs
-- Append-only raw storage
-- Runtime validation and quarantine for the ten time-series datasets, plus
+- `PN`, `QPN`, `B1610`, `BOALF`, `REMIT`, `QAS` and wind ingestion, backfills
+  and scheduled Airflow runs; a one-off demand back-fill
+- Append-only raw storage, with a loader role that can insert and read but
+  not update or delete
+- Runtime validation and quarantine for the twelve time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
-- dbt sources, production freshness checks and eleven source-grain staging views
+- dbt sources, production freshness checks and fourteen source-grain staging
+  views (20 November 2026)
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
@@ -225,42 +268,23 @@ Host SQL, Airflow pools and the observed rollout sequence are documented in
   balancing services outside the mechanism. The analyses that read it are
   listed in the [dbt guide](dbt/README.md).
 
-**Built, result pending**
-
-- Four views trace each half-hour's carbon forecast from its first to its
-  final version under a reading rule fixed in advance. The drift result is
-  read once, when 2,880 complete half-hours exist; see
-  [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
-- Analyses for forecast accuracy by lead time, forecast error against the
-  shortfall, the change from the last reconciliation run (`R3`) to the final
-  run (`RF`), and how
-  often the published forecast stops changing. Each rule is fixed in advance
-  and read once its data exists.
-
 **Read**
 
-- On a year of history (17,278 half-hours, 22 August 2025 to 16 August 2026),
-  read once on 26 October 2026 under rules fixed in advance: the size of the
-  carbon forecast's final miss lines up with neither the demand forecast's
-  miss nor the unexplained shortfall (rank correlations 0.04 and 0.05, **no
-  clear difference** between them). The fifth of half-hours with the largest
-  misses carries 5% more unexplained shortfall than the fifth with the
-  smallest, against the 25% the test needed: **not supported**. The final
-  forecast is made minutes ahead, so this says nothing yet about the
-  day-ahead forecast.
+- The [results page](https://jaywatnorm.github.io/gridskew) holds every
+  result read so far, with its chart, method and saved output; the headline
+  findings are under [What it found](#what-it-found). Each rule is in
+  [research questions](docs/research-questions.md).
+- Four views trace each half-hour's carbon forecast from its first to its
+  final version under a reading rule fixed in advance; see
+  [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 
 **Next**
 
-- How carbon-intensity forecasts drift as a period approaches and how
-  forecast accuracy changes with lead time, once 2,880 complete half-hours
-  exist
-- How metered output changes from the last reconciliation run (`R3`) to the
-  final run (`RF`), from mid-December 2026
-- Whether carbon forecast error tracks the shortfall, once 90 matched days
-  exist
-- A write-up of the results with charts
+- Q1 and Q10, how the carbon forecast drifts as a half-hour approaches and
+  how accurate it is at each lead time, are read from 21 November 2026.
 
-A daily demand collector, system prices and weather remain later extensions.
+The questions registered but not yet read, and their rules, are listed on the
+results page. System prices and weather remain later extensions.
 
 The shortfall does not subtract `QPN` from PN; the
 [QPN dataset notes](docs/sources/elexon/015_qpn.md) explain why.
