@@ -22,7 +22,7 @@ rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
 | [Q2-R2RF](#q2-r2rf-how-much-does-metered-output-change-from-r2-to-rf) | Metered output, R2 to RF | registered, not pursued |
 | [Q2-R1RF](#q2-r1rf-how-much-does-metered-output-change-from-r1-to-rf) | Metered output, R1 to RF | registered, not pursued |
 | [Q3](#q3-is-metered-output-usually-above-or-below-the-notified-position-pn-by-fuel-group) | Metered output against PN, by fuel group | read (11 October 2026) |
-| [Q4](#q4-are-periods-with-a-larger-carbon-forecast-error-associated-with-more-unexplained-shortfall) | Archive forecast error against unexplained shortfall | waiting (90 matched days on the three-week run or later) |
+| [Q4](#q4-are-periods-with-a-larger-carbon-forecast-error-associated-with-more-unexplained-shortfall) | Archive forecast error against unexplained shortfall | registered, not pursued |
 | [Q5](#q5-how-much-positive-unexplained-shortfall-coincides-with-outages-published-in-remit-at-the-period-start) | Shortfall with a published outage | read (12 October 2026) |
 | [Q6](#q6-how-long-after-its-written-start-is-an-outage-notice-first-published) | Outage notice publication lag | read (12 October 2026) |
 | [Q8](#q8-is-demand-forecast-error-more-strongly-associated-with-carbon-forecast-error-than-shortfall-is) | Demand forecast error or shortfall, which goes with carbon error more | read (26 October 2026) |
@@ -39,12 +39,12 @@ rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
 | [Q28](#q28-are-half-hours-with-a-larger-error-in-the-apis-stored-carbon-forecast-associated-with-more-unexplained-shortfall-from-august-2025-to-august-2026) | Stored forecast error against unexplained shortfall, a year of history | read (26 October 2026) |
 | [Q29](#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history) | Stored forecast error by month and time of day | read (27 October 2026) |
 | [Q30](#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026) | Wind forecast miss against stored carbon forecast error | read (27 October 2026) |
-| [Q31](#q31-when-units-unexplained-deviations-add-carbon-is-the-last-carbon-forecast-too-clean) | Carbon-weighted deviations against the final forecast's error | waiting (181 settlement dates from December 2026) |
-| [Q32](#q32-when-wind-farms-fall-short-of-their-plans-is-the-last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas) | Wind and gas shortfall against the final forecast's error | waiting (its window, read with Q31) |
-| [Q33](#q33-does-the-stored-final-forecast-line-up-better-with-the-half-hour-before-its-label-and-does-its-error-follow-the-local-clock) | Stored forecast timing and error by local clock | waiting (its window, to 31 July 2027) |
-| [Q34](#q34-when-units-under-delivered-against-their-plan-how-much-had-already-been-signalled-in-public) | Under-delivery already signalled in public | waiting (export-limit capture, then 90 settlement dates) |
-| [Q35](#q35-when-neso-turns-wind-farms-down-is-the-last-carbon-forecast-too-clean) | Wind curtailment against the final forecast's error | waiting (its window, as Q31) |
-| [Q36](#q36-when-nesos-wind-forecast-comes-in-short-how-much-dirtier-than-forecast-does-carbon-intensity-turn-out-compared-with-when-wind-comes-in-over) | Wind forecast miss against the paired carbon forecast's error | waiting (its window, as Q31) |
+| [Q31](#q31-when-units-unexplained-deviations-add-carbon-is-the-last-carbon-forecast-too-clean) | Carbon-weighted deviations against the final forecast's error | registered, not pursued |
+| [Q32](#q32-when-wind-farms-fall-short-of-their-plans-is-the-last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas) | Wind and gas shortfall against the final forecast's error | registered, not pursued |
+| [Q33](#q33-does-the-stored-final-forecast-line-up-better-with-the-half-hour-before-its-label-and-does-its-error-follow-the-local-clock) | Stored forecast timing and error by local clock | registered, not pursued |
+| [Q34](#q34-when-units-under-delivered-against-their-plan-how-much-had-already-been-signalled-in-public) | Under-delivery already signalled in public | registered, not pursued |
+| [Q35](#q35-when-neso-turns-wind-farms-down-is-the-last-carbon-forecast-too-clean) | Wind curtailment against the final forecast's error | registered, not pursued |
+| [Q36](#q36-when-nesos-wind-forecast-comes-in-short-how-much-dirtier-than-forecast-does-carbon-intensity-turn-out-compared-with-when-wind-comes-in-over) | Wind forecast miss against the paired carbon forecast's error | registered, not pursued |
 
 Questions not designed in are under [Candidates](#candidates) and
 [Retired](#retired).
@@ -53,7 +53,8 @@ Questions not designed in are under [Candidates](#candidates) and
 
 These questions keep their registered rules and are not read. Each needs
 data GridSkew does not hold: a settlement run due after the project
-closes, polls past its close, or a source it does not capture.
+closes, a window that runs past its close, or a source it does not
+capture.
 
 | ID | Question, in short | Why not |
 |---|---|---|
@@ -63,6 +64,13 @@ closes, polls past its close, or a source it does not capture.
 | Q22-RF | One week's fuel-group sums, first run to RF | RF for 10 to 16 August 2026 is due after the project closes |
 | Q9 | Imbalance and system price when units under-deliver | system prices and net imbalance volume are not captured |
 | Q27 | Carbon forecast stalls | its 90 days of polls from 1 November 2026 run past the project's close |
+| Q4 | Archive forecast error against unexplained shortfall | its window (90 matched days on the three-week run or later) runs past the project's close |
+| Q31 | Carbon-weighted deviations against the final forecast's error | its window runs past the project's close |
+| Q32 | Wind and gas shortfall against the final forecast's error | its window runs past the project's close |
+| Q33 | Stored forecast timing and error by local clock | its window runs past the project's close |
+| Q34 | Under-delivery already signalled in public | needs an export-limit (MEL) capture that does not exist, then 90 settlement dates, past the project's close |
+| Q35 | Wind curtailment against the final forecast's error | its window runs past the project's close |
+| Q36 | Wind forecast miss against the paired carbon forecast's error | its window runs past the project's close |
 
 ## How questions are read
 
@@ -437,7 +445,7 @@ days. Amended before any read:
   November 2026 were also seen; no error, quintile or shortfall figure of
   this question.
 
-Waiting for 90 matched days on dates held on the three-week run or later.
+Not pursued ([why](#registered-not-pursued)).
 
 **Rule:**
 
@@ -1196,7 +1204,7 @@ unexplained shortfall, and national demand outturn.
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
-existed.
+existed. Not pursued ([why](#registered-not-pursued)).
 
 Amended 7 November 2026, before any data in its window existed: a half-hour
 alignment sensitivity is added beside the primary pairing, which stays on
@@ -1274,7 +1282,7 @@ unexplained shortfall by fuel group.
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
-existed.
+existed. Not pursued ([why](#registered-not-pursued)).
 
 Amended 7 November 2026, before any data in its window existed: a half-hour
 alignment sensitivity is added beside the primary pairing, which stays on
@@ -1347,7 +1355,7 @@ no data in this question's window.
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
-existed.
+existed. Not pursued ([why](#registered-not-pursued)).
 
 Amended 7 November 2026, before any data in its window existed: a half-hour
 alignment sensitivity is added beside the primary pairing, which stays on
@@ -1425,7 +1433,7 @@ unexplained shortfall.
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any export-limit data was
-held.
+held. Not pursued ([why](#registered-not-pursued)).
 
 Checked 7 November 2026 against the carbon API's half-hour alignment: this
 question uses no carbon value, so its rule does not change.
@@ -1460,7 +1468,7 @@ instructions, and NESO's carbon intensity of balancing actions.
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
-existed.
+existed. Not pursued ([why](#registered-not-pursued)).
 
 Amended 7 November 2026, before any data in its window existed: a half-hour
 alignment sensitivity is added beside the primary pairing, which stays on
@@ -1523,7 +1531,7 @@ instructions.
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any data in its window
-existed.
+existed. Not pursued ([why](#registered-not-pursued)).
 
 Amended 7 November 2026, before any data in its window existed: a half-hour
 alignment sensitivity is added beside the primary pairing, which stays on

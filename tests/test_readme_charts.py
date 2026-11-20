@@ -1861,7 +1861,7 @@ def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
         'last-carbon-forecast-too-clean">Q31</a> and '
         f'<a href="{rules}#q32-when-wind-farms-fall-short-of-their-plans-is-the-'
         'last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas">Q32</a>, '
-        "read on new data in 2027.</p>"
+        "not pursued.</p>"
     )
 
     assert (
@@ -4095,7 +4095,22 @@ def register_section(questions, question_id):
     return questions.split(heading, 1)[1].split("\n### ", 1)[0]
 
 
-NOT_PURSUED = ["Q2-RF", "Q2-R2RF", "Q2-R1RF", "Q22-RF", "Q9", "Q27"]
+NOT_PURSUED = [
+    "Q2-RF",
+    "Q2-R2RF",
+    "Q2-R1RF",
+    "Q22-RF",
+    "Q9",
+    "Q27",
+    "Q4",
+    "Q31",
+    "Q32",
+    "Q35",
+    "Q36",
+    "Q33",
+    "Q34",
+]
+WAITING = ["Q1", "Q10", "Q26"]
 
 
 def question_ids_in(text):
@@ -4111,8 +4126,6 @@ def test_still_to_come_and_not_pursued_match_the_register():
     questions = QUESTIONS.read_text(encoding="utf-8")
     section = page.split('<section id="to-come"', 1)[1].split("</section>", 1)[0]
     waiting, not_pursued = section.split('<h3 id="not-pursued">', 1)
-    item = waiting.split("<li><strong>Also registered, not yet read:</strong>", 1)[1]
-    first, last = re.search(r"Q(\d+) to Q(\d+), whose windows", item).groups()
     marked = []
     for question_id in NOT_PURSUED:
         if "Not pursued ([why](#registered-not-pursued))" in flattened(
@@ -4124,11 +4137,9 @@ def test_still_to_come_and_not_pursued_match_the_register():
     assert re.findall(r"\bAfter \d{1,2} [A-Z][a-z]+ \d{4}\b", section) == []
     assert marked == NOT_PURSUED
     assert question_ids_in(not_pursued) == NOT_PURSUED
-    for question_id in NOT_PURSUED:
-        assert question_id not in question_ids_in(waiting)
-    for number in range(int(first), int(last) + 1):
-        register_section(questions, f"Q{number}")
-    assert f'are in <a href="{RULES_URL}">every rule</a>.' in item
+    assert question_ids_in(waiting) == WAITING
+    for question_id in WAITING:
+        assert "Not pursued" not in register_section(questions, question_id)
 
 
 def test_the_settlement_run_ages_are_the_measured_runs_in_months():
