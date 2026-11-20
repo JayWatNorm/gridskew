@@ -55,7 +55,7 @@ def dag_import_problems(declared_by_file, loaded_dag_ids, import_errors):
 def main(dags_dir):
     from airflow.models import DagBag
 
-    bag = DagBag(dag_folder=dags_dir, include_examples=False)
+    bag = DagBag(dag_folder=dags_dir)
     problems = dag_import_problems(
         declared_dag_ids(dags_dir), set(bag.dag_ids), bag.import_errors
     )
