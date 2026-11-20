@@ -1,6 +1,8 @@
-# Data source documentation
+# Documentation index
 
-Grouped by source. Every dataset page opens with an **In plain terms** section.
+The index of `docs/`: the design, operations and deployment pages, the
+research questions and their saved results, and a page per dataset, grouped
+by source. Every dataset page opens with an **In plain terms** section.
 
 ## Two pages per dataset
 
