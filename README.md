@@ -188,11 +188,12 @@ The dbt project has separate setup and test instructions in
 [dbt/README.md](dbt/README.md). Scripts under `tests/adhoc/` are excluded from
 pytest; some are checks that CI runs.
 
-Much of the code supports the results rather than the pipeline. The chart
-script renders every figure on the results page from the saved outputs, and
-its tests check each figure's values and the page's text against them; the
-one-look checks prove each analysis's arithmetic on hand-worked rows before
-its single read.
+About a quarter of the code supports the results rather than the pipeline.
+The chart script renders every figure and table on the results page from the
+saved outputs, and its tests check each of them and the page's text against
+those outputs, so the page cannot drift from the data; a script checks each
+one-look analysis's arithmetic on hand-worked rows, because each analysis may
+be run only once.
 
 ## Repository guide
 
