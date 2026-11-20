@@ -36,7 +36,8 @@ They import from `ingestion/`, so they need the repo root on the path.
 `period_source_checks.sql` and `period_zero_volume_checks.sql` are read-only
 `psql` scripts that profile the period-table inputs: settlement-run codes,
 registry identifiers, PN capture coverage and the share of zero volumes. They
-create only session-local temporary tables.
+run against production as the restricted dbt role and create only
+session-local temporary tables.
 
 ## Fixture capture
 
