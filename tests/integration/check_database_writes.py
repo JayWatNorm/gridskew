@@ -42,7 +42,7 @@ reads the fixtures, and deletes its own rows at the end.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
-    python -m tests.adhoc.check_database_writes
+    python -m tests.integration.check_database_writes
 """
 
 import json
@@ -101,8 +101,8 @@ from ingestion.elexon.wind_poller import (
     parse_windfor,
 )
 from ingestion.routing import ContractRejected, quarantine_rows
-from tests.adhoc.check_analyses_compile import compile_analyses
-from tests.adhoc.remit_reread_checks import run_remit_reread_checks
+from tests.integration.check_analyses_compile import compile_analyses
+from tests.integration.remit_reread_checks import run_remit_reread_checks
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 PROVISION_DIR = Path(__file__).resolve().parents[2] / "sql" / "provision"

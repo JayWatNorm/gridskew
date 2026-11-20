@@ -3,7 +3,7 @@
 -- 8 issues, each holding a point for every hour from 21:00 UK time the day
 -- before to 21:00 UK time two days after; a settlement date with exactly
 -- periods 1 to its 46, 48 or 50. ingestion/elexon/wind_poller.py holds the
--- same rule; tests/adhoc/check_database_writes.py checks that both name the
+-- same rule; tests/integration/check_database_writes.py checks that both name the
 -- same days. Checks the days from wind_capture_from and the last 30 UTC days
 -- up to two days ago: the last two may not be captured when the nightly runs.
 -- Today is the UTC date, or the var wind_warn_today when a check sets it.

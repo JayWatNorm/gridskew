@@ -9,7 +9,7 @@ fixtures and a full `dbt build`.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
-    python -m tests.adhoc.check_analyses_compile
+    python -m tests.integration.check_analyses_compile
 """
 
 import json

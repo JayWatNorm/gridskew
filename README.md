@@ -185,8 +185,9 @@ python -m pytest
 ```
 
 The dbt project has separate setup and test instructions in
-[dbt/README.md](dbt/README.md). Scripts under `tests/adhoc/` are excluded from
-pytest; some are checks that CI runs.
+[dbt/README.md](dbt/README.md). The checks CI runs against its throwaway
+database are scripts under `tests/integration/`; the live-API explorations
+are under `tests/adhoc/`. pytest collects neither.
 
 Much of the code supports the results rather than the pipeline. The chart
 script renders every figure on the results page from the saved outputs, and
@@ -202,7 +203,7 @@ dags/           Airflow DAG definitions
 sql/            Raw-layer migrations and provisioning scripts
 dbt/            Sources, seeds, models, tests and macros
 dbt_profiles/   Connection profile using environment variables
-tests/          pytest suite, captured fixtures and ad-hoc checks
+tests/          pytest suite, captured fixtures, CI database checks and ad-hoc checks
 scripts/        Chart script for the results, run by hand
 site/           Static results page, published with GitHub Pages
 docs/           Source, ingestion and deployment documentation

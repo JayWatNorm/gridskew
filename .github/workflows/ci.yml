@@ -100,7 +100,7 @@ jobs:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
           DBT_USER: gridskew
-        run: python -m tests.adhoc.load_ci_fixtures
+        run: python -m tests.integration.load_ci_fixtures
 
       - name: Run dbt commands
         env:
@@ -112,39 +112,39 @@ jobs:
       - name: Check scheduled dbt jobs cannot replace a relation
         env:
           PYTHONPATH: .
-        run: python tests/adhoc/check_scheduled_set.py dbt/target/manifest.json
+        run: python tests/integration/check_scheduled_set.py dbt/target/manifest.json
 
       - name: Check BM-unit snapshot lifecycle
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
           DBT_PROFILES_DIR: dbt_profiles
-        run: python tests/adhoc/check_bmu_snapshot_lifecycle.py
+        run: python tests/integration/check_bmu_snapshot_lifecycle.py
 
       - name: Check outturn gap re-fetch queries
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-        run: python tests/adhoc/check_outturn_gap_refetch.py
+        run: python tests/integration/check_outturn_gap_refetch.py
 
       - name: Run the nightly dbt commands and check their audit rows
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
           DBT_PROFILES_DIR: dbt_profiles
-        run: python tests/adhoc/check_nightly_run.py
+        run: python tests/integration/check_nightly_run.py
 
       - name: Run every analysis against the fixtures
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-        run: python -m tests.adhoc.check_analyses_compile
+        run: python -m tests.integration.check_analyses_compile
 
       - name: Check the one-look analyses on worked values
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-        run: python -m tests.adhoc.check_one_look_analyses
+        run: python -m tests.integration.check_one_look_analyses
 
       - name: Provision and verify the loader role
         env:
@@ -163,7 +163,7 @@ jobs:
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-        run: python -m tests.adhoc.check_database_writes
+        run: python -m tests.integration.check_database_writes
 
       # Pages, value types, ignored repeats and rollback of the shared insert
       # helper; it creates and drops its own schema.
@@ -171,7 +171,7 @@ jobs:
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
-        run: python -m tests.adhoc.check_insert_rows
+        run: python -m tests.integration.check_insert_rows
 
   # Every DAG file is imported by the Airflow the platform deploys, so a
   # module that the real Airflow 3.3.2 does not have, or a DAG that fails to
@@ -196,7 +196,7 @@ jobs:
           -e CONNECTION_CHECK_MAX_COUNT=0
           -v "${{ github.workspace }}:/opt/airflow/project/gridskew:ro"
           apache/airflow:3.3.2-python3.12
-          python /opt/airflow/project/gridskew/tests/adhoc/check_dag_import.py
+          python /opt/airflow/project/gridskew/tests/integration/check_dag_import.py
           /opt/airflow/project/gridskew/dags
 
   # These checks assert that their tables start empty, so they run in their
@@ -270,4 +270,4 @@ jobs:
       - name: Check the period tables and fact views
         env:
           GRIDSKEW_DISPOSABLE_TEST: "1"
-        run: python -m tests.adhoc.check_period_tables
+        run: python -m tests.integration.check_period_tables

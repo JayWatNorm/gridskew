@@ -8,7 +8,7 @@ unless pointed at a local disposable gridskew_dev.
 
 Run from the repository root with the dbt environment set, for example:
     GRIDSKEW_DISPOSABLE_TEST=1 DBT_HOST=localhost DBT_DBNAME=gridskew_dev ...
-    python -m tests.adhoc.check_one_look_analyses
+    python -m tests.integration.check_one_look_analyses
 """
 
 import hashlib
@@ -20,7 +20,10 @@ from fractions import Fraction
 
 import psycopg
 
-from tests.adhoc.check_analyses_compile import compile_analyses, disposable_connection
+from tests.integration.check_analyses_compile import (
+    compile_analyses,
+    disposable_connection,
+)
 
 Q10 = "q10_forecast_accuracy_by_lead_time"
 Q4 = "q4_forecast_error_vs_shortfall"

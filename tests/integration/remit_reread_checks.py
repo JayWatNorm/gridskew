@@ -32,7 +32,7 @@ from ingestion.source_api import (
     utc_from_text_to_the_minute,
     utc_from_text_with_seconds,
 )
-from tests.adhoc.check_analyses_compile import compile_analyses
+from tests.integration.check_analyses_compile import compile_analyses
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parent.parent
