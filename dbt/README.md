@@ -283,8 +283,12 @@ with the build time and each source's latest capture time recorded beside
 the outputs:
 
 ```bash
-dbt build --project-dir dbt --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "<cutoff>"}'
+dbt build --project-dir dbt --target prod --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "<cutoff>"}'
 ```
+
+This writes the two tables in `dbt_dev` on production as the restricted dbt
+role; it is a release step, run after `dbt debug --target prod` has
+reported the production host and database.
 
 The nightly job's guard and full refresh leave both tables out (tag
 `results_mart`), so nothing flags a stale one: a release that changes either
