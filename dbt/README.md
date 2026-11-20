@@ -7,13 +7,20 @@ metered (B1610) and committed (PN) energy exposed as the `fct_generation` and
 `fct_commitments` views, a year of national demand forecast and outturn,
 and private models that prepare the research questions.
 
-**`dbt_dev` is in the production database and is not disposable.** The local
-profile reads `gridskew_prod.raw` and writes to `dbt_dev`; the deployed
-BM-unit and nightly jobs select the homelab `dev` target in the same database,
-and `dbt_dev_snapshots` holds observed registry history. Freshness passes no
-target, so it uses the homelab profile's default, `prod`. Verify the effective database, target, schema and user
-before running a command that creates or updates relations. Use a full
-`dbt build` only against a verified disposable database containing fixtures.
+**`dbt_dev` is in the production database and is not disposable.** The
+repository profile (`../dbt_profiles/profiles.yml`) has two targets. `dev`,
+the default, is the local disposable `gridskew_dev` on `localhost`, the
+database CI builds; its host is fixed, so no environment variable can point
+it at production. `prod` is the production database as the restricted dbt
+role, reached only with `--target prod` or `DBT_TARGET=prod`, for read-only
+commands such as `dbt debug`, `dbt compile` and `dbt ls`. The deployed
+BM-unit and nightly jobs use the platform's own profile, not this file; they
+select its `dev` target in the production database, and `dbt_dev_snapshots`
+holds observed registry history. Freshness passes no target, so it uses the
+platform profile's default, `prod`. Verify the effective database, target,
+schema and user before running a command that creates or updates relations.
+Use a full `dbt build` only against a verified disposable database
+containing fixtures.
 
 ## Project structure
 
@@ -343,21 +350,30 @@ pip install -r requirements-dev.txt
 
 This installs dbt, the PostgreSQL adapter, pytest and the ingestion runtime.
 
-Make these environment variables available before running dbt:
+Set `DBT_PROFILES_DIR` to the absolute path of the repository's
+`dbt_profiles` folder. The default target, `dev`, is the local disposable
+database: `localhost`, port `DBT_PORT` (default `5432`), database
+`DBT_DBNAME` (default `gridskew_dev`), schema `DBT_SCHEMA` (default
+`dbt_dev`), user `DBT_USER` (default `postgres`) and password
+`DBT_PASSWORD` (default empty). The CI recipe in
+[tests/adhoc](../tests/adhoc/README.md) builds that database.
 
-- `DBT_PROFILES_DIR`: absolute path to the repository's `dbt_profiles` folder
-- `DBT_HOST`: PostgreSQL host
-- `DBT_PORT`: production PostgreSQL port, normally `5435`
-- `DBT_USER`: restricted dbt role
-- `DBT_PASSWORD`: password for that role
+The `prod` target is the production database, `gridskew_prod`, schema
+`dbt_dev`. It is selected only by `--target prod` or `DBT_TARGET=prod` and
+needs `DBT_HOST`, `DBT_PORT` (normally `5435`), `DBT_USER` (the restricted
+dbt role) and `DBT_PASSWORD`. Use it for commands that change nothing:
+`dbt debug`, `dbt compile`, `dbt ls` and `dbt source freshness`. Production
+builds are release steps, run from the platform as the runbook says.
 
-Run dbt commands from the repository's `dbt` folder.
+Run dbt commands from the repository's `dbt` folder. Run `dbt debug` first
+and check the host, port, database and user it reports.
 
 Commands that change nothing in the database:
 
 ```powershell
 dbt debug
-dbt source freshness
+dbt debug --target prod
+dbt source freshness --target prod
 dbt test --select "source:*"
 dbt test --select "test_type:unit"
 ```
