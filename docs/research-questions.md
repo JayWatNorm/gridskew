@@ -48,6 +48,21 @@ rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
 Questions not designed in are under [Candidates](#candidates) and
 [Retired](#retired).
 
+### Registered, not pursued
+
+These questions keep their registered rules and are not read. Each needs
+data GridSkew does not hold: a settlement run due after the project
+closes, polls past its close, or a source it does not capture.
+
+| ID | Question, in short | Why not |
+|---|---|---|
+| Q2-RF | Metered output, R3 to RF | the final settlement run (RF) for its 30 dates is due after the project closes |
+| Q2-R2RF | Metered output, R2 to RF | as Q2-RF |
+| Q2-R1RF | Metered output, R1 to RF | as Q2-RF |
+| Q22-RF | One week's fuel-group sums, first run to RF | RF for 10 to 16 August 2026 is due after the project closes |
+| Q9 | Imbalance and system price when units under-deliver | system prices and net imbalance volume are not captured |
+| Q27 | Carbon forecast stalls | its 90 days of polls from 1 November 2026 run past the project's close |
+
 ## How questions are read
 
 - **The rule comes first.** Each reading rule is recorded, with its date,
@@ -192,7 +207,8 @@ published analysis of the same forecast (gridcast), using revisions from
 20 August 2026 that overlap this population, finds successive revisions
 negatively correlated.
 
-Waiting for 2,880 complete half-hours.
+The population reached 2,880 complete half-hours on 12 November 2026; the
+look is read on or after 21 November 2026 at that cutoff.
 
 **Rule:**
 
@@ -289,8 +305,8 @@ read. Read once on 11 October 2026.
 
 **Status:** registered 12 October 2026, before any RF value was compared.
 Amended 31 October 2026, before any comparison: the headline is the
-change for the units studied (the cohort). Waiting for 30 settlement
-dates holding both runs (about mid-December 2026).
+change for the units studied (the cohort). Not pursued
+([why](#registered-not-pursued)).
 
 **Rule:**
 
@@ -316,8 +332,7 @@ dates holding both runs (about mid-December 2026).
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any RF value for these
-dates was compared. Waiting for 30 settlement dates holding both (about
-May 2027).
+dates was compared. Not pursued ([why](#registered-not-pursued)).
 
 **Rule:**
 
@@ -332,8 +347,7 @@ May 2027).
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any RF value for these
-dates was compared. Waiting for 30 settlement dates holding both (about
-August 2027).
+dates was compared. Not pursued ([why](#registered-not-pursued)).
 
 **Rule:**
 
@@ -595,7 +609,7 @@ captured; the active cohort's unexplained shortfall.
 **Status:** registered; amended 31 October 2026, before GridSkew captured
 any system prices (two dates in the window had been fetched; see below):
 the window, the shortfall, the ranking, the measures and the price are
-fixed. Waiting for the system-price data.
+fixed. Not pursued ([why](#registered-not-pursued)).
 
 **Already seen.** GridSkew's note on this source and its test data hold
 one half-hour fetched on 20 August 2026: 1 August 2026, settlement period
@@ -660,7 +674,7 @@ published third-party score and Q29's monthly results, a mean absolute
 error of about 13.7 from 17 August to 28 September 2026. No mean absolute
 error of the forecasts this rule reads was computed.
 
-Waiting for Q1's one look.
+Read with Q1, on or after 21 November 2026 at Q1's cutoff.
 
 **Rule:**
 
@@ -751,7 +765,7 @@ final (RF) runs for 10 to 16 August 2026; PN and instructions.
 **Analysis:** not yet written.
 
 **Status:** registered 31 October 2026, before any RF value for these
-dates existed. Waiting for RF (about November 2027).
+dates existed. Not pursued ([why](#registered-not-pursued)).
 
 **Rule:**
 
@@ -938,7 +952,7 @@ existed. Amended before the window opened:
   record before the window is counted by the same rule and shown beside
   the result.
 
-Waiting for 90 days of polls (about 30 January 2027).
+Not pursued ([why](#registered-not-pursued)).
 
 **Rule:**
 

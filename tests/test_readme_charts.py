@@ -2301,7 +2301,8 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
         "of half-hours with no instruction).",
         f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); ",
-        f"Waiting for 2,880 complete half-hours ({2880 // 48} days' worth).",
+        "The population reached 2,880 complete half-hours on 12 November 2026; "
+        "the look is read on or after 21 November 2026 at that cutoff.",
         "<figcaption>For scale only; no link is tested. Mean national demand",
         f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
         "count.",
@@ -4039,23 +4040,37 @@ def register_section(questions, question_id):
     return questions.split(heading, 1)[1].split("\n### ", 1)[0]
 
 
-def test_still_to_come_lists_the_registered_questions_with_the_registers_dates():
+NOT_PURSUED = ["Q2-RF", "Q2-R2RF", "Q2-R1RF", "Q22-RF", "Q9", "Q27"]
+
+
+def question_ids_in(text):
+    """The question IDs the text names, each once, in first-named order."""
+    return list(dict.fromkeys(re.findall(r"\bQ\d+(?:-R[0-9A-Z]+)?\b", text)))
+
+
+def test_still_to_come_and_not_pursued_match_the_register():
+    # The page's "Still to come" names the registered questions that wait,
+    # with no promised date, and its "Registered, not pursued" table names
+    # exactly the questions the register marks not pursued.
     page = PAGE.read_text(encoding="utf-8")
     questions = QUESTIONS.read_text(encoding="utf-8")
-    item = page.split("<li><strong>Also registered, not yet read:</strong>", 1)[1]
-    item = item.split("</li>", 1)[0]
-    dated = re.findall(r"(Q[0-9A-Z-]+) \(about ([A-Z][a-z]+ \d{4})\)", item)
-    first, last = re.search(r"and Q(\d+) to Q(\d+)\.", item).groups()
+    section = page.split('<section id="to-come"', 1)[1].split("</section>", 1)[0]
+    waiting, not_pursued = section.split('<h3 id="not-pursued">', 1)
+    item = waiting.split("<li><strong>Also registered, not yet read:</strong>", 1)[1]
+    first, last = re.search(r"Q(\d+) to Q(\d+), whose windows", item).groups()
+    marked = []
+    for question_id in NOT_PURSUED:
+        if "Not pursued ([why](#registered-not-pursued))" in flattened(
+            register_section(questions, question_id)
+        ):
+            marked.append(question_id)
 
-    assert dated == [
-        ("Q22-RF", "November 2027"),
-        ("Q2-R2RF", "May 2027"),
-        ("Q2-R1RF", "August 2027"),
-    ]
-    for question_id, month in dated:
-        assert f"(about {month})" in " ".join(
-            register_section(questions, question_id).split()
-        )
+    assert re.findall(r"\(about [A-Z][a-z]+ \d{4}\)", section) == []
+    assert re.findall(r"\bAfter \d{1,2} [A-Z][a-z]+ \d{4}\b", section) == []
+    assert marked == NOT_PURSUED
+    assert question_ids_in(not_pursued) == NOT_PURSUED
+    for question_id in NOT_PURSUED:
+        assert question_id not in question_ids_in(waiting)
     for number in range(int(first), int(last) + 1):
         register_section(questions, f"Q{number}")
     assert f'are in <a href="{RULES_URL}">every rule</a>.' in item
