@@ -90,15 +90,19 @@ def test_dev_target_stays_local_with_the_production_variables_set():
     assert dev["dbname"] != PRODUCTION_DATABASE
 
 
-def test_dev_target_takes_its_port_database_and_schema_from_the_environment():
-    dev = rendered_output(
-        "dev",
-        {"DBT_PORT": "55447", "DBT_DBNAME": "gridskew_scratch", "DBT_SCHEMA": "dbt_jw"},
-    )
+def test_dev_target_takes_its_port_and_schema_from_the_environment():
+    dev = rendered_output("dev", {"DBT_PORT": "55447", "DBT_SCHEMA": "dbt_jw"})
 
     assert dev["port"] == 55447
-    assert dev["dbname"] == "gridskew_scratch"
     assert dev["schema"] == "dbt_jw"
+
+
+def test_dev_target_keeps_gridskew_dev_when_the_environment_names_production():
+    dev = rendered_output(
+        "dev", {"DBT_PORT": "5435", "DBT_DBNAME": PRODUCTION_DATABASE}
+    )
+
+    assert dev["dbname"] == "gridskew_dev"
 
 
 def test_prod_target_is_the_production_database_on_the_given_host():

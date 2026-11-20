@@ -2,8 +2,9 @@
 # own profile in the platform repository and never reads this file.
 #
 # dev, the default, is the local disposable database the CI recipe builds:
-# the host is always localhost, so a workstation whose environment names the
-# production server still builds locally. prod is the production database,
+# the host is always localhost and the database always gridskew_dev, so a
+# workstation whose environment names the production server still builds
+# locally. prod is the production database,
 # reached only with --target prod or DBT_TARGET=prod; it needs every DBT_*
 # variable set and uses the restricted role, which can read raw and owns
 # dbt_dev, nothing more.
@@ -16,7 +17,7 @@ gridskew:
       port: "{{ env_var('DBT_PORT', '5432') | as_number }}"
       user: "{{ env_var('DBT_USER', 'postgres') }}"
       password: "{{ env_var('DBT_PASSWORD', '') }}"
-      dbname: "{{ env_var('DBT_DBNAME', 'gridskew_dev') }}"
+      dbname: gridskew_dev
       schema: "{{ env_var('DBT_SCHEMA', 'dbt_dev') }}"
       threads: 4
     prod:

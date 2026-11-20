@@ -352,10 +352,12 @@ This installs dbt, the PostgreSQL adapter, pytest and the ingestion runtime.
 
 Set `DBT_PROFILES_DIR` to the absolute path of the repository's
 `dbt_profiles` folder. The default target, `dev`, is the local disposable
-database: `localhost`, port `DBT_PORT` (default `5432`), database
-`DBT_DBNAME` (default `gridskew_dev`), schema `DBT_SCHEMA` (default
-`dbt_dev`), user `DBT_USER` (default `postgres`) and password
-`DBT_PASSWORD` (default empty). The CI recipe in
+database: `localhost`, database `gridskew_dev`, port `DBT_PORT` (default
+`5432`), schema `DBT_SCHEMA` (default `dbt_dev`), user `DBT_USER` (default
+`postgres`) and password `DBT_PASSWORD` (default empty). The host and the
+database are fixed; `DBT_HOST` and `DBT_DBNAME` do not change them (the
+database checks in `tests/adhoc` still require `DBT_DBNAME=gridskew_dev` as
+their own opt-in, which CI sets). The CI recipe in
 [tests/adhoc](../tests/adhoc/README.md) builds that database.
 
 The `prod` target is the production database, `gridskew_prod`, schema
