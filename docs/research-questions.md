@@ -225,8 +225,9 @@ published analysis of the same forecast (gridcast), using revisions from
 20 August 2026 that overlap this population, finds successive revisions
 negatively correlated.
 
-The population reached 2,880 complete half-hours on 12 November 2026; the
-look is read on or after 21 November 2026 at that cutoff.
+The population reached 2,880 complete half-hours on 12 November 2026. The
+look uses the cutoff of 12 November 2026 23:30 UTC, where it holds 2,910
+complete half-hours, and is read on or after 21 November 2026.
 
 **Rule:**
 

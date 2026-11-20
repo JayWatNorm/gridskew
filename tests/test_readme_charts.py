@@ -2315,8 +2315,9 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
         "of half-hours with no instruction).",
         f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); ",
-        "The population reached 2,880 complete half-hours on 12 November 2026; "
-        "the look is read on or after 21 November 2026 at that cutoff.",
+        "The population reached 2,880 complete half-hours on 12 November 2026. "
+        "The look uses the cutoff of 12 November 2026 23:30 UTC, where it holds "
+        "2,910 complete half-hours, and is read on or after 21 November 2026.",
         "<figcaption>For scale only; no link is tested. Mean national demand",
         f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
         "count.",
