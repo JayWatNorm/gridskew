@@ -24,8 +24,9 @@ The dbt jobs on the host read the platform repository's profile, mounted at
 `/opt/airflow/dbt_profiles`, and pass their connection values to dbt as
 environment variables. The profile in this repository, `dbt_profiles/`, is
 for a workstation and for CI: its default target, `dev`, is the local
-disposable database, and production is reached only by asking for it
-(`--target prod` or `DBT_TARGET=prod`). A GridSkew release changes nothing
+disposable database (`localhost`, `gridskew_dev`, both fixed), and its
+`prod` target is selected only by `--target prod` or `DBT_TARGET=prod`. A
+GridSkew release changes nothing
 about which profile the host uses.
 
 The ingestion connection (`gridskew_prod` in Airflow) uses a loader role

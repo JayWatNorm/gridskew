@@ -10,8 +10,9 @@ and private models that prepare the research questions.
 **`dbt_dev` is in the production database and is not disposable.** The
 repository profile (`../dbt_profiles/profiles.yml`) has two targets. `dev`,
 the default, is the local disposable `gridskew_dev` on `localhost`, the
-database CI builds; its host is fixed, so no environment variable can point
-it at production. `prod` is the production database as the restricted dbt
+database CI builds; its host is fixed to `localhost` and its database to
+`gridskew_dev`, so a variable naming the production server does not change
+it. `prod` is the production database as the restricted dbt
 role, reached only with `--target prod` or `DBT_TARGET=prod`, for read-only
 commands such as `dbt debug`, `dbt compile` and `dbt ls`. The deployed
 BM-unit and nightly jobs use the platform's own profile, not this file; they
