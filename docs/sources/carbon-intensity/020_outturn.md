@@ -104,6 +104,13 @@ cannot discard unexpected source evidence. The outturn contract requires
 non-null `intensity.actual` and `intensity.forecast` because the poller requests
 settled periods. A null value is retained in quarantine and the run fails.
 
+### Impossible values
+
+The dbt test `warn_outturn_actual_impossible`, run by the nightly job, warns
+on every stored capture whose `actual` is zero or below, which the method
+cannot produce; the API has served one, 0 g/kWh for 6 August 2026 11:00 UTC,
+and the results page reports it.
+
 ## Ingestion
 
 See [021_outturn_ingestion.md](021_outturn_ingestion.md).
