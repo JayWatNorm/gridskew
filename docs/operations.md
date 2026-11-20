@@ -116,7 +116,7 @@ tables are copied nightly on the server, and a further copy is kept on a
 separate machine. Superseded settlement runs are not copied and would be
 lost. Because the archived revisions cannot be fetched again from the public
 APIs, the results cannot be rebuilt from public data; a rebuild starts from
-the copies.
+the copies, without the superseded settlement runs.
 
 To rebuild:
 

@@ -29,7 +29,8 @@ with its method, data window and saved output.
 - **The carbon forecast's misses barely track under-delivery.** In the fifth
   of 17,278 half-hours (22 August 2025 to 16 August 2026) with the biggest
   carbon misses, under-delivery was only 5% larger than in the fifth with
-  the smallest; the test needed 25% (Q28).
+  the smallest; the test needed 25% (Q28; the final forecast, not the
+  day-ahead one).
 - **Nor do demand-forecast misses track them more.** Over the same 17,278
   half-hours, the demand forecast's miss and under-delivery have rank
   correlations of only 0.04 and 0.05 with the size of the carbon miss, no
@@ -131,8 +132,8 @@ they do not establish a unit's actual fuel or emissions. See the
 [dbt guide](dbt/README.md) for their contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. Thirteen
-Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
+Linux server, with separate development and production databases. As of
+20 November 2026, thirteen Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
 three `B1610` settlement runs (`II`, `SF` and `RF`), the BM unit registry,
 balancing instructions (`BOALF`), outage notices (`REMIT`, hourly, with a
 daily re-read of the last seven days), balancing services volume (`QAS`,
@@ -236,12 +237,13 @@ repository's release runbook, which is not public.
 - Carbon intensity forecast and outturn collection
 - `PN`, `QPN`, `B1610`, `BOALF`, `REMIT`, `QAS` and wind ingestion, backfills
   and scheduled Airflow runs; a one-off demand back-fill
-- Append-only raw storage, with a loader role that can only insert
+- Append-only raw storage, with a loader role that can insert and read but
+  not update or delete
 - Runtime validation and quarantine for the twelve time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
 - dbt sources, production freshness checks and fourteen source-grain staging
-  views
+  views (20 November 2026)
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
@@ -279,7 +281,7 @@ repository's release runbook, which is not public.
 **Next**
 
 - Q1 and Q10, how the carbon forecast drifts as a half-hour approaches and
-  how accurate it is at each lead time, are read on 21 November 2026.
+  how accurate it is at each lead time, are read from 21 November 2026.
 
 The questions registered but not yet read, and their rules, are listed on the
 results page. System prices and weather remain later extensions.
