@@ -82,8 +82,8 @@ Use the guarded Airflow task for live retries. Do not replace its tests with
 `dbt build --select +int_elexon__bm_units_current` as a scheduled or standalone repair.
 
 Schema creation, grants and structural changes follow the administrator-run
-SQL and observed release sequence in
-`homelab-platform/docs/gridskew-release.md` in the platform checkout. The
+SQL and observed release sequence in the platform runbook,
+`homelab-platform/docs/gridskew-release.md`, which is not public. The
 [homelab CD overview](../docs/deployment.md) explains that boundary. Do not
 create a fresh snapshot over existing production history.
 
@@ -168,7 +168,7 @@ everything below them, and runs their tests. It leaves out the results tables
 `analysis_read_until`; a change to one never blocks the nightly job. After a
 manual load outside the capture-time margin or a raw edit, add
 `rebuild_all=true`, because that change cannot be detected. Use the platform runbook
-(`homelab-platform/docs/gridskew-release.md` in the platform checkout). Its
+(`homelab-platform/docs/gridskew-release.md`, which is not public). Its
 run-code and source tests run before anything is written, and its descendant
 build restores the fact views. Coordinate the shared dbt pool,
 verify all descendants and tests afterwards, and follow the runbook's recovery
