@@ -111,9 +111,12 @@ snapshot (`raw.elexon_bm_units_extracts`, `raw.elexon_bm_units`,
 `dbt_dev_snapshots.snap_elexon__bm_units`), the QAS history
 (`raw.elexon_qas`), the earlier captures of the carbon-intensity actuals
 (`raw.carbon_intensity_outturn`), and the wind forecast and wind outturn as
-first captured (`raw.elexon_windfor`, `raw.elexon_fuelhh`). They are copied
-nightly on the server, and a further copy is kept on a separate machine.
-Superseded settlement runs are not copied and would be lost.
+first captured (`raw.elexon_windfor`, `raw.elexon_fuelhh`). Those eight
+tables are copied nightly on the server, and a further copy is kept on a
+separate machine. Superseded settlement runs are not copied and would be
+lost. Because the archived revisions cannot be fetched again from the public
+APIs, the results cannot be rebuilt from public data; a rebuild starts from
+the copies.
 
 To rebuild:
 
