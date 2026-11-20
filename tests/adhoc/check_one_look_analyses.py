@@ -2761,7 +2761,7 @@ BLOCK = (
 )
 ON_THE_HALF_HOUR = "on the half-hour"
 FIVE_AND_THIRTY_FIVE = ":05 and :35"
-ON_THE_HALF_HOUR_BASIS = "decision 016, note of 25 October 2026"
+ON_THE_HALF_HOUR_BASIS = "docs/sources/carbon-intensity/011_forecast_ingestion.md"
 FIVE_AND_THIRTY_FIVE_BASIS = "the reading rule"
 CONFIRMED_FREEZES = "confirmed freezes: stalls holding a partial poll inside the window"
 CONFIRMED_MEDIAN_POLLS = "confirmed freezes: median duration, poll-equivalent minutes"
