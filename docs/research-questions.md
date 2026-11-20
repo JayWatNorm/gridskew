@@ -292,7 +292,9 @@ in the same units; the comparison is illustrative only.
 
 **Data:** B1610 metered output, interim (II), initial (SF) and first
 reconciliation (R1) runs.
-**Analysis:** not in this repository.
+**Analysis:**
+[q2_settlement_run_changes.sql](results/q2_settlement_run_changes.sql), the
+query as run by hand, kept beside its saved outputs.
 
 **Status:** registered 25 September 2026, before any metered quantity was
 read. Read once on 11 October 2026.
@@ -756,7 +758,9 @@ periods. Read once on 11 October 2026.
 ### Q22. Did later meter data change one week's fuel-group picture?
 
 **Data:** B1610 runs and the Q3 facts for Q2's settlement dates.
-**Analysis:** not in this repository.
+**Analysis:**
+[q22_first_against_latest_run.sql](results/q22_first_against_latest_run.sql),
+the query as run by hand, kept beside its saved output.
 
 **Status:** registered 9 October 2026, before any Q3 or Q22 query. Read
 once on 11 October 2026.

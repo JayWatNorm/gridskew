@@ -1803,6 +1803,30 @@ def test_q2s_week_is_its_registered_population_and_q22s():
     assert q22_run in questions
 
 
+HAND_RUN_QUERIES = {
+    "q2": "q2_settlement_run_changes.sql",
+    "q22": "q22_first_against_latest_run.sql",
+}
+
+
+def test_q2_and_q22_link_the_queries_run_by_hand_beside_their_outputs():
+    # Neither query is a dbt analysis; each is kept as run, and its header
+    # names the saved output it produced.
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    for question_id, query in HAND_RUN_QUERIES.items():
+        link = f'<a href="results/{query}">query as run</a>'
+        output = query.removesuffix(".sql") + ".csv"
+        header = (REPOSITORY / "docs" / "results" / query).read_text(encoding="utf-8")
+        header = header.split("\n\n", 1)[0]
+        assert link in article_text(page, "q3" if question_id == "q22" else "q2")
+        assert f"[{query}](results/{query})" in questions
+        assert output in header
+        assert "the query is not in this repository" not in page
+    assert "Q2's and Q22's are not in this repository" not in page
+
+
 def q24_data_start(page):
     """The first day of Q24's read, from its How we measured it entry."""
     article = page.split('<article id="q24">', 1)[1].split("</article>", 1)[0]
