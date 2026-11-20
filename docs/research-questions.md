@@ -6,6 +6,48 @@ reading rule recorded before the data is read: what counts as an answer is
 decided before any figure is seen. A question without a rule is not reported
 as a finding. This page holds the rules and their status, not the results.
 
+## Status
+
+One row per registered question. A status is one of: read (the date of its
+one look), waiting (what it waits for), or registered, not pursued (see
+[Registered, not pursued](#registered-not-pursued)). Each row links to its
+rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
+
+| ID | Question, in short | Status |
+|---|---|---|
+| [Q1](#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version) | Carbon forecast drift, first to final version | waiting (the read, on or after 21 November 2026) |
+| [Q2](#q2-how-much-does-metered-output-change-between-settlement-runs) | Metered output between settlement runs | read (11 October 2026) |
+| [Q2-RF](#q2-rf-how-much-does-metered-output-change-from-r3-to-rf) | Metered output, R3 to RF | registered, not pursued |
+| [Q2-R2RF](#q2-r2rf-how-much-does-metered-output-change-from-r2-to-rf) | Metered output, R2 to RF | registered, not pursued |
+| [Q2-R1RF](#q2-r1rf-how-much-does-metered-output-change-from-r1-to-rf) | Metered output, R1 to RF | registered, not pursued |
+| [Q3](#q3-is-metered-output-usually-above-or-below-the-notified-position-pn-by-fuel-group) | Metered output against PN, by fuel group | read (11 October 2026) |
+| [Q4](#q4-are-periods-with-a-larger-carbon-forecast-error-associated-with-more-unexplained-shortfall) | Archive forecast error against unexplained shortfall | waiting (90 matched days on the three-week run or later) |
+| [Q5](#q5-how-much-positive-unexplained-shortfall-coincides-with-outages-published-in-remit-at-the-period-start) | Shortfall with a published outage | read (12 October 2026) |
+| [Q6](#q6-how-long-after-its-written-start-is-an-outage-notice-first-published) | Outage notice publication lag | read (12 October 2026) |
+| [Q8](#q8-is-demand-forecast-error-more-strongly-associated-with-carbon-forecast-error-than-shortfall-is) | Demand forecast error or shortfall, which goes with carbon error more | read (26 October 2026) |
+| [Q9](#q9-is-the-grid-shorter-of-power-and-the-system-price-higher-when-units-under-deliver-most) | Imbalance and system price when units under-deliver | registered, not pursued |
+| [Q10](#q10-how-accurate-is-the-forecast-at-each-lead-time) | Forecast accuracy by lead time | waiting (Q1's read; read with it) |
+| [Q12](#q12-how-much-of-the-deviation-from-pn-was-instructed-boalf-rather-than-unexplained) | Instructed against unexplained deviation | read (11 October 2026) |
+| [Q22](#q22-did-later-meter-data-change-one-weeks-fuel-group-picture) | One week's fuel-group picture, first against latest run | read (11 October 2026) |
+| [Q22-RF](#q22-rf-do-one-weeks-fuel-group-sums-change-between-the-first-meter-data-and-the-final-run) | One week's fuel-group sums, first run to RF | registered, not pursued |
+| [Q23](#q23-how-close-to-their-pns-do-units-run-when-not-instructed) | PN accuracy when not instructed | read (15 October 2026) |
+| [Q24](#q24-what-share-of-each-fuel-groups-instructed-energy-is-flagged-as-a-system-action-rather-than-energy-balancing) | Instructed energy flagged as system actions | read (15 October 2026) |
+| [Q25](#q25-how-fragmented-are-instructions-to-units-typed-other-mostly-batteries-and-pumped-storage-compared-with-thermal-plant) | Instruction fragmentation by fuel group | read (15 October 2026; re-run 25 October 2026 on the same data) |
+| [Q26](#q26-how-much-of-the-deviation-from-pn-do-balancing-actions-explain-once-services-settled-outside-the-balancing-mechanism-absvd-are-counted) | Deviation explained once ABSVD is counted | waiting (the resubmission check, then the read) |
+| [Q27](#q27-how-often-and-for-how-long-does-the-published-carbon-intensity-forecast-stop-changing) | Carbon forecast stalls | registered, not pursued |
+| [Q28](#q28-are-half-hours-with-a-larger-error-in-the-apis-stored-carbon-forecast-associated-with-more-unexplained-shortfall-from-august-2025-to-august-2026) | Stored forecast error against unexplained shortfall, a year of history | read (26 October 2026) |
+| [Q29](#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history) | Stored forecast error by month and time of day | read (27 October 2026) |
+| [Q30](#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026) | Wind forecast miss against stored carbon forecast error | read (27 October 2026) |
+| [Q31](#q31-when-units-unexplained-deviations-add-carbon-is-the-last-carbon-forecast-too-clean) | Carbon-weighted deviations against the final forecast's error | waiting (181 settlement dates from December 2026) |
+| [Q32](#q32-when-wind-farms-fall-short-of-their-plans-is-the-last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas) | Wind and gas shortfall against the final forecast's error | waiting (its window, read with Q31) |
+| [Q33](#q33-does-the-stored-final-forecast-line-up-better-with-the-half-hour-before-its-label-and-does-its-error-follow-the-local-clock) | Stored forecast timing and error by local clock | waiting (its window, to 31 July 2027) |
+| [Q34](#q34-when-units-under-delivered-against-their-plan-how-much-had-already-been-signalled-in-public) | Under-delivery already signalled in public | waiting (export-limit capture, then 90 settlement dates) |
+| [Q35](#q35-when-neso-turns-wind-farms-down-is-the-last-carbon-forecast-too-clean) | Wind curtailment against the final forecast's error | waiting (its window, as Q31) |
+| [Q36](#q36-when-nesos-wind-forecast-comes-in-short-how-much-dirtier-than-forecast-does-carbon-intensity-turn-out-compared-with-when-wind-comes-in-over) | Wind forecast miss against the paired carbon forecast's error | waiting (its window, as Q31) |
+
+Questions not designed in are under [Candidates](#candidates) and
+[Retired](#retired).
+
 ## How questions are read
 
 - **The rule comes first.** Each reading rule is recorded, with its date,
@@ -42,7 +84,11 @@ forecasts, not from those plans, so any link is indirect. Q1 describes how
 the forecast is revised, Q10 and Q29 how far it misses, and Q27 how often it
 freezes. Q3, Q5, Q12, Q23 and Q26 describe delivery against plan; Q4 and
 Q28 test its link to the forecast's miss; Q8, Q9 and Q30 test competing or
-contextual explanations.
+contextual explanations. Q31, Q32, Q35 and Q36 turn the test round on new
+data, asking whether under-delivery, wind shortfalls, curtailment and wind
+forecast misses go with a final forecast that is too clean; Q33 tests the
+stored forecast's timing, and Q34 how much under-delivery had already been
+signalled in public.
 
 ### Terms
 
