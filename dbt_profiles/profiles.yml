@@ -5,9 +5,9 @@
 # the host is always localhost and the database always gridskew_dev, so a
 # workstation whose environment names the production server still builds
 # locally. prod is the production database,
-# reached only with --target prod or DBT_TARGET=prod; it needs every DBT_*
-# variable set and uses the restricted role, which can read raw and owns
-# dbt_dev, nothing more.
+# reached only with --target prod or DBT_TARGET=prod; it needs DBT_HOST,
+# DBT_PORT, DBT_USER and DBT_PASSWORD set and uses the restricted role,
+# which can read raw and owns dbt_dev, nothing more.
 gridskew:
   target: "{{ env_var('DBT_TARGET', 'dev') }}"
   outputs:
