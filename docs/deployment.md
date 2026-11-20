@@ -20,10 +20,12 @@ B1610 data and its run hook writes to `dbt_dev.dbt_node_results`, so on an
 empty database it fails before it creates anything. The production models
 live in schema `dbt_dev` for historical reasons.
 
-The ingestion connection (`gridskew_prod` in Airflow) uses a loader role
-that can insert into the `raw` tables and read them, and nothing more; the
-owner, `gridskew`, keeps the hand steps such as marking a quarantine row
-resolved. An administrator creates the role with
+The ingestion connection (`gridskew_prod` in Airflow) logs in as the loader
+role `gridskew_loader`, which can insert into the `raw` tables and read
+them, and nothing more, so the database refuses an update or delete of a
+source row by a loader; the owner, `gridskew`, keeps the migrations and the
+hand steps such as marking a quarantine row resolved. An administrator
+creates the role with
 `sql/provision/002_loader_role.sql`, which refuses a role that already
 exists, grants it with `004_loader_grants.sql` and proves its effective
 rights with `003_verify_loader_role.sql`, each with

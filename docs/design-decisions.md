@@ -17,10 +17,13 @@ revised between daily reads or after the seventh, and a later FUELHH value,
 since a complete date is not fetched again.
 [Raw layer conventions](README.md#raw-layer-conventions)
 
-**The loaders only insert into the source tables.** That is how they are
-written and a convention, not a rule the database enforces. The dbt role,
-`gridskew_dbt`, cannot update or delete `raw` rows, but the role the loaders
-write with owns the tables, so the database does not stop it.
+**The loaders can only insert into the source tables.** The ingestion
+connection logs in as the loader role `gridskew_loader`, which can insert
+into the `raw` tables and read them and nothing more, so the database stops
+an update or delete of a source row by a loader. The owner, `gridskew`,
+keeps migrations and the hand steps; the dbt role, `gridskew_dbt`, cannot
+write `raw` at all.
+[Deployment](deployment.md)
 
 **The forecast is polled every half-hour and can never be backfilled.** The
 Carbon Intensity API only ever shows its latest forecast, so a missed poll
