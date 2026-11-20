@@ -10,8 +10,11 @@
 --   rollback;
 --
 -- Outputs: statement 1 is q2_settlement_run_changes.csv; statement 2 is
--- q2_changes_by_unit_prefix.csv; statement 3, with the three gas units
--- lettered in place of their names, is q2_gas_units_revisions.csv.
+-- q2_changes_by_unit_prefix.csv; statement 3 returns bm_unit for the 20
+-- units with the most movement, and q2_gas_units_revisions.csv keeps only
+-- the three gas units the results page discusses, in the same order, with
+-- bm_unit renamed unit and the units lettered A to C in place of their
+-- names.
 
 -- 0. Precondition: every date holds II, SF and R1 with all 48 periods.
 --    Counts only; no quantity is read. Expect 21 rows, each with 48 periods.
