@@ -108,8 +108,10 @@ says so. The exceptions, one line each:
 
 - Q24: the measure was amended after an exploration had read the data, so
   the result is not called pre-registered.
-- Q1: the thresholds were set after an exploration had seen 380 of its
-  half-hours; whether they were set knowing it is not recorded.
+- Q1 and Q10: Q1's thresholds were set after an exploration had seen 380 of
+  its half-hours, and whether they were set knowing it is not recorded; the
+  same exploration saw Q10's measure, error by lead time, on 365 of its
+  population's half-hours.
 - Q26 and Q29: part of each had been seen in an exploration before the rule
   was recorded (ABSVD's effect on four days; the overall mean and median
   error).

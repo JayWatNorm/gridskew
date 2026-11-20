@@ -4048,7 +4048,13 @@ def test_the_limitations_name_the_results_that_set_one_measure_against_another()
     assert '<section class="exploratory"' in page
 
 
-PRE_REGISTRATION_EXCEPTIONS = ["Q24", "Q1", "Q26 and Q29", "Q25", "Q28's reverse cut"]
+PRE_REGISTRATION_EXCEPTIONS = [
+    "Q24",
+    "Q1 and Q10",
+    "Q26 and Q29",
+    "Q25",
+    "Q28's reverse cut",
+]
 
 
 def exception_lines(text, opening, closing):
