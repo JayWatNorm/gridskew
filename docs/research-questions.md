@@ -2,9 +2,10 @@
 
 GridSkew answers these questions with public GB electricity data. Each
 question names the data that answers it, the analysis that reads it and a
-reading rule recorded before the data is read: what counts as an answer is
-decided before any figure is seen. A question without a rule is not reported
-as a finding. This page holds the rules and their status, not the results.
+reading rule recorded before the data is read, except where its status says
+otherwise ([exceptions](#exceptions)): what counts as an answer is decided
+before any figure is seen. A question without a rule is not reported as a
+finding. This page holds the rules and their status, not the results.
 
 ## Status
 
@@ -91,6 +92,23 @@ closes, polls past its close, or a source it does not capture.
   half-hour of the question's window. Interconnectors are left out. The
   share of idle unit-periods (PN and metered output both zero) is reported
   in coverage and beside each unit-level median.
+
+### Exceptions
+
+Where a rule was not wholly recorded before its data was seen, its status
+says so. The exceptions, one line each:
+
+- Q24: the measure was amended after an exploration had read the data, so
+  the result is not called pre-registered.
+- Q1: the thresholds were set after an exploration had seen 380 of its
+  half-hours; whether they were set knowing it is not recorded.
+- Q26 and Q29: part of each had been seen in an exploration before the rule
+  was recorded (ABSVD's effect on four days; the overall mean and median
+  error).
+- Q25: re-run once on the same data, with acceptances that cross midnight
+  joined; the rule is unchanged.
+- Q28's reverse cut (on the results page): asked after Q28 was read, so
+  exploratory and not pre-registered.
 
 **The thesis.** GridSkew tests whether half-hours in which power stations miss
 their own plans are also half-hours in which NESO's carbon forecast misses

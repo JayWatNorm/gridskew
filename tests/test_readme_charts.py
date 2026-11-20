@@ -4033,6 +4033,46 @@ def test_the_limitations_name_the_results_that_set_one_measure_against_another()
     assert '<section class="exploratory"' in page
 
 
+PRE_REGISTRATION_EXCEPTIONS = ["Q24", "Q1", "Q26 and Q29", "Q25", "Q28's reverse cut"]
+
+
+def exception_lines(text, opening, closing):
+    """The exceptions list between two markers, one entry per line."""
+    block = text.split(opening, 1)[1].split(closing, 1)[0]
+    lines = []
+    for line in block.strip().splitlines():
+        lines.append(line.strip())
+    return lines
+
+
+def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions():
+    # The blanket claim holds except where a result says otherwise; the
+    # results page and the register each list the same exceptions, one line
+    # each, in the same order.
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    page_lines = []
+    for line in exception_lines(page, '<li id="pre-registration-exceptions">', "</ul>"):
+        if line.startswith("<li>"):
+            page_lines.append(line)
+    register_items = []
+    for line in exception_lines(questions, "### Exceptions", "**The thesis.**"):
+        if line.startswith("- "):
+            register_items.append(line)
+
+    assert (
+        "Every reading rule was recorded before its result was read, except where "
+        "the result says otherwise" in page
+    )
+    assert "except where its status says\notherwise" in questions
+    assert len(page_lines) == len(register_items) == len(PRE_REGISTRATION_EXCEPTIONS)
+    for page_line, register_item, named in zip(
+        page_lines, register_items, PRE_REGISTRATION_EXCEPTIONS, strict=True
+    ):
+        assert page_line.startswith(f"<li>{named}")
+        assert register_item.startswith(f"- {named}")
+
+
 def register_section(questions, question_id):
     """The register's section for one question, heading to next heading."""
     heading = f"\n### {question_id}. "
