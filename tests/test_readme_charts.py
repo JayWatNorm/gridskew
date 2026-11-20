@@ -2011,15 +2011,6 @@ def strata_month_label(stratum):
     return f"{label} ({part.removesuffix(')')})"
 
 
-def strata_table_row(label, row):
-    return (
-        f"<tr><td>{label}</td><td>{int(row['half_hours']):,}</td>"
-        f"<td>{page_signed(row['value'])}</td>"
-        f"<td>{page_signed(row['interval_low'])} to "
-        f"{page_signed(row['interval_high'])}</td></tr>"
-    )
-
-
 def strata_rows(rows, section):
     found = []
     for row in rows:
@@ -2102,7 +2093,8 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         f"{len(above_zero(months))} of the {len(months)} months; in the other "
         f"{len(months) - len(above_zero(months))} it includes zero, and the slope "
         f"itself is at or below zero only in {', '.join(low_names[:-1])} and "
-        f"{low_names[-1]}.</p>" in block
+        f"{low_names[-1]}. The slope and range of each of the {len(blocks)} blocks "
+        f"and {len(months)} months are in the saved output.</p>" in block
     )
     assert (
         f'<p class="note">Q28\'s {int(population["half_hours"]):,} half-hours, '
@@ -2129,30 +2121,28 @@ def column_strata(rows):
     return found
 
 
-def test_q28s_strata_tables_show_each_slope_and_range_from_the_saved_output():
+def test_q28s_strata_slopes_stay_in_the_saved_output_not_on_the_page():
+    # The page gives the within-cell slope and the counts of blocks and
+    # months; the 17 per-stratum slopes and ranges are the saved output's,
+    # with no table of them, so the registered null keeps the space.
     rows = saved_output_rows(STRATA_RESULT)
-    by_block = []
-    for row in strata_rows(rows, "2"):
-        by_block.append(strata_table_row(row["stratum"].replace("-", "–"), row))
-    by_block.append(
-        strata_table_row("All, within block and month", strata_row(rows, "4", "1"))
-    )
-    by_block.append(
-        strata_table_row("All, neither held fixed", strata_row(rows, "4", "2"))
-    )
-    by_month = []
-    for row in strata_rows(rows, "3"):
-        by_month.append(strata_table_row(strata_month_label(row["stratum"]), row))
+    blocks = strata_rows(rows, "2")
+    months = strata_rows(rows, "3")
     block = exploratory_block()
+    per_stratum = []
+    for row in blocks + months:
+        per_stratum.append(page_signed(row["interval_high"]))
 
-    assert len(by_block) == 6
-    assert len(by_month) == 13
-    block_rows = "\n            ".join(by_block)
-    month_rows = "\n              ".join(by_month)
-    assert '<caption class="note">By time of day (UTC)</caption>' in block
-    assert f"<tbody>\n            {block_rows}\n          </tbody>" in block
-    assert "<summary>By month</summary>" in block
-    assert f"<tbody>\n              {month_rows}\n            </tbody>" in block
+    assert len(blocks) == 4
+    assert len(months) == 13
+    assert (
+        f"The slope and range of each of the {len(blocks)} blocks and "
+        f"{len(months)} months are in the saved output.</p>" in block
+    )
+    assert f'<a href="results/{STRATA_RESULT}">Saved output</a>' in block
+    assert "<table>" not in block.split("<h5>", 1)[1]
+    for interval_high in per_stratum:
+        assert f"to {interval_high}</td>" not in block
 
 
 def test_q31_and_q32_note_the_strata_cut_from_its_saved_output():

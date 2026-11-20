@@ -651,45 +651,7 @@
         <figcaption>Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; under-delivery in GW is MWh per half-hour × 2 ÷ 1,000. Source: Elexon BMRS and NESO Carbon Intensity API. <a href="results/q28_reverse_exploratory.csv">Saved output</a> · <a href="results/q28_reverse_carbon_miss_by_under_delivery_fifth.csv">chart data</a> · <a href="results/context_carbon_intensity.csv">context data</a></figcaption>
       </figure>
       <h5>Within the same time of day and month</h5>
-      <p>Within the same time of day and month, each extra GW of under-delivery went with a carbon miss 2.4 g/kWh further towards dirtier than forecast (90% range 1.8 to 3.1), against 2.8 g/kWh with neither held fixed: a positive slope remains within the same time of day and month. Holding them fixed took 0.35 g/kWh per GW off the slope (90% range 0.05 to 0.67). The 90% range is above zero in all four time-of-day blocks and in 7 of the 13 months; in the other 6 it includes zero, and the slope itself is at or below zero only in December, January and February.</p>
-      <div class="table-wrap">
-        <table>
-          <caption class="note">By time of day (UTC)</caption>
-          <thead><tr><th>Time of day (UTC)</th><th>Half-hours</th><th>Slope, g/kWh per GW</th><th>90% range</th></tr></thead>
-          <tbody>
-            <tr><td>00:00–05:59</td><td>4,320</td><td>+2.1</td><td>+0.8 to +3.3</td></tr>
-            <tr><td>06:00–11:59</td><td>4,320</td><td>+1.6</td><td>+0.4 to +2.8</td></tr>
-            <tr><td>12:00–17:59</td><td>4,320</td><td>+4.3</td><td>+3.2 to +5.5</td></tr>
-            <tr><td>18:00–23:59</td><td>4,318</td><td>+2.8</td><td>+1.8 to +3.9</td></tr>
-            <tr><td>All, within block and month</td><td>17,278</td><td>+2.4</td><td>+1.8 to +3.1</td></tr>
-            <tr><td>All, neither held fixed</td><td>17,278</td><td>+2.8</td><td>+2.1 to +3.5</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <details class="method">
-        <summary>By month</summary>
-        <div class="table-wrap">
-          <table>
-            <caption class="note">By month</caption>
-            <thead><tr><th>Month</th><th>Half-hours</th><th>Slope, g/kWh per GW</th><th>90% range</th></tr></thead>
-            <tbody>
-              <tr><td>Aug 2025 (22 to 31)</td><td>478</td><td>+2.6</td><td>+0.8 to +7.2</td></tr>
-              <tr><td>Sep 2025</td><td>1,440</td><td>+0.5</td><td>−1.4 to +2.4</td></tr>
-              <tr><td>Oct 2025</td><td>1,490</td><td>+3.5</td><td>+1.9 to +5.5</td></tr>
-              <tr><td>Nov 2025</td><td>1,440</td><td>+6.6</td><td>+3.1 to +11.2</td></tr>
-              <tr><td>Dec 2025</td><td>1,488</td><td>−1.4</td><td>−4.2 to +1.6</td></tr>
-              <tr><td>Jan 2026</td><td>1,488</td><td>−0.1</td><td>−2.0 to +1.5</td></tr>
-              <tr><td>Feb 2026</td><td>1,344</td><td>−1.6</td><td>−4.3 to +0.9</td></tr>
-              <tr><td>Mar 2026</td><td>1,486</td><td>+3.3</td><td>+1.2 to +5.4</td></tr>
-              <tr><td>Apr 2026</td><td>1,440</td><td>+4.1</td><td>+2.4 to +5.5</td></tr>
-              <tr><td>May 2026</td><td>1,488</td><td>+1.5</td><td>−0.1 to +3.5</td></tr>
-              <tr><td>Jun 2026</td><td>1,440</td><td>+4.9</td><td>+3.2 to +7.0</td></tr>
-              <tr><td>Jul 2026</td><td>1,488</td><td>+5.8</td><td>+4.0 to +7.8</td></tr>
-              <tr><td>Aug 2026 (1 to 16)</td><td>768</td><td>+2.9</td><td>−1.2 to +6.2</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </details>
+      <p>Within the same time of day and month, each extra GW of under-delivery went with a carbon miss 2.4 g/kWh further towards dirtier than forecast (90% range 1.8 to 3.1), against 2.8 g/kWh with neither held fixed: a positive slope remains within the same time of day and month. Holding them fixed took 0.35 g/kWh per GW off the slope (90% range 0.05 to 0.67). The 90% range is above zero in all four time-of-day blocks and in 7 of the 13 months; in the other 6 it includes zero, and the slope itself is at or below zero only in December, January and February. The slope and range of each of the 4 blocks and 13 months are in the saved output.</p>
       <p class="note">Q28's 17,278 half-hours, 22 Aug 2025 – 16 Aug 2026; read once on 6 November 2026. Month intervals resample whole days from the whole year, so a month's day count varies between draws. <a href="results/q28_reverse_strata_exploratory.csv">Saved output</a></p>
       <p class="note">Exploratory and association only: a further look at a window already seen, published whatever it showed. Seventeen slopes were read, none corrected for reading many. Wind output is not held fixed, and both measures are associated with wind level. Sorting the same half-hours into five groups of almost equal size by metered wind, counted on 7 November 2026 with the units studied then: 30% of the calmest group's half-hours are among the 40% of half-hours with the dirtiest misses against forecast, a share that rises with each group to 49% of the windiest; 24% of the calmest group's half-hours are among the 40% with the most under-delivery, rising to 51% of the fourth group, then falling to 34% of the windiest. These shares describe the counts; they are not a test. <a href="results/context_q28_wind_level.csv">Wind level counts</a></p>
       <p class="note">Exploratory: asked after Q28 was read, so not pre-registered. It shows association, not cause; Q31 and Q32 test this direction on new data.</p>
