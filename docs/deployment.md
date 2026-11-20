@@ -1,8 +1,9 @@
 # Deployment
 
 GridSkew runs on a shared homelab Airflow deployment managed in the
-`homelab-platform` repository. Its GitHub Actions CD workflow, **Release
-GridSkew to Homelab**, is dispatched manually from that repository.
+`homelab-platform` repository, which is private. Its GitHub Actions CD
+workflow, **Release GridSkew to Homelab**, is dispatched manually from that
+repository.
 
 The workflow takes exact commits from GridSkew and homelab-platform. It
 requires a passing GridSkew CI run, pauses and drains the affected GridSkew
@@ -47,9 +48,10 @@ changes nothing else. The BM-unit capture locks the registry tables through
 `raw.lock_bm_unit_registry()`, which the owner defines, so the role needs no
 update right.
 
-This page is the CD overview. Host SQL, Airflow pool prerequisites, workflow
-inputs, observed rollout checks and recovery are documented in
-`homelab-platform/docs/gridskew-release.md` in the platform checkout.
+This page is the public account of the release. The host SQL, the Airflow
+pool prerequisites, the workflow inputs, the observed rollout checks and the
+recovery steps are in that repository's runbook,
+`docs/gridskew-release.md`, which is not public.
 
 The daily Elexon DAGs (B1610 II, SF and RF, PN, QPN, BOALF) fetch the day
 set by the run's data interval; QAS captures three earlier dates per run
