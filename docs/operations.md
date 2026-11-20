@@ -130,4 +130,4 @@ To rebuild:
 ## Releases
 
 See [deployment](deployment.md). The release procedure itself is in the
-platform repository's GridSkew release runbook.
+platform repository's GridSkew release runbook, which is not public.

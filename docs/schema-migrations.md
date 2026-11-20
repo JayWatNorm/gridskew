@@ -59,4 +59,4 @@ migrations ran: there is no history table.
 
 **Production** receives a migration as its own step, before the release of
 the code that needs it. The steps are in the platform runbook,
-`homelab-platform/docs/gridskew-release.md`.
+`homelab-platform/docs/gridskew-release.md`, which is not public.
