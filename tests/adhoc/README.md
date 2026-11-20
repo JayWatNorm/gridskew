@@ -1,10 +1,11 @@
 # Ad-hoc checks
 
-Some scripts are exploratory checks, kept so documented measurements remain
-reproducible. Others are checks that CI runs.
+These scripts are exploratory checks, kept so documented measurements remain
+reproducible, and the fixture-capture scripts. The checks CI runs are under
+[tests/integration](../integration/README.md).
 
-pytest skips this directory (`norecursedirs = ["adhoc"]` in `pyproject.toml`).
-This matters: the exploratory scripts **call the live API at import time**, so
+pytest skips this directory (`norecursedirs` in `pyproject.toml`). This
+matters: the exploratory scripts **call the live API at import time**, so
 collecting one would make real HTTP requests, including on a CI runner.
 
 **Do not name anything in here `test_*.py`.** The exclusion covers the directory,
@@ -29,37 +30,6 @@ They import from `ingestion/`, so they need the repo root on the path.
 | `b1610_checks.py` | When does B1610 arrive, when does each settlement run publish, can earlier runs be recovered, and what does a market-wide day contain? | First publication appears after five working days, normally 7 calendar days. A settlement day contains **~440,000 rows across 9,177 units**, making B1610 the largest table in the project. Identifier pattern is **inverted from PN**: `bmUnit` never null, `nationalGridBmUnitId` null on 71.8%. Run boundaries measured out to 720 days place `RF` at ~420 days. Most importantly, **superseded runs are discarded and cannot be fetched retrospectively** — restatement is only observable forwards. See `docs/sources/elexon/020_b1610.md` |
 | `boalf_checks.py` | Is `(nationalGridBmUnit, acceptanceNumber, timeFrom)` a safe key for BOALF, what do the flags hold, and what do two consecutive daily requests share? | For the UTC day 2026-10-05: 26,833 rows, 364 units, 11,081 acceptances, no null and no repeated ramp point. 489 acceptance numbers are held by more than one unit, so the key includes the unit. The next day's request repeats the 12 ramp points that start at midnight, and 38 acceptances are in both. See `docs/sources/elexon/040_boalf.md` |
 | `remit_checks.py` | Which fields identify one publication of a REMIT message? | For September 2026: 5,497 rows, 2,059 `mrid` values. `(mrid, revisionNumber)` repeats 76 times and with `publishTime` 11 times; with `createdTime` never, so the key has all four. See `docs/sources/elexon/030_remit.md` |
-
-## Checks CI runs
-
-| Script | What it checks | Needs |
-|---|---|---|
-| `load_ci_fixtures.py` | Loads the captured fixtures through the real routing and loaders; the raw tables come from `sql/migrations` first | Disposable PostgreSQL |
-| `check_bmu_snapshot_lifecycle.py` | Real dbt snapshot transitions for the BM-unit registry | Disposable PostgreSQL |
-| `check_outturn_gap_refetch.py` | The outturn history gap query, inside one transaction that is rolled back | Disposable PostgreSQL |
-| `check_period_tables.py` | The period tables: an incremental run equals a full refresh; runs in its own job on an empty database | Disposable PostgreSQL |
-| `check_analyses_compile.py` | Every analysis compiles and runs with `limit 0` on the CI fixtures; a Q2-RF capture cutoff without its UTC offset stops the compile | Disposable PostgreSQL |
-| `check_one_look_analyses.py` | The Q1, Q10, Q4, Q2-RF, Q25, Q27, Q8, Q28, Q29 and Q30 one-look analyses on hand-worked rows, in UTC and Europe/London sessions: every listed cell, each gate, Q4's not-applicable branch and bootstrap interval, Q2-RF's undefined share, Q2-RF's cohort total and row order, its capture cutoff at the microsecond, clock-change periods and RF capture due times, the production calendar's projection, a fixture moved by a day and the gate staying shut with no cutoff, Q25's acceptance across the London midnight, Q27's run without look-ahead, Q8's gap either side of 0.1 and -0.1, Q28's ratio either side of 1.25, and how Q4 and Q28 assign equal-error half-hours when a quintile boundary splits a tie | Disposable PostgreSQL |
-| `check_scheduled_set.py` | The nightly DAG's and the BM-unit DAG's default dbt commands, the rules that stop a model or seed replacing a relation, and that the DAG's missing-table guard names every incremental model | dbt's manifest and the nightly DAG |
-| `check_nightly_run.py` | The nightly DAG's default dbt commands, run for real after the full build: each succeeds, each node gets one audit row, no view is recreated, and audit rows past retention are deleted | Disposable PostgreSQL |
-| `check_database_writes.py` | What the loaders and the quarantine write, read back by column name; that a repeated load is ignored; the B1610 coverage and REMIT quarantine queries; that the demand back-fill holds a UTC publish day in a London session; the wind capture's completeness and quarantine queries in UTC, Europe/London, `Etc/GMT-14` and `Etc/GMT+12` sessions; that `warn_wind_capture_days_short` names exactly the days the capture's rule names; two capture runs across a failed request; the quarantine resolution steps on the real table (a REMIT row stops counting once its message is stored, an unresolved row fails the hourly run until it is marked resolved by id, a quarantined WINDFOR day is held until its row is marked resolved and is then loaded, and a row with one resolution column set is refused); the loader role's effective rights (the verification script passes; as the loader, inserts and `ON CONFLICT DO NOTHING` succeed, every delete, update, truncate and direct lock is refused with `42501`, and `raw.lock_bm_unit_registry()` holds a `ShareLock` on both registry tables until rollback; a role that exists with an update right makes `002` fail; a stray table, column or PUBLIC grant makes `003` fail; a `004` re-run changes nothing and stops before any grant on a role with a wrong flag; the owner keeps the resolution and payload updates); and, first, the REMIT re-read (`remit_reread_checks.py`): that it never moves the hourly watermark across an outage and restart, two runs across a failure, a malformed time that fails its day without a quarantine row, and `warn_remit_stored_late` on fixed evaluation days in four session zones. Runs after every step that reads the fixtures and deletes its own rows | Disposable PostgreSQL, dbt, psql and the provisioned loader role |
-| `check_insert_rows.py` | The shared insert helper: every row lands, each value type binds to its column, a repeated load is ignored and a failed row leaves nothing once rolled back | Disposable PostgreSQL |
-| `check_dag_import.py` | Every DAG file imports with the real Airflow: the folder is not empty, no import error, Airflow parses every file, exactly one `dag_id` per file, and Airflow loads each one. Runs in its own CI job inside the `apache/airflow:3.3.2-python3.12` image the platform builds on, with the repository mounted at the project path the DAGs put on `sys.path`; no database | Docker, or an environment with Airflow 3.3.2 installed |
-
-The database checks refuse to run unless `GRIDSKEW_DISPOSABLE_TEST=1` and the
-database is a local `gridskew_dev`. They connect as `postgres`, the
-administrator; the migrations and the fixture load run as `gridskew`, so the
-`raw` tables and the lock function share that owner
-([schema migrations](../../docs/schema-migrations.md)). Before
-`check_database_writes.py`, the loader role it exercises is provisioned
-as CI does:
-
-```powershell
-foreach ($script in "002_loader_role", "004_loader_grants", "003_verify_loader_role") {
-    psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 -v loader_role=gridskew_loader_test -v expect_login=false -f sql\provision\$script.sql
-    if ($LASTEXITCODE) { throw "$script failed" }
-}
-```
 
 ## SQL checks
 

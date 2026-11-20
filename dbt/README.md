@@ -361,9 +361,9 @@ database: `localhost`, database `gridskew_dev`, port `DBT_PORT` (default
 `5432`), schema `DBT_SCHEMA` (default `dbt_dev`), user `DBT_USER` (default
 `postgres`) and password `DBT_PASSWORD` (default empty). The host and the
 database are fixed; `DBT_HOST` and `DBT_DBNAME` do not change them (the
-database checks in `tests/adhoc` still require `DBT_DBNAME=gridskew_dev` as
-their own opt-in, which CI sets). The CI recipe in
-[tests/adhoc](../tests/adhoc/README.md) builds that database.
+database checks in `tests/integration` still require `DBT_DBNAME=gridskew_dev`
+as their own opt-in, which CI sets). The CI recipe in
+[tests/integration](../tests/integration/README.md) builds that database.
 
 The `prod` target is the production database, `gridskew_prod`, schema
 `dbt_dev`. It is selected only by `--target prod` or `DBT_TARGET=prod` and
