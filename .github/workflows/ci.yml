@@ -173,6 +173,32 @@ jobs:
           GRIDSKEW_DISPOSABLE_TEST: "1"
         run: python -m tests.adhoc.check_insert_rows
 
+  # Every DAG file is imported by the Airflow the platform deploys, so a
+  # module that the real Airflow 3.3.2 does not have, or a DAG that fails to
+  # build, fails here and not on the host. The platform's Dockerfile.airflow
+  # builds on this same image tag and adds only task-time libraries
+  # (psycopg2-binary, requests, python-dotenv, simplejson, a dbt venv); the
+  # DAG files import none of them at module level. The tag is pinned here
+  # and in that Dockerfile, and the two change together. The image's default
+  # SQLite needs no setup.
+  dag-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Import every DAG in the Airflow image
+        run: >
+          docker run --rm
+          -e AIRFLOW__CORE__LOAD_EXAMPLES=false
+          -e CONNECTION_CHECK_MAX_COUNT=0
+          -v "${{ github.workspace }}:/opt/airflow/project/gridskew:ro"
+          apache/airflow:3.3.2-python3.12
+          python /opt/airflow/project/gridskew/tests/adhoc/check_dag_import.py
+          /opt/airflow/project/gridskew/dags
+
   # These checks assert that their tables start empty, so they run in their
   # own job against a database that holds no CI fixtures.
   period-tables:
