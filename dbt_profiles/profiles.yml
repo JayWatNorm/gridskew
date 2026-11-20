@@ -1,18 +1,31 @@
-# Local development. The Airflow deployment keeps its own profile in the
-# platform repository.
+# The profile for a workstation and for CI. The Airflow deployment keeps its
+# own profile in the platform repository and never reads this file.
 #
-# Points at the production database on purpose: the development database
-# holds only test loads, and models need real data. Safety comes from the
-# role: gridskew_dbt can read raw and owns dbt_dev, nothing more.
+# dev, the default, is the local disposable database the CI recipe builds:
+# the host is always localhost and the database always gridskew_dev, so a
+# workstation whose environment names the production server still builds
+# locally. prod is the production database,
+# reached only with --target prod or DBT_TARGET=prod; it needs DBT_HOST,
+# DBT_PORT, DBT_USER and DBT_PASSWORD set and uses the restricted role,
+# which can read raw and owns dbt_dev, nothing more.
 gridskew:
-  target: dev
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
   outputs:
     dev:
+      type: postgres
+      host: localhost
+      port: "{{ env_var('DBT_PORT', '5432') | as_number }}"
+      user: "{{ env_var('DBT_USER', 'postgres') }}"
+      password: "{{ env_var('DBT_PASSWORD', '') }}"
+      dbname: gridskew_dev
+      schema: "{{ env_var('DBT_SCHEMA', 'dbt_dev') }}"
+      threads: 4
+    prod:
       type: postgres
       host: "{{ env_var('DBT_HOST') }}"
       port: "{{ env_var('DBT_PORT') | as_number }}"
       user: "{{ env_var('DBT_USER') }}"
       password: "{{ env_var('DBT_PASSWORD') }}"
-      dbname: "{{ env_var('DBT_DBNAME', 'gridskew_prod') }}"
+      dbname: gridskew_prod
       schema: dbt_dev
       threads: 4

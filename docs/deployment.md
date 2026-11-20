@@ -15,10 +15,19 @@ A new database needs two steps before the nightly dbt job can run. The
 database owner runs `sql/provision/001_bmu_snapshot_schema.sql`, which
 creates the `dbt_dev` and `dbt_dev_snapshots` schemas and grants the
 `gridskew_dbt` role what it needs, and the project is built once with
-`dbt build`, as CI does. The nightly job's first step tests the staged
+`dbt build`, as CI does (from a workstation, with `--target prod`). The
+nightly job's first step tests the staged
 B1610 data and its run hook writes to `dbt_dev.dbt_node_results`, so on an
 empty database it fails before it creates anything. The production models
 live in schema `dbt_dev` for historical reasons.
+
+The dbt jobs on the host read the platform repository's profile, mounted at
+`/opt/airflow/dbt_profiles`, and pass their connection values to dbt as
+environment variables. The profile in this repository, `dbt_profiles/`, is
+for a workstation and for CI: its default target, `dev`, is the local
+disposable database (`localhost`, `gridskew_dev`, both fixed), and its
+`prod` target is selected only by `--target prod` or `DBT_TARGET=prod`. A
+GridSkew release changes nothing about which profile the host uses.
 
 The ingestion connection (`gridskew_prod` in Airflow) logs in as the loader
 role `gridskew_loader`, which can insert into the `raw` tables and read
