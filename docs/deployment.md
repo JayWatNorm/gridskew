@@ -48,9 +48,9 @@ changes nothing else. The BM-unit capture locks the registry tables through
 `raw.lock_bm_unit_registry()`, which the owner defines, so the role needs no
 update right.
 
-This page is the public account of the release. The host SQL, the Airflow
-pool prerequisites, the workflow inputs, the observed rollout checks and the
-recovery steps are in that repository's runbook,
+This page is the public account of the release process. The host SQL, the
+Airflow pool prerequisites, the workflow inputs, the observed rollout checks
+and the recovery steps are in the `homelab-platform` runbook,
 `docs/gridskew-release.md`, which is not public.
 
 The daily Elexon DAGs (B1610 II, SF and RF, PN, QPN, BOALF) fetch the day
