@@ -1803,6 +1803,30 @@ def test_q2s_week_is_its_registered_population_and_q22s():
     assert q22_run in questions
 
 
+HAND_RUN_QUERIES = {
+    "q2": "q2_settlement_run_changes.sql",
+    "q22": "q22_first_against_latest_run.sql",
+}
+
+
+def test_q2_and_q22_link_the_queries_run_by_hand_beside_their_outputs():
+    # Neither query is a dbt analysis; each is kept as run, and its header
+    # names the saved output it produced.
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    for question_id, query in HAND_RUN_QUERIES.items():
+        link = f'<a href="results/{query}">query as run</a>'
+        output = query.removesuffix(".sql") + ".csv"
+        header = (REPOSITORY / "docs" / "results" / query).read_text(encoding="utf-8")
+        header = header.split("\n\n", 1)[0]
+        assert link in article_text(page, "q3" if question_id == "q22" else "q2")
+        assert f"[{query}](results/{query})" in questions
+        assert output in header
+        assert "the query is not in this repository" not in page
+    assert "Q2's and Q22's are not in this repository" not in page
+
+
 def q24_data_start(page):
     """The first day of Q24's read, from its How we measured it entry."""
     article = page.split('<article id="q24">', 1)[1].split("</article>", 1)[0]
@@ -1837,7 +1861,7 @@ def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
         'last-carbon-forecast-too-clean">Q31</a> and '
         f'<a href="{rules}#q32-when-wind-farms-fall-short-of-their-plans-is-the-'
         'last-carbon-forecast-too-clean-and-is-there-no-such-link-for-gas">Q32</a>, '
-        "read on new data in 2027.</p>"
+        "not pursued.</p>"
     )
 
     assert (
@@ -1987,15 +2011,6 @@ def strata_month_label(stratum):
     return f"{label} ({part.removesuffix(')')})"
 
 
-def strata_table_row(label, row):
-    return (
-        f"<tr><td>{label}</td><td>{int(row['half_hours']):,}</td>"
-        f"<td>{page_signed(row['value'])}</td>"
-        f"<td>{page_signed(row['interval_low'])} to "
-        f"{page_signed(row['interval_high'])}</td></tr>"
-    )
-
-
 def strata_rows(rows, section):
     found = []
     for row in rows:
@@ -2078,7 +2093,8 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         f"{len(above_zero(months))} of the {len(months)} months; in the other "
         f"{len(months) - len(above_zero(months))} it includes zero, and the slope "
         f"itself is at or below zero only in {', '.join(low_names[:-1])} and "
-        f"{low_names[-1]}.</p>" in block
+        f"{low_names[-1]}. The slope and range of each of the {len(blocks)} blocks "
+        f"and {len(months)} months are in the saved output.</p>" in block
     )
     assert (
         f'<p class="note">Q28\'s {int(population["half_hours"]):,} half-hours, '
@@ -2105,30 +2121,28 @@ def column_strata(rows):
     return found
 
 
-def test_q28s_strata_tables_show_each_slope_and_range_from_the_saved_output():
+def test_q28s_strata_slopes_stay_in_the_saved_output_not_on_the_page():
+    # The page gives the within-cell slope and the counts of blocks and
+    # months; the 17 per-stratum slopes and ranges are the saved output's,
+    # with no table of them, so the registered null keeps the space.
     rows = saved_output_rows(STRATA_RESULT)
-    by_block = []
-    for row in strata_rows(rows, "2"):
-        by_block.append(strata_table_row(row["stratum"].replace("-", "–"), row))
-    by_block.append(
-        strata_table_row("All, within block and month", strata_row(rows, "4", "1"))
-    )
-    by_block.append(
-        strata_table_row("All, neither held fixed", strata_row(rows, "4", "2"))
-    )
-    by_month = []
-    for row in strata_rows(rows, "3"):
-        by_month.append(strata_table_row(strata_month_label(row["stratum"]), row))
+    blocks = strata_rows(rows, "2")
+    months = strata_rows(rows, "3")
     block = exploratory_block()
+    per_stratum = []
+    for row in blocks + months:
+        per_stratum.append(page_signed(row["interval_high"]))
 
-    assert len(by_block) == 6
-    assert len(by_month) == 13
-    block_rows = "\n            ".join(by_block)
-    month_rows = "\n              ".join(by_month)
-    assert '<caption class="note">By time of day (UTC)</caption>' in block
-    assert f"<tbody>\n            {block_rows}\n          </tbody>" in block
-    assert "<summary>By month</summary>" in block
-    assert f"<tbody>\n              {month_rows}\n            </tbody>" in block
+    assert len(blocks) == 4
+    assert len(months) == 13
+    assert (
+        f"The slope and range of each of the {len(blocks)} blocks and "
+        f"{len(months)} months are in the saved output.</p>" in block
+    )
+    assert f'<a href="results/{STRATA_RESULT}">Saved output</a>' in block
+    assert "<table>" not in block.split("<h5>", 1)[1]
+    for interval_high in per_stratum:
+        assert f"to {interval_high}</td>" not in block
 
 
 def test_q31_and_q32_note_the_strata_cut_from_its_saved_output():
@@ -2301,7 +2315,9 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
         "of half-hours with no instruction).",
         f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); ",
-        f"Waiting for 2,880 complete half-hours ({2880 // 48} days' worth).",
+        "The population reached 2,880 complete half-hours on 12 November 2026. "
+        "The look uses the cutoff of 12 November 2026 23:30 UTC, where it holds "
+        "2,910 complete half-hours, and is read on or after 21 November 2026.",
         "<figcaption>For scale only; no link is tested. Mean national demand",
         f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
         "count.",
@@ -4032,6 +4048,52 @@ def test_the_limitations_name_the_results_that_set_one_measure_against_another()
     assert '<section class="exploratory"' in page
 
 
+PRE_REGISTRATION_EXCEPTIONS = [
+    "Q24",
+    "Q1 and Q10",
+    "Q26 and Q29",
+    "Q25",
+    "Q28's reverse cut",
+]
+
+
+def exception_lines(text, opening, closing):
+    """The exceptions list between two markers, one entry per line."""
+    block = text.split(opening, 1)[1].split(closing, 1)[0]
+    lines = []
+    for line in block.strip().splitlines():
+        lines.append(line.strip())
+    return lines
+
+
+def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions():
+    # The blanket claim holds except where a result says otherwise; the
+    # results page and the register each list the same exceptions, one line
+    # each, in the same order.
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    page_lines = []
+    for line in exception_lines(page, '<li id="pre-registration-exceptions">', "</ul>"):
+        if line.startswith("<li>"):
+            page_lines.append(line)
+    register_items = []
+    for line in exception_lines(questions, "### Exceptions", "**The thesis.**"):
+        if line.startswith("- "):
+            register_items.append(line)
+
+    assert (
+        "Every reading rule was recorded before its result was read, except where "
+        "the result says otherwise" in page
+    )
+    assert "except where its status says\notherwise" in questions
+    assert len(page_lines) == len(register_items) == len(PRE_REGISTRATION_EXCEPTIONS)
+    for page_line, register_item, named in zip(
+        page_lines, register_items, PRE_REGISTRATION_EXCEPTIONS, strict=True
+    ):
+        assert page_line.startswith(f"<li>{named}")
+        assert register_item.startswith(f"- {named}")
+
+
 def register_section(questions, question_id):
     """The register's section for one question, heading to next heading."""
     heading = f"\n### {question_id}. "
@@ -4039,26 +4101,51 @@ def register_section(questions, question_id):
     return questions.split(heading, 1)[1].split("\n### ", 1)[0]
 
 
-def test_still_to_come_lists_the_registered_questions_with_the_registers_dates():
+NOT_PURSUED = [
+    "Q2-RF",
+    "Q2-R2RF",
+    "Q2-R1RF",
+    "Q22-RF",
+    "Q9",
+    "Q27",
+    "Q4",
+    "Q31",
+    "Q32",
+    "Q35",
+    "Q36",
+    "Q33",
+    "Q34",
+]
+WAITING = ["Q1", "Q10", "Q26"]
+
+
+def question_ids_in(text):
+    """The question IDs the text names, each once, in first-named order."""
+    return list(dict.fromkeys(re.findall(r"\bQ\d+(?:-R[0-9A-Z]+)?\b", text)))
+
+
+def test_still_to_come_and_not_pursued_match_the_register():
+    # The page's "Still to come" names the registered questions that wait,
+    # with no promised date, and its "Registered, not pursued" table names
+    # exactly the questions the register marks not pursued.
     page = PAGE.read_text(encoding="utf-8")
     questions = QUESTIONS.read_text(encoding="utf-8")
-    item = page.split("<li><strong>Also registered, not yet read:</strong>", 1)[1]
-    item = item.split("</li>", 1)[0]
-    dated = re.findall(r"(Q[0-9A-Z-]+) \(about ([A-Z][a-z]+ \d{4})\)", item)
-    first, last = re.search(r"and Q(\d+) to Q(\d+)\.", item).groups()
+    section = page.split('<section id="to-come"', 1)[1].split("</section>", 1)[0]
+    waiting, not_pursued = section.split('<h3 id="not-pursued">', 1)
+    marked = []
+    for question_id in NOT_PURSUED:
+        if "Not pursued ([why](#registered-not-pursued))" in flattened(
+            register_section(questions, question_id)
+        ):
+            marked.append(question_id)
 
-    assert dated == [
-        ("Q22-RF", "November 2027"),
-        ("Q2-R2RF", "May 2027"),
-        ("Q2-R1RF", "August 2027"),
-    ]
-    for question_id, month in dated:
-        assert f"(about {month})" in " ".join(
-            register_section(questions, question_id).split()
-        )
-    for number in range(int(first), int(last) + 1):
-        register_section(questions, f"Q{number}")
-    assert f'are in <a href="{RULES_URL}">every rule</a>.' in item
+    assert re.findall(r"\(about [A-Z][a-z]+ \d{4}\)", section) == []
+    assert re.findall(r"\bAfter \d{1,2} [A-Z][a-z]+ \d{4}\b", section) == []
+    assert marked == NOT_PURSUED
+    assert question_ids_in(not_pursued) == NOT_PURSUED
+    assert question_ids_in(waiting) == WAITING
+    for question_id in WAITING:
+        assert "Not pursued" not in register_section(questions, question_id)
 
 
 def test_the_settlement_run_ages_are_the_measured_runs_in_months():
