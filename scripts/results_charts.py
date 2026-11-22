@@ -124,6 +124,14 @@ CONTEXT_ZERO_READINGS_RESULT = "context_ii_zero_readings.csv"
 CONTEXT_Q23_ONE_WEEK_RESULT = "context_q23_one_week_and_later_runs.csv"
 Q29_RESULT = "q29_final_forecast_error_by_month_and_block.csv"
 Q30_RESULT = "q30_wind_vs_carbon_error.csv"
+# Read 22 November 2026 on GridSkew's own archive of every carbon forecast:
+# Q1's verdict, its splits, the figures beside the verdict and its population
+# counts, then Q10.
+Q1_VERDICT_RESULT = "q1_forecast_drift_verdict.csv"
+Q1_SPLITS_RESULT = "q1_forecast_drift_splits.csv"
+Q1_BESIDE_RESULT = "q1_forecast_drift_beside.csv"
+CONTEXT_Q1_POPULATION_RESULT = "context_q1_population.csv"
+Q10_RESULT = "q10_forecast_accuracy_by_lead_time.csv"
 SPEC_DATA_FOLDER = "results"
 
 # The fuel groups of the registry seed (dbt/seeds), as the charts show them;
@@ -285,6 +293,24 @@ Q29_BLOCKS = {
     "UTC block 12:00-17:59": "Afternoon|12:00–17:59",
     "UTC block 18:00-23:59": "Evening|18:00–23:59",
 }
+# Q1: each split of the saved output with its cells in the order drawn, as
+# the chart names them. The bands are the API's, on the first forecast.
+Q1_CELLS = {
+    "time of day (UTC start)": {
+        "00:00-05:59": "00:00–05:59",
+        "06:00-11:59": "06:00–11:59",
+        "12:00-17:59": "12:00–17:59",
+        "18:00-23:59": "18:00–23:59",
+    },
+    "first-forecast band": {
+        "very low": "Very low band",
+        "low": "Low band",
+        "moderate": "Moderate band",
+        "high": "High band",
+        "very high": "Very high band",
+        "unclassified": "No band",
+    },
+}
 DIRTIER = "Dirtier than forecast"
 CLEANER = "Cleaner than forecast"
 PART_MONTH = "Part month (fewer days)"
@@ -375,6 +401,12 @@ Q29_MONTH_TITLE = (
     "Winter months came out cleaner than forecast, April to July slightly dirtier"
 )
 Q30_TITLE = "Wind and carbon forecast misses barely move together"
+Q1_TITLE = (
+    "How far the carbon forecast moved between its first and final version, by "
+    "time of day and by first-forecast band"
+)
+# In two lines, so the title fits under the plot on a phone.
+Q1_AXIS_TITLE = ["Median change, first to final", "forecast, g CO2/kWh"]
 
 # "How to read this", under each chart's title.
 Q2_READING = (
@@ -426,6 +458,13 @@ Q28_REVERSE_READING = (
     "first, with its range as mean power over the half-hour. The dot is the "
     "mean carbon miss, the line its 90% range."
 )
+Q1_READING = (
+    "Each bar is the median of final minus first forecast over the half-hours "
+    "in its row: first by the UTC time the half-hour starts, then by the band "
+    "the API gave its first forecast. Described, not tested. {half_hours} "
+    "half-hours, {dates}."
+)
+Q1_LEFT_OUT = "Rows with no half-hours are left out: {cells}."
 Q29_TIME_READING = "Each bar is the mean miss in a six-hour block of the day."
 Q29_MONTH_READING = "Each point is one month's mean miss."
 Q29_DEMAND_TITLE = "For scale: mean national demand each month"
@@ -1029,20 +1068,28 @@ def split_greys_light(steps):
     return colours
 
 
-def value_labels(position, value_field, value_format):
-    """Each bar's value beside its end: right of a positive bar, left of a
-    negative one."""
+def text_beside_bar_end(value_field):
+    """Text beside a bar's end: right of a positive bar, left of a negative
+    one."""
     negative = f"datum.{value_field} < 0"
-    return (
-        altair.Chart()
-        .mark_text(
-            align=altair.ExprRef(expr=f"{negative} ? 'right' : 'left'"),
-            dx=altair.ExprRef(
-                expr=f"{negative} ? -{LABEL_GAP_PIXELS} : {LABEL_GAP_PIXELS}"
-            ),
-        )
-        .encode(text=altair.Text(f"{value_field}:Q", format=value_format), **position)
+    return altair.Chart().mark_text(
+        align=altair.ExprRef(expr=f"{negative} ? 'right' : 'left'"),
+        dx=altair.ExprRef(
+            expr=f"{negative} ? -{LABEL_GAP_PIXELS} : {LABEL_GAP_PIXELS}"
+        ),
     )
+
+
+def value_labels(position, value_field, value_format):
+    """Each bar's value beside its end."""
+    return text_beside_bar_end(value_field).encode(
+        text=altair.Text(f"{value_field}:Q", format=value_format), **position
+    )
+
+
+def written_labels(position, value_field, text_field):
+    """Each bar's value beside its end, as the chart's CSV writes it."""
+    return text_beside_bar_end(value_field).encode(text=f"{text_field}:N", **position)
 
 
 def label_above(x, y, text_field):
@@ -3279,6 +3326,156 @@ def write_q30_chart(rows, output):
     write_spec(chart, output / f"{name}.vl.json")
 
 
+# Q1: the median change from first to final forecast, by time of day and band
+
+
+def split_cell(rows, split, cell):
+    for row in matching_rows(rows, "split", split):
+        if row["cell"] == cell:
+            return row
+    raise ValueError(f"The saved output has no row for {split}, {cell!r}")
+
+
+def signed_trimmed(value):
+    """A signed value with a true minus sign and no trailing zeros; zero has
+    no sign."""
+    number = Decimal(value)
+    if number == 0:
+        return "0"
+    size = abs(number)
+    if size == size.to_integral_value():
+        size = size.to_integral_value()
+    if number > 0:
+        return f"+{size}"
+    return f"−{size}"
+
+
+def half_hours_counted(count):
+    if count == 1:
+        return "1 half-hour"
+    return f"{count:,} half-hours"
+
+
+def median_drift_rows(splits):
+    """Per cell of each split that holds half-hours, the median drift and the
+    share of non-zero drifts that are positive; and the names of the cells
+    left out for holding none."""
+    chart_rows = []
+    left_out = []
+    for split, names in Q1_CELLS.items():
+        for cell, name in names.items():
+            row = split_cell(splits, split, cell)
+            half_hours = int(row["half_hours"])
+            if half_hours == 0:
+                left_out.append(name.lower())
+                continue
+            chart_rows.append(
+                {
+                    "split": split,
+                    "cell": cell,
+                    "label": f"{name}|{half_hours_counted(half_hours)}",
+                    "half_hours": row["half_hours"],
+                    "median_drift": row["median_drift"],
+                    "median_label": signed_trimmed(row["median_drift"]),
+                    "positive_share_pct": fixed(
+                        percentage(Decimal(row["positive_share"]), Decimal(1)), 1
+                    ),
+                }
+            )
+    return chart_rows, left_out
+
+
+def half_hour_day(half_hour):
+    """'2026-08-19 21:00:00+00:00' as '19 Aug 2026'."""
+    return day_label(half_hour.partition(" ")[0])
+
+
+def q1_reading(verdict, left_out):
+    reading = Q1_READING.format(
+        half_hours=f"{int(verdict['complete_half_hours']):,}",
+        dates=span(
+            half_hour_day(verdict["first_half_hour"]),
+            half_hour_day(verdict["last_half_hour"]),
+        ),
+    )
+    if not left_out:
+        return reading
+    return f"{reading} {Q1_LEFT_OUT.format(cells=', '.join(left_out))}"
+
+
+def draw_median_drifts(rows, reading, path):
+    figure, axes = new_figure(len(rows))
+    labels = []
+    for position, row in enumerate(rows):
+        drift = float(row["median_drift"])
+        axes.barh(position, drift, height=0.6, color=NEUTRAL_MARK_COLOUR)
+        signed_bar_label(
+            axes,
+            position,
+            drift,
+            f"{row['median_label']} ({row['positive_share_pct']}% upward)",
+        )
+        labels.append(row["label"])
+    row_labels(axes, labels)
+    axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
+    axes.margins(x=0.3)
+    x_label(
+        axes,
+        f"{' '.join(Q1_AXIS_TITLE)} (left: revised down; right: revised up); "
+        "in brackets, the share of non-zero changes that were upward",
+    )
+    png_title(axes, Q1_TITLE, [reading])
+    save_figure(figure, path)
+
+
+def write_q1_chart(splits, verdict_rows, output):
+    name = "q1_median_drift_by_time_and_band"
+    chart_rows, left_out = median_drift_rows(splits)
+    (verdict,) = verdict_rows
+    reading = q1_reading(verdict, left_out)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(output, name, CARBON_ATTRIBUTION, columns, chart_rows)
+    draw_median_drifts(chart_rows, reading, output / f"{name}.png")
+
+    data = csv_data(csv_name, ["half_hours", "median_drift", "positive_share_pct"])
+    position = {
+        "x": altair.X(
+            "median_drift:Q",
+            scale=altair.Scale(padding=SIGNED_SCALE_PADDING_PIXELS),
+            axis=axis_title([*Q1_AXIS_TITLE, "left: revised down · right: revised up"]),
+        ),
+        "y": row_axis("label", column_of(chart_rows, "label")),
+    }
+    tooltip = [
+        altair.Tooltip("row_name:N", title="Half-hours"),
+        altair.Tooltip("median_label:N", title="Median change, g/kWh"),
+        altair.Tooltip(
+            "positive_share_pct:Q",
+            title="Non-zero changes that were upward, %",
+            format=".1f",
+        ),
+    ]
+    # One series: the title and axis name it, so it needs no key.
+    bars = (
+        altair.Chart()
+        .mark_bar(cornerRadiusEnd=BAR_CORNER_RADIUS, fill=NEUTRAL_MARK_COLOUR)
+        .encode(tooltip=tooltip, **position)
+    )
+    chart = (
+        altair.layer(
+            zero_line(),
+            bars,
+            written_labels(position, "median_drift", "median_label"),
+            data=data,
+        )
+        .transform_calculate(row_name="replace(datum.label, '|', ', ')")
+        .properties(
+            **page_layout(Q1_TITLE, reading, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS)
+        )
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
 def write_charts(result_folder, output_folder):
     results = Path(result_folder)
     output = Path(output_folder)
@@ -3355,6 +3552,14 @@ def write_charts(result_folder, output_folder):
         results, output, CONTEXT_Q30_WIND_MISS_SIGN_RESULT, BMRS_ATTRIBUTION
     )
     write_q30_chart(q30, output)
+    q1_verdict = copy_saved_output(
+        results, output, Q1_VERDICT_RESULT, CARBON_ATTRIBUTION
+    )
+    q1_splits = copy_saved_output(results, output, Q1_SPLITS_RESULT, CARBON_ATTRIBUTION)
+    write_q1_chart(q1_splits, q1_verdict, output)
+    copy_saved_output(results, output, Q1_BESIDE_RESULT, CARBON_ATTRIBUTION)
+    copy_saved_output(results, output, CONTEXT_Q1_POPULATION_RESULT, CARBON_ATTRIBUTION)
+    copy_saved_output(results, output, Q10_RESULT, CARBON_ATTRIBUTION)
     copy_saved_output(
         results, output, CONTEXT_CARBON_ALIGNMENT_RESULT, ALIGNMENT_ATTRIBUTION
     )

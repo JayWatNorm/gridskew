@@ -1,0 +1,10 @@
+# Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+split,cell,label,half_hours,median_drift,median_label,positive_share_pct
+time of day (UTC start),00:00-05:59,00:00–05:59|712 half-hours,712,18.0,+18,75.8
+time of day (UTC start),06:00-11:59,06:00–11:59|727 half-hours,727,17.0,+17,68.8
+time of day (UTC start),12:00-17:59,12:00–17:59|735 half-hours,735,15.0,+15,66.0
+time of day (UTC start),18:00-23:59,18:00–23:59|736 half-hours,736,25.0,+25,79.6
+first-forecast band,low,"Low band|1,124 half-hours",1124,8.0,+8,65.2
+first-forecast band,moderate,"Moderate band|1,363 half-hours",1363,25.0,+25,74.3
+first-forecast band,high,High band|419 half-hours,419,39.0,+39,86.1
+first-forecast band,very high,Very high band|4 half-hours,4,50.5,+50.5,100.0

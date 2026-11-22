@@ -1,0 +1,44 @@
+# Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+section,item,horizon,half_hours,mean_absolute_error,bias,first_half_hour,last_half_hour,population_is_reached,mae_interval_low,mae_interval_high,bias_interval_low,bias_interval_high,draws_with_value,shortest_horizon_seconds,median_horizon_seconds,longest_horizon_seconds,detail
+1,common sample: all three horizons,,2864,,,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,,,,,,,,,
+1,dropped: no forecast at this horizon,about 24 hours,20,,,2026-08-23 16:00:00+00:00,2026-11-07 13:00:00+00:00,True,,,,,,,,,
+1,dropped: no forecast at this horizon,about 4 hours,26,,,2026-08-22 20:00:00+00:00,2026-11-06 17:00:00+00:00,True,,,,,,,,,
+1,dropped: no forecast at this horizon,about half an hour,0,,,,,True,,,,,,,,,
+1,fall-back picks: made more than the lead time ahead,about 24 hours,6,,,,,True,,,,,,,,,
+1,fall-back picks: made more than the lead time ahead,about 4 hours,7,,,,,True,,,,,,,,,
+1,fall-back picks: made more than the lead time ahead,about half an hour,,,,,,True,,,,,,,,,not applicable
+1,picks made on the capture schedule: :05 and :35,about 24 hours,2498,,,,,True,,,,,,,,,
+1,picks made on the capture schedule: :05 and :35,about 4 hours,2499,,,,,True,,,,,,,,,
+1,picks made on the capture schedule: :05 and :35,about half an hour,2499,,,,,True,,,,,,,,,
+1,picks made on the capture schedule: on the half-hour,about 24 hours,366,,,,,True,,,,,,,,,
+1,picks made on the capture schedule: on the half-hour,about 4 hours,365,,,,,True,,,,,,,,,
+1,picks made on the capture schedule: on the half-hour,about half an hour,365,,,,,True,,,,,,,,,
+1,Q1 one-look half-hours (2880 needed),,2910,,,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,,,,,,,,,
+1,with a forecast at this horizon,about 24 hours,2890,,,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,,,,,,,,,
+1,with a forecast at this horizon,about 4 hours,2884,,,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,,,,,,,,,
+1,with a forecast at this horizon,about half an hour,2910,,,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,,,,,,,,,
+2,accuracy on the common sample,about 24 hours,2864,29.337,21.066,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,26.664,32.399,16.808,25.512,1000,85884.659,86099.058,88199.221,
+2,accuracy on the common sample,about 4 hours,2864,20.268,8.157,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,19.070,21.600,6.328,10.128,1000,13884.659,14099.069,16199.098,
+2,accuracy on the common sample,about half an hour,2864,12.564,2.544,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,11.761,13.408,1.542,3.620,1000,1284.659,1499.062,1799.479,
+3,settlement date: bank holiday,about 24 hours,0,,,,,True,,,,,0,,,,interval unavailable: fewer than 900 of 1000 draws have a value
+3,settlement date: bank holiday,about 4 hours,0,,,,,True,,,,,0,,,,interval unavailable: fewer than 900 of 1000 draws have a value
+3,settlement date: bank holiday,about half an hour,0,,,,,True,,,,,0,,,,interval unavailable: fewer than 900 of 1000 draws have a value
+3,settlement date: weekday,about 24 hours,1939,30.174,24.415,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,27.012,34.100,19.606,29.780,1000,,,,
+3,settlement date: weekday,about 4 hours,1939,20.327,9.421,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,18.861,21.928,7.317,11.654,1000,,,,
+3,settlement date: weekday,about half an hour,1939,12.671,2.757,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,11.650,13.783,1.525,3.901,1000,,,,
+3,settlement date: weekend,about 24 hours,925,27.584,14.044,2026-08-21 23:00:00+00:00,2026-11-08 23:30:00+00:00,True,22.969,32.266,5.600,22.235,1000,,,,
+3,settlement date: weekend,about 4 hours,925,20.144,5.506,2026-08-21 23:00:00+00:00,2026-11-08 23:30:00+00:00,True,17.941,22.333,1.615,9.148,1000,,,,
+3,settlement date: weekend,about half an hour,925,12.341,2.098,2026-08-21 23:00:00+00:00,2026-11-08 23:30:00+00:00,True,10.976,13.767,0.037,3.946,1000,,,,
+4,"reference, persistence: left out, no outturn for the reference half-hour",about 24 hours,0,,,,,True,,,,,,,,,
+4,"reference, persistence: left out, no outturn for the reference half-hour",about 4 hours,0,,,,,True,,,,,,,,,
+4,"reference, persistence: left out, no outturn for the reference half-hour",about half an hour,0,,,,,True,,,,,,,,,
+4,"reference, persistence: outturn of the latest half-hour ended at or before the pick's poll",about 24 hours,2864,40.629,0.553,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,35.674,46.043,-7.790,9.214,1000,,,,"context, not a test; outturn as later stored"
+4,"reference, persistence: outturn of the latest half-hour ended at or before the pick's poll",about 4 hours,2864,30.301,0.789,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,27.850,32.761,-1.359,2.799,1000,,,,"context, not a test; outturn as later stored"
+4,"reference, persistence: outturn of the latest half-hour ended at or before the pick's poll",about half an hour,2864,9.147,0.012,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,8.528,9.774,-0.473,0.485,1000,,,,"context, not a test; outturn as later stored"
+4,"reference, the same half-hour the day before: left out, no outturn for the reference half-hour",,0,,,,,True,,,,,,,,,
+4,"reference, the same half-hour the day before: outturn 24 hours earlier",,2864,40.161,0.572,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,35.233,45.598,-7.676,9.097,1000,,,,"context, not a test; outturn as later stored; at the 24-hour lead time this half-hour ends 25 to 30 minutes after the forecast is made, 55 to 60 for a fall-back pick"
+5,consistency check: error_api_final on the common sample,,2864,9.730,2.337,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,True,9.117,10.398,1.475,3.215,1000,,,,"the API's stored final forecast: its timing is not documented, and its error on part of this period was seen before 31 October 2026"
+5,"consistency check: left out, no error_api_final",,0,,,,,True,,,,,,,,,
+6,the part not seen,about 24 hours,2499,28.661,25.236,2026-09-11 10:30:00+00:00,2026-11-12 23:30:00+00:00,True,25.920,31.940,21.856,29.187,1000,,,,the part not seen: half-hours after 10 September 2026 05:30 UTC; it never changes the result
+6,the part not seen,about 4 hours,2499,19.800,9.896,2026-09-11 10:30:00+00:00,2026-11-12 23:30:00+00:00,True,18.405,21.240,8.374,11.550,1000,,,,the part not seen: half-hours after 10 September 2026 05:30 UTC; it never changes the result
+6,the part not seen,about half an hour,2499,12.476,3.026,2026-09-11 10:30:00+00:00,2026-11-12 23:30:00+00:00,True,11.593,13.406,2.023,4.089,1000,,,,the part not seen: half-hours after 10 September 2026 05:30 UTC; it never changes the result

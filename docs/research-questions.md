@@ -16,7 +16,7 @@ rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
 
 | ID | Question, in short | Status |
 |---|---|---|
-| [Q1](#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version) | Carbon forecast drift, first to final version | waiting (population complete at the 12 November 2026 23:30 UTC cutoff; not yet read) |
+| [Q1](#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version) | Carbon forecast drift, first to final version | read (22 November 2026) |
 | [Q2](#q2-how-much-does-metered-output-change-between-settlement-runs) | Metered output between settlement runs | read (11 October 2026) |
 | [Q2-RF](#q2-rf-how-much-does-metered-output-change-from-r3-to-rf) | Metered output, R3 to RF | registered, not pursued |
 | [Q2-R2RF](#q2-r2rf-how-much-does-metered-output-change-from-r2-to-rf) | Metered output, R2 to RF | registered, not pursued |
@@ -27,7 +27,7 @@ rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
 | [Q6](#q6-how-long-after-its-written-start-is-an-outage-notice-first-published) | Outage notice publication lag | read (12 October 2026) |
 | [Q8](#q8-is-demand-forecast-error-more-strongly-associated-with-carbon-forecast-error-than-shortfall-is) | Demand forecast error or shortfall, which goes with carbon error more | read (26 October 2026) |
 | [Q9](#q9-is-the-grid-shorter-of-power-and-the-system-price-higher-when-units-under-deliver-most) | Imbalance and system price when units under-deliver | registered, not pursued |
-| [Q10](#q10-how-accurate-is-the-forecast-at-each-lead-time) | Forecast accuracy by lead time | waiting (Q1's read; read with it) |
+| [Q10](#q10-how-accurate-is-the-forecast-at-each-lead-time) | Forecast accuracy by lead time | read (22 November 2026) |
 | [Q12](#q12-how-much-of-the-deviation-from-pn-was-instructed-boalf-rather-than-unexplained) | Instructed against unexplained deviation | read (11 October 2026) |
 | [Q22](#q22-did-later-meter-data-change-one-weeks-fuel-group-picture) | One week's fuel-group picture, first against latest run | read (11 October 2026) |
 | [Q22-RF](#q22-rf-do-one-weeks-fuel-group-sums-change-between-the-first-meter-data-and-the-final-run) | One week's fuel-group sums, first run to RF | registered, not pursued |
@@ -111,7 +111,8 @@ says so. The exceptions, one line each:
 - Q1 and Q10: Q1's thresholds were set after an exploration had seen 380 of
   its half-hours, and whether they were set knowing it is not recorded; the
   same exploration saw Q10's measure, error by lead time, on 365 of its
-  population's half-hours.
+  population's half-hours. The mean drift and the correlation beside Q1's
+  verdict are not called pre-registered.
 - Q26 and Q29: part of each had been seen in an exploration before the rule
   was recorded (ABSVD's effect on four days; the overall mean and median
   error).
@@ -209,7 +210,8 @@ read:
 **Analysis:**
 [q1_forecast_drift_population.sql](../dbt/analyses/q1_forecast_drift_population.sql),
 [q1_forecast_drift_verdict.sql](../dbt/analyses/q1_forecast_drift_verdict.sql),
-[q1_forecast_drift_splits.sql](../dbt/analyses/q1_forecast_drift_splits.sql);
+[q1_forecast_drift_splits.sql](../dbt/analyses/q1_forecast_drift_splits.sql),
+[q1_forecast_drift_beside.sql](../dbt/analyses/q1_forecast_drift_beside.sql);
 the build is described in
 [Carbon forecast trajectory](carbon-forecast-trajectory.md).
 
@@ -241,9 +243,9 @@ published analysis of the same forecast (gridcast), using revisions from
 20 August 2026 that overlap this population, finds successive revisions
 negatively correlated.
 
-The population reached 2,880 complete half-hours on 12 November 2026 and is
-complete at the cutoff of 12 November 2026 23:30 UTC, with 2,910 complete
-half-hours. Not yet read.
+The population reached 2,880 complete half-hours on 12 November 2026. Read
+once on 22 November 2026, 08:20 UTC, covering half-hours up to the one
+starting at 23:30 UTC on 12 November 2026.
 
 **Rule:**
 
@@ -711,7 +713,8 @@ published third-party score and Q29's monthly results, a mean absolute
 error of about 13.7 from 17 August to 28 September 2026. No mean absolute
 error of the forecasts this rule reads was computed.
 
-Read with Q1, at Q1's cutoff. Not yet read.
+Read once on 22 November 2026, 08:26 UTC, after Q1's look, covering
+half-hours up to the one starting at 23:30 UTC on 12 November 2026.
 
 **Rule:**
 

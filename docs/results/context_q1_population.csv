@@ -1,0 +1,60 @@
+# Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+section,breakdown,item,half_hours,first_half_hour,last_half_hour
+1,population,complete half-hours (2880 needed),2910,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00
+2,removed by an exclusion,no-change polls,313,2026-08-22 16:00:00+00:00,2026-11-08 12:30:00+00:00
+2,removed by an exclusion,partial polls,524,2026-08-26 02:00:00+00:00,2026-10-20 07:00:00+00:00
+3,"complete, by weekday (UTC)",1 Mon,468,2026-08-24 00:00:00+00:00,2026-11-09 23:30:00+00:00
+3,"complete, by weekday (UTC)",2 Tue,419,2026-08-25 00:00:00+00:00,2026-11-10 23:30:00+00:00
+3,"complete, by weekday (UTC)",3 Wed,294,2026-08-19 21:00:00+00:00,2026-11-11 23:30:00+00:00
+3,"complete, by weekday (UTC)",4 Thu,367,2026-08-20 00:00:00+00:00,2026-11-12 23:30:00+00:00
+3,"complete, by weekday (UTC)",5 Fri,424,2026-08-21 00:00:00+00:00,2026-11-06 23:30:00+00:00
+3,"complete, by weekday (UTC)",6 Sat,472,2026-08-22 00:00:00+00:00,2026-11-07 23:30:00+00:00
+3,"complete, by weekday (UTC)",7 Sun,466,2026-08-23 00:00:00+00:00,2026-11-08 23:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",00:00,59,2026-08-20 00:00:00+00:00,2026-11-12 00:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",00:30,59,2026-08-20 00:30:00+00:00,2026-11-12 00:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",01:00,60,2026-08-20 01:00:00+00:00,2026-11-12 01:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",01:30,60,2026-08-20 01:30:00+00:00,2026-11-12 01:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",02:00,60,2026-08-20 02:00:00+00:00,2026-11-12 02:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",02:30,60,2026-08-20 02:30:00+00:00,2026-11-12 02:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",03:00,60,2026-08-20 03:00:00+00:00,2026-11-12 03:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",03:30,60,2026-08-20 03:30:00+00:00,2026-11-12 03:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",04:00,59,2026-08-20 04:00:00+00:00,2026-11-12 04:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",04:30,58,2026-08-20 04:30:00+00:00,2026-11-12 04:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",05:00,58,2026-08-20 05:00:00+00:00,2026-11-12 05:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",05:30,59,2026-08-20 05:30:00+00:00,2026-11-12 05:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",06:00,59,2026-08-20 06:00:00+00:00,2026-11-12 06:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",06:30,60,2026-08-20 06:30:00+00:00,2026-11-12 06:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",07:00,61,2026-08-20 07:00:00+00:00,2026-11-12 07:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",07:30,61,2026-08-20 07:30:00+00:00,2026-11-12 07:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",08:00,61,2026-08-20 08:00:00+00:00,2026-11-12 08:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",08:30,61,2026-08-20 08:30:00+00:00,2026-11-12 08:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",09:00,59,2026-08-20 09:00:00+00:00,2026-11-12 09:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",09:30,60,2026-08-20 09:30:00+00:00,2026-11-12 09:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",10:00,61,2026-08-20 10:00:00+00:00,2026-11-12 10:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",10:30,62,2026-08-20 10:30:00+00:00,2026-11-12 10:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",11:00,61,2026-08-20 11:00:00+00:00,2026-11-12 11:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",11:30,61,2026-08-20 11:30:00+00:00,2026-11-12 11:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",12:00,59,2026-08-20 12:00:00+00:00,2026-11-12 12:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",12:30,59,2026-08-20 12:30:00+00:00,2026-11-12 12:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",13:00,60,2026-08-20 13:00:00+00:00,2026-11-12 13:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",13:30,60,2026-08-20 13:30:00+00:00,2026-11-12 13:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",14:00,62,2026-08-20 14:00:00+00:00,2026-11-12 14:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",14:30,62,2026-08-20 14:30:00+00:00,2026-11-12 14:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",15:00,62,2026-08-20 15:00:00+00:00,2026-11-12 15:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",15:30,62,2026-08-20 15:30:00+00:00,2026-11-12 15:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",16:00,61,2026-08-20 16:00:00+00:00,2026-11-12 16:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",16:30,62,2026-08-20 16:30:00+00:00,2026-11-12 16:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",17:00,63,2026-08-20 17:00:00+00:00,2026-11-12 17:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",17:30,63,2026-08-20 17:30:00+00:00,2026-11-12 17:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",18:00,64,2026-08-20 18:00:00+00:00,2026-11-12 18:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",18:30,64,2026-08-20 18:30:00+00:00,2026-11-12 18:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",19:00,63,2026-08-20 19:00:00+00:00,2026-11-12 19:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",19:30,62,2026-08-20 19:30:00+00:00,2026-11-12 19:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",20:00,62,2026-08-20 20:00:00+00:00,2026-11-12 20:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",20:30,59,2026-08-20 20:30:00+00:00,2026-11-12 20:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",21:00,61,2026-08-19 21:00:00+00:00,2026-11-12 21:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",21:30,61,2026-08-19 21:30:00+00:00,2026-11-12 21:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",22:00,60,2026-08-19 22:00:00+00:00,2026-11-12 22:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",22:30,60,2026-08-19 22:30:00+00:00,2026-11-12 22:30:00+00:00
+4,"complete, by half-hour of the day (UTC)",23:00,60,2026-08-19 23:00:00+00:00,2026-11-12 23:00:00+00:00
+4,"complete, by half-hour of the day (UTC)",23:30,60,2026-08-19 23:30:00+00:00,2026-11-12 23:30:00+00:00

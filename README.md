@@ -35,8 +35,15 @@ with its method, data window and saved output.
   demand and wind forecasts have rank correlations of only 0.04 and 0.01
   with the size of the carbon miss ([Q28](https://jaywatnorm.github.io/gridskew/#q28),
   [Q8](https://jaywatnorm.github.io/gridskew/#q8), [Q30](https://jaywatnorm.github.io/gridskew/#q30)).
+- **From 11 September to 12 November 2026 the carbon forecast was revised
+  upward as each half-hour approached.** Over the whole window from 19 August
+  2026 (2,910 half-hours) the middle change from first to final forecast was
+  +19 g/kWh, and a day ahead the forecast ran 21 g/kWh below NESO's outturn
+  estimate (2,864 half-hours); the earliest half-hours, from late August,
+  point the other way ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
-The carbon forecast tested is the stored forecast, not a day-ahead one.
+The carbon forecast set against under-delivery, demand and wind is the stored
+forecast, not a day-ahead one.
 
 ## The question
 
@@ -70,14 +77,27 @@ Because gas is dirtier than much of what it replaces, two predictions follow:
    than it falls below it.
 2. Forecasts should revise upwards as the target period approaches.
 
-No registered result tests the first prediction. Over 17,280 half-hours
+No registered result tests the first prediction, which is about how often
+the outturn is above the forecast. Two results give the average miss
+instead, a bias and not a share above or below. Over 17,280 half-hours
 (22 August 2025 to 16 August 2026) the stored forecast's misses have a mean
 size of 9.3 g/kWh with almost no overall bias (mean −0.6 g/kWh;
-[Q29](https://jaywatnorm.github.io/gridskew/#q29)).
+[Q29](https://jaywatnorm.github.io/gridskew/#q29)); the stored forecast is a
+late revision, so this says little about the mechanism. On the project's own
+forecast archive, over 2,864
+half-hours from 19 August to 12 November 2026, NESO's outturn estimate was on
+average 21 g/kWh above the forecast made about a day ahead and 3 g/kWh above
+the one made about half an hour ahead ([Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
-The stored forecast is a late revision, so this says little about the
-mechanism. The second prediction is what the project's own forecast archive
-is designed to test.
+The archive reads the second prediction. Over 2,910 half-hours from 19 August
+to 12 November 2026 the middle change from first to final forecast was
++19 g/kWh, and the rule's verdict is "supported: upward drift"
+([Q1](https://jaywatnorm.github.io/gridskew/#q1)). Both results change sign
+inside that window: the upward drift and the positive bias belong to
+11 September to 12 November 2026, and
+the earliest half-hours, from late August, point the other way. The window
+holds no winter or spring. Neither result shows why the forecast moves, so
+neither tests the mechanism.
 
 ## Why archive the forecasts?
 
@@ -292,12 +312,10 @@ repository's release runbook, which is not public.
 - Four views trace each half-hour's carbon forecast from its first to its
   final version under a reading rule fixed in advance; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
-
-**Not yet read**
-
-- Q1 and Q10, how the carbon forecast drifts as a half-hour approaches and
-  how accurate it is at each lead time: the population is complete at the
-  12 November 2026 cutoff; neither is read yet.
+- Q1 and Q10, how the carbon forecast is revised as a half-hour approaches
+  and how accurate it is at each lead time, were each read once on
+  22 November 2026, on 2,910 and 2,864 half-hours from 19 August to
+  12 November 2026 ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
 The questions registered but not yet read, and their rules, are listed on the
 results page. System prices and weather remain later extensions.

@@ -382,6 +382,52 @@ NEW_SAVED_OUTPUTS = {
         '4,1,"within-cell slope",,,500,100,2025-09-01,2026-07-31,,,1.750000,'
         "1.250000,2.250000,1000,0.050000,8,interval available",
     ],
+    # Q1 and Q10, each unlike the real outputs. Q1's splits: 2,000 half-hours
+    # either way; a whole median, a negative half, a zero and a share that is
+    # a half rounded up (61.25%); two bands hold no half-hours and one holds
+    # a single half-hour, and the bands come in the saved output's
+    # alphabetical order, not the chart's.
+    "q1_forecast_drift_verdict.csv": [
+        "complete_half_hours,first_half_hour,last_half_hour,half_hours_needed,"
+        "population_is_reached,reported_verdict,median_drift,positive_share,"
+        "as_published_half_hours,as_published_median_drift,"
+        "as_published_positive_share,as_published_verdict,"
+        "weekday_reweighted_median_drift,weekday_reweighted_positive_share,"
+        "weekday_reweighted_verdict,part_not_seen_half_hours,"
+        "part_not_seen_median_drift,part_not_seen_positive_share,"
+        "part_not_seen_verdict",
+        "2000,2026-08-20 00:00:00+00:00,2026-09-30 23:30:00+00:00,1900,True,"
+        "no directional drift,1.0,0.520000,2400,1.0,0.510000,"
+        "no directional drift,1.0,0.530000,no directional drift,1500,1.0,"
+        "0.540000,no directional drift",
+    ],
+    "q1_forecast_drift_splits.csv": [
+        "section,split,cell,half_hours,median_drift,positive_share",
+        "1,time of day (UTC start),00:00-05:59,500,12.0,0.612500",
+        "1,time of day (UTC start),06:00-11:59,480,-2.5,0.400000",
+        "1,time of day (UTC start),12:00-17:59,520,0.0,0.500000",
+        "1,time of day (UTC start),18:00-23:59,500,7.0,0.700000",
+        "2,first-forecast band,high,90,30.5,0.900000",
+        "2,first-forecast band,low,1300,3.0,0.550000",
+        "2,first-forecast band,moderate,609,9.0,0.640000",
+        "2,first-forecast band,unclassified,0,,",
+        "2,first-forecast band,very high,1,41.0,1.000000",
+        "2,first-forecast band,very low,0,,",
+    ],
+    "q1_forecast_drift_beside.csv": [
+        "section,position,item,n,value,interval_low,interval_high,"
+        "draws_with_value,detail",
+        '2,1,"mean drift, gCO2/kWh",2000,1.250000,0.500000,2.000000,1000,',
+    ],
+    "context_q1_population.csv": [
+        "section,breakdown,item,half_hours,first_half_hour,last_half_hour",
+        "1,population,complete half-hours (1900 needed),2000,"
+        "2026-08-20 00:00:00+00:00,2026-09-30 23:30:00+00:00",
+    ],
+    "q10_forecast_accuracy_by_lead_time.csv": [
+        "section,item,horizon,half_hours,mean_absolute_error,bias",
+        "2,accuracy on the common sample,about 24 hours,1950,20.500,4.250",
+    ],
 }
 
 # Rows the newer charts read, added to the fixture files. Q23: a part month,
@@ -538,6 +584,25 @@ EXPECTED_CHART_CSVS = {
     + "month,item,half_hours,mean_demand_gw,part_month\n"
     "2025-08,settlement month 2025-08 (partial: 22 to 31),480,21.4,yes\n"
     "2025-09,settlement month 2025-09,1440,23.6,no\n",
+    # Cells in the chart's order, the two empty bands left out; 61.25% shows
+    # as 61.3, and the minus is a true minus sign.
+    "q1_median_drift_by_time_and_band.csv": CARBON_LINE
+    + "split,cell,label,half_hours,median_drift,median_label,"
+    "positive_share_pct\n"
+    "time of day (UTC start),00:00-05:59,00:00–05:59|500 half-hours,500,12.0,"
+    "+12,61.3\n"
+    "time of day (UTC start),06:00-11:59,06:00–11:59|480 half-hours,480,-2.5,"
+    "−2.5,40.0\n"
+    "time of day (UTC start),12:00-17:59,12:00–17:59|520 half-hours,520,0.0,"
+    "0,50.0\n"
+    "time of day (UTC start),18:00-23:59,18:00–23:59|500 half-hours,500,7.0,"
+    "+7,70.0\n"
+    'first-forecast band,low,"Low band|1,300 half-hours",1300,3.0,+3,55.0\n'
+    "first-forecast band,moderate,Moderate band|609 half-hours,609,9.0,+9,"
+    "64.0\n"
+    "first-forecast band,high,High band|90 half-hours,90,30.5,+30.5,90.0\n"
+    "first-forecast band,very high,Very high band|1 half-hour,1,41.0,+41,"
+    "100.0\n",
     "q30_rank_correlations.csv": BMRS_AND_CARBON_LINE + "label,measure,rho,low,high\n"
     "Size of misses|turned-down wind added back,"
     '"Size of the two misses, with turned-down wind added back",'
@@ -562,6 +627,7 @@ WRITTEN_FILES = [
     "context_ii_zero_readings.csv",
     "context_plan_pct_capacity.csv",
     "context_plan_per_unit_half_hour.csv",
+    "context_q1_population.csv",
     "context_q23_one_week_and_later_runs.csv",
     "context_q23_runs_by_month.csv",
     "context_q25_battery_named_units.csv",
@@ -574,10 +640,17 @@ WRITTEN_FILES = [
     "context_q6_lag_quartiles.csv",
     "context_q6_publication_timing.csv",
     "context_q6_start_alignment.csv",
+    "q10_forecast_accuracy_by_lead_time.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
     "q12_instructed_share_by_fuel_group.vl.json",
     "q12_instructed_vs_residual.csv",
+    "q1_forecast_drift_beside.csv",
+    "q1_forecast_drift_splits.csv",
+    "q1_forecast_drift_verdict.csv",
+    "q1_median_drift_by_time_and_band.csv",
+    "q1_median_drift_by_time_and_band.png",
+    "q1_median_drift_by_time_and_band.vl.json",
     "q22_first_against_latest_run.csv",
     "q23_monthly_gap_by_fuel_group.csv",
     "q23_monthly_gap_by_fuel_group.png",
@@ -1434,6 +1507,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_ii_zero_readings.csv": BMRS_LINE,
         "context_plan_pct_capacity.csv": BMRS_LINE,
         "context_plan_per_unit_half_hour.csv": BMRS_LINE,
+        "context_q1_population.csv": CARBON_LINE,
         "context_q23_one_week_and_later_runs.csv": BMRS_LINE,
         "context_q23_runs_by_month.csv": BMRS_LINE,
         "context_q25_battery_named_units.csv": BMRS_LINE,
@@ -1446,8 +1520,13 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_q6_lag_quartiles.csv": BMRS_LINE,
         "context_q6_publication_timing.csv": BMRS_LINE,
         "context_q6_start_alignment.csv": BMRS_LINE,
+        "q10_forecast_accuracy_by_lead_time.csv": CARBON_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
+        "q1_forecast_drift_beside.csv": CARBON_LINE,
+        "q1_forecast_drift_splits.csv": CARBON_LINE,
+        "q1_forecast_drift_verdict.csv": CARBON_LINE,
+        "q1_median_drift_by_time_and_band.csv": CARBON_LINE,
         "q22_first_against_latest_run.csv": BMRS_LINE,
         "q23_monthly_gap_by_fuel_group.csv": BMRS_LINE,
         "q23_pn_accuracy_proxy.csv": BMRS_LINE,
@@ -1587,6 +1666,9 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
     assert spec_data_urls(written) == {
         "q12_instructed_share_by_fuel_group.vl.json": (
             "results/q12_instructed_share_by_fuel_group.csv"
+        ),
+        "q1_median_drift_by_time_and_band.vl.json": (
+            "results/q1_median_drift_by_time_and_band.csv"
         ),
         "q23_monthly_gap_by_fuel_group.vl.json": (
             "results/q23_monthly_gap_by_fuel_group.csv"
@@ -2316,9 +2398,6 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
         "of half-hours with no instruction).",
         f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); ",
-        "The population reached 2,880 complete half-hours on 12 November 2026 and "
-        "is complete at the cutoff of 12 November 2026 23:30 UTC, with 2,910 "
-        "complete half-hours. Not yet read.",
         "<figcaption>For scale only; no link is tested. Mean national demand",
         f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
         "count.",
@@ -2440,7 +2519,10 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
     read = one_row(reverse, "section", "1")["item"]
     reverse_read_day = re.match(rf"read ({LONG_DATE}),", read).group(1)
     read_day = latest_day(
-        reverse_read_day, strata_read_day(saved_output_rows(STRATA_RESULT))
+        reverse_read_day,
+        strata_read_day(saved_output_rows(STRATA_RESULT)),
+        registered_read("Q1").partition(",")[0],
+        registered_read("Q10").partition(",")[0],
     )
     earliest = earliest_stated_read(PAGE.read_text(encoding="utf-8"))
 
@@ -4126,12 +4208,497 @@ NOT_PURSUED = [
     "Q33",
     "Q34",
 ]
-WAITING = ["Q1", "Q10", "Q26"]
+WAITING = ["Q26"]
 
 
 def question_ids_in(text):
     """The question IDs the text names, each once, in first-named order."""
     return list(dict.fromkeys(re.findall(r"\bQ\d+(?:-R[0-9A-Z]+)?\b", text)))
+
+
+README = REPOSITORY / "README.md"
+Q1_VERDICT = "q1_forecast_drift_verdict.csv"
+Q1_SPLITS = "q1_forecast_drift_splits.csv"
+Q1_BESIDE = "q1_forecast_drift_beside.csv"
+Q1_POPULATION = "context_q1_population.csv"
+Q10_OUTPUT = "q10_forecast_accuracy_by_lead_time.csv"
+Q10_LEAD_TIMES = ("about 24 hours", "about 4 hours", "about half an hour")
+Q10_PERSISTENCE = (
+    "reference, persistence: outturn of the latest half-hour ended at or "
+    "before the pick's poll"
+)
+ARCHIVE_WINDOW = "19 August to 12 November 2026"
+READ_ONCE = re.compile(rf"Read once on ({LONG_DATE}, \d{{2}}:\d{{2}} UTC)")
+
+
+def registered_read(question_id):
+    """The day and time the register's status gives for a question's one
+    read, as '22 November 2026, 08:20 UTC'."""
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    status = flattened(register_section(questions, question_id))
+    return READ_ONCE.search(status).group(1)
+
+
+def with_true_minus(text):
+    return text.replace("-", "−")
+
+
+def signed_to(value, places):
+    """A value with its sign at a fixed number of decimals, halves rounded
+    up, as the page writes it."""
+    step = Decimal(1).scaleb(-places)
+    rounded = Decimal(value).quantize(step, rounding=ROUND_HALF_UP)
+    return with_true_minus(f"{rounded:+f}")
+
+
+def signed_without_trailing_zeros(value):
+    return with_true_minus(f"{Decimal(value).normalize():+f}")
+
+
+def share_as_percent(share):
+    return f"{tenths(Decimal(share) * 100)}%"
+
+
+def half_hour_long_date(half_hour):
+    """'2026-08-19 21:00:00+00:00' as '19 August 2026'."""
+    return long_date(half_hour.partition(" ")[0])
+
+
+def window_of(row):
+    """A row's first and last half-hour as '19 August to 12 November 2026'."""
+    first = half_hour_long_date(row["first_half_hour"])
+    last = half_hour_long_date(row["last_half_hour"])
+    first_day, first_month, year = first.split(" ")
+    assert last.endswith(f" {year}")
+    return f"{first_day} {first_month} to {last}"
+
+
+def q10_row(rows, section, item, lead_time):
+    found = []
+    for row in rows:
+        named = (row["section"], row["item"], row["horizon"])
+        if named == (section, item, lead_time):
+            found.append(row)
+    assert len(found) == 1
+    return found[0]
+
+
+def q10_accuracy(rows, lead_time):
+    return q10_row(rows, "2", "accuracy on the common sample", lead_time)
+
+
+def lead_time_written(seconds):
+    """Seconds as '23 h 51 min', to the nearest minute."""
+    minutes = int(whole(Decimal(seconds) / 60))
+    return f"{minutes // 60} h {minutes % 60} min"
+
+
+def test_q1_and_q10_state_their_window_as_their_saved_outputs_hold_it():
+    verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
+    q10 = saved_output_rows(Q10_OUTPUT)
+    common = q10_row(q10, "1", "common sample: all three horizons", "")
+
+    assert window_of(verdict) == ARCHIVE_WINDOW
+    assert window_of(common) == ARCHIVE_WINDOW
+
+
+def test_q1s_answer_and_checks_come_from_its_verdict_output():
+    verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
+    # Each version of the verdict: the table's name for it, the column that
+    # holds its half-hours and the prefix of its other columns.
+    versions = [
+        (
+            "The rule: partial and unchanged polls excluded",
+            "complete_half_hours",
+            "",
+        ),
+        (
+            "Sensitivity check: one poll per half-hour slot, none excluded",
+            "as_published_half_hours",
+            "as_published_",
+        ),
+        (
+            "Each weekday weighted to its share of the calendar",
+            "complete_half_hours",
+            "weekday_reweighted_",
+        ),
+        (
+            "The part the exploration did not see, after 10 September 2026, 05:30 UTC",
+            "part_not_seen_half_hours",
+            "part_not_seen_",
+        ),
+    ]
+    expected = [
+        f'the rule\'s verdict is "{verdict["reported_verdict"]}". Over '
+        f"{int(verdict['complete_half_hours']):,} complete half-hours from "
+        f"{ARCHIVE_WINDOW}, the middle change from first to final forecast was "
+        f"<strong>{signed_without_trailing_zeros(verdict['median_drift'])} "
+        f"g/kWh</strong> and {share_as_percent(verdict['positive_share'])} of "
+        "non-zero changes were upward; the rule needs at least +2 and at least "
+        "55%.",
+    ]
+    for version, half_hours_column, prefix in versions:
+        median = signed_without_trailing_zeros(verdict[f"{prefix}median_drift"])
+        share = share_as_percent(verdict[f"{prefix}positive_share"])
+        expected.append(
+            f"<tr><td>{version}</td><td>{int(verdict[half_hours_column]):,}</td>"
+            f"<td>{median}</td><td>{share}</td></tr>"
+        )
+
+    assert missing_phrases(expected) == []
+    assert verdict["reported_verdict"] == "supported: upward drift"
+    assert verdict["as_published_verdict"] == "supported: upward drift"
+    assert verdict["weekday_reweighted_verdict"] == "supported: upward drift"
+    assert verdict["part_not_seen_verdict"] == "supported: upward drift"
+
+
+def test_q1s_figures_beside_its_verdict_come_from_its_beside_output():
+    beside = saved_output_rows(Q1_BESIDE)
+    mean = one_row(beside, "item", "mean drift, gCO2/kWh")
+    correlation = one_row(
+        beside, "item", "Pearson's r of consecutive changes within a half-hour"
+    )
+    dates = one_row(beside, "item", "UTC dates of the population")
+    zero_share = one_row(beside, "item", "share of changes equal to 0")
+
+    expected = [
+        f"on the same {int(mean['n']):,} half-hours: the mean change was "
+        f"{signed_to(mean['value'], 2)} g/kWh (90% range "
+        f"{signed_to(mean['interval_low'], 2)} to "
+        f"{signed_to(mean['interval_high'], 2)}, resampling {dates['n']} UTC "
+        "dates). Successive changes within a half-hour have a correlation of "
+        f"{signed_to(correlation['value'], 3)} (90% range "
+        f"{signed_to(correlation['interval_low'], 3)} to "
+        f"{signed_to(correlation['interval_high'], 3)}, "
+        f"{int(correlation['n']):,} pairs of changes). Forecast values are "
+        f"whole g/kWh and {share_as_percent(zero_share['value'])} of changes "
+        "are zero, so rounding alone pushes that correlation below zero;",
+    ]
+    assert missing_phrases(expected) == []
+
+
+def test_q1s_data_entry_comes_from_its_population_counts():
+    population = saved_output_rows(Q1_POPULATION)
+    complete = one_row(population, "breakdown", "population")
+    partial = one_row(population, "item", "partial polls")["half_hours"]
+    unchanged = one_row(population, "item", "no-change polls")["half_hours"]
+    wednesdays = one_row(population, "item", "3 Wed")["half_hours"]
+    saturdays = one_row(population, "item", "6 Sat")["half_hours"]
+    dates = one_row(
+        saved_output_rows(Q1_BESIDE), "item", "UTC dates of the population"
+    )["n"]
+
+    expected = [
+        f"<dd>{int(complete['half_hours']):,} complete half-hours on {dates} UTC "
+        "dates, from the one starting at 21:00 UTC on 19 August 2026 to the one "
+        "starting at 23:30 UTC on 12 November 2026.",
+        f"Partial polls removed {partial} half-hours and runs of unchanged polls "
+        f"{unchanged}. Wednesdays hold {wednesdays} complete half-hours and "
+        f"Saturdays {saturdays},",
+    ]
+    assert missing_phrases(expected) == []
+    assert complete["first_half_hour"] == "2026-08-19 21:00:00+00:00"
+    assert complete["last_half_hour"] == "2026-11-12 23:30:00+00:00"
+
+
+def test_q1s_time_of_day_and_band_entry_comes_from_its_splits_output():
+    splits = saved_output_rows(Q1_SPLITS)
+    block_medians = []
+    block_half_hours = []
+    for row in splits:
+        if row["split"] == "time of day (UTC start)":
+            block_medians.append(Decimal(row["median_drift"]))
+            block_half_hours.append(int(row["half_hours"]))
+    bands = {}
+    empty_bands = []
+    for row in splits:
+        if row["split"] != "first-forecast band":
+            continue
+        if row["half_hours"] == "0":
+            empty_bands.append(row["cell"])
+            continue
+        bands[row["cell"]] = (
+            signed_without_trailing_zeros(row["median_drift"]),
+            f"{int(row['half_hours']):,}",
+        )
+
+    expected = [
+        "The median change is "
+        f"{signed_without_trailing_zeros(min(block_medians))} to "
+        f"{signed_without_trailing_zeros(max(block_medians))} g/kWh in each "
+        f"six-hour block ({min(block_half_hours)} to {max(block_half_hours)} "
+        "half-hours each). By the band of the first forecast it is "
+        f"{bands['low'][0]} for low ({bands['low'][1]} half-hours), "
+        f"{bands['moderate'][0]} for moderate ({bands['moderate'][1]}), "
+        f"{bands['high'][0]} for high ({bands['high'][1]}) and "
+        f"{bands['very high'][0]} for very high ({bands['very high'][1]} "
+        "half-hours).",
+        "No half-hour has a very low first forecast or one with no band, so "
+        f"those rows are left out; the very high band holds "
+        f"{bands['very high'][1]} half-hours.",
+    ]
+    assert missing_phrases(expected) == []
+    assert sorted(empty_bands) == ["unclassified", "very low"]
+    assert sorted(bands) == ["high", "low", "moderate", "very high"]
+
+
+def test_q10s_answer_and_table_come_from_its_saved_output():
+    q10 = saved_output_rows(Q10_OUTPUT)
+    day = q10_accuracy(q10, "about 24 hours")
+    half_hour = q10_accuracy(q10, "about half an hour")
+    expected = [
+        f"Over {int(day['half_hours']):,} half-hours from {ARCHIVE_WINDOW}, "
+        "about a day ahead the forecast missed NESO's outturn estimate by "
+        f"<strong>{whole(day['mean_absolute_error'])} g/kWh</strong> on average "
+        f"and ran {whole(day['bias'])} g/kWh below it; about half an hour ahead, "
+        f"{whole(half_hour['mean_absolute_error'])} and "
+        f"{whole(half_hour['bias'])}.",
+    ]
+    for lead_time in Q10_LEAD_TIMES:
+        row = q10_accuracy(q10, lead_time)
+        expected.append(
+            f"<tr><td>{lead_time.capitalize()}</td>"
+            f"<td>{int(row['half_hours']):,}</td>"
+            f"<td>{hundredths(row['mean_absolute_error'])} "
+            f"({hundredths(row['mae_interval_low'])} to "
+            f"{hundredths(row['mae_interval_high'])})</td>"
+            f"<td>{signed_to(row['bias'], 2)} "
+            f"({signed_to(row['bias_interval_low'], 2)} to "
+            f"{signed_to(row['bias_interval_high'], 2)})</td></tr>"
+        )
+
+    assert missing_phrases(expected) == []
+    assert Decimal(day["bias"]) > 0
+    assert Decimal(half_hour["bias"]) > 0
+
+
+def test_the_sign_change_is_q10s_whole_window_less_the_part_not_seen():
+    # The earliest half-hours' bias is not in the saved output: it is the
+    # whole sample's total error less the part not seen's, over the
+    # half-hours between them.
+    q10 = saved_output_rows(Q10_OUTPUT)
+    earliest_biases = []
+    later_biases = []
+    earliest_counts = set()
+    later_counts = set()
+    for lead_time in Q10_LEAD_TIMES:
+        whole_sample = q10_accuracy(q10, lead_time)
+        not_seen = q10_row(q10, "6", "the part not seen", lead_time)
+        earliest = int(whole_sample["half_hours"]) - int(not_seen["half_hours"])
+        total_error = Decimal(whole_sample["bias"]) * int(
+            whole_sample["half_hours"]
+        ) - Decimal(not_seen["bias"]) * int(not_seen["half_hours"])
+        earliest_biases.append(signed_to(total_error / earliest, 2))
+        later_biases.append(signed_to(not_seen["bias"], 2))
+        earliest_counts.add(earliest)
+        later_counts.add(int(not_seen["half_hours"]))
+    (earliest_half_hours,) = earliest_counts
+    (later_half_hours,) = later_counts
+    sign_change = (
+        f"worked by subtraction, the {earliest_half_hours} earliest half-hours "
+        f"(to 10 September) have a bias of {earliest_biases[0]}, "
+        f"{earliest_biases[1]} and {earliest_biases[2]} g/kWh at 24 hours, 4 "
+        f"hours and half an hour ahead, against {later_biases[0]}, "
+        f"{later_biases[1]} and {later_biases[2]} on the {later_half_hours:,} "
+        "from 11 September."
+    )
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert articles_without(page, ["q1", "q10"], sign_change) == []
+    assert q10_row(q10, "6", "the part not seen", "about 24 hours")[
+        "first_half_hour"
+    ].startswith("2026-09-11 ")
+
+
+def test_q10s_context_note_comes_from_its_reference_rows():
+    q10 = saved_output_rows(Q10_OUTPUT)
+    forecast = {}
+    persistence = {}
+    for lead_time in Q10_LEAD_TIMES:
+        forecast[lead_time] = q10_accuracy(q10, lead_time)["mean_absolute_error"]
+        persistence[lead_time] = q10_row(q10, "4", Q10_PERSISTENCE, lead_time)[
+            "mean_absolute_error"
+        ]
+    api_final = q10_row(
+        q10, "5", "consistency check: error_api_final on the common sample", ""
+    )
+    day, four_hours, half_hour = Q10_LEAD_TIMES
+
+    expected = [
+        f"on the same {int(api_final['half_hours']):,} half-hours: at half an "
+        "hour ahead, repeating the latest outturn estimate missed by less "
+        f"({hundredths(persistence[half_hour])} g/kWh on average) and so did the "
+        "API's own final forecast "
+        f"({hundredths(api_final['mean_absolute_error'])}), against the "
+        f"forecast's {hundredths(forecast[half_hour])}; at 24 and 4 hours ahead "
+        "the forecast missed by less than repeating the latest outturn estimate "
+        f"({hundredths(forecast[day])} against {hundredths(persistence[day])}; "
+        f"{hundredths(forecast[four_hours])} against "
+        f"{hundredths(persistence[four_hours])}).",
+        f"The API's final forecast has a bias of {signed_to(api_final['bias'], 2)} "
+        "here and −0.6 in Q29, which cover different windows.",
+    ]
+    assert missing_phrases(expected) == []
+    assert Decimal(persistence[half_hour]) < Decimal(forecast[half_hour])
+    assert Decimal(api_final["mean_absolute_error"]) < Decimal(forecast[half_hour])
+    assert Decimal(forecast[day]) < Decimal(persistence[day])
+    assert Decimal(forecast[four_hours]) < Decimal(persistence[four_hours])
+
+
+def test_q10s_sample_and_lead_times_come_from_its_saved_output():
+    q10 = saved_output_rows(Q10_OUTPUT)
+    day, four_hours, half_hour = Q10_LEAD_TIMES
+    dropped = "dropped: no forecast at this horizon"
+    fall_back = "fall-back picks: made more than the lead time ahead"
+    no_day_forecast = int(q10_row(q10, "1", dropped, day)["half_hours"])
+    no_four_hour_forecast = int(q10_row(q10, "1", dropped, four_hours)["half_hours"])
+    q1_half_hours = int(
+        q10_row(q10, "1", "Q1 one-look half-hours (2880 needed)", "")["half_hours"]
+    )
+    written = {}
+    for lead_time in (day, four_hours):
+        row = q10_accuracy(q10, lead_time)
+        written[lead_time] = (
+            f"{lead_time_written(row['shortest_horizon_seconds'])}, "
+            f"{lead_time_written(row['median_horizon_seconds'])} and "
+            f"{lead_time_written(row['longest_horizon_seconds'])}"
+        )
+    final = q10_accuracy(q10, half_hour)
+
+    expected = [
+        f"Q1's {q1_half_hours:,} less {no_day_forecast + no_four_hour_forecast} "
+        f"dropped ({no_day_forecast} with no 24-hour forecast, "
+        f"{no_four_hour_forecast} with no 4-hour forecast).",
+        f"Shortest, median and longest: {written[day]} for the 24-hour forecast; "
+        f"{written[four_hours]} for the 4-hour; "
+        f"{whole(Decimal(final['shortest_horizon_seconds']) / 60)}, "
+        f"{whole(Decimal(final['median_horizon_seconds']) / 60)} and "
+        f"{whole(Decimal(final['longest_horizon_seconds']) / 60)} minutes for "
+        "the half-hour. An earlier poll stood in for "
+        f"{q10_row(q10, '1', fall_back, day)['half_hours']} of the 24-hour picks "
+        f"and {q10_row(q10, '1', fall_back, four_hours)['half_hours']} of the "
+        "4-hour.",
+    ]
+    assert missing_phrases(expected) == []
+    assert q10_row(q10, "1", dropped, half_hour)["half_hours"] == "0"
+
+
+def test_q10s_weekday_and_weekend_entry_comes_from_its_calendar_split():
+    q10 = saved_output_rows(Q10_OUTPUT)
+    day = Q10_LEAD_TIMES[0]
+    weekday = q10_row(q10, "3", "settlement date: weekday", day)
+    weekend = q10_row(q10, "3", "settlement date: weekend", day)
+    bank_holiday = q10_row(q10, "3", "settlement date: bank holiday", day)
+
+    expected = [
+        f"About a day ahead the bias is {signed_to(weekday['bias'], 2)} (90% "
+        f"range {signed_to(weekday['bias_interval_low'], 2)} to "
+        f"{signed_to(weekday['bias_interval_high'], 2)}) on weekdays "
+        f"({int(weekday['half_hours']):,} half-hours) and "
+        f"{signed_to(weekend['bias'], 2)} "
+        f"({signed_to(weekend['bias_interval_low'], 2)} to "
+        f"{signed_to(weekend['bias_interval_high'], 2)}) at weekends "
+        f"({weekend['half_hours']}); the mean size of the miss is "
+        f"{hundredths(weekday['mean_absolute_error'])} and "
+        f"{hundredths(weekend['mean_absolute_error'])}. The bank-holiday cell is "
+        "empty: 31 August 2026 has no complete trajectory.",
+    ]
+    assert missing_phrases(expected) == []
+    assert bank_holiday["half_hours"] == "0"
+
+
+def test_each_archive_result_states_the_read_its_register_status_records():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert f"Read once on {registered_read('Q1')}.</dd>" in article_text(page, "q1")
+    assert f"Read once on {registered_read('Q10')}, after Q1's look.</dd>" in (
+        article_text(page, "q10")
+    )
+
+
+def test_only_q10_says_the_two_archive_results_are_the_same_revisions():
+    page = PAGE.read_text(encoding="utf-8")
+    link = (
+        "<p>Q10's falling bias is Q1's upward revision seen against outturn: the "
+        "same revisions, not separate evidence.</p>"
+    )
+
+    assert link in article_text(page, "q10")
+    assert page.count(link) == 1
+
+
+def articles_in(page, section_id):
+    section = page.split(f'<section id="{section_id}"', 1)[1]
+    section = section.split("\n</section>", 1)[0]
+    return re.findall(r'<article id="([^"]+)">', section)
+
+
+def test_the_archive_results_sit_apart_from_the_stored_forecasts_four():
+    # The carbon section says its four questions use the stored forecast;
+    # Q1 and Q10 use the archive, so they have a section of their own.
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert "so these four questions use the" in page
+    assert articles_in(page, "carbon") == ["q29", "q28", "q8", "q30"]
+    assert articles_in(page, "archive") == ["q1", "q10"]
+
+
+def test_q10_points_to_the_alignment_limitation_and_it_names_q10():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        '<a href="#carbon-label-alignment">The half-hour alignment</a>: see '
+        "Limitations.</dd>" in article_text(page, "q10")
+    )
+    assert (
+        "Q10 sets it against the archive's forecasts at the same label."
+        in limitations_section(page)
+    )
+
+
+def test_the_archive_headline_reads_the_same_on_the_page_and_in_the_readme():
+    verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
+    day = q10_accuracy(saved_output_rows(Q10_OUTPUT), "about 24 hours")
+    lead = (
+        "From 11 September to 12 November 2026 the carbon forecast was revised "
+        "upward as each half-hour approached."
+    )
+    rest = (
+        "Over the whole window from 19 August 2026 "
+        f"({int(verdict['complete_half_hours']):,} half-hours) the middle change "
+        "from first to final forecast was "
+        f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and a "
+        f"day ahead the forecast ran {whole(day['bias'])} g/kWh below NESO's "
+        f"outturn estimate ({int(day['half_hours']):,} half-hours); the earliest "
+        "half-hours, from late August, point the other way"
+    )
+    readme = flattened(README.read_text(encoding="utf-8"))
+
+    assert f"<li><strong>{lead}</strong> {rest}. <a" in PAGE.read_text(encoding="utf-8")
+    assert f"- **{lead}** {rest} ([Q1](" in readme
+
+
+def test_the_readme_gives_q10s_bias_and_q1s_verdict_beside_its_predictions():
+    verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
+    q10 = saved_output_rows(Q10_OUTPUT)
+    day = q10_accuracy(q10, "about 24 hours")
+    half_hour = q10_accuracy(q10, "about half an hour")
+    readme = flattened(README.read_text(encoding="utf-8"))
+
+    assert (
+        f"over {int(day['half_hours']):,} half-hours from {ARCHIVE_WINDOW}, "
+        f"NESO's outturn estimate was on average {whole(day['bias'])} g/kWh above "
+        "the forecast made about a day ahead and "
+        f"{whole(half_hour['bias'])} g/kWh above the one made about half an hour "
+        "ahead" in readme
+    )
+    assert (
+        f"Over {int(verdict['complete_half_hours']):,} half-hours from "
+        f"{ARCHIVE_WINDOW} the middle change from first to final forecast was "
+        f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and the "
+        f'rule\'s verdict is "{verdict["reported_verdict"]}"' in readme
+    )
+    assert f"were each read once on {registered_read('Q1').partition(',')[0]}" in readme
 
 
 def test_still_to_come_and_not_pursued_match_the_register():
@@ -4301,13 +4868,55 @@ def test_a_q23_month_with_no_planned_output_context_is_refused(tmp_path):
         write_charts(saved, tmp_path / "out")
 
 
+Q1_CHART = "q1_median_drift_by_time_and_band.vl.json"
+
+
+def test_q1s_chart_states_its_half_hours_dates_and_the_rows_left_out(written):
+    # The fixture's verdict: 2,000 half-hours from 20 August to 30 September
+    # 2026; its very low and unclassified bands hold no half-hours.
+    assert reading_line(written, Q1_CHART).endswith(
+        "Described, not tested. 2,000 half-hours, 20 Aug 2026 – 30 Sep 2026. "
+        "Rows with no half-hours are left out: very low band, no band."
+    )
+
+
+def test_q1s_chart_names_no_row_left_out_when_every_cell_holds_half_hours(
+    tmp_path,
+):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    with_dates_moved(
+        saved / "q1_forecast_drift_splits.csv",
+        {
+            "unclassified,0,,": "unclassified,2,4.0,1.000000",
+            "very low,0,,": "very low,5,1.0,0.600000",
+        },
+    )
+    write_charts(saved, tmp_path / "out")
+
+    assert reading_line(tmp_path / "out", Q1_CHART).endswith(
+        "Described, not tested. 2,000 half-hours, 20 Aug 2026 – 30 Sep 2026."
+    )
+
+
+def test_q1s_chart_prints_each_median_as_its_csv_writes_it(written):
+    assert text_fields_drawn(written, Q1_CHART) == [("median_label", "median_drift")]
+
+
+def test_a_q1_split_without_one_of_its_cells_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    without_lines_containing(saved / "q1_forecast_drift_splits.csv", "very high")
+
+    with pytest.raises(ValueError, match="no row for first-forecast band, 'very high'"):
+        write_charts(saved, tmp_path / "out")
+
+
 def test_the_page_and_rules_speak_as_i_or_neutrally():
     voice = re.compile(r"\b(we|our|us)\b", re.IGNORECASE)
     page = PAGE.read_text(encoding="utf-8")
 
     assert voice.findall(page) == []
     assert voice.findall(QUESTIONS.read_text(encoding="utf-8")) == []
-    assert page.count("<summary>How I measured it</summary>") == 12
+    assert page.count("<summary>How I measured it</summary>") == 14
     assert '<h2 id="found-title">What I found</h2>' in page
 
 
@@ -4738,6 +5347,7 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q28_shortfall_index_by_miss_fifth.vl.json",
         "results/q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json",
         "results/q30_rank_correlations.vl.json",
+        "results/q1_median_drift_by_time_and_band.vl.json",
         "results/q2_moved_energy_by_unit_type.vl.json",
     ]
     assert not_shipped([*local_targets(page_tags()), *specs]) == []
