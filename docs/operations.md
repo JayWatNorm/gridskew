@@ -76,9 +76,7 @@ for as long as an unresolved row names it
 a REMIT row whose message is knowingly given up keeps the run failing
 ([REMIT ingestion](sources/elexon/031_remit_ingestion.md#a-quarantined-row-keeps-the-run-failing)).
 Both are released by marking the rows resolved, by id, after listing them;
-rows are never deleted, so the record of the rejection stays (the one
-recovery before resolution existed, of 23 REMIT rows in October 2026,
-deleted them after the messages were reloaded):
+rows are never deleted, so the record of the rejection stays:
 
 ```sql
 select quarantine_id, dataset, retrieved_at, request_context, validation_errors
