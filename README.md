@@ -1,5 +1,7 @@
 # gridskew
 
+[![CI](https://github.com/JayWatNorm/gridskew/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JayWatNorm/gridskew/actions/workflows/ci.yml)
+
 Measuring GB electricity grid shortfalls and their effect on carbon intensity
 forecast error.
 
@@ -190,6 +192,9 @@ calls:
 pip install -r requirements-dev.txt
 python -m pytest
 ```
+
+CI runs these tests, plus linting, the dbt build and the database checks, on
+every pull request and every push to `main`.
 
 The dbt project has separate setup and test instructions in
 [dbt/README.md](dbt/README.md). The checks CI runs against its throwaway
