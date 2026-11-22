@@ -35,11 +35,14 @@ nightly job; each test's header says what a row means. As of 22 November
   6 August 2026 11:00 UTC. The warning stays while the row does.
 - `warn_b1610_recent_units_in_conflict`: one BM unit whose National Grid ID
   changed in the registry, so its recent B1610 periods hold the old ID from
-  the first settlement run and the new ID from a later one. The warning
-  clears when those periods leave the recent window.
+  the first settlement run and the new ID from a later one. The test reads
+  recently captured periods, so the warning returns whenever a later
+  settlement run captures a period first stored under the old ID.
 
-A different count on either, or a row from one of the other four, is new:
-read the test's rows before the next run.
+A different count on either (`failures` in `dbt_dev.dbt_node_results`), or
+a result from one of the other four, is new. To see the rows, compile the
+test with `dbt compile --select <test> --target prod` and run the compiled
+query.
 
 ## Running past days again
 
