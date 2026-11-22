@@ -1,0 +1,3 @@
+# Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+complete_half_hours,first_half_hour,last_half_hour,half_hours_needed,population_is_reached,reported_verdict,median_drift,positive_share,as_published_half_hours,as_published_median_drift,as_published_positive_share,as_published_verdict,weekday_reweighted_median_drift,weekday_reweighted_positive_share,weekday_reweighted_verdict,part_not_seen_half_hours,part_not_seen_median_drift,part_not_seen_positive_share,part_not_seen_verdict
+2910,2026-08-19 21:00:00+00:00,2026-11-12 23:30:00+00:00,2880,True,supported: upward drift,19.0,0.725633,3747,15.0,0.685621,supported: upward drift,20.0,0.733904,supported: upward drift,2530,23.0,0.779465,supported: upward drift

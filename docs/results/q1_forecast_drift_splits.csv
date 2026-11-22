@@ -1,0 +1,12 @@
+# Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+section,split,cell,half_hours,median_drift,positive_share
+1,time of day (UTC start),00:00-05:59,712,18.0,0.758226
+1,time of day (UTC start),06:00-11:59,727,17.0,0.688456
+1,time of day (UTC start),12:00-17:59,735,15.0,0.660274
+1,time of day (UTC start),18:00-23:59,736,25.0,0.795918
+2,first-forecast band,high,419,39.0,0.861244
+2,first-forecast band,low,1124,8.0,0.651584
+2,first-forecast band,moderate,1363,25.0,0.743363
+2,first-forecast band,unclassified,0,,
+2,first-forecast band,very high,4,50.5,1.000000
+2,first-forecast band,very low,0,,

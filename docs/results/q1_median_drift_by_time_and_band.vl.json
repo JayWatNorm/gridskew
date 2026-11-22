@@ -1,0 +1,180 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "half_hours": "number",
+        "median_drift": "number",
+        "positive_share_pct": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q1_median_drift_by_time_and_band.csv"
+  },
+  "description": "How far the carbon forecast moved between its first and final version, by time of day and by first-forecast band",
+  "height": 352,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": 0
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "name": "zero line",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "row_name",
+            "title": "Half-hours",
+            "type": "nominal"
+          },
+          {
+            "field": "median_label",
+            "title": "Median change, g/kWh",
+            "type": "nominal"
+          },
+          {
+            "field": "positive_share_pct",
+            "format": ".1f",
+            "title": "Non-zero changes that were upward, %",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Median change, first to final",
+              "forecast, g CO2/kWh",
+              "left: revised down \u00b7 right: revised up"
+            ]
+          },
+          "field": "median_drift",
+          "scale": {
+            "padding": 56
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "00:00\u201305:59|712 half-hours",
+            "06:00\u201311:59|727 half-hours",
+            "12:00\u201317:59|735 half-hours",
+            "18:00\u201323:59|736 half-hours",
+            "Low band|1,124 half-hours",
+            "Moderate band|1,363 half-hours",
+            "High band|419 half-hours",
+            "Very high band|4 half-hours"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "fill": "#6e7781",
+        "type": "bar"
+      }
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "median_label",
+          "type": "nominal"
+        },
+        "x": {
+          "axis": {
+            "title": [
+              "Median change, first to final",
+              "forecast, g CO2/kWh",
+              "left: revised down \u00b7 right: revised up"
+            ]
+          },
+          "field": "median_drift",
+          "scale": {
+            "padding": 56
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "00:00\u201305:59|712 half-hours",
+            "06:00\u201311:59|727 half-hours",
+            "12:00\u201317:59|735 half-hours",
+            "18:00\u201323:59|736 half-hours",
+            "Low band|1,124 half-hours",
+            "Moderate band|1,363 half-hours",
+            "High band|419 half-hours",
+            "Very high band|4 half-hours"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": {
+          "expr": "datum.median_drift < 0 ? 'right' : 'left'"
+        },
+        "dx": {
+          "expr": "datum.median_drift < 0 ? -4 : 4"
+        },
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is the median of final minus first forecast\", \"over the half-hours in its row: first by the UTC time\", \"the half-hour starts, then by the band the API gave\", \"its first forecast. Described, not tested. 2,910\", \"half-hours, 19 Aug 2026 \u2013 12 Nov 2026. Rows with no\", \"half-hours are left out: very low band, no band.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is the median of final minus first forecast over the\", \"half-hours in its row: first by the UTC time the half-hour\", \"starts, then by the band the API gave its first forecast.\", \"Described, not tested. 2,910 half-hours, 19 Aug 2026 \u2013 12 Nov\", \"2026. Rows with no half-hours are left out: very low band, no\", \"band.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is the median of final minus first forecast over the half-hours in its\", \"row: first by the UTC time the half-hour starts, then by the band the API gave\", \"its first forecast. Described, not tested. 2,910 half-hours, 19 Aug 2026 \u2013 12\", \"Nov 2026. Rows with no half-hours are left out: very low band, no band.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is the median of final minus first forecast over the half-hours in its row: first by\", \"the UTC time the half-hour starts, then by the band the API gave its first forecast.\", \"Described, not tested. 2,910 half-hours, 19 Aug 2026 \u2013 12 Nov 2026. Rows with no half-hours\", \"are left out: very low band, no band.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is the median of final minus first forecast over the half-hours in its row: first by the UTC time\", \"the half-hour starts, then by the band the API gave its first forecast. Described, not tested. 2,910\", \"half-hours, 19 Aug 2026 \u2013 12 Nov 2026. Rows with no half-hours are left out: very low band, no band.\"] : ([\"Each bar is the median of final minus first forecast over the half-hours in its row: first by the UTC time the half-hour\", \"starts, then by the band the API gave its first forecast. Described, not tested. 2,910 half-hours, 19 Aug 2026 \u2013 12 Nov\", \"2026. Rows with no half-hours are left out: very low band, no band.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"How far the carbon forecast moved between its\", \"first and final version, by time of day and by\", \"first-forecast band\"] : (containerSize()[0] + 0 * width < 480 ? [\"How far the carbon forecast moved between its first and\", \"final version, by time of day and by first-forecast band\"] : (containerSize()[0] + 0 * width < 560 ? [\"How far the carbon forecast moved between its first and final\", \"version, by time of day and by first-forecast band\"] : (containerSize()[0] + 0 * width < 640 ? [\"How far the carbon forecast moved between its first and final version, by time of\", \"day and by first-forecast band\"] : (containerSize()[0] + 0 * width < 720 ? [\"How far the carbon forecast moved between its first and final version, by time of day and by\", \"first-forecast band\"] : ([\"How far the carbon forecast moved between its first and final version, by time of day and by\", \"first-forecast band\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "row_name",
+      "calculate": "replace(datum.label, '|', ', ')"
+    }
+  ],
+  "width": "container"
+}
