@@ -203,9 +203,8 @@ are under `tests/adhoc/`. pytest collects neither.
 
 Much of the code supports the results rather than the pipeline. The chart
 script renders every figure on the results page from the saved outputs, and
-its tests check each figure's values and the page's text against them; the
-one-look checks prove each analysis's arithmetic on hand-worked rows before
-its single read.
+its tests check each figure's values and the page's text against them. CI
+checks each registered analysis on hand-worked rows before it is read once.
 
 ## Repository guide
 
