@@ -1943,8 +1943,8 @@ def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
     )
     assert (
         '<p class="note">Exploratory: asked after Q28 was read, so not '
-        "pre-registered. It shows association, not cause; Q31 and Q32 test this "
-        "direction on new data.</p>" in block
+        "pre-registered. It shows association, not cause. Q31 and Q32 would test "
+        "this direction on new data; they are registered, not pursued.</p>" in block
     )
     assert read["result"] == "matches Q28"
     assert q28_bar["result"] == "not supported"
@@ -2315,9 +2315,9 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"no meter reading ({percent_of(unmetered['half_hours'], int(uninstructed['half_hours']) + int(unmetered['half_hours']), 1)}% "
         "of half-hours with no instruction).",
         f"no meter reading ({percent_of(q5_unmetered['unit_periods'], int(q5_metered['unit_periods']) + int(q5_unmetered['unit_periods']), 1)}%); ",
-        "The population reached 2,880 complete half-hours on 12 November 2026. "
-        "The look uses the cutoff of 12 November 2026 23:30 UTC, where it holds "
-        "2,910 complete half-hours, and is read on or after 21 November 2026.",
+        "The population reached 2,880 complete half-hours on 12 November 2026 and "
+        "is complete at the cutoff of 12 November 2026 23:30 UTC, with 2,910 "
+        "complete half-hours. Not yet read.",
         "<figcaption>For scale only; no link is tested. Mean national demand",
         f"on the same {int(all_demand['half_hours_with_demand']):,} half-hours, a context "
         "count.",
@@ -3445,17 +3445,17 @@ def test_q28s_reverse_note_states_its_wind_level_counts():
     )
 
 
-def test_each_read_carbon_result_sharing_q28s_half_hours_notes_the_zero_actual():
-    coverage = (
-        "<dt>Coverage</dt>\n        <dd>GridSkew's data hold an impossible "
-        "0 g/kWh actual for 6 August 2026, 11:00 UTC, which also falls in Q29's "
-        "August 2026 cell.</dd>"
+def test_the_limitations_state_the_zero_actual_once_for_every_read_carbon_result():
+    page = PAGE.read_text(encoding="utf-8")
+    zero_actual = (
+        '<li id="impossible-actual">GridSkew\'s data hold one impossible carbon '
+        "actual, 0 g/kWh for 6 August 2026, 11:00 UTC. It lies inside the window "
+        f"of {', '.join(READ_CARBON_RESULTS[:-1])} and {READ_CARBON_RESULTS[-1]}, "
+        "in Q29's August 2026 cell.</li>"
     )
 
-    assert (
-        articles_without(PAGE.read_text(encoding="utf-8"), ["q8", "q28"], coverage)
-        == []
-    )
+    assert zero_actual in limitations_section(page)
+    assert page.count("6 August 2026, 11:00 UTC") == 1
 
 
 def test_the_unread_carbon_rules_register_an_invalid_value_rule_first():
@@ -3741,16 +3741,14 @@ def test_the_page_credits_nesos_historic_generation_mix_under_its_licence():
     )
 
 
-def test_each_read_carbon_result_points_to_the_alignment_limitation():
+def test_each_read_carbon_result_points_to_its_caveats_under_limitations():
     whole = by_offset(alignment_rows(), ACTUAL_WHOLE, "all")
+    within_5_after = share_of_common(whole[HALF_HOUR_AFTER], "within_5")
     pointer = (
-        "<dd>Added 7 November 2026: the carbon API's actual agrees most closely "
-        "with NESO's Elexon-aligned generation mix one half-hour after its label "
-        f"(within 5 g/kWh in {share_of_common(whole[HALF_HOUR_AFTER], 'within_5')}% "
-        "of half-hours, against "
-        f"{share_of_common(whole[SAME_LABEL], 'within_5')}% at the label); this "
-        "result pairs values by label, as published. "
-        '<a href="#carbon-label-alignment">Limitations</a></dd>'
+        "<dt>Caveats</dt>\n        <dd>"
+        '<a href="#carbon-label-alignment">The half-hour alignment</a> and '
+        '<a href="#impossible-actual">the one impossible actual</a>: '
+        "see Limitations.</dd>"
     )
     article_ids = []
     for question_id in READ_CARBON_RESULTS:
@@ -3759,6 +3757,7 @@ def test_each_read_carbon_result_points_to_the_alignment_limitation():
 
     assert articles_without(page, article_ids, pointer) == []
     assert '<li id="carbon-label-alignment">' in page
+    assert page.count(f"within 5 g/kWh in {within_5_after}%") == 1
 
 
 def test_the_unread_carbon_rules_state_the_alignment_basis_from_its_counts():
@@ -4053,6 +4052,8 @@ PRE_REGISTRATION_EXCEPTIONS = [
     "Q1 and Q10",
     "Q26 and Q29",
     "Q25",
+    "Q23",
+    "Q28:",
     "Q28's reverse cut",
 ]
 
@@ -4092,6 +4093,14 @@ def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions(
     ):
         assert page_line.startswith(f"<li>{named}")
         assert register_item.startswith(f"- {named}")
+
+
+def test_design_decisions_links_the_exceptions_instead_of_listing_them():
+    design = (REPOSITORY / "docs" / "design-decisions.md").read_text(encoding="utf-8")
+    answering = design.split("## Answering the questions", 1)[1].split("\n**", 2)[1]
+
+    assert "[exceptions](research-questions.md#exceptions)" in flattened(answering)
+    assert question_ids_in(answering) == []
 
 
 def register_section(questions, question_id):
@@ -4141,11 +4150,21 @@ def test_still_to_come_and_not_pursued_match_the_register():
 
     assert re.findall(r"\(about [A-Z][a-z]+ \d{4}\)", section) == []
     assert re.findall(r"\bAfter \d{1,2} [A-Z][a-z]+ \d{4}\b", section) == []
+    assert re.findall(r"\bon or after \d{1,2} [A-Z][a-z]+ \d{4}\b", section) == []
     assert marked == NOT_PURSUED
     assert question_ids_in(not_pursued) == NOT_PURSUED
     assert question_ids_in(waiting) == WAITING
     for question_id in WAITING:
         assert "Not pursued" not in register_section(questions, question_id)
+
+
+def test_the_not_pursued_table_wraps_its_sentences():
+    # Number tables keep one line per cell; this table holds sentences.
+    page = PAGE.read_text(encoding="utf-8")
+    not_pursued = page.split('<h3 id="not-pursued">', 1)[1].split("</section>", 1)[0]
+
+    assert '<table class="prose">' in not_pursued
+    assert "table.prose td { white-space: normal; text-align: left; }" in page
 
 
 def test_the_settlement_run_ages_are_the_measured_runs_in_months():

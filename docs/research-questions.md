@@ -16,7 +16,7 @@ rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
 
 | ID | Question, in short | Status |
 |---|---|---|
-| [Q1](#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version) | Carbon forecast drift, first to final version | waiting (the read, on or after 21 November 2026) |
+| [Q1](#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version) | Carbon forecast drift, first to final version | waiting (population complete at the 12 November 2026 23:30 UTC cutoff; not yet read) |
 | [Q2](#q2-how-much-does-metered-output-change-between-settlement-runs) | Metered output between settlement runs | read (11 October 2026) |
 | [Q2-RF](#q2-rf-how-much-does-metered-output-change-from-r3-to-rf) | Metered output, R3 to RF | registered, not pursued |
 | [Q2-R2RF](#q2-r2rf-how-much-does-metered-output-change-from-r2-to-rf) | Metered output, R2 to RF | registered, not pursued |
@@ -115,8 +115,14 @@ says so. The exceptions, one line each:
 - Q26 and Q29: part of each had been seen in an exploration before the rule
   was recorded (ABSVD's effect on four days; the overall mean and median
   error).
-- Q25: re-run once on the same data, with acceptances that cross midnight
-  joined; the rule is unchanged.
+- Q25: an exploration had read measure (1) before the rule was recorded;
+  measure (2), the result, was added before any read of it. It was re-run
+  once on the same data, with acceptances that cross midnight joined; the
+  rule is unchanged.
+- Q23: its ABSVD sensitivity is informed by an exploration, so only its
+  base result is called pre-registered.
+- Q28: the overall error of its forecast had already been seen in a
+  September 2026 exploration.
 - Q28's reverse cut (on the results page): asked after Q28 was read, so
   exploratory and not pre-registered.
 
@@ -235,9 +241,9 @@ published analysis of the same forecast (gridcast), using revisions from
 20 August 2026 that overlap this population, finds successive revisions
 negatively correlated.
 
-The population reached 2,880 complete half-hours on 12 November 2026. The
-look uses the cutoff of 12 November 2026 23:30 UTC, where it holds 2,910
-complete half-hours, and is read on or after 21 November 2026.
+The population reached 2,880 complete half-hours on 12 November 2026 and is
+complete at the cutoff of 12 November 2026 23:30 UTC, with 2,910 complete
+half-hours. Not yet read.
 
 **Rule:**
 
@@ -705,7 +711,7 @@ published third-party score and Q29's monthly results, a mean absolute
 error of about 13.7 from 17 August to 28 September 2026. No mean absolute
 error of the forecasts this rule reads was computed.
 
-Read with Q1, on or after 21 November 2026 at Q1's cutoff.
+Read with Q1, at Q1's cutoff. Not yet read.
 
 **Rule:**
 
@@ -1655,7 +1661,7 @@ Dropped questions stay listed, with the reason.
 | Q11 | Are system prices revised after the first calculation? | Elexon's public system-prices endpoint serves only the first calculation, so revisions cannot be observed; this is not a finding that prices are never revised. |
 | Q13 | Does interconnector flow explain forecast error? | No flow forecast is held; a question on outturn flows would be new, with its own source and rule. |
 | Q14 | Is the forecast worse on weekends, holidays or in high wind? | Its calendar part is answered inside Q10; Q30 reads the wind forecast's miss, not high wind. |
-| Q17 | Capture timeliness per source and day | An operations measure, not research, covered by the health read at the start of each working session. Retired 12 October 2026. |
+| Q17 | Capture timeliness per source and day | An operations measure, not research. Retired 12 October 2026. |
 | Q18 | Storage delivery fidelity against thermal units | Q23 reports how closely each fuel group, storage and thermal plant included, follows its PN; Q25 and Q26 cover instructions and services settled outside the balancing mechanism. A test of storage against thermal plant would be its own registered question. |
 | Q19 | Instructed wind reductions per day | Q24 describes wind's system-action share; a daily chart would be its own registered question. |
 | Q20 | GridSkew-observed replay at a fixed cutoff | It answers no thesis question, and the time GridSkew first held each record is an inferred bound, not a measured time. Dropped 9 October 2026. |
