@@ -45,6 +45,10 @@ The carbon forecast tested is the stored forecast, not a day-ahead one.
 3. **Explain them.** Test planned and unplanned outages (`REMIT`), demand
    forecast error and market stress signals as possible explanations.
 
+The [rules](docs/research-questions.md#terms) call the shortfall NESO did not
+instruct *unexplained shortfall*; the results page calls its positive part
+*under-delivery*.
+
 The analysis stays at unit level because aggregating to fuel type first can
 wash out the signal. It covers every registered unit with a published fuel
 type, interconnectors and pumped storage included; a unit without one has no
@@ -102,7 +106,7 @@ missed revisions cannot be recovered.
 
 | Source | Role |
 |---|---|
-| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions, balancing services volume, outage notices and the BM-unit registry |
+| **Elexon Insights (the BMRS API)** | Physical notifications, metered BM-unit energy, balancing instructions, balancing services volume, outage notices and the BM-unit registry |
 | **Elexon Insights, demand** | NESO's national demand forecast (`NDF`) and initial outturn (`INDO`), a one-off back-fill of a year |
 | **Elexon Insights, wind** | NESO's wind generation forecast (`WINDFOR`) and metered wind outturn (`FUELHH`), daily beside a year's back-fill |
 | **NESO Carbon Intensity API** | Half-hourly national carbon intensity forecasts and outturn |
