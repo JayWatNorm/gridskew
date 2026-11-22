@@ -25,6 +25,22 @@ model's and test's result in `dbt_dev.dbt_node_results`.
 | `gridskew__dbt_freshness_dag` | :20 | A source is later than its threshold in the dbt source files | Look for that source's own failed run; freshness passes again once it catches up |
 | `gridskew__dbt_nightly` | 02:30 | A model or test failed, or the run refused because a period table changed | For a failed model or test, read `dbt_dev.dbt_node_results`. A refusal happens before dbt runs, so its task log names the changed models or missing tables; trigger one full refresh. [dbt guide](../dbt/README.md#period-facts) |
 
+## Nightly warnings
+
+Six tests in `dbt/tests`, named `warn_*`, report rows without failing the
+nightly job; each test's header says what a row means. As of 22 November
+2026 two of them return one row each night:
+
+- `warn_outturn_actual_impossible`: one stored carbon actual of 0 g/kWh, for
+  6 August 2026 11:00 UTC. The warning stays while the row does.
+- `warn_b1610_recent_units_in_conflict`: one BM unit whose National Grid ID
+  changed in the registry, so its recent B1610 periods hold the old ID from
+  the first settlement run and the new ID from a later one. The warning
+  clears when those periods leave the recent window.
+
+A different count on either, or a row from one of the other four, is new:
+read the test's rows before the next run.
+
 ## Running past days again
 
 The PN, QPN, BOALF and B1610 DAGs fetch the day set by each run's data
