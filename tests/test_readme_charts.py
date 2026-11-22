@@ -4053,6 +4053,8 @@ PRE_REGISTRATION_EXCEPTIONS = [
     "Q1 and Q10",
     "Q26 and Q29",
     "Q25",
+    "Q23",
+    "Q28:",
     "Q28's reverse cut",
 ]
 
@@ -4092,6 +4094,14 @@ def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions(
     ):
         assert page_line.startswith(f"<li>{named}")
         assert register_item.startswith(f"- {named}")
+
+
+def test_design_decisions_links_the_exceptions_instead_of_listing_them():
+    design = (REPOSITORY / "docs" / "design-decisions.md").read_text(encoding="utf-8")
+    answering = design.split("## Answering the questions", 1)[1].split("\n**", 2)[1]
+
+    assert "[exceptions](research-questions.md#exceptions)" in flattened(answering)
+    assert question_ids_in(answering) == []
 
 
 def register_section(questions, question_id):

@@ -115,8 +115,14 @@ says so. The exceptions, one line each:
 - Q26 and Q29: part of each had been seen in an exploration before the rule
   was recorded (ABSVD's effect on four days; the overall mean and median
   error).
-- Q25: re-run once on the same data, with acceptances that cross midnight
-  joined; the rule is unchanged.
+- Q25: an exploration had read measure (1) before the rule was recorded;
+  measure (2), the result, was added before any read of it. It was re-run
+  once on the same data, with acceptances that cross midnight joined; the
+  rule is unchanged.
+- Q23: its ABSVD sensitivity is informed by an exploration, so only its
+  base result is called pre-registered.
+- Q28: the overall error of its forecast had already been seen in a
+  September 2026 exploration.
 - Q28's reverse cut (on the results page): asked after Q28 was read, so
   exploratory and not pre-registered.
 
