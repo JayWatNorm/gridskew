@@ -3448,7 +3448,7 @@ def test_q28s_reverse_note_states_its_wind_level_counts():
 def test_the_limitations_state_the_zero_actual_once_for_every_read_carbon_result():
     page = PAGE.read_text(encoding="utf-8")
     zero_actual = (
-        "<li id=\"impossible-actual\">GridSkew's data hold one impossible carbon "
+        '<li id="impossible-actual">GridSkew\'s data hold one impossible carbon '
         "actual, 0 g/kWh for 6 August 2026, 11:00 UTC. It lies inside the window "
         f"of {', '.join(READ_CARBON_RESULTS[:-1])} and {READ_CARBON_RESULTS[-1]}, "
         "in Q29's August 2026 cell.</li>"
