@@ -240,6 +240,8 @@
   }
   tbody tr:last-child td { border-bottom: 0; }
   th:first-child, td:first-child { text-align: left; }
+  table.prose td { white-space: normal; text-align: left; }
+  table.prose td:first-child { min-width: 10rem; }
 
   .coming { padding-left: 1.2rem; }
   .coming li { margin: 0 0 0.8rem; }
@@ -767,7 +769,7 @@
   <h3 id="not-pursued">Registered, not pursued</h3>
   <p>These questions keep their registered rules and are not read: each needs data GridSkew does not hold, or a window that runs past the project's close.</p>
   <div class="table-wrap">
-    <table>
+    <table class="prose">
       <thead><tr><th>Question</th><th>Why not</th></tr></thead>
       <tbody>
         <tr><td>How much do metered figures change between the seven-month run and the final run, for the units studied? <span class="tag">Q2-RF</span></td><td>The final settlement run for its 30 dates is due after the project closes.</td></tr>

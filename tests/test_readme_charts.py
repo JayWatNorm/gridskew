@@ -4149,6 +4149,15 @@ def test_still_to_come_and_not_pursued_match_the_register():
         assert "Not pursued" not in register_section(questions, question_id)
 
 
+def test_the_not_pursued_table_wraps_its_sentences():
+    # Number tables keep one line per cell; this table holds sentences.
+    page = PAGE.read_text(encoding="utf-8")
+    not_pursued = page.split('<h3 id="not-pursued">', 1)[1].split("</section>", 1)[0]
+
+    assert '<table class="prose">' in not_pursued
+    assert "table.prose td { white-space: normal; text-align: left; }" in page
+
+
 def test_the_settlement_run_ages_are_the_measured_runs_in_months():
     # docs/sources/elexon/020_b1610.md measured the day each run goes live;
     # an average month is 30.44 days.
