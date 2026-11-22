@@ -1943,8 +1943,8 @@ def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
     )
     assert (
         '<p class="note">Exploratory: asked after Q28 was read, so not '
-        "pre-registered. It shows association, not cause; Q31 and Q32 test this "
-        "direction on new data.</p>" in block
+        "pre-registered. It shows association, not cause. Q31 and Q32 would test "
+        "this direction on new data; they are registered, not pursued.</p>" in block
     )
     assert read["result"] == "matches Q28"
     assert q28_bar["result"] == "not supported"
