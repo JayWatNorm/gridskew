@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts.readme_charts import (
+from scripts.results_charts import (
     BAND_FILL,
     CLEANER_COLOUR,
     COMPARISON_COLOUR,
