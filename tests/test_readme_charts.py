@@ -3445,17 +3445,17 @@ def test_q28s_reverse_note_states_its_wind_level_counts():
     )
 
 
-def test_each_read_carbon_result_sharing_q28s_half_hours_notes_the_zero_actual():
-    coverage = (
-        "<dt>Coverage</dt>\n        <dd>GridSkew's data hold an impossible "
-        "0 g/kWh actual for 6 August 2026, 11:00 UTC, which also falls in Q29's "
-        "August 2026 cell.</dd>"
+def test_the_limitations_state_the_zero_actual_once_for_every_read_carbon_result():
+    page = PAGE.read_text(encoding="utf-8")
+    zero_actual = (
+        "<li id=\"impossible-actual\">GridSkew's data hold one impossible carbon "
+        "actual, 0 g/kWh for 6 August 2026, 11:00 UTC. It lies inside the window "
+        f"of {', '.join(READ_CARBON_RESULTS[:-1])} and {READ_CARBON_RESULTS[-1]}, "
+        "in Q29's August 2026 cell.</li>"
     )
 
-    assert (
-        articles_without(PAGE.read_text(encoding="utf-8"), ["q8", "q28"], coverage)
-        == []
-    )
+    assert zero_actual in limitations_section(page)
+    assert page.count("6 August 2026, 11:00 UTC") == 1
 
 
 def test_the_unread_carbon_rules_register_an_invalid_value_rule_first():
@@ -3741,16 +3741,12 @@ def test_the_page_credits_nesos_historic_generation_mix_under_its_licence():
     )
 
 
-def test_each_read_carbon_result_points_to_the_alignment_limitation():
+def test_each_read_carbon_result_points_to_its_caveats_under_limitations():
     whole = by_offset(alignment_rows(), ACTUAL_WHOLE, "all")
+    within_5_after = share_of_common(whole[HALF_HOUR_AFTER], "within_5")
     pointer = (
-        "<dd>Added 7 November 2026: the carbon API's actual agrees most closely "
-        "with NESO's Elexon-aligned generation mix one half-hour after its label "
-        f"(within 5 g/kWh in {share_of_common(whole[HALF_HOUR_AFTER], 'within_5')}% "
-        "of half-hours, against "
-        f"{share_of_common(whole[SAME_LABEL], 'within_5')}% at the label); this "
-        "result pairs values by label, as published. "
-        '<a href="#carbon-label-alignment">Limitations</a></dd>'
+        "<dt>Caveats</dt>\n        <dd>The half-hour alignment and the one "
+        'impossible actual: see <a href="#limitations">Limitations</a>.</dd>'
     )
     article_ids = []
     for question_id in READ_CARBON_RESULTS:
@@ -3759,6 +3755,7 @@ def test_each_read_carbon_result_points_to_the_alignment_limitation():
 
     assert articles_without(page, article_ids, pointer) == []
     assert '<li id="carbon-label-alignment">' in page
+    assert page.count(f"within 5 g/kWh in {within_5_after}%") == 1
 
 
 def test_the_unread_carbon_rules_state_the_alignment_basis_from_its_counts():
