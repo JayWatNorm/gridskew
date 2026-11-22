@@ -290,10 +290,11 @@ repository's release runbook, which is not public.
   final version under a reading rule fixed in advance; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 
-**Next**
+**Not yet read**
 
 - Q1 and Q10, how the carbon forecast drifts as a half-hour approaches and
-  how accurate it is at each lead time, are read from 21 November 2026.
+  how accurate it is at each lead time: the population is complete at the
+  12 November 2026 cutoff; neither is read yet.
 
 The questions registered but not yet read, and their rules, are listed on the
 results page. System prices and weather remain later extensions.
