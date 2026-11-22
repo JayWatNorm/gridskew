@@ -3745,8 +3745,10 @@ def test_each_read_carbon_result_points_to_its_caveats_under_limitations():
     whole = by_offset(alignment_rows(), ACTUAL_WHOLE, "all")
     within_5_after = share_of_common(whole[HALF_HOUR_AFTER], "within_5")
     pointer = (
-        "<dt>Caveats</dt>\n        <dd>The half-hour alignment and the one "
-        'impossible actual: see <a href="#limitations">Limitations</a>.</dd>'
+        "<dt>Caveats</dt>\n        <dd>"
+        '<a href="#carbon-label-alignment">The half-hour alignment</a> and '
+        '<a href="#impossible-actual">the one impossible actual</a>: '
+        "see Limitations.</dd>"
     )
     article_ids = []
     for question_id in READ_CARBON_RESULTS:
