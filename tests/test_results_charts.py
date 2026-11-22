@@ -71,6 +71,7 @@ PINNED_JSDELIVR_FILE = re.compile(
     r"https://cdn\.jsdelivr\.net/npm/(?P<package>[a-z][a-z-]*)@\d+\.\d+\.\d+/\S+"
 )
 VEGA_EMBED_CALL = re.compile(r'vegaEmbed\(\s*"[^"]+",\s*"(?P<spec>[^"]+)"')
+VEGA_EMBED_TARGET = re.compile(r'vegaEmbed\(\s*"#(?P<box>[^"]+)",\s*"(?P<spec>[^"]+)"')
 DISPLAYED_FUEL_GROUP = re.compile(
     r'datum\.fuel_group == \\"(?P<code>[^"\\]*)\\" \? \\"(?P<label>[^"\\]*)\\"'
 )
@@ -4204,7 +4205,7 @@ def test_the_unit_glossary_states_each_conversion_the_page_uses():
 
 def caption_of_chart(page, chart_id):
     """The figcaption under the chart with this id."""
-    after_chart = page.split(f'<div class="chart" id="{chart_id}"></div>', 1)[1]
+    after_chart = page.split(f'<div class="chart" id="{chart_id}">', 1)[1]
     return after_chart.split("</figcaption>", 1)[0]
 
 
@@ -4647,6 +4648,56 @@ def chart_specs_on_page():
     return VEGA_EMBED_CALL.findall(PAGE.read_text(encoding="utf-8"))
 
 
+class ChartBoxes(HTMLParser):
+    """The start tags inside each div.chart, by the box's id."""
+
+    def __init__(self):
+        super().__init__()
+        self.boxes = {}
+        self.open_box = None
+        self.div_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if self.open_box is not None:
+            self.boxes[self.open_box].append((tag, attributes))
+        elif tag == "div" and "chart" in (attributes.get("class") or "").split():
+            self.open_box = attributes["id"]
+            self.boxes[self.open_box] = []
+        else:
+            return
+        if tag == "div":
+            self.div_depth += 1
+
+    def handle_endtag(self, tag):
+        if self.open_box is None or tag != "div":
+            return
+        self.div_depth -= 1
+        if self.div_depth == 0:
+            self.open_box = None
+
+
+def chart_boxes():
+    parser = ChartBoxes()
+    parser.feed(PAGE.read_text(encoding="utf-8"))
+    return parser.boxes
+
+
+def specs_by_chart_box():
+    return dict(VEGA_EMBED_TARGET.findall(PAGE.read_text(encoding="utf-8")))
+
+
+def spec_description(spec_target):
+    return json.loads(shipped_path(spec_target).read_text(encoding="utf-8"))[
+        "description"
+    ]
+
+
+def chart_image_style():
+    page = PAGE.read_text(encoding="utf-8")
+    return page.split("  div.chart > img {\n", 1)[1].split("\n  }\n", 1)[0]
+
+
 def jobs_with_their_own_permissions(workflow):
     names = []
     for name, job in workflow["jobs"].items():
@@ -4690,6 +4741,31 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q2_moved_energy_by_unit_type.vl.json",
     ]
     assert not_shipped([*local_targets(page_tags()), *specs]) == []
+
+
+def test_every_chart_box_holds_a_png_of_its_chart_for_readers_without_scripts():
+    # vega-embed empties the box before it draws the chart, so the image
+    # shows only where the chart does not. Its alt text is the spec's
+    # description, the chart's title.
+    boxes = chart_boxes()
+    specs = specs_by_chart_box()
+
+    assert sorted(boxes) == sorted(specs)
+    for box, spec in specs.items():
+        image = spec.removesuffix(".vl.json") + ".png"
+        alt = spec_description(spec)
+        assert alt.strip()
+        assert boxes[box] == [("img", {"src": image, "alt": alt, "loading": "lazy"})]
+        assert shipped_path(image).is_file()
+
+
+def test_the_chart_png_fits_its_box_on_a_white_ground_in_either_colour_mode():
+    # The PNGs are drawn for a light page.
+    style = chart_image_style()
+
+    assert "    max-width: 100%;" in style
+    assert "    height: auto;" in style
+    assert "    background: #ffffff;" in style
 
 
 def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path):
