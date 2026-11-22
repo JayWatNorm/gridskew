@@ -18,23 +18,22 @@ with its method, data window and saved output.
 - **Wind strays furthest from its own plan.** With no NESO instruction in
   force, the median wind farm missed its plan by 6.3 to 8.0% of its capacity
   in every whole month from September 2025 to August 2026; the median unit of
-  every other type, by under 3.5% (Q23).
+  every other type, by under 3.5% ([Q23](https://jaywatnorm.github.io/gridskew/#q23)).
 - **Most under-delivery comes with no published outage.** About a quarter
-  (24%) of the 16.4 TWh of under-delivery in 8,675,654 unit half-hours from
-  22 August 2025 to 27 September 2026 came with one; for wind, about a tenth
-  (Q5).
+  (24%, 22 August 2025 to 27 September 2026) came with one; for wind, about
+  a tenth ([Q5](https://jaywatnorm.github.io/gridskew/#q5)).
 - **NESO flags almost all the energy its instructions move at wind farms as
-  system actions**, possibly for network reasons: 97% of 13.4 TWh over the
-  settlement months August 2025 to September 2026 (Q24).
+  system actions**, possibly for network reasons: 97% over the settlement
+  months August 2025 to September 2026 ([Q24](https://jaywatnorm.github.io/gridskew/#q24)).
 - **The carbon forecast's misses barely track under-delivery.** In the fifth
-  of 17,278 half-hours (22 August 2025 to 16 August 2026) with the biggest
-  carbon misses, under-delivery was only 5% larger than in the fifth with
-  the smallest; the test needed 25% (Q28; the final forecast, not the
-  day-ahead one).
-- **Nor do demand-forecast misses track them more.** Over the same 17,278
-  half-hours, the demand forecast's miss and under-delivery have rank
-  correlations of only 0.04 and 0.05 with the size of the carbon miss, no
-  clear difference between them (Q8).
+  of half-hours with the biggest carbon misses (22 August 2025 to 16 August
+  2026), under-delivery was only 5% larger than in the fifth with the
+  smallest; the test needed 25%. Over the same dates, misses in NESO's
+  demand and wind forecasts have rank correlations of only 0.04 and 0.01
+  with the size of the carbon miss ([Q28](https://jaywatnorm.github.io/gridskew/#q28),
+  [Q8](https://jaywatnorm.github.io/gridskew/#q8), [Q30](https://jaywatnorm.github.io/gridskew/#q30)).
+
+The carbon forecast tested is the stored forecast, not a day-ahead one.
 
 ## The question
 
