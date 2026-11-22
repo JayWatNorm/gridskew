@@ -7,7 +7,8 @@ forecast error.
 
 GridSkew is a working data platform built around a real analytical question,
 not a tutorial dataset. It applies Python ingestion, PostgreSQL, dbt and Airflow
-to live public APIs and preserves the revisions that those APIs overwrite.
+to live public APIs and keeps every forecast version and every settlement run
+it captures, which those APIs later overwrite.
 
 **Results:** <https://jaywatnorm.github.io/gridskew>
 
@@ -69,13 +70,14 @@ Because gas is dirtier than much of what it replaces, two predictions follow:
    than it falls below it.
 2. Forecasts should revise upwards as the target period approaches.
 
-The first prediction was tested on 19 August 2026 and **was not supported**.
-Across 17,522 half-hour periods, the median error was -1 gCO2/kWh and actual
-intensity exceeded forecast 47.5% of the time, excluding ties.
+No registered result tests the first prediction. Over 17,280 half-hours
+(22 August 2025 to 16 August 2026) the stored forecast's misses have a mean
+size of 9.3 g/kWh with almost no overall bias (mean −0.6 g/kWh;
+[Q29](https://jaywatnorm.github.io/gridskew/#q29)).
 
-That is a weak test of the underlying mechanism because the API's historical
-forecast is a late revision. The second prediction is what the project's own
-forecast archive is designed to test.
+The stored forecast is a late revision, so this says little about the
+mechanism. The second prediction is what the project's own forecast archive
+is designed to test.
 
 ## Why archive the forecasts?
 
@@ -204,7 +206,8 @@ are under `tests/adhoc/`. pytest collects neither.
 Much of the code supports the results rather than the pipeline. The chart
 script renders every figure on the results page from the saved outputs, and
 its tests check each figure's values and the page's text against them. CI
-checks each registered analysis on hand-worked rows before it is read once.
+checks the arithmetic of eleven of the analyses on hand-worked rows, and every
+analysis compiles against the test database.
 
 ## Repository guide
 
