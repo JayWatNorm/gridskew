@@ -4372,7 +4372,8 @@ def test_q1s_figures_beside_its_verdict_come_from_its_beside_output():
         f"{signed_to(correlation['interval_high'], 3)}, "
         f"{int(correlation['n']):,} pairs of changes). Forecast values are "
         f"whole g/kWh and {share_as_percent(zero_share['value'])} of changes "
-        "are zero, so rounding alone pushes that correlation below zero;",
+        "are zero; rounding on its own makes successive changes negatively "
+        "correlated, by an amount not measured here,",
     ]
     assert missing_phrases(expected) == []
 
@@ -4472,42 +4473,76 @@ def test_q10s_answer_and_table_come_from_its_saved_output():
     assert Decimal(half_hour["bias"]) > 0
 
 
+def earliest_and_later(q10, lead_time):
+    """Q10's bias at a lead time on the half-hours before the part not seen
+    and on that part, with each count. The earliest half-hours' bias is not
+    in the saved output: it is the whole sample's total error less the part
+    not seen's, over the half-hours between them."""
+    whole_sample = q10_accuracy(q10, lead_time)
+    not_seen = q10_row(q10, "6", "the part not seen", lead_time)
+    whole_count = int(whole_sample["half_hours"])
+    later_count = int(not_seen["half_hours"])
+    later_bias = Decimal(not_seen["bias"])
+    earliest_count = whole_count - later_count
+    earliest_total = Decimal(whole_sample["bias"]) * whole_count - (
+        later_bias * later_count
+    )
+    return {
+        "earliest_half_hours": earliest_count,
+        "earliest_bias": earliest_total / earliest_count,
+        "later_half_hours": later_count,
+        "later_bias": later_bias,
+    }
+
+
 def test_the_sign_change_is_q10s_whole_window_less_the_part_not_seen():
-    # The earliest half-hours' bias is not in the saved output: it is the
-    # whole sample's total error less the part not seen's, over the
-    # half-hours between them.
     q10 = saved_output_rows(Q10_OUTPUT)
-    earliest_biases = []
-    later_biases = []
-    earliest_counts = set()
-    later_counts = set()
-    for lead_time in Q10_LEAD_TIMES:
-        whole_sample = q10_accuracy(q10, lead_time)
-        not_seen = q10_row(q10, "6", "the part not seen", lead_time)
-        earliest = int(whole_sample["half_hours"]) - int(not_seen["half_hours"])
-        total_error = Decimal(whole_sample["bias"]) * int(
-            whole_sample["half_hours"]
-        ) - Decimal(not_seen["bias"]) * int(not_seen["half_hours"])
-        earliest_biases.append(signed_to(total_error / earliest, 2))
-        later_biases.append(signed_to(not_seen["bias"], 2))
-        earliest_counts.add(earliest)
-        later_counts.add(int(not_seen["half_hours"]))
-    (earliest_half_hours,) = earliest_counts
-    (later_half_hours,) = later_counts
+    day = earliest_and_later(q10, "about 24 hours")
+    four_hours = earliest_and_later(q10, "about 4 hours")
+    half_hour = earliest_and_later(q10, "about half an hour")
+    earliest_change = day["earliest_bias"] - half_hour["earliest_bias"]
+    later_change = day["later_bias"] - half_hour["later_bias"]
+    earliest_half_hours = day["earliest_half_hours"]
+    later_half_hours = day["later_half_hours"]
     sign_change = (
         f"worked by subtraction, the {earliest_half_hours} earliest half-hours "
-        f"(to 10 September) have a bias of {earliest_biases[0]}, "
-        f"{earliest_biases[1]} and {earliest_biases[2]} g/kWh at 24 hours, 4 "
-        f"hours and half an hour ahead, against {later_biases[0]}, "
-        f"{later_biases[1]} and {later_biases[2]} on the {later_half_hours:,} "
-        "from 11 September."
+        "(19 August to 4 September 2026) have a bias of "
+        f"{signed_to(day['earliest_bias'], 2)}, "
+        f"{signed_to(four_hours['earliest_bias'], 2)} and "
+        f"{signed_to(half_hour['earliest_bias'], 2)} g/kWh at 24 hours, 4 hours "
+        f"and half an hour ahead, against {signed_to(day['later_bias'], 2)}, "
+        f"{signed_to(four_hours['later_bias'], 2)} and "
+        f"{signed_to(half_hour['later_bias'], 2)} on the {later_half_hours:,} "
+        "from 11 September. The forecast's mean change from about a day ahead to "
+        "its final version, the 24-hour bias minus the half-hour bias, was about "
+        f"{signed_to(earliest_change, 1)} g/kWh on the {earliest_half_hours} and "
+        f"about {signed_to(later_change, 1)} on the {later_half_hours:,}."
     )
     page = PAGE.read_text(encoding="utf-8")
 
     assert articles_without(page, ["q1", "q10"], sign_change) == []
+    assert four_hours["earliest_half_hours"] == earliest_half_hours
+    assert half_hour["earliest_half_hours"] == earliest_half_hours
     assert q10_row(q10, "6", "the part not seen", "about 24 hours")[
         "first_half_hour"
-    ].startswith("2026-09-11 ")
+    ].startswith("2026-09-11 10:30")
+
+
+def test_q1s_later_half_hours_come_from_its_verdict_and_its_earliest_have_none():
+    verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
+    later = (
+        f"<p>On the {int(verdict['part_not_seen_half_hours']):,} half-hours after "
+        "10 September 2026, 05:30 UTC, the middle change was "
+        f"{signed_without_trailing_zeros(verdict['part_not_seen_median_drift'])} "
+        f"g/kWh and {share_as_percent(verdict['part_not_seen_positive_share'])} "
+        "of non-zero changes were upward. Q10's saved output and the 11 September "
+        "exploration point the other way on the earliest half-hours; Q1's own "
+        "output has no figure for them."
+    )
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert later in article_text(page, "q1")
+    assert "upward drift belongs to" not in page
 
 
 def test_q10s_context_note_comes_from_its_reference_rows():
@@ -4658,19 +4693,22 @@ def test_q10_points_to_the_alignment_limitation_and_it_names_q10():
 
 def test_the_archive_headline_reads_the_same_on_the_page_and_in_the_readme():
     verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
-    day = q10_accuracy(saved_output_rows(Q10_OUTPUT), "about 24 hours")
+    q10 = saved_output_rows(Q10_OUTPUT)
+    day = q10_accuracy(q10, "about 24 hours")
     lead = (
-        "From 11 September to 12 November 2026 the carbon forecast was revised "
-        "upward as each half-hour approached."
+        "After 10 September 2026, up to 12 November, the carbon forecast was "
+        "revised upward as each half-hour approached."
     )
+    earliest = earliest_and_later(q10, "about 24 hours")["earliest_half_hours"]
     rest = (
         "Over the whole window from 19 August 2026 "
         f"({int(verdict['complete_half_hours']):,} half-hours) the middle change "
         "from first to final forecast was "
         f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and a "
         f"day ahead the forecast ran {whole(day['bias'])} g/kWh below NESO's "
-        f"outturn estimate ({int(day['half_hours']):,} half-hours); the earliest "
-        "half-hours, from late August, point the other way"
+        f"outturn estimate ({int(day['half_hours']):,} half-hours); Q10's "
+        f"figures point the other way on its {earliest} earliest half-hours "
+        "(19 August to 4 September 2026)"
     )
     readme = flattened(README.read_text(encoding="utf-8"))
 
