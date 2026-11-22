@@ -23,7 +23,7 @@ axes and gridlines. Each spec sets its data colours, and each colour has
 one meaning on every chart, but for the Q23 charts' fuel-group colours: the
 page registers them for its colour mode as a scheme the specs name.
 
-    python scripts/readme_charts.py <folder of saved outputs> <output folder>
+    python scripts/results_charts.py <folder of saved outputs> <output folder>
 """
 
 import csv
