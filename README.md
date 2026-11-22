@@ -1,11 +1,14 @@
 # gridskew
 
+[![CI](https://github.com/JayWatNorm/gridskew/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JayWatNorm/gridskew/actions/workflows/ci.yml)
+
 Measuring GB electricity grid shortfalls and their effect on carbon intensity
 forecast error.
 
 GridSkew is a working data platform built around a real analytical question,
 not a tutorial dataset. It applies Python ingestion, PostgreSQL, dbt and Airflow
-to live public APIs and preserves the revisions that those APIs overwrite.
+to live public APIs and keeps every forecast version and every settlement run
+it captures, which those APIs later overwrite.
 
 **Results:** <https://jaywatnorm.github.io/gridskew>
 
@@ -18,23 +21,22 @@ with its method, data window and saved output.
 - **Wind strays furthest from its own plan.** With no NESO instruction in
   force, the median wind farm missed its plan by 6.3 to 8.0% of its capacity
   in every whole month from September 2025 to August 2026; the median unit of
-  every other type, by under 3.5% (Q23).
+  every other type, by under 3.5% ([Q23](https://jaywatnorm.github.io/gridskew/#q23)).
 - **Most under-delivery comes with no published outage.** About a quarter
-  (24%) of the 16.4 TWh of under-delivery in 8,675,654 unit half-hours from
-  22 August 2025 to 27 September 2026 came with one; for wind, about a tenth
-  (Q5).
+  (24%, 22 August 2025 to 27 September 2026) came with one; for wind, about
+  a tenth ([Q5](https://jaywatnorm.github.io/gridskew/#q5)).
 - **NESO flags almost all the energy its instructions move at wind farms as
-  system actions**, possibly for network reasons: 97% of 13.4 TWh over the
-  settlement months August 2025 to September 2026 (Q24).
+  system actions**, possibly for network reasons: 97% over the settlement
+  months August 2025 to September 2026 ([Q24](https://jaywatnorm.github.io/gridskew/#q24)).
 - **The carbon forecast's misses barely track under-delivery.** In the fifth
-  of 17,278 half-hours (22 August 2025 to 16 August 2026) with the biggest
-  carbon misses, under-delivery was only 5% larger than in the fifth with
-  the smallest; the test needed 25% (Q28; the final forecast, not the
-  day-ahead one).
-- **Nor do demand-forecast misses track them more.** Over the same 17,278
-  half-hours, the demand forecast's miss and under-delivery have rank
-  correlations of only 0.04 and 0.05 with the size of the carbon miss, no
-  clear difference between them (Q8).
+  of half-hours with the biggest carbon misses (22 August 2025 to 16 August
+  2026), under-delivery was only 5% larger than in the fifth with the
+  smallest; the test needed 25%. Over the same dates, misses in NESO's
+  demand and wind forecasts have rank correlations of only 0.04 and 0.01
+  with the size of the carbon miss ([Q28](https://jaywatnorm.github.io/gridskew/#q28),
+  [Q8](https://jaywatnorm.github.io/gridskew/#q8), [Q30](https://jaywatnorm.github.io/gridskew/#q30)).
+
+The carbon forecast tested is the stored forecast, not a day-ahead one.
 
 ## The question
 
@@ -45,6 +47,10 @@ with its method, data window and saved output.
    intensity forecast error for the same periods.
 3. **Explain them.** Test planned and unplanned outages (`REMIT`), demand
    forecast error and market stress signals as possible explanations.
+
+The [rules](docs/research-questions.md#terms) call the shortfall NESO did not
+instruct *unexplained shortfall*; the results page calls its positive part
+*under-delivery*.
 
 The analysis stays at unit level because aggregating to fuel type first can
 wash out the signal. It covers every registered unit with a published fuel
@@ -64,13 +70,14 @@ Because gas is dirtier than much of what it replaces, two predictions follow:
    than it falls below it.
 2. Forecasts should revise upwards as the target period approaches.
 
-The first prediction was tested on 19 August 2026 and **was not supported**.
-Across 17,522 half-hour periods, the median error was -1 gCO2/kWh and actual
-intensity exceeded forecast 47.5% of the time, excluding ties.
+No registered result tests the first prediction. Over 17,280 half-hours
+(22 August 2025 to 16 August 2026) the stored forecast's misses have a mean
+size of 9.3 g/kWh with almost no overall bias (mean −0.6 g/kWh;
+[Q29](https://jaywatnorm.github.io/gridskew/#q29)).
 
-That is a weak test of the underlying mechanism because the API's historical
-forecast is a late revision. The second prediction is what the project's own
-forecast archive is designed to test.
+The stored forecast is a late revision, so this says little about the
+mechanism. The second prediction is what the project's own forecast archive
+is designed to test.
 
 ## Why archive the forecasts?
 
@@ -103,7 +110,7 @@ missed revisions cannot be recovered.
 
 | Source | Role |
 |---|---|
-| **Elexon Insights** | Physical notifications, metered BM-unit energy, balancing instructions, balancing services volume, outage notices and the BM-unit registry |
+| **Elexon Insights (the BMRS API)** | Physical notifications, metered BM-unit energy, balancing instructions, balancing services volume, outage notices and the BM-unit registry |
 | **Elexon Insights, demand** | NESO's national demand forecast (`NDF`) and initial outturn (`INDO`), a one-off back-fill of a year |
 | **Elexon Insights, wind** | NESO's wind generation forecast (`WINDFOR`) and metered wind outturn (`FUELHH`), daily beside a year's back-fill |
 | **NESO Carbon Intensity API** | Half-hourly national carbon intensity forecasts and outturn |
@@ -152,6 +159,10 @@ time behaviour differs. See
 - Carbon intensity data from the NESO Carbon Intensity API
   ([carbonintensity.org.uk](https://carbonintensity.org.uk/)), licensed under
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Historic generation mix from the
+  [NESO Data Portal](https://www.neso.energy/data-portal/historic-generation-mix),
+  Supported by National Energy SO Open Data, under the
+  [NESO Open Data Licence v1.0](https://www.neso.energy/data-portal/ngeso-open-licence).
 
 Neither provider endorses this project.
 
@@ -184,6 +195,9 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
+CI runs these tests, plus linting, the dbt build and the database checks, on
+every pull request and every push to `main`.
+
 The dbt project has separate setup and test instructions in
 [dbt/README.md](dbt/README.md). The checks CI runs against its throwaway
 database are scripts under `tests/integration/`; the live-API explorations
@@ -191,9 +205,9 @@ are under `tests/adhoc/`. pytest collects neither.
 
 Much of the code supports the results rather than the pipeline. The chart
 script renders every figure on the results page from the saved outputs, and
-its tests check each figure's values and the page's text against them; the
-one-look checks prove each analysis's arithmetic on hand-worked rows before
-its single read.
+its tests check each figure's values and the page's text against them. CI
+checks the arithmetic of eleven of the analyses on hand-worked rows, and every
+analysis compiles against the test database.
 
 ## Repository guide
 
@@ -279,10 +293,11 @@ repository's release runbook, which is not public.
   final version under a reading rule fixed in advance; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 
-**Next**
+**Not yet read**
 
 - Q1 and Q10, how the carbon forecast drifts as a half-hour approaches and
-  how accurate it is at each lead time, are read from 21 November 2026.
+  how accurate it is at each lead time: the population is complete at the
+  12 November 2026 cutoff; neither is read yet.
 
 The questions registered but not yet read, and their rules, are listed on the
 results page. System prices and weather remain later extensions.
