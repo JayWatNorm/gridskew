@@ -16,7 +16,7 @@ rule; a variant (Q2-RF, Q22-RF) shares its parent's number.
 
 | ID | Question, in short | Status |
 |---|---|---|
-| [Q1](#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version) | Carbon forecast drift, first to final version | waiting (the read, on or after 21 November 2026) |
+| [Q1](#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version) | Carbon forecast drift, first to final version | waiting (population complete at the 12 November 2026 23:30 UTC cutoff; not yet read) |
 | [Q2](#q2-how-much-does-metered-output-change-between-settlement-runs) | Metered output between settlement runs | read (11 October 2026) |
 | [Q2-RF](#q2-rf-how-much-does-metered-output-change-from-r3-to-rf) | Metered output, R3 to RF | registered, not pursued |
 | [Q2-R2RF](#q2-r2rf-how-much-does-metered-output-change-from-r2-to-rf) | Metered output, R2 to RF | registered, not pursued |
@@ -235,9 +235,9 @@ published analysis of the same forecast (gridcast), using revisions from
 20 August 2026 that overlap this population, finds successive revisions
 negatively correlated.
 
-The population reached 2,880 complete half-hours on 12 November 2026. The
-look uses the cutoff of 12 November 2026 23:30 UTC, where it holds 2,910
-complete half-hours, and is read on or after 21 November 2026.
+The population reached 2,880 complete half-hours on 12 November 2026 and is
+complete at the cutoff of 12 November 2026 23:30 UTC, with 2,910 complete
+half-hours. Not yet read.
 
 **Rule:**
 
@@ -705,7 +705,7 @@ published third-party score and Q29's monthly results, a mean absolute
 error of about 13.7 from 17 August to 28 September 2026. No mean absolute
 error of the forecasts this rule reads was computed.
 
-Read with Q1, on or after 21 November 2026 at Q1's cutoff.
+Read with Q1, at Q1's cutoff. Not yet read.
 
 **Rule:**
 
