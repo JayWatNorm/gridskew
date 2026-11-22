@@ -155,6 +155,10 @@ time behaviour differs. See
 - Carbon intensity data from the NESO Carbon Intensity API
   ([carbonintensity.org.uk](https://carbonintensity.org.uk/)), licensed under
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Historic generation mix from the
+  [NESO Data Portal](https://www.neso.energy/data-portal/historic-generation-mix),
+  Supported by National Energy SO Open Data, under the
+  [NESO Open Data Licence v1.0](https://www.neso.energy/data-portal/ngeso-open-licence).
 
 Neither provider endorses this project.
 
