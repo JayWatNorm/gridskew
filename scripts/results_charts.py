@@ -373,7 +373,7 @@ Q2_TITLE = "Where the {gigawatt_hours} GWh of revisions for {week} came from"
 # docs/research-questions.md), which a test holds this to.
 Q2_WEEK = "10–16 Aug 2026"
 Q2_AXIS_TITLE = "Share of the energy revised, %"
-Q3_TITLE = "Most fuel types produce slightly less than planned, with wide spreads"
+Q3_TITLE = "Most fuel groups' typical half-hour falls below plan, with wide spreads"
 Q12_TITLE = (
     "Instructions are most of the gap for gas, hydro, pumped storage and the "
     "other group, under half for wind and bioenergy"

@@ -28,7 +28,8 @@ with its method, data window and saved output.
 - **NESO flags almost all the energy its instructions move at wind farms as
   system actions**, possibly for network reasons: 97% over the settlement
   months August 2025 to September 2026 ([Q24](https://jaywatnorm.github.io/gridskew/#q24)).
-- **The carbon forecast's misses barely track under-delivery.** In the fifth
+- **The carbon forecast's misses only slightly track under-delivery, and
+  barely track misses in NESO's demand and wind forecasts.** In the fifth
   of half-hours with the biggest carbon misses (22 August 2025 to 16 August
   2026), under-delivery was only 5% larger than in the fifth with the
   smallest; the test needed 25%. Over the same dates, misses in NESO's
@@ -39,8 +40,8 @@ with its method, data window and saved output.
   revised upward as each half-hour approached.** Over the whole window from
   19 August 2026 (2,910 half-hours) the middle change from first to final
   forecast was +19 g/kWh, and a day ahead the forecast ran 21 g/kWh below
-  NESO's outturn estimate (2,864 half-hours); Q10's figures point the other
-  way on its 365 earliest half-hours (19 August to 4 September 2026)
+  NESO's outturn estimate (2,864 half-hours); the accuracy figures point the
+  other way on the 365 earliest half-hours (19 August to 4 September 2026)
   ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
 The carbon forecast set against under-delivery, demand and wind is the stored
