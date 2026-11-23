@@ -1,0 +1,213 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "against_plan_pct": "number",
+        "metered_mwh": "number",
+        "planned_mwh": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q3_energy_against_plan_by_fuel_group.csv"
+  },
+  "description": "Each fuel group's metered energy against the energy it planned",
+  "height": 170,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": 0
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "name": "zero line",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "color": {
+          "field": "fuel_group_name",
+          "legend": null,
+          "scale": {
+            "domain": [
+              "Wind",
+              "Other",
+              "Bioenergy",
+              "Nuclear",
+              "Hydro",
+              "Gas",
+              "Pumped storage",
+              "Interconnector"
+            ],
+            "scheme": {
+              "expr": "\"gridskew-fuel-groups\""
+            }
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "fuel_group_name",
+            "title": "Fuel group",
+            "type": "nominal"
+          },
+          {
+            "field": "label",
+            "title": "Metered against planned",
+            "type": "nominal"
+          },
+          {
+            "field": "metered_twh",
+            "format": ".2f",
+            "title": "Metered, TWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "planned_twh",
+            "format": ".2f",
+            "title": "Planned, TWh",
+            "type": "quantitative"
+          },
+          {
+            "field": "unit_periods",
+            "format": ",",
+            "title": "Half-hours, all units",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Metered energy against planned energy, %,",
+              "22 Aug 2025 \u2013 26 Sep 2026",
+              "left: below plan \u00b7 right: above plan"
+            ]
+          },
+          "field": "against_plan_pct",
+          "scale": {
+            "padding": 64
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Wind",
+            "Gas",
+            "Nuclear",
+            "Bioenergy",
+            "Hydro"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "cornerRadiusEnd": 3,
+        "type": "bar"
+      }
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "label",
+          "type": "nominal"
+        },
+        "x": {
+          "axis": {
+            "title": [
+              "Metered energy against planned energy, %,",
+              "22 Aug 2025 \u2013 26 Sep 2026",
+              "left: below plan \u00b7 right: above plan"
+            ]
+          },
+          "field": "against_plan_pct",
+          "scale": {
+            "padding": 64
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "fuel_group_name",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Wind",
+            "Gas",
+            "Nuclear",
+            "Bioenergy",
+            "Hydro"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "align": {
+          "expr": "datum.against_plan_pct < 0 ? 'right' : 'left'"
+        },
+        "dx": {
+          "expr": "datum.against_plan_pct < 0 ? -4 : 4"
+        },
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is a fuel group's metered energy over the\", \"whole period, as a percentage above or below the\", \"energy its units planned. Every half-hour counts, with\", \"or without a NESO instruction; groups that also take\", \"power in are left out.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is a fuel group's metered energy over the whole period,\", \"as a percentage above or below the energy its units planned.\", \"Every half-hour counts, with or without a NESO instruction;\", \"groups that also take power in are left out.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is a fuel group's metered energy over the whole period, as a\", \"percentage above or below the energy its units planned. Every half-hour counts,\", \"with or without a NESO instruction; groups that also take power in are left\", \"out.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is a fuel group's metered energy over the whole period, as a percentage above or\", \"below the energy its units planned. Every half-hour counts, with or without a NESO\", \"instruction; groups that also take power in are left out.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is a fuel group's metered energy over the whole period, as a percentage above or below the energy\", \"its units planned. Every half-hour counts, with or without a NESO instruction; groups that also take power\", \"in are left out.\"] : ([\"Each bar is a fuel group's metered energy over the whole period, as a percentage above or below the energy its units\", \"planned. Every half-hour counts, with or without a NESO instruction; groups that also take power in are left out.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Each fuel group's metered energy against the\", \"energy it planned\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each fuel group's metered energy against the energy it\", \"planned\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each fuel group's metered energy against the energy it planned\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each fuel group's metered energy against the energy it planned\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each fuel group's metered energy against the energy it planned\"] : ([\"Each fuel group's metered energy against the energy it planned\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "fuel_group_name",
+      "calculate": "datum.fuel_group == \"\" ? \"All fuel groups\" : datum.fuel_group == \"bioenergy\" ? \"Bioenergy\" : datum.fuel_group == \"coal\" ? \"Coal\" : datum.fuel_group == \"gas_turbine\" ? \"Gas\" : datum.fuel_group == \"hydro\" ? \"Hydro\" : datum.fuel_group == \"interconnector\" ? \"Interconnector\" : datum.fuel_group == \"nuclear\" ? \"Nuclear\" : datum.fuel_group == \"oil\" ? \"Oil\" : datum.fuel_group == \"other\" ? \"Other\" : datum.fuel_group == \"pumped_storage\" ? \"Pumped storage\" : datum.fuel_group == \"unclassified\" ? \"Unclassified\" : datum.fuel_group == \"wind\" ? \"Wind\" : datum.fuel_group"
+    },
+    {
+      "as": "metered_twh",
+      "calculate": "datum.metered_mwh / 1000000"
+    },
+    {
+      "as": "planned_twh",
+      "calculate": "datum.planned_mwh / 1000000"
+    }
+  ],
+  "width": "container"
+}

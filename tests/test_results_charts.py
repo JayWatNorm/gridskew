@@ -304,8 +304,8 @@ NEW_SAVED_OUTPUTS = {
         "q1_deviation_mwh,q3_deviation_mwh,abs_metered_mwh,abs_pn_mwh",
         "wind,400,20,2025-08-22,2026-09-26,0.300,-1.000,2.900,9000.0,9500.0",
         "coal,90,3,2025-08-22,2026-09-26,0.000,0.000,0.000,1.0,0.0",
-        "nuclear,150,8,2025-08-22,2026-09-26,0.250,0.000,2.600,8000.0,8100.0",
-        "gas_turbine,300,15,2025-08-22,2026-09-26,0.170,0.000,1.100,7000.0,6900.0",
+        "nuclear,150,8,2025-08-22,2026-09-26,0.250,0.000,2.600,7897.5,8100.0",
+        "gas_turbine,300,15,2025-08-22,2026-09-26,0.170,0.000,1.100,6906.9,6900.0",
     ],
     "q3_coverage.csv": [
         "section,breakdown,item,unit_periods,abs_metered_mwh,abs_pn_mwh",
@@ -499,6 +499,16 @@ EXPECTED_CHART_CSVS = {
     "wind,400,-1.000,0.300,2.900,18.250\n"
     "nuclear,150,0.000,0.250,2.600,135.000\n"
     "gas_turbine,300,0.000,0.170,1.100,40.000\n",
+    # Metered against planned energy, one-way groups only (coal, with no
+    # plan, is left out). Wind: 9,000 against 9,500 MWh, 5.2632% below.
+    # Nuclear: 7,897.5 against 8,100, exactly 2.5% below, so 3% (halves
+    # round away from zero). Gas: 6,906.9 against 6,900, 0.1% above, which
+    # rounds to nothing and keeps its direction as "under 1%".
+    "q3_energy_against_plan_by_fuel_group.csv": BMRS_LINE
+    + "fuel_group,unit_periods,metered_mwh,planned_mwh,against_plan_pct,label\n"
+    "wind,400,9000.0,9500.0,-5.2632,5% below\n"
+    "nuclear,150,7897.5,8100.0,-2.5000,3% below\n"
+    "gas_turbine,300,6906.9,6900.0,0.1000,under 1% above\n",
     "q12_instructed_share_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,unit_periods,instructed_mwh,rest_mwh,parts_mwh,"
     "instructed_share_pct\n"
@@ -695,6 +705,9 @@ WRITTEN_FILES = [
     "q30_rank_correlations.vl.json",
     "q30_wind_vs_carbon_error.csv",
     "q3_coverage.csv",
+    "q3_energy_against_plan_by_fuel_group.csv",
+    "q3_energy_against_plan_by_fuel_group.png",
+    "q3_energy_against_plan_by_fuel_group.vl.json",
     "q3_gap_from_plan_by_fuel_group.csv",
     "q3_gap_from_plan_by_fuel_group.png",
     "q3_gap_from_plan_by_fuel_group.vl.json",
@@ -835,6 +848,34 @@ def x_domains(node, domains):
         domain = value.get("scale", {}).get("domain")
         if domain is not None and domain not in domains:
             domains.append(domain)
+
+
+def reversed_x_scales(node, found):
+    """Whether any x scale in a spec runs right to left, or any x is sorted
+    in descending order."""
+    if isinstance(node, list):
+        for item in node:
+            reversed_x_scales(item, found)
+        return
+    if not isinstance(node, dict):
+        return
+    for key, value in node.items():
+        reversed_x_scales(value, found)
+        if key != "x" or not isinstance(value, dict):
+            continue
+        scale = value.get("scale") or {}
+        if scale.get("reverse") or value.get("sort") in ("descending", "-x"):
+            found.append(value.get("field", "x"))
+
+
+def specs_reading_right_to_left(folder):
+    names = []
+    for name, spec in written_specs(folder).items():
+        found = []
+        reversed_x_scales(spec, found)
+        if found:
+            names.append(name)
+    return names
 
 
 def x_domains_by_spec(folder):
@@ -1549,6 +1590,7 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q30_rank_correlations.csv": BMRS_AND_CARBON_LINE,
         "q30_wind_vs_carbon_error.csv": BMRS_AND_CARBON_LINE,
         "q3_coverage.csv": BMRS_LINE,
+        "q3_energy_against_plan_by_fuel_group.csv": BMRS_LINE,
         "q3_gap_from_plan_by_fuel_group.csv": BMRS_LINE,
         "q3_metered_vs_notified.csv": BMRS_LINE,
         "q5_shortfall_with_known_outage.csv": BMRS_LINE,
@@ -1701,6 +1743,9 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
             "results/q2_moved_energy_by_unit_type.csv"
         ),
         "q30_rank_correlations.vl.json": "results/q30_rank_correlations.csv",
+        "q3_energy_against_plan_by_fuel_group.vl.json": (
+            "results/q3_energy_against_plan_by_fuel_group.csv"
+        ),
         "q3_gap_from_plan_by_fuel_group.vl.json": (
             "results/q3_gap_from_plan_by_fuel_group.csv"
         ),
@@ -1725,6 +1770,13 @@ def test_every_fixed_axis_spans_its_whole_scale(written):
         "q2_moved_energy_by_unit_type.vl.json": [[0, 100]],
         "q30_rank_correlations.vl.json": [[-0.3, 0.3]],
     }
+
+
+def test_no_chart_reads_right_to_left(written):
+    # Each chart's axis says which side is which ("left: below plan"); a
+    # reversed scale would put every bar on the wrong side of those words.
+    assert specs_reading_right_to_left(written) == []
+    assert len(written_specs(written)) == 16
 
 
 def test_reference_lines_sit_where_the_rules_put_them(written):
@@ -1792,6 +1844,7 @@ def test_fuel_group_charts_colour_each_group_from_the_shared_scheme(written):
             ("point", group),
             ("point", group),
         ],
+        "q3_energy_against_plan_by_fuel_group.vl.json": [("bar", group)],
         "q3_gap_from_plan_by_fuel_group.vl.json": [("rule", group), ("point", group)],
         "q5_under_delivery_by_outage_notice.vl.json": [("bar", part), ("point", group)],
     }
@@ -1823,6 +1876,7 @@ def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
     # months; Q2's week is its rule's.
     q3 = "22 Aug 2025 – 26 Sep 2026"
     assert q3 in x_axis_titles(written, "q3_gap_from_plan_by_fuel_group.vl.json")
+    assert q3 in x_axis_titles(written, Q3_ENERGY_CHART)
     assert q3 in x_axis_titles(written, "q12_instructed_share_by_fuel_group.vl.json")
     assert "22 Aug 2025 – 27 Sep 2026" in x_axis_titles(
         written, "q5_under_delivery_by_outage_notice.vl.json"
@@ -1838,6 +1892,10 @@ def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
             ]
         )
     )
+
+
+Q3_ENERGY_CHART = "q3_energy_against_plan_by_fuel_group.vl.json"
+Q3_ENERGY_CSV = "q3_energy_against_plan_by_fuel_group.csv"
 
 
 def with_dates_moved(path, moves):
@@ -1865,6 +1923,7 @@ def test_each_energy_range_moves_with_its_saved_outputs_dates(tmp_path):
 
     q3 = "23 Aug 2025 – 25 Sep 2026"
     assert q3 in x_axis_titles(written_folder, "q3_gap_from_plan_by_fuel_group.vl.json")
+    assert q3 in x_axis_titles(written_folder, Q3_ENERGY_CHART)
     assert q3 in x_axis_titles(
         written_folder, "q12_instructed_share_by_fuel_group.vl.json"
     )
@@ -2451,14 +2510,17 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         median_gaps[row["fuel_group"]] = Decimal(row["median_deviation_mwh"])
     afternoon = one_row(q29, "item", "UTC block 12:00-17:59")["mean_error"]
     evening = one_row(q29, "item", "UTC block 18:00-23:59")["mean_error"]
-    assert answer_of(page, "q3") == (
-        "<strong>Below plan in the typical half-hour, for most groups.</strong> "
+    assert (
+        "<summary>The typical half-hour: the measure set in advance</summary>\n"
+        "      <p><strong>Below plan in the typical half-hour, for most groups."
+        "</strong> "
         "At wind, gas, nuclear, bioenergy and other units the median half-hour "
         "fell short of plan; for hydro, pumped storage and interconnectors the "
         "median gap is zero. "
         "Wind's spread is wide: a quarter of its half-hours fell over "
         f"{tenths(wind_gap['q3_deviation_mwh'])} MWh short and a quarter ran over "
-        f"{whole(-Decimal(wind_gap['q1_deviation_mwh']))} MWh above."
+        f"{whole(-Decimal(wind_gap['q1_deviation_mwh']))} MWh above.</p>"
+        in fold_outs(page, "q3")
     )
     drawn = set(median_gaps) - {"coal"}
     named_short = {"wind", "gas_turbine", "nuclear", "bioenergy", "other"}
@@ -4381,6 +4443,19 @@ def test_each_result_states_beside_it_the_dates_its_saved_output_or_read_covers(
     )
 
 
+def test_no_instruction_reached_a_nuclear_unit_as_the_fuel_group_limit_says():
+    # The fuel-group answer's limit line says instructions make up none of
+    # nuclear's gap: the instructed-share output holds no instructed
+    # half-hour and no instructed energy for nuclear.
+    nuclear = one_row(
+        saved_output_rows("q12_instructed_vs_residual.csv"), "fuel_group", "nuclear"
+    )
+
+    assert int(nuclear["instructed_periods"]) == 0
+    assert Decimal(nuclear["abs_instructed_deviation_mwh"]) == 0
+    assert "and none of nuclear's." in VISIBLE_LIMITS["q3"]
+
+
 def test_the_limitations_name_the_results_that_set_one_measure_against_another():
     # Q5 sets under-delivery against outage notices, Q8 and Q28 against the
     # carbon miss, Q30 the wind miss against it; each is an article on the
@@ -5389,6 +5464,48 @@ def test_q3_chart_draws_only_the_years_spread_and_median(written):
     ]
 
 
+def test_q3_energy_chart_draws_one_bar_a_group_with_its_direction_in_words(
+    written,
+):
+    # The bar's length is the percentage; the words beside it are the CSV's
+    # label, so the direction is read, not inferred from a sign.
+    assert marks_by_x_field(written, Q3_ENERGY_CHART) == [
+        ("bar", "against_plan_pct"),
+        ("text", "against_plan_pct"),
+    ]
+    assert text_fields_drawn(written, Q3_ENERGY_CHART) == [
+        ("label", "against_plan_pct")
+    ]
+    assert "left: below plan · right: above plan" in x_axis_titles(
+        written, Q3_ENERGY_CHART
+    )
+    assert titles_with_figures(written, [Q3_ENERGY_CHART]) == {}
+
+
+def test_a_one_way_group_with_no_planned_energy_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    with_dates_moved(
+        saved / "q3_metered_vs_notified.csv", {"9000.0,9500.0": "9000.0,0.0"}
+    )
+
+    with pytest.raises(ValueError, match="no planned energy for wind"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_metered_energy_equal_to_plan_is_labelled_level_not_above_or_below(
+    tmp_path,
+):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    with_dates_moved(
+        saved / "q3_metered_vs_notified.csv", {"6906.9,6900.0": "6900.0,6900.0"}
+    )
+    write_charts(saved, tmp_path / "out")
+
+    assert "gas_turbine,300,6900.0,6900.0,0.0000,level with plan\n" in (
+        tmp_path / "out" / Q3_ENERGY_CSV
+    ).read_text(encoding="utf-8")
+
+
 def test_q23_typical_chart_prints_each_bars_values_at_its_end(written):
     # Every bar's value, and the pale line's where it is drawn.
     assert unlabelled_values(written, "q23_typical_gap_by_fuel_group.csv") == []
@@ -5556,6 +5673,7 @@ def test_every_chart_shows_fuel_groups_by_their_display_names_only(written):
         "q23_typical_gap_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
         "q24_flagged_share_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
         "q25_short_instructions_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
+        "q3_energy_against_plan_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
         "q3_gap_from_plan_by_fuel_group.vl.json": FUEL_GROUP_DISPLAY_NAMES,
         "q5_under_delivery_by_outage_notice.vl.json": FUEL_GROUP_DISPLAY_NAMES,
     }
@@ -5744,6 +5862,7 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
     assert specs == [
         "results/q23_typical_gap_by_fuel_group.vl.json",
         "results/q23_monthly_gap_by_fuel_group.vl.json",
+        "results/q3_energy_against_plan_by_fuel_group.vl.json",
         "results/q3_gap_from_plan_by_fuel_group.vl.json",
         "results/q12_instructed_share_by_fuel_group.vl.json",
         "results/q5_under_delivery_by_outage_notice.vl.json",
@@ -5831,9 +5950,12 @@ ASTERISK_TARGETS_ELSEWHERE = {
 VISIBLE_LIMITS = {
     "q23": "<p>The gap shows how far a unit strayed from its plan, not why.</p>",
     "q3": (
-        "<p>The median shows which way the typical half-hour leans, not how "
-        "much energy a group gained or lost, and a 2 MW unit counts the same as "
-        "a 1 GW unit.</p>"
+        "<p>These totals include half-hours when NESO told units to change "
+        "output, such as asking wind farms to cut back; instructions make up "
+        "most of gas's and hydro's gaps"
+        '<a class="ref" href="#q12" aria-label="Details, Q12">*</a> and none of '
+        "nuclear's. So each percentage mixes NESO's instructions with units "
+        "straying from their own plans.</p>"
     ),
     "q12": (
         "<p>The part not instructed is not all the unit's doing: it holds "
@@ -6114,6 +6236,7 @@ def caption_windows(page):
         "q23-monthly-chart": (
             f"{q23_chart_months(True)}; September 2026 is on early meter data"
         ),
+        "q3-energy-chart": q3,
         "q3-chart": q3,
         "q12-chart": q3,
         "q5-chart": q5,
@@ -6144,7 +6267,10 @@ def caption_counts():
         "rho_abs (primary): abs(wind error, outturn with cohort curtailment "
         "add-back) with abs(error_api_final)",
     )
+    one_way = saved_output_rows(Q3_ENERGY_CSV)
     return {
+        "one-way unit half-hours": f"{int(summed(one_way, 'unit_periods')):,}",
+        "one-way groups": NUMBER_WORDS[len(one_way)],
         "unit half-hours": f"{int(summed(q3, 'unit_periods')):,}",
         "under-delivery, TWh": tenths(under_delivery_mwh / 1_000_000),
         "Q29 half-hours": f"{int(one_row(q29, 'section', '1')['half_hours']):,}",
@@ -6168,6 +6294,12 @@ def expected_captions(windows, counts):
         ),
         "q23-monthly-chart": (
             f"{no_instruction}, {windows['q23-monthly-chart']}. {elexon}"
+        ),
+        "q3-energy-chart": (
+            f"{counts['one-way unit half-hours']} half-hours of individual units "
+            f"in {counts['one-way groups']} fuel groups, "
+            f"{windows['q3-energy-chart']}; gas's and nuclear's figures are "
+            f"approximate. {elexon}"
         ),
         "q3-chart": f"{unit_half_hours}, {windows['q3-chart']}. {elexon}",
         "q12-chart": f"{unit_half_hours}, {windows['q12-chart']}. {elexon}",
@@ -6271,6 +6403,265 @@ def test_the_contents_list_each_section_and_question_in_its_headings_words():
 
     assert listed == headings_in_page_order(page)
     assert len(listed) == len(ARTICLE_IDS) + 8
+
+
+# The groups whose units send power one way: the only ones a metered total
+# against a planned total is stated for.
+ONE_WAY_FUEL_GROUPS = ["wind", "gas_turbine", "nuclear", "bioenergy", "hydro"]
+GROUPS_WITHOUT_A_PERCENTAGE = ["pumped_storage", "other", "interconnector", "coal"]
+DRAW_ON_OPENING = (
+    'document.getElementById("{box}").closest("details")'
+    '.addEventListener("toggle", function () {{\n'
+    "    if (this.open) {{\n"
+    '      vegaEmbed("#{box}", "{spec}", chartOptions);\n'
+    "    }}\n"
+    "  }});"
+)
+
+
+def against_plan_percentages(q3_rows):
+    """Per fuel group with planned energy, its metered total as an exact
+    percentage above (positive) or below its planned total."""
+    percentages = {}
+    for row in q3_rows:
+        planned = Decimal(row["abs_pn_mwh"])
+        if planned == 0:
+            continue
+        metered = Decimal(row["abs_metered_mwh"])
+        percentages[row["fuel_group"]] = Decimal(100) * (metered - planned) / planned
+    return percentages
+
+
+def whole_percent(percentage):
+    """The size of a percentage to the nearest whole percent, halves away
+    from zero; its direction is said in words beside it."""
+    return whole(abs(percentage))
+
+
+def direction_in_words(percentage):
+    if percentage > 0:
+        return "above"
+    return "below"
+
+
+def twh(mwh):
+    return tenths(Decimal(mwh) / 1_000_000)
+
+
+def chart_boxes_inside_fold_outs(page):
+    return re.findall(r'<div class="chart" id="([^"]+)">', every_fold_out(page))
+
+
+def folded_charts_not_drawn_on_opening(page):
+    """Chart boxes inside a fold-out that the page does not draw each time
+    the fold-out opens, or draws at load as well."""
+    specs = specs_by_chart_box()
+    wrong = []
+    for box in chart_boxes_inside_fold_outs(page):
+        handler = DRAW_ON_OPENING.format(box=box, spec=specs[box])
+        drawn_once_in_the_handler = page.count(f'vegaEmbed("#{box}"') == 1
+        if handler not in page or not drawn_once_in_the_handler:
+            wrong.append(box)
+    return wrong
+
+
+def percentages_with_idle_draw_taken_off(q3_rows, drawing_power_rows):
+    """Per one-way group, its metered total against plan with the power its
+    units drew when nothing was expected of them taken off, not added: the
+    saved total adds the draw's size, so it comes off twice."""
+    percentages = {}
+    for group in ONE_WAY_FUEL_GROUPS:
+        row = one_row(q3_rows, "fuel_group", group)
+        drawn = Decimal(
+            one_row(section_rows(drawing_power_rows, "1"), "fuel_group", group)[
+                "drawing_power_expected_at_or_below_zero_mwh"
+            ]
+        )
+        planned = Decimal(row["abs_pn_mwh"])
+        sent_out_net = Decimal(row["abs_metered_mwh"]) - 2 * drawn
+        percentages[group] = Decimal(100) * (sent_out_net - planned) / planned
+    return percentages
+
+
+def groups_whose_whole_percent_moves(as_saved, with_draw_taken_off):
+    moved = []
+    for group in ONE_WAY_FUEL_GROUPS:
+        if whole_percent(as_saved[group]) != whole_percent(with_draw_taken_off[group]):
+            moved.append(group)
+    return moved
+
+
+def instructed_share_bounds(q3_rows, q12_rows, fuel_group):
+    """The least and most of a group's gap between its totals that NESO's
+    instructions can account for. The gap is the instructed part plus the
+    rest; the rest is no larger than its summed size, and the instructed
+    part no larger than its own."""
+    totals = one_row(q3_rows, "fuel_group", fuel_group)
+    parts = one_row(q12_rows, "fuel_group", fuel_group)
+    gap = abs(Decimal(totals["abs_metered_mwh"]) - Decimal(totals["abs_pn_mwh"]))
+    rest = Decimal(parts["abs_unexplained_shortfall_mwh"])
+    instructed = Decimal(parts["abs_instructed_deviation_mwh"])
+    return {
+        "at least": (gap - rest) / gap,
+        "at most": min(instructed, gap + rest) / gap,
+    }
+
+
+def test_q3s_answer_gives_the_direction_then_each_groups_energy_against_plan():
+    # The registered result is the direction of the typical half-hour; the
+    # percentages are scale from the same saved output. Each is a whole
+    # percent, halves away from zero, with "less" or "more" for its sign; a
+    # percentage that rounded to nothing would hide its sign, so none may.
+    # Gas leads the totals because its typical half-hour leans the other way.
+    q3 = saved_output_rows("q3_metered_vs_notified.csv")
+    against_plan = against_plan_percentages(q3)
+    wind = against_plan["wind"]
+    hydro = against_plan["hydro"]
+    gas = against_plan["gas_turbine"]
+    nuclear = against_plan["nuclear"]
+    bioenergy = against_plan["bioenergy"]
+
+    assert answer_of(PAGE.read_text(encoding="utf-8"), "q3") == (
+        "<strong>Below plan in the typical half-hour, for most groups.</strong> "
+        "Added up over the whole period, the totals can lean the other way: "
+        "the energy metered at gas units came to about "
+        f"{whole_percent(gas)}% more than planned, while wind units came to "
+        f"{whole_percent(wind)}% less and hydro units {whole_percent(hydro)}% "
+        "less. Nuclear and bioenergy units each came to about "
+        f"{whole_percent(nuclear)}% less."
+    )
+    assert max(wind, hydro, nuclear, bioenergy) < 0 < gas
+    assert Decimal(one_row(q3, "fuel_group", "gas_turbine")["median_deviation_mwh"]) > 0
+    assert whole_percent(bioenergy) == whole_percent(nuclear)
+    for group in ONE_WAY_FUEL_GROUPS:
+        assert whole_percent(against_plan[group]) != "0"
+
+
+def test_q3s_energy_chart_holds_the_one_way_groups_from_the_saved_output():
+    # The committed chart data against the committed saved output. Coal has
+    # no plan; the other three take power in as well as send it out, and
+    # the saved totals add sizes whatever their direction.
+    q3 = saved_output_rows("q3_metered_vs_notified.csv")
+    against_plan = against_plan_percentages(q3)
+    chart = saved_output_rows(Q3_ENERGY_CSV)
+    drawn = []
+    for row in chart:
+        drawn.append(row["fuel_group"])
+
+    assert drawn == ONE_WAY_FUEL_GROUPS
+    assert sorted([*drawn, *GROUPS_WITHOUT_A_PERCENTAGE]) == sorted(
+        column_strata_of(q3, "fuel_group")
+    )
+    for row in chart:
+        saved = one_row(q3, "fuel_group", row["fuel_group"])
+        percentage = against_plan[row["fuel_group"]]
+        assert row["metered_mwh"] == saved["abs_metered_mwh"]
+        assert row["planned_mwh"] == saved["abs_pn_mwh"]
+        assert row["unit_periods"] == saved["unit_periods"]
+        assert Decimal(row["against_plan_pct"]) == percentage.quantize(
+            Decimal("0.0001"), rounding=ROUND_HALF_UP
+        )
+        assert row["label"] == (
+            f"{whole_percent(percentage)}% {direction_in_words(percentage)}"
+        )
+
+
+def test_q3_shows_the_energy_chart_and_folds_the_measure_set_in_advance_away():
+    page = PAGE.read_text(encoding="utf-8")
+    shown = in_view(page, "q3")
+    folded = fold_outs(page, "q3")
+    median_limit = (
+        "<p>The median shows which way the typical half-hour leans, not how "
+        "much energy a group gained or lost, and a 2 MW unit counts the same as "
+        "a 1 GW unit.</p>"
+    )
+
+    assert '<div class="chart" id="q3-energy-chart">' in shown
+    assert shown.index('<p class="answer">') < shown.index('id="q3-energy-chart"')
+    assert 'id="q3-chart"' not in shown
+    assert median_limit not in shown
+    registered = folded.split(
+        "<summary>The typical half-hour: the measure set in advance</summary>", 1
+    )[1].split("</details>", 1)[0]
+    assert '<div class="chart" id="q3-chart">' in registered
+    assert "<figcaption>" in registered
+    assert median_limit in registered
+    assert chart_boxes_inside_fold_outs(page) == ["q3-chart"]
+    assert folded_charts_not_drawn_on_opening(page) == []
+
+
+def test_q3s_fold_out_says_what_the_percentages_count_and_which_groups_have_none():
+    q3 = saved_output_rows("q3_metered_vs_notified.csv")
+    q12 = saved_output_rows("q12_instructed_vs_residual.csv")
+    drawing_power = saved_output_rows("context_q5_drawing_power.csv")
+    totals = []
+    for group in ONE_WAY_FUEL_GROUPS:
+        row = one_row(q3, "fuel_group", group)
+        totals.append(
+            f"{FUEL_GROUP_DISPLAY_NAMES[group].lower()} "
+            f"{twh(row['abs_metered_mwh'])} against {twh(row['abs_pn_mwh'])}"
+        )
+    totals[0] += " TWh"
+    gas_drawn = one_row(section_rows(drawing_power, "1"), "fuel_group", "gas_turbine")[
+        "drawing_power_expected_at_or_below_zero_mwh"
+    ]
+    with_draw_taken_off = percentages_with_idle_draw_taken_off(q3, drawing_power)
+    as_saved = against_plan_percentages(q3)
+    gas_bounds = instructed_share_bounds(q3, q12, "gas_turbine")
+    hydro_bounds = instructed_share_bounds(q3, q12, "hydro")
+    wind_bounds = instructed_share_bounds(q3, q12, "wind")
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        "<dt>Energy against plan</dt>\n        <dd>Context from the same saved "
+        "output, not the measure set in advance. For each group I add up the size of "
+        "every unit's metered energy, half-hour by half-hour, and the size of its "
+        "planned energy, over the same half-hours as the medians, and give the "
+        "first as a percentage above or below the second, to the nearest whole "
+        f"percent: {', '.join(totals)}. Sizes are added whatever their direction, "
+        "so power a unit draws while idle counts as energy produced. The outage "
+        f"answer{details_link('Q5')}, whose half-hours run one day longer, counts "
+        f"{twh(gas_drawn)} TWh drawn by gas units when nothing was expected of "
+        "them; taken off rather than added, gas comes to about "
+        f"{whole_percent(with_draw_taken_off['gas_turbine'])}% above plan, not "
+        f"{whole_percent(as_saved['gas_turbine'])}%, and nuclear about "
+        f"{whole_percent(with_draw_taken_off['nuclear'])}% below, not "
+        f"{whole_percent(as_saved['nuclear'])}%. A group's gap is its instructed "
+        "part plus the rest, and the rest can be no larger than its summed size "
+        f"in the instructed-share answer{details_link('Q12')}: so instructions "
+        "account for more than half of gas's excess and at least three-quarters "
+        "of hydro's shortfall, and for wind the same sums leave it open, from "
+        "none of the shortfall to nine-tenths of it. "
+        "Pumped storage, the other group (mostly batteries) and "
+        "interconnectors take power in as well as send it out, so for them a "
+        "ratio of sizes does not show more or less produced; they are left out, "
+        "as is coal, which has no plan.</dd>" in fold_outs(page, "q3")
+    )
+    assert with_draw_taken_off["gas_turbine"] > 0 > with_draw_taken_off["nuclear"]
+    assert groups_whose_whole_percent_moves(as_saved, with_draw_taken_off) == [
+        "gas_turbine",
+        "nuclear",
+    ]
+    assert gas_bounds["at least"] > Decimal("0.5")
+    assert hydro_bounds["at least"] >= Decimal("0.75")
+    assert wind_bounds["at least"] <= 0
+    assert tenths(wind_bounds["at most"]) == "0.9"
+    assert VISIBLE_LIMITS["q3"] in in_view(page, "q3")
+    assert "on days when NESO asked at least one wind farm to cut output" in fold_outs(
+        page, "q23"
+    )
+    assert Decimal(one_row(q3, "fuel_group", "coal")["abs_pn_mwh"]) == 0
+    assert (
+        '<a href="results/q3_energy_against_plan_by_fuel_group.csv">energy '
+        "against plan</a></dd>" in fold_outs(page, "q3")
+    )
+
+
+def column_strata_of(rows, column):
+    values = []
+    for row in rows:
+        values.append(row[column])
+    return values
 
 
 def test_q24s_answer_gives_each_groups_flagged_share_from_its_chart_data():

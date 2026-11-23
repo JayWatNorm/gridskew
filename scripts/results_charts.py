@@ -257,6 +257,13 @@ FUEL_GROUP_COLOURS = {
 # Q3's key.
 Q3_KEY_SPREAD = "Interquartile range (middle 50%)"
 Q3_KEY_MEDIAN = "Median"
+# The fuel groups whose units send power one way, so a metered total below
+# the planned total means less energy than planned. Pumped storage, the
+# other group (mostly batteries) and interconnectors also take power in,
+# and Q3's totals add sizes whatever their direction; coal has no plan.
+ONE_WAY_GROUPS = {"wind", "gas_turbine", "nuclear", "bioenergy", "hydro"}
+# Room beside a bar's end for its label, either side of zero.
+Q3_ENERGY_LABEL_ROOM_PIXELS = 64
 
 Q12_PARTS = {"instructed_mwh": "Instructed by NESO", "rest_mwh": "Not instructed"}
 Q24_PARTS = {"flagged_pct": "Flagged", "not_flagged_pct": "Not flagged"}
@@ -374,6 +381,7 @@ Q2_TITLE = "Where the {gigawatt_hours} GWh of revisions for {week} came from"
 Q2_WEEK = "10–16 Aug 2026"
 Q2_AXIS_TITLE = "Share of the energy revised, %"
 Q3_TITLE = "Most fuel groups' typical half-hour falls below plan, with wide spreads"
+Q3_ENERGY_TITLE = "Each fuel group's metered energy against the energy it planned"
 Q12_TITLE = (
     "Instructions are most of the gap for gas, hydro, pumped storage and the "
     "other group, under half for wind and bioenergy"
@@ -416,6 +424,12 @@ Q2_READING = (
 Q3_READING = (
     "Each row is a fuel group: the dot is its median gap between plan and "
     "meter, the bar its interquartile range (the middle 50% of half-hours)."
+)
+Q3_ENERGY_READING = (
+    "Each bar is a fuel group's metered energy over the whole period, as a "
+    "percentage above or below the energy its units planned. Every half-hour "
+    "counts, with or without a NESO instruction; groups that also take power "
+    "in are left out."
 )
 Q12_READING = (
     "Each bar adds the sizes of the two parts of a fuel group's gap between "
@@ -1374,6 +1388,137 @@ def write_q3_chart(q3_rows, plan_rows, output):
             fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES)
         )
         .properties(**page_layout(Q3_TITLE, reading, len(chart_rows) * ROW_STEP_PIXELS))
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
+# Q3, for scale: each group's metered energy against its planned energy
+
+
+def against_plan_label(share):
+    """'15% below' or '19% above': the whole percentage, halves rounded away
+    from zero, with its direction in words. A gap that rounds to nothing
+    keeps its direction, as 'under 1%'."""
+    if share == 0:
+        return "level with plan"
+    direction = "below"
+    if share > 0:
+        direction = "above"
+    size = fixed(abs(share), 0)
+    if size == "0":
+        return f"under 1% {direction}"
+    return f"{size}% {direction}"
+
+
+def energy_against_plan_rows(q3_rows):
+    """Per one-way fuel group, in the saved order, its metered and planned
+    energy over Q3's half-hours and the first as a percentage above or below
+    the second. A group with no planned energy is refused."""
+    chart_rows = []
+    for row in q3_rows:
+        fuel_group = row["fuel_group"]
+        if fuel_group not in ONE_WAY_GROUPS:
+            continue
+        metered = Decimal(row["abs_metered_mwh"])
+        planned = Decimal(row["abs_pn_mwh"])
+        if planned <= 0:
+            raise ValueError(
+                f"The saved output holds no planned energy for {fuel_group}"
+            )
+        share = percentage(metered - planned, planned)
+        chart_rows.append(
+            {
+                "fuel_group": fuel_group,
+                "unit_periods": row["unit_periods"],
+                "metered_mwh": row["abs_metered_mwh"],
+                "planned_mwh": row["abs_pn_mwh"],
+                "against_plan_pct": fixed(share, 4),
+                "label": against_plan_label(share),
+            }
+        )
+    if not chart_rows:
+        raise ValueError("The saved output has no row for a one-way fuel group")
+    return chart_rows
+
+
+def draw_energy_against_plan(rows, dates, path):
+    figure, axes = new_figure(len(rows))
+    labels = []
+    for position, row in enumerate(rows):
+        share = float(row["against_plan_pct"])
+        axes.barh(position, share, height=0.6, color=light_colour(row["fuel_group"]))
+        signed_bar_label(axes, position, share, row["label"])
+        labels.append(fuel_group_name(row["fuel_group"]))
+    row_labels(axes, labels)
+    axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
+    axes.margins(x=0.25)
+    x_label(
+        axes,
+        "Metered energy against planned energy, % (left: below plan; right: above)",
+    )
+    png_title(
+        axes, Q3_ENERGY_TITLE, [f"All half-hours of each group's units, {dates}."]
+    )
+    save_figure(figure, path)
+
+
+def write_q3_energy_chart(q3_rows, output):
+    name = "q3_energy_against_plan_by_fuel_group"
+    chart_rows = energy_against_plan_rows(q3_rows)
+    dates = output_date_range(q3_rows)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
+    draw_energy_against_plan(chart_rows, dates, output / f"{name}.png")
+
+    data = csv_data(csv_name, ["metered_mwh", "planned_mwh", "against_plan_pct"])
+    names_in_order = []
+    for row in chart_rows:
+        names_in_order.append(fuel_group_name(row["fuel_group"]))
+    position = {
+        "x": altair.X(
+            "against_plan_pct:Q",
+            scale=altair.Scale(padding=Q3_ENERGY_LABEL_ROOM_PIXELS),
+            axis=axis_title(
+                [
+                    "Metered energy against planned energy, %,",
+                    dates,
+                    "left: below plan · right: above plan",
+                ]
+            ),
+        ),
+        "y": row_axis("fuel_group_name", names_in_order),
+    }
+    tooltip = [
+        altair.Tooltip("fuel_group_name:N", title="Fuel group"),
+        altair.Tooltip("label:N", title="Metered against planned"),
+        altair.Tooltip("metered_twh:Q", title="Metered, TWh", format=".2f"),
+        altair.Tooltip("planned_twh:Q", title="Planned, TWh", format=".2f"),
+        altair.Tooltip("unit_periods:Q", title="Half-hours, all units", format=","),
+    ]
+    # Each bar wears its group's colour and stands on its group's row, so
+    # the row names are the key.
+    bars = (
+        altair.Chart()
+        .mark_bar(cornerRadiusEnd=BAR_CORNER_RADIUS)
+        .encode(color=fuel_group_colour(altair.Color), tooltip=tooltip, **position)
+    )
+    chart = (
+        altair.layer(
+            zero_line(),
+            bars,
+            written_labels(position, "against_plan_pct", "label"),
+            data=data,
+        )
+        .transform_calculate(
+            fuel_group_name=display_name("fuel_group", FUEL_GROUP_NAMES),
+            metered_twh="datum.metered_mwh / 1000000",
+            planned_twh="datum.planned_mwh / 1000000",
+        )
+        .properties(
+            **page_layout(
+                Q3_ENERGY_TITLE, Q3_ENERGY_READING, len(chart_rows) * ROW_STEP_PIXELS
+            )
+        )
     )
     write_spec(chart, output / f"{name}.vl.json")
 
@@ -3501,6 +3646,7 @@ def write_charts(result_folder, output_folder):
     copy_saved_output(results, output, CONTEXT_COHORT_CHANGE_RESULT, BMRS_ATTRIBUTION)
     copy_saved_output(results, output, Q22_RESULT, BMRS_ATTRIBUTION)
     write_q3_chart(q3, plan, output)
+    write_q3_energy_chart(q3, output)
     q12 = copy_saved_output(results, output, Q12_RESULT, BMRS_ATTRIBUTION)
     write_q12_chart(q12, q3, plan, output)
     q5 = copy_saved_output(results, output, Q5_RESULT, BMRS_ATTRIBUTION)
