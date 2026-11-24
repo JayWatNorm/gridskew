@@ -14,8 +14,7 @@ it captures, which those APIs later overwrite.
 
 ## What it found
 
-Each result is read once under a rule recorded first; the
-[results page](https://jaywatnorm.github.io/gridskew) gives every figure
+The [results page](https://jaywatnorm.github.io/gridskew) gives every figure
 with its method, data window and saved output.
 
 - **Wind strays furthest from its own plan.** With no NESO instruction in
@@ -32,7 +31,7 @@ with its method, data window and saved output.
   barely track misses in NESO's demand and wind forecasts.** In the fifth
   of half-hours with the biggest carbon misses (22 August 2025 to 16 August
   2026), under-delivery was only 5% larger than in the fifth with the
-  smallest; the test needed 25%. Over the same dates, misses in NESO's
+  smallest (90% range 3% to 8%). Over the same dates, misses in NESO's
   demand and wind forecasts have rank correlations of only 0.04 and 0.01
   with the size of the carbon miss ([Q28](https://jaywatnorm.github.io/gridskew/#q28),
   [Q8](https://jaywatnorm.github.io/gridskew/#q8), [Q30](https://jaywatnorm.github.io/gridskew/#q30)).
@@ -79,7 +78,7 @@ Because gas is dirtier than much of what it replaces, two predictions follow:
    than it falls below it.
 2. Forecasts should revise upwards as the target period approaches.
 
-No registered result tests the first prediction, which is about how often
+No result tests the first prediction, which is about how often
 the outturn is above the forecast. Two results give the average miss
 instead, a bias and not a share above or below. Over 17,280 half-hours
 (22 August 2025 to 16 August 2026) the stored forecast's misses have a mean
@@ -317,12 +316,12 @@ repository's release runbook, which is not public.
   final version under a reading rule fixed in advance; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 - Q1 and Q10, how the carbon forecast is revised as a half-hour approaches
-  and how accurate it is at each lead time, were each read once on
+  and how accurate it is at each lead time, were read on
   22 November 2026, on 2,910 and 2,864 half-hours from 19 August to
   12 November 2026 ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
-The questions registered but not yet read, and their rules, are listed on the
-results page. System prices and weather remain later extensions.
+Questions not answered here are listed on the results page. System prices
+and weather remain later extensions.
 
 The shortfall does not subtract `QPN` from PN; the
 [QPN dataset notes](docs/sources/elexon/015_qpn.md) explain why.

@@ -1,0 +1,9 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026. Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+outcome,way,label,value,value_label,interval_low,interval_high
+actual,Month and time held as well,"Carbon actual|month, time, plan held",7.928113,+7.9,4.930344,11.188013
+actual,Another way for the plan,Carbon actual|twenty bands of plan,5.538296,+5.5,0.649294,10.826547
+actual,Another way for the plan,Carbon actual|plan as second variable,3.988288,+4.0,-1.276156,9.648898
+actual,Another way for the plan,"Carbon actual|five bands, own means",3.038856,+3.0,-1.868449,8.595603
+actual,Another way for the plan,Carbon actual|five bands of plan,-0.995777,−1.0,-7.020910,5.913501
+forecast,Month and time held as well,"Stored forecast|month, time, plan held",7.075112,+7.1,3.925756,10.433971
+signed_miss,Month and time held as well,"Miss|month, time, plan held",0.853000,+0.9,0.231890,1.514604
