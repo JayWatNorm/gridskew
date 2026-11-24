@@ -1,0 +1,497 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
+  "autosize": {
+    "contains": "padding",
+    "type": "fit-x"
+  },
+  "config": {
+    "view": {
+      "continuousHeight": 300,
+      "continuousWidth": 300
+    }
+  },
+  "data": {
+    "format": {
+      "parse": {
+        "interval_high": "number",
+        "interval_low": "number",
+        "value": "number"
+      },
+      "type": "csv"
+    },
+    "url": "results/q28_wind_shortfall_per_gw.csv"
+  },
+  "description": "A bigger wind shortfall tended to go with a dirtier grid; by how much depends on the method",
+  "height": 308,
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "datum": 0,
+          "scale": {
+            "domain": [
+              -8,
+              16
+            ],
+            "nice": false
+          }
+        }
+      },
+      "mark": {
+        "color": "#8c959f",
+        "type": "rule"
+      },
+      "name": "zero line",
+      "transform": [
+        {
+          "aggregate": [
+            {
+              "as": "rows",
+              "op": "count"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Month and time held as well",
+              "Another way for the plan",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#6e7781"
+            ]
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "field": "interval_low",
+          "scale": {
+            "domain": [
+              -8,
+              16
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "interval_high"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Carbon actual|month, time, plan held",
+            "Carbon actual|twenty bands of plan",
+            "Carbon actual|plan as second variable",
+            "Carbon actual|five bands, own means",
+            "Carbon actual|five bands of plan",
+            "Stored forecast|month, time, plan held",
+            "Miss|month, time, plan held"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "strokeWidth": 2,
+        "type": "rule"
+      },
+      "transform": [
+        {
+          "as": "key",
+          "calculate": "\"90% range\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Month and time held as well",
+              "Another way for the plan",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "transparent",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Month and time held as well",
+              "Another way for the plan",
+              "90% range"
+            ],
+            "range": [
+              "circle",
+              "circle",
+              "M-1,0H1"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Month and time held as well",
+              "Another way for the plan",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#6e7781"
+            ]
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "row_name",
+            "title": "Row",
+            "type": "nominal"
+          },
+          {
+            "field": "value",
+            "format": "+.2f",
+            "title": "g/kWh per GW",
+            "type": "quantitative"
+          },
+          {
+            "field": "interval_low",
+            "format": "+.2f",
+            "title": "90% range from",
+            "type": "quantitative"
+          },
+          {
+            "field": "interval_high",
+            "format": "+.2f",
+            "title": "90% range to",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Grams of CO2 per kWh, per extra",
+              "GW of wind under-delivery",
+              "further right: dirtier"
+            ]
+          },
+          "field": "value",
+          "scale": {
+            "domain": [
+              -8,
+              16
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Carbon actual|month, time, plan held",
+            "Carbon actual|twenty bands of plan",
+            "Carbon actual|plan as second variable",
+            "Carbon actual|five bands, own means",
+            "Carbon actual|five bands of plan",
+            "Stored forecast|month, time, plan held",
+            "Miss|month, time, plan held"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "opacity": 1,
+        "size": 80,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "filter": "datum.way == \"Month and time held as well\""
+        },
+        {
+          "as": "key",
+          "calculate": "\"Month and time held as well\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "fill": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Month and time held as well",
+              "Another way for the plan",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "transparent",
+              "transparent"
+            ]
+          },
+          "type": "nominal"
+        },
+        "shape": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Month and time held as well",
+              "Another way for the plan",
+              "90% range"
+            ],
+            "range": [
+              "circle",
+              "circle",
+              "M-1,0H1"
+            ]
+          },
+          "type": "nominal"
+        },
+        "stroke": {
+          "field": "key",
+          "legend": {
+            "direction": "vertical",
+            "labelLimit": 0,
+            "orient": "bottom",
+            "symbolOpacity": 1,
+            "symbolSize": 110,
+            "symbolStrokeWidth": 2,
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Month and time held as well",
+              "Another way for the plan",
+              "90% range"
+            ],
+            "range": [
+              "#6e7781",
+              "#6e7781",
+              "#6e7781"
+            ]
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "row_name",
+            "title": "Row",
+            "type": "nominal"
+          },
+          {
+            "field": "value",
+            "format": "+.2f",
+            "title": "g/kWh per GW",
+            "type": "quantitative"
+          },
+          {
+            "field": "interval_low",
+            "format": "+.2f",
+            "title": "90% range from",
+            "type": "quantitative"
+          },
+          {
+            "field": "interval_high",
+            "format": "+.2f",
+            "title": "90% range to",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": [
+              "Grams of CO2 per kWh, per extra",
+              "GW of wind under-delivery",
+              "further right: dirtier"
+            ]
+          },
+          "field": "value",
+          "scale": {
+            "domain": [
+              -8,
+              16
+            ],
+            "nice": false
+          },
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Carbon actual|month, time, plan held",
+            "Carbon actual|twenty bands of plan",
+            "Carbon actual|plan as second variable",
+            "Carbon actual|five bands, own means",
+            "Carbon actual|five bands of plan",
+            "Stored forecast|month, time, plan held",
+            "Miss|month, time, plan held"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "opacity": 1,
+        "size": 80,
+        "strokeWidth": 2,
+        "type": "point"
+      },
+      "transform": [
+        {
+          "filter": "datum.way == \"Another way for the plan\""
+        },
+        {
+          "as": "key",
+          "calculate": "\"Another way for the plan\""
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "text": {
+          "field": "value_label",
+          "type": "nominal"
+        },
+        "x": {
+          "field": "value",
+          "type": "quantitative"
+        },
+        "y": {
+          "axis": {
+            "labelExpr": "split(datum.label, '|')"
+          },
+          "field": "label",
+          "scale": {
+            "paddingInner": 0.3
+          },
+          "sort": [
+            "Carbon actual|month, time, plan held",
+            "Carbon actual|twenty bands of plan",
+            "Carbon actual|plan as second variable",
+            "Carbon actual|five bands, own means",
+            "Carbon actual|five bands of plan",
+            "Stored forecast|month, time, plan held",
+            "Miss|month, time, plan held"
+          ],
+          "title": null,
+          "type": "nominal"
+        }
+      },
+      "mark": {
+        "baseline": "bottom",
+        "dy": -7,
+        "type": "text"
+      }
+    }
+  ],
+  "title": {
+    "anchor": "start",
+    "subtitle": {
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each dot is the change in grams of CO2 per kWh that\", \"went with one more gigawatt of wind under-delivery;\", \"the line is its 90% range. Every row allows for how\", \"much wind was planned; filled dots also hold month and\", \"time of day fixed. The miss is the actual minus the\", \"forecast. 17,279 half-hours, 22 Aug 2025 \u2013 16 Aug\", \"2026. A pattern, not proof of cause.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each dot is the change in grams of CO2 per kWh that went with one\", \"more gigawatt of wind under-delivery; the line is its 90% range.\", \"Every row allows for how much wind was planned; filled dots also\", \"hold month and time of day fixed. The miss is the actual minus\", \"the forecast. 17,279 half-hours, 22 Aug 2025 \u2013 16 Aug 2026. A\", \"pattern, not proof of cause.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each dot is the change in grams of CO2 per kWh that went with one more gigawatt\", \"of wind under-delivery; the line is its 90% range. Every row allows for how\", \"much wind was planned; filled dots also hold month and time of day fixed. The\", \"miss is the actual minus the forecast. 17,279 half-hours, 22 Aug 2025 \u2013 16 Aug\", \"2026. A pattern, not proof of cause.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each dot is the change in grams of CO2 per kWh that went with one more gigawatt of wind\", \"under-delivery; the line is its 90% range. Every row allows for how much wind was planned;\", \"filled dots also hold month and time of day fixed. The miss is the actual minus the forecast.\", \"17,279 half-hours, 22 Aug 2025 \u2013 16 Aug 2026. A pattern, not proof of cause.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each dot is the change in grams of CO2 per kWh that went with one more gigawatt of wind under-delivery; the\", \"line is its 90% range. Every row allows for how much wind was planned; filled dots also hold month and time\", \"of day fixed. The miss is the actual minus the forecast. 17,279 half-hours, 22 Aug 2025 \u2013 16 Aug 2026. A\", \"pattern, not proof of cause.\"] : ([\"Each dot is the change in grams of CO2 per kWh that went with one more gigawatt of wind under-delivery; the line is its\", \"90% range. Every row allows for how much wind was planned; filled dots also hold month and time of day fixed. The miss is\", \"the actual minus the forecast. 17,279 half-hours, 22 Aug 2025 \u2013 16 Aug 2026. A pattern, not proof of cause.\"])))))"
+    },
+    "text": {
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"A bigger wind shortfall tended to go with a\", \"dirtier grid; by how much depends on the method\"] : (containerSize()[0] + 0 * width < 480 ? [\"A bigger wind shortfall tended to go with a dirtier grid;\", \"by how much depends on the method\"] : (containerSize()[0] + 0 * width < 560 ? [\"A bigger wind shortfall tended to go with a dirtier grid; by how much\", \"depends on the method\"] : (containerSize()[0] + 0 * width < 640 ? [\"A bigger wind shortfall tended to go with a dirtier grid; by how much depends on\", \"the method\"] : (containerSize()[0] + 0 * width < 720 ? [\"A bigger wind shortfall tended to go with a dirtier grid; by how much depends on the method\"] : ([\"A bigger wind shortfall tended to go with a dirtier grid; by how much depends on the method\"])))))"
+    }
+  },
+  "transform": [
+    {
+      "as": "row_name",
+      "calculate": "replace(datum.label, '|', ', ')"
+    }
+  ],
+  "width": "container"
+}

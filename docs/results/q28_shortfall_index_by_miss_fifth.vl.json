@@ -22,7 +22,7 @@
     },
     "url": "results/q28_shortfall_index_by_miss_fifth.csv"
   },
-  "description": "Bigger carbon misses came with slightly more under-delivery, not 25% more",
+  "description": "Bigger carbon misses came with slightly more under-delivery",
   "height": 220,
   "layer": [
     {
@@ -41,110 +41,11 @@
           "scale": {
             "domain": [
               "Mean under-delivery (index)",
-              "90% range (largest fifth)",
-              "Needed for yes (125)"
+              "90% range (largest fifth)"
             ],
             "range": [
               "#6e7781",
-              "#6e7781",
-              "#8c959f"
-            ]
-          },
-          "type": "nominal"
-        },
-        "x": {
-          "datum": 125,
-          "scale": {
-            "domain": [
-              95,
-              130
-            ],
-            "nice": false
-          }
-        }
-      },
-      "mark": {
-        "strokeDash": [
-          5,
-          4
-        ],
-        "type": "rule"
-      },
-      "transform": [
-        {
-          "aggregate": [
-            {
-              "as": "rows",
-              "op": "count"
-            }
-          ]
-        },
-        {
-          "as": "key",
-          "calculate": "\"Needed for yes (125)\""
-        }
-      ]
-    },
-    {
-      "encoding": {
-        "text": {
-          "value": "needed for yes"
-        },
-        "x": {
-          "datum": 125,
-          "scale": {
-            "domain": [
-              95,
-              130
-            ],
-            "nice": false
-          }
-        },
-        "y": {
-          "value": 0
-        }
-      },
-      "mark": {
-        "align": "right",
-        "baseline": "top",
-        "dx": -4,
-        "dy": 2,
-        "type": "text"
-      },
-      "transform": [
-        {
-          "aggregate": [
-            {
-              "as": "rows",
-              "op": "count"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "encoding": {
-        "stroke": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Mean under-delivery (index)",
-              "90% range (largest fifth)",
-              "Needed for yes (125)"
-            ],
-            "range": [
-              "#6e7781",
-              "#6e7781",
-              "#8c959f"
+              "#6e7781"
             ]
           },
           "type": "nominal"
@@ -152,11 +53,8 @@
         "x": {
           "field": "index_low",
           "scale": {
-            "domain": [
-              95,
-              130
-            ],
-            "nice": false
+            "padding": 30,
+            "zero": false
           },
           "type": "quantitative"
         },
@@ -212,12 +110,10 @@
           "scale": {
             "domain": [
               "Mean under-delivery (index)",
-              "90% range (largest fifth)",
-              "Needed for yes (125)"
+              "90% range (largest fifth)"
             ],
             "range": [
               "#6e7781",
-              "transparent",
               "transparent"
             ]
           },
@@ -237,13 +133,11 @@
           "scale": {
             "domain": [
               "Mean under-delivery (index)",
-              "90% range (largest fifth)",
-              "Needed for yes (125)"
+              "90% range (largest fifth)"
             ],
             "range": [
               "circle",
-              "M-1,0H1",
-              "M-1,0H-0.55M-0.2,0H0.2M0.55,0H1"
+              "M-1,0H1"
             ]
           },
           "type": "nominal"
@@ -262,13 +156,11 @@
           "scale": {
             "domain": [
               "Mean under-delivery (index)",
-              "90% range (largest fifth)",
-              "Needed for yes (125)"
+              "90% range (largest fifth)"
             ],
             "range": [
               "#6e7781",
-              "#6e7781",
-              "#8c959f"
+              "#6e7781"
             ]
           },
           "type": "nominal"
@@ -320,11 +212,8 @@
           },
           "field": "index",
           "scale": {
-            "domain": [
-              95,
-              130
-            ],
-            "nice": false
+            "padding": 30,
+            "zero": false
           },
           "type": "quantitative"
         },
@@ -400,10 +289,10 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fifth of the half-hours, smallest carbon\", \"misses first; the dot is their mean under-delivery,\", \"with the smallest fifth set to 100. A dot at 125 or\", \"beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fifth of the half-hours, smallest carbon misses\", \"first; the dot is their mean under-delivery, with the smallest\", \"fifth set to 100. A dot at 125 or beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is\", \"their mean under-delivery, with the smallest fifth set to 100. A dot at 125 or\", \"beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean\", \"under-delivery, with the smallest fifth set to 100. A dot at 125 or beyond would mean yes.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean under-delivery,\", \"with the smallest fifth set to 100. A dot at 125 or beyond would mean yes.\"] : ([\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean under-delivery, with the\", \"smallest fifth set to 100. A dot at 125 or beyond would mean yes.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row is a fifth of the half-hours, smallest carbon\", \"misses first; the dot is their mean under-delivery,\", \"with the smallest fifth set to 100.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row is a fifth of the half-hours, smallest carbon misses\", \"first; the dot is their mean under-delivery, with the smallest\", \"fifth set to 100.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is\", \"their mean under-delivery, with the smallest fifth set to 100.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean\", \"under-delivery, with the smallest fifth set to 100.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean under-delivery,\", \"with the smallest fifth set to 100.\"] : ([\"Each row is a fifth of the half-hours, smallest carbon misses first; the dot is their mean under-delivery, with the\", \"smallest fifth set to 100.\"])))))"
     },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 480 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 560 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25%\", \"more\"] : (containerSize()[0] + 0 * width < 640 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"] : (containerSize()[0] + 0 * width < 720 ? [\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"] : ([\"Bigger carbon misses came with slightly more under-delivery, not 25% more\"])))))"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery\"] : (containerSize()[0] + 0 * width < 480 ? [\"Bigger carbon misses came with slightly more\", \"under-delivery\"] : (containerSize()[0] + 0 * width < 560 ? [\"Bigger carbon misses came with slightly more under-delivery\"] : (containerSize()[0] + 0 * width < 640 ? [\"Bigger carbon misses came with slightly more under-delivery\"] : (containerSize()[0] + 0 * width < 720 ? [\"Bigger carbon misses came with slightly more under-delivery\"] : ([\"Bigger carbon misses came with slightly more under-delivery\"])))))"
     }
   },
   "transform": [

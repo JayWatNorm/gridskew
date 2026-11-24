@@ -21,80 +21,9 @@
     },
     "url": "results/q30_rank_correlations.csv"
   },
-  "description": "Wind and carbon forecast misses barely move together",
+  "description": "The sizes of wind and carbon forecast misses barely move together; their directions are weakly linked",
   "height": 176,
   "layer": [
-    {
-      "encoding": {
-        "fill": {
-          "field": "key",
-          "legend": {
-            "direction": "vertical",
-            "labelLimit": 0,
-            "orient": "bottom",
-            "symbolOpacity": 1,
-            "symbolSize": 110,
-            "symbolStrokeWidth": 2,
-            "title": null
-          },
-          "scale": {
-            "domain": [
-              "Rank correlation",
-              "90% range",
-              "Size expected: \u00b10.2"
-            ],
-            "range": [
-              "#6e7781",
-              "transparent",
-              "rgba(140, 149, 159, 0.2)"
-            ]
-          },
-          "type": "nominal"
-        },
-        "x": {
-          "datum": -0.2,
-          "scale": {
-            "domain": [
-              -0.3,
-              0.3
-            ],
-            "nice": false
-          }
-        },
-        "x2": {
-          "datum": 0.2
-        },
-        "y": {
-          "axis": {
-            "labelExpr": "split(datum.label, '|')"
-          },
-          "field": "label",
-          "scale": {
-            "paddingInner": 0.3
-          },
-          "sort": [
-            "Size of misses|turned-down wind added back",
-            "Direction|turned-down wind added back",
-            "Size of misses|delivered wind",
-            "Direction|delivered wind"
-          ],
-          "title": null,
-          "type": "nominal"
-        }
-      },
-      "mark": {
-        "type": "rect"
-      },
-      "transform": [
-        {
-          "filter": "indexof(datum.label, \"Size of misses\") == 0"
-        },
-        {
-          "as": "key",
-          "calculate": "\"Size expected: \\u00b10.2\""
-        }
-      ]
-    },
     {
       "encoding": {
         "x": {
@@ -140,13 +69,11 @@
           "scale": {
             "domain": [
               "Rank correlation",
-              "90% range",
-              "Size expected: \u00b10.2"
+              "90% range"
             ],
             "range": [
               "#6e7781",
-              "#6e7781",
-              "#8c959f"
+              "#6e7781"
             ]
           },
           "type": "nominal"
@@ -210,13 +137,11 @@
           "scale": {
             "domain": [
               "Rank correlation",
-              "90% range",
-              "Size expected: \u00b10.2"
+              "90% range"
             ],
             "range": [
               "#6e7781",
-              "transparent",
-              "rgba(140, 149, 159, 0.2)"
+              "transparent"
             ]
           },
           "type": "nominal"
@@ -235,13 +160,11 @@
           "scale": {
             "domain": [
               "Rank correlation",
-              "90% range",
-              "Size expected: \u00b10.2"
+              "90% range"
             ],
             "range": [
               "circle",
-              "M-1,0H1",
-              "M-1,-0.45H1V0.45H-1Z"
+              "M-1,0H1"
             ]
           },
           "type": "nominal"
@@ -260,13 +183,11 @@
           "scale": {
             "domain": [
               "Rank correlation",
-              "90% range",
-              "Size expected: \u00b10.2"
+              "90% range"
             ],
             "range": [
               "#6e7781",
-              "#6e7781",
-              "#8c959f"
+              "#6e7781"
             ]
           },
           "type": "nominal"
@@ -383,10 +304,10 @@
   "title": {
     "anchor": "start",
     "subtitle": {
-      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row compares the two misses one way: the dot is\", \"the rank correlation, the line its 90% range. In the\", \"size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be\", \"negative.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row compares the two misses one way: the dot is the rank\", \"correlation, the line its 90% range. In the size rows, a dot in\", \"the shaded band is as small as expected; the direction rows were\", \"expected to be negative.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the\", \"line its 90% range. In the size rows, a dot in the shaded band is as small as\", \"expected; the direction rows were expected to be negative.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90%\", \"range. In the size rows, a dot in the shaded band is as small as expected; the direction rows\", \"were expected to be negative.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. In the\", \"size rows, a dot in the shaded band is as small as expected; the direction rows were expected to be\", \"negative.\"] : ([\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. In the size rows, a\", \"dot in the shaded band is as small as expected; the direction rows were expected to be negative.\"])))))"
+      "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each row compares the two misses one way: the dot is\", \"the rank correlation, the line its 90% range. Zero\", \"means no steady link.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each row compares the two misses one way: the dot is the rank\", \"correlation, the line its 90% range. Zero means no steady link.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the\", \"line its 90% range. Zero means no steady link.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90%\", \"range. Zero means no steady link.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. Zero\", \"means no steady link.\"] : ([\"Each row compares the two misses one way: the dot is the rank correlation, the line its 90% range. Zero means no steady\", \"link.\"])))))"
     },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 400 ? [\"Wind and carbon forecast misses barely move\", \"together\"] : (containerSize()[0] + 0 * width < 480 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 560 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 640 ? [\"Wind and carbon forecast misses barely move together\"] : (containerSize()[0] + 0 * width < 720 ? [\"Wind and carbon forecast misses barely move together\"] : ([\"Wind and carbon forecast misses barely move together\"])))))"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"The sizes of wind and carbon forecast misses\", \"barely move together; their directions are\", \"weakly linked\"] : (containerSize()[0] + 0 * width < 480 ? [\"The sizes of wind and carbon forecast misses barely move\", \"together; their directions are weakly linked\"] : (containerSize()[0] + 0 * width < 560 ? [\"The sizes of wind and carbon forecast misses barely move together;\", \"their directions are weakly linked\"] : (containerSize()[0] + 0 * width < 640 ? [\"The sizes of wind and carbon forecast misses barely move together; their\", \"directions are weakly linked\"] : (containerSize()[0] + 0 * width < 720 ? [\"The sizes of wind and carbon forecast misses barely move together; their directions are weakly\", \"linked\"] : ([\"The sizes of wind and carbon forecast misses barely move together; their directions are weakly linked\"])))))"
     }
   },
   "transform": [

@@ -76,6 +76,9 @@ Q25_CORRECTED_RESULT = "q25_instruction_fragmentation_corrected.csv"
 Q8_Q28_RESULT = "q8_q28_history.csv"
 Q28_REVERSE_RESULT = "q28_reverse_exploratory.csv"
 Q28_REVERSE_STRATA_RESULT = "q28_reverse_strata_exploratory.csv"
+# Wind under-delivery set against the carbon actual, the stored forecast and
+# the miss, per GW, with planned output allowed for in several ways.
+WIND_CUT_RESULT = "q28_wind_under_delivery_cut.csv"
 # Context counts read on 1 November 2026: denominators for scale, each row
 # labelled "context only: denominator, not a registered result".
 CONTEXT_CARBON_RESULT = "context_carbon_intensity.csv"
@@ -277,11 +280,50 @@ Q25_OWN_SPAN_MEASURE = "1 dispatch granularity (acceptances)"
 Q28_QUINTILE_ITEM = "quintile of abs(error_api_final): mean positive shortfall, MWh"
 Q28_RANGE_PREFIX = "abs(error_api_final) "
 # The rule: supported at a ratio of 1.25 or more, so 125 on the index.
-Q28_NEEDED_INDEX = 125
 # Only the largest fifth's index has an interval.
 Q28_RANGE_KEY = "90% range (largest fifth)"
+# Room either side of the dots for the labels above them.
+Q28_SCALE_PADDING_PIXELS = 30
 
-# Q28 reverse cut (exploratory): the same half-hours sorted by under-delivery.
+# The wind shortfall chart: wind's under-delivery summed over wind units,
+# and each outcome's change per extra GW. Every row allows for how much wind
+# was planned. The first way also holds month and time of day fixed; the
+# carbon actual is shown on four other ways too, so the chart shows how far
+# the figure depends on the way chosen.
+WIND_CUT_MEASURE = "wind_positive"
+WIND_CUT_OUTCOMES = {
+    "actual": "Carbon actual",
+    "forecast": "Stored forecast",
+    "signed_miss": "Miss",
+}
+WIND_CUT_SAME_CELL = "Month and time held as well"
+WIND_CUT_OTHER_WAY = "Another way for the plan"
+# Each row drawn: its outcome, the section and line of the wind output that
+# holds it, its key entry and the second line of its label.
+WIND_CUT_ROWS = [
+    ("actual", "4", "4", WIND_CUT_SAME_CELL, "month, time, plan held"),
+    ("actual", "5", "13", WIND_CUT_OTHER_WAY, "twenty bands of plan"),
+    ("actual", "3", "4", WIND_CUT_OTHER_WAY, "plan as second variable"),
+    ("actual", "5", "12", WIND_CUT_OTHER_WAY, "five bands, own means"),
+    ("actual", "5", "11", WIND_CUT_OTHER_WAY, "five bands of plan"),
+    ("forecast", "4", "4", WIND_CUT_SAME_CELL, "month, time, plan held"),
+    ("signed_miss", "4", "4", WIND_CUT_SAME_CELL, "month, time, plan held"),
+]
+WIND_CUT_RANGE_KEY = "90% range"
+WIND_CUT_DOMAIN = [-8, 16]
+WIND_CUT_TITLE = (
+    "A bigger wind shortfall tended to go with a dirtier grid; by how much "
+    "depends on the method"
+)
+WIND_CUT_READING = (
+    "Each dot is the change in grams of CO2 per kWh that went with one more "
+    "gigawatt of wind under-delivery; the line is its 90% range. Every row "
+    "allows for how much wind was planned; filled dots also hold month and "
+    "time of day fixed. The miss is the actual minus the forecast. "
+    "{half_hours} half-hours, {dates}. A pattern, not proof of cause."
+)
+
+# Q28 reverse cut: the same half-hours sorted by under-delivery.
 Q28_REVERSE_FIFTH_ITEM = (
     "fifth of under-delivery: mean signed carbon error, gCO2/kWh (actual minus "
     "stored forecast; positive: dirtier)"
@@ -369,10 +411,6 @@ Q30_CORRELATIONS = [
         "high": "rho_signed (sensitivity): bootstrap 90% interval, high",
     },
 ]
-# The size stated before the read, not a test; it applies to the rows that
-# compare the size of the two misses, not their direction.
-Q30_EXPECTED_SIZE = 0.2
-Q30_SIZE_LABEL_START = "Size of misses"
 
 Q2_TITLE = "Where the {gigawatt_hours} GWh of revisions for {week} came from"
 # Q2's saved outputs hold no dates; its week is the registered rule's
@@ -399,16 +437,19 @@ Q25_TITLE = (
     "The other group (mostly batteries) and pumped storage get far more short "
     "instructions than power stations"
 )
-Q28_TITLE = "Bigger carbon misses came with slightly more under-delivery, not 25% more"
+Q28_TITLE = "Bigger carbon misses came with slightly more under-delivery"
 Q28_REVERSE_TITLE = (
-    "Exploratory: carbon misses moved from cleaner to dirtier than forecast as more "
-    "units fell short (time of day and month not held fixed)"
+    "Carbon misses moved from cleaner to dirtier than forecast as "
+    "under-delivery grew (time of day and month not held fixed)"
 )
 Q29_TIME_TITLE = "Afternoons came out dirtier than forecast, evenings cleaner"
 Q29_MONTH_TITLE = (
     "Winter months came out cleaner than forecast, April to July slightly dirtier"
 )
-Q30_TITLE = "Wind and carbon forecast misses barely move together"
+Q30_TITLE = (
+    "The sizes of wind and carbon forecast misses barely move together; their "
+    "directions are weakly linked"
+)
 Q1_TITLE = (
     "How far the carbon forecast moved between its first and final version, by "
     "time of day and by first-forecast band"
@@ -464,18 +505,17 @@ Q25_READING = (
 )
 Q28_READING = (
     "Each row is a fifth of the half-hours, smallest carbon misses first; the "
-    "dot is their mean under-delivery, with the smallest fifth set to 100. A "
-    "dot at 125 or beyond would mean yes."
+    "dot is their mean under-delivery, with the smallest fifth set to 100."
 )
 Q28_REVERSE_READING = (
-    "Each row is a fifth of Q28's half-hours, {dates}, least under-delivery "
+    "Each row is a fifth of the half-hours, {dates}, least under-delivery "
     "first, with its range as mean power over the half-hour. The dot is the "
     "mean carbon miss, the line its 90% range."
 )
 Q1_READING = (
     "Each bar is the median of final minus first forecast over the half-hours "
     "in its row: first by the UTC time the half-hour starts, then by the band "
-    "the API gave its first forecast. Described, not tested. {half_hours} "
+    "the API gave its first forecast. {half_hours} "
     "half-hours, {dates}."
 )
 Q1_LEFT_OUT = "Rows with no half-hours are left out: {cells}."
@@ -485,7 +525,7 @@ Q29_DEMAND_TITLE = "For scale: mean national demand each month"
 Q29_DEMAND_HEIGHT_PIXELS = 140
 Q29_DEMAND_READING = (
     "Each bar is one month's mean national demand (NESO's initial outturn), "
-    "for scale only; no link is tested."
+    "for scale only."
 )
 
 # A scale for each chart's figures, from the context counts.
@@ -503,9 +543,7 @@ Q23_SCALE = (
 )
 Q30_READING = (
     "Each row compares the two misses one way: the dot is the rank "
-    "correlation, the line its 90% range. In the size rows, a dot in the "
-    "shaded band is as small as expected; the direction rows were expected "
-    "to be negative."
+    "correlation, the line its 90% range. Zero means no steady link."
 )
 
 # Each chart's key: every mark it draws, as the key draws it.
@@ -516,7 +554,6 @@ UNKEYED_LAYERS = {"zero line", "connector", "provisional band"}
 BAR_SYMBOL = "M-1,-0.45H1V0.45H-1Z"
 TICK_SYMBOL = "M-0.18,-1H0.18V1H-0.18Z"
 LINE_SYMBOL = "M-1,0H1"
-DASH_SYMBOL = "M-1,0H-0.55M-0.2,0H0.2M0.55,0H1"
 BAND_FILL = "rgba(140, 149, 159, 0.2)"
 NO_FILL = "transparent"
 # A pale line's entry in a key: thinner and lighter than a bar's.
@@ -2737,16 +2774,6 @@ def shortfall_index_rows(rows):
 
 def draw_shortfall_index(rows, path):
     figure, axes = new_figure(len(rows))
-    axes.axvline(Q28_NEEDED_INDEX, color=COMPARISON_COLOUR, linestyle="--", linewidth=1)
-    axes.annotate(
-        "needed for yes",
-        (Q28_NEEDED_INDEX, len(rows) - 0.6),
-        xytext=(-LABEL_GAP_PIXELS, 0),
-        textcoords="offset points",
-        ha="right",
-        fontsize=8,
-        color="#3d444d",
-    )
     labels = []
     for position, row in enumerate(rows):
         index = float(row["index"])
@@ -2769,7 +2796,7 @@ def draw_shortfall_index(rows, path):
         )
         labels.append(row["label"])
     row_labels(axes, labels)
-    axes.set_xlim(95, 130)
+    axes.margins(x=0.15)
     x_label(axes, "Under-delivery not instructed, smallest-miss fifth = 100")
     png_title(
         axes,
@@ -2796,7 +2823,7 @@ def write_q28_chart(rows, output):
     )
     fifth = row_axis("label", column_of(chart_rows, "label"))
     height = len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
-    index_scale = altair.Scale(domain=[95, 130], nice=False)
+    index_scale = altair.Scale(zero=False, padding=Q28_SCALE_PADDING_PIXELS)
     index_axis = altair.X(
         "index:Q",
         scale=index_scale,
@@ -2808,15 +2835,11 @@ def write_q28_chart(rows, output):
             ]
         ),
     )
-    needed_index = altair.XDatum(Q28_NEEDED_INDEX, scale=index_scale)
     keys = {
         "Mean under-delivery (index)": key_mark(
             NEUTRAL_MARK_COLOUR, NEUTRAL_MARK_COLOUR, "circle"
         ),
         Q28_RANGE_KEY: key_mark(NEUTRAL_MARK_COLOUR, NO_FILL, LINE_SYMBOL),
-        f"Needed for yes ({Q28_NEEDED_INDEX})": key_mark(
-            COMPARISON_COLOUR, NO_FILL, DASH_SYMBOL
-        ),
     }
     tooltip = [
         altair.Tooltip("misses:N", title="Carbon miss"),
@@ -2830,19 +2853,6 @@ def write_q28_chart(rows, output):
         altair.Tooltip("index_low:Q", title="90% range from", format=".1f"),
         altair.Tooltip("index_high:Q", title="90% range to", format=".1f"),
     ]
-    needed = keyed(
-        drawn_once().mark_rule(strokeDash=[5, 4]),
-        f"Needed for yes ({Q28_NEEDED_INDEX})",
-    ).encode(x=needed_index, stroke=key_stroke(keys))
-    needed_label = (
-        drawn_once()
-        .mark_text(align="right", baseline="top", dx=-LABEL_GAP_PIXELS, dy=2)
-        .encode(
-            x=needed_index,
-            y=altair.value(0),
-            text=altair.value("needed for yes"),
-        )
-    )
     interval = keyed(
         altair.Chart()
         .transform_filter("isValid(datum.index_low)")
@@ -2860,14 +2870,216 @@ def write_q28_chart(rows, output):
     ).encode(x=index_axis, y=fifth, tooltip=tooltip, **keyed_points(keys))
     dot_labels = label_above("index:Q", fifth, "index_label")
     chart = (
-        altair.layer(needed, needed_label, interval, dots, dot_labels, data=data)
+        altair.layer(interval, dots, dot_labels, data=data)
         .transform_calculate(index_label="format(datum.index, '.1f')")
         .properties(**page_layout(Q28_TITLE, Q28_READING, height))
     )
     write_spec(chart, output / f"{name}.vl.json")
 
 
-# Q28 reverse cut (exploratory): the carbon miss by fifth of under-delivery
+# The wind shortfall chart
+
+
+def wind_cut_row(rows, section, line, outcome):
+    """The one row of the wind output for wind's under-delivery at a section
+    and line, for one outcome."""
+    found = []
+    for row in rows:
+        place = (row["section"], row["line"], row["measure"], row["outcome"])
+        if place == (section, line, WIND_CUT_MEASURE, outcome):
+            found.append(row)
+    if len(found) != 1:
+        raise ValueError(
+            f"The wind output has {len(found)} rows for section {section}, line "
+            f"{line}, {outcome}"
+        )
+    return found[0]
+
+
+def wind_cut_population(rows):
+    """The row that holds the half-hours and dates the wind output covers."""
+    for row in matching_rows(rows, "section", "1"):
+        if row["line"] == "2":
+            return row
+    raise ValueError("The wind output has no population row")
+
+
+def wind_shortfall_rows(rows):
+    """Each row the chart draws: an outcome's change per extra GW of wind
+    under-delivery one way, with its 90% range. A figure outside the chart's
+    fixed scale is refused, as is an output whose first row does not bear
+    the title out."""
+    chart_rows = []
+    for outcome, section, line, way, short_way in WIND_CUT_ROWS:
+        row = wind_cut_row(rows, section, line, outcome)
+        chart_rows.append(
+            {
+                "outcome": outcome,
+                "way": way,
+                "label": f"{WIND_CUT_OUTCOMES[outcome]}|{short_way}",
+                "value": row["value"],
+                "value_label": signed_one_decimal(row["value"]),
+                "interval_low": row["interval_low"],
+                "interval_high": row["interval_high"],
+            }
+        )
+    lowest, highest = WIND_CUT_DOMAIN
+    for row in chart_rows:
+        for value in (row["interval_low"], row["interval_high"]):
+            if not lowest <= Decimal(value) <= highest:
+                raise ValueError(f"{row['label']}: {value} runs past the scale")
+    if Decimal(chart_rows[0]["interval_low"]) <= 0:
+        raise ValueError(
+            "The wind output's first range reaches zero, so the chart's title "
+            "would not hold"
+        )
+    return chart_rows
+
+
+def draw_wind_shortfall(rows, subtitle, path):
+    figure, axes = new_figure(len(rows))
+    axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
+    labels = []
+    for position, row in enumerate(rows):
+        value = float(row["value"])
+        axes.plot(
+            [float(row["interval_low"]), float(row["interval_high"])],
+            [position, position],
+            color=NEUTRAL_MARK_COLOUR,
+            linewidth=1.5,
+        )
+        face = NEUTRAL_MARK_COLOUR
+        if row["way"] == WIND_CUT_OTHER_WAY:
+            face = "white"
+        axes.plot(
+            value,
+            position,
+            "o",
+            markeredgecolor=NEUTRAL_MARK_COLOUR,
+            markerfacecolor=face,
+        )
+        axes.annotate(
+            row["value_label"],
+            (value, position),
+            xytext=(0, 7),
+            textcoords="offset points",
+            ha="center",
+            fontsize=8,
+            color="#3d444d",
+        )
+        labels.append(row["label"])
+    row_labels(axes, labels)
+    axes.set_xlim(*WIND_CUT_DOMAIN)
+    x_label(
+        axes,
+        "Change in g CO2 per kWh with each extra GW of wind under-delivery "
+        "(right: dirtier)",
+    )
+    png_title(axes, WIND_CUT_TITLE, [subtitle])
+    handles = [
+        Line2D(
+            [],
+            [],
+            color=NEUTRAL_MARK_COLOUR,
+            marker="o",
+            linestyle="",
+            label=WIND_CUT_SAME_CELL,
+        ),
+        Line2D(
+            [],
+            [],
+            markeredgecolor=NEUTRAL_MARK_COLOUR,
+            markerfacecolor="white",
+            marker="o",
+            linestyle="",
+            label=WIND_CUT_OTHER_WAY,
+        ),
+    ]
+    save_figure(figure, path, handles)
+
+
+def write_wind_shortfall_chart(rows, output):
+    name = "q28_wind_shortfall_per_gw"
+    chart_rows = wind_shortfall_rows(rows)
+    population = wind_cut_population(rows)
+    dates = output_date_range([population])
+    half_hours = f"{int(population['half_hours']):,}"
+    reading = WIND_CUT_READING.format(half_hours=half_hours, dates=dates)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(
+        output, name, BMRS_AND_CARBON_ATTRIBUTION, columns, chart_rows
+    )
+    draw_wind_shortfall(
+        chart_rows,
+        f"With 90% ranges; {half_hours} half-hours, {dates}",
+        output / f"{name}.png",
+    )
+
+    data = csv_data(csv_name, ["value", "interval_low", "interval_high"])
+    outcome = row_axis("label", column_of(chart_rows, "label"))
+    scale = altair.Scale(domain=WIND_CUT_DOMAIN, nice=False)
+    change_axis = altair.X(
+        "value:Q",
+        scale=scale,
+        axis=axis_title(
+            [
+                "Grams of CO2 per kWh, per extra",
+                "GW of wind under-delivery",
+                "further right: dirtier",
+            ]
+        ),
+    )
+    keys = {
+        WIND_CUT_SAME_CELL: key_mark(
+            NEUTRAL_MARK_COLOUR, NEUTRAL_MARK_COLOUR, "circle"
+        ),
+        WIND_CUT_OTHER_WAY: key_mark(NEUTRAL_MARK_COLOUR, NO_FILL, "circle"),
+        WIND_CUT_RANGE_KEY: key_mark(NEUTRAL_MARK_COLOUR, NO_FILL, LINE_SYMBOL),
+    }
+    tooltip = [
+        altair.Tooltip("row_name:N", title="Row"),
+        altair.Tooltip("value:Q", title="g/kWh per GW", format="+.2f"),
+        altair.Tooltip("interval_low:Q", title="90% range from", format="+.2f"),
+        altair.Tooltip("interval_high:Q", title="90% range to", format="+.2f"),
+    ]
+    zero = (
+        drawn_once()
+        .mark_rule(color=COMPARISON_COLOUR)
+        .encode(x=altair.XDatum(0, scale=scale))
+        .properties(name="zero line")
+    )
+    interval = keyed(
+        altair.Chart().mark_rule(strokeWidth=2), WIND_CUT_RANGE_KEY
+    ).encode(
+        x=altair.X("interval_low:Q", scale=scale),
+        x2="interval_high:Q",
+        y=outcome,
+        stroke=key_stroke(keys),
+    )
+    dot_layers = []
+    for way in (WIND_CUT_SAME_CELL, WIND_CUT_OTHER_WAY):
+        dot_layers.append(
+            keyed(
+                altair.Chart()
+                .transform_filter(f"datum.way == {json.dumps(way)}")
+                .mark_point(size=80, strokeWidth=2, opacity=1),
+                way,
+            ).encode(x=change_axis, y=outcome, tooltip=tooltip, **keyed_points(keys))
+        )
+    dot_labels = label_above("value:Q", outcome, "value_label")
+    chart = (
+        altair.layer(zero, interval, *dot_layers, dot_labels, data=data)
+        .transform_calculate(row_name="replace(datum.label, '|', ', ')")
+        .properties(
+            **page_layout(
+                WIND_CUT_TITLE, reading, len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS
+            )
+        )
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
+# Q28 reverse cut: the carbon miss by fifth of under-delivery
 
 
 def gigawatts(mwh_per_half_hour):
@@ -2957,7 +3169,7 @@ def draw_carbon_miss_by_fifth(rows, dates, path):
     png_title(
         axes,
         Q28_REVERSE_TITLE,
-        [f"Fifths of Q28's half-hours by under-delivery, {dates}; with 90% ranges"],
+        [f"Fifths of half-hours by under-delivery, {dates}; with 90% ranges"],
     )
     save_figure(figure, path)
 
@@ -3360,15 +3572,6 @@ def draw_correlations(rows, path):
     axes.axvline(0, color=COMPARISON_COLOUR, linewidth=0.8)
     labels = []
     for position, row in enumerate(rows):
-        if row["label"].startswith(Q30_SIZE_LABEL_START):
-            axes.fill_between(
-                [-Q30_EXPECTED_SIZE, Q30_EXPECTED_SIZE],
-                position - 0.35,
-                position + 0.35,
-                color=COMPARISON_COLOUR,
-                alpha=0.15,
-                linewidth=0,
-            )
         rho = float(row["rho"])
         axes.plot(
             [float(row["low"]), float(row["high"])],
@@ -3393,11 +3596,7 @@ def draw_correlations(rows, path):
     png_title(
         axes,
         Q30_TITLE,
-        [
-            "With 90% ranges; shaded in the size rows: within ±0.2, the size "
-            "expected before reading; the direction rows were expected to be "
-            "negative"
-        ],
+        ["With 90% ranges; zero means no steady link"],
     )
     save_figure(figure, path)
 
@@ -3425,23 +3624,12 @@ def write_q30_chart(rows, output):
         altair.Tooltip("low:Q", title="90% range from", format="+.2f"),
         altair.Tooltip("high:Q", title="90% range to", format="+.2f"),
     ]
-    expected_label = f"Size expected: ±{Q30_EXPECTED_SIZE}"
     keys = {
         "Rank correlation": key_mark(
             NEUTRAL_MARK_COLOUR, NEUTRAL_MARK_COLOUR, "circle"
         ),
         "90% range": key_mark(NEUTRAL_MARK_COLOUR, NO_FILL, LINE_SYMBOL),
-        expected_label: key_mark(COMPARISON_COLOUR, BAND_FILL, BAR_SYMBOL),
     }
-    is_size_row = f"indexof(datum.label, {json.dumps(Q30_SIZE_LABEL_START)}) == 0"
-    expected = keyed(
-        altair.Chart().transform_filter(is_size_row).mark_rect(), expected_label
-    ).encode(
-        x=altair.XDatum(-Q30_EXPECTED_SIZE, scale=rho_scale),
-        x2=altair.datum(Q30_EXPECTED_SIZE),
-        y=measure,
-        fill=key_fill(keys),
-    )
     zero = (
         drawn_once()
         .mark_rule(color=COMPARISON_COLOUR)
@@ -3460,7 +3648,7 @@ def write_q30_chart(rows, output):
     ).encode(x=rho_axis, y=measure, tooltip=tooltip, **keyed_points(keys))
     dot_labels = label_above("rho:Q", measure, "rho_label")
     chart = (
-        altair.layer(expected, zero, interval, dots, dot_labels, data=data)
+        altair.layer(zero, interval, dots, dot_labels, data=data)
         .transform_calculate(rho_label="format(datum.rho, '+.2f')")
         .properties(
             **page_layout(
@@ -3682,6 +3870,10 @@ def write_charts(result_folder, output_folder):
         results, output, Q28_REVERSE_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )
     write_q28_reverse_chart(q28_reverse, output)
+    wind_cut = copy_saved_output(
+        results, output, WIND_CUT_RESULT, BMRS_AND_CARBON_ATTRIBUTION
+    )
+    write_wind_shortfall_chart(wind_cut, output)
     copy_saved_output(
         results, output, Q28_REVERSE_STRATA_RESULT, BMRS_AND_CARBON_ATTRIBUTION
     )

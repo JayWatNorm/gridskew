@@ -1,3 +1,4 @@
+import ast
 import csv
 import io
 import json
@@ -368,6 +369,42 @@ NEW_SAVED_OUTPUTS = {
         '3,2,"least-squares slope, gCO2/kWh per GW",,500,,,,,,3.000000,'
         "2.000000,4.000000,1000,,,,interval available",
     ],
+    # Wind under-delivery per GW, unlike the real output. Two ways of
+    # allowing for planned output (section 4 line 4, section 5 line 13) for
+    # the actual, the forecast and the miss, and three more ways for the
+    # actual (section 3 line 4, section 5 lines 12 and 11); 6.25 and 5.05 are
+    # halves rounded up, and -0.95 is a half rounded away from zero. A gas
+    # row and a net-shortfall row stand on the same lines, and the forecast
+    # and the miss have twenty-band rows: the chart must pass over all four.
+    # The scale row (section 6) is not drawn.
+    "q28_wind_under_delivery_cut.csv": [
+        "section,line,item,measure,outcome,fifth,half_hours,days,first_date,"
+        "last_date,range_from,range_to,value,interval_low,interval_high,"
+        "usable_draws,share_dirtier,share_equal,mean_abs_error,result",
+        "1,2,population,,,,500,100,2025-09-01,2026-07-31,,,,,,,,,,",
+        "4,4,same cell,wind_positive,actual,,500,,,,,,6.250000,2.000000,9.000000,"
+        "1000,,,,",
+        "4,4,same cell,wind_positive,forecast,,500,,,,,,5.050000,1.000000,"
+        "8.000000,1000,,,,",
+        "4,4,same cell,wind_positive,signed_miss,,500,,,,,,1.200000,0.500000,"
+        "2.000000,1000,,,,",
+        "4,4,same cell,gas_positive,actual,,500,,,,,,0.500000,-1.000000,2.000000,"
+        "1000,,,,",
+        "4,4,same cell,wind_net,actual,,500,,,,,,3.000000,1.000000,5.000000,1000,,,,",
+        "5,13,twentieths,wind_positive,actual,,500,,,,,,4.000000,-0.040000,"
+        "8.500000,1000,,,,",
+        "5,13,twentieths,wind_positive,forecast,,500,,,,,,-0.040000,-3.000000,"
+        "3.000000,1000,,,,",
+        "5,13,twentieths,wind_positive,signed_miss,,500,,,,,,1.450000,0.600000,"
+        "2.400000,1000,,,,",
+        "3,4,second variable,wind_positive,actual,,500,,,,,,2.500000,-1.000000,"
+        "6.000000,1000,,,,",
+        "5,12,fifths less means,wind_positive,actual,,500,,,,,,1.240000,-2.000000,"
+        "4.000000,1000,,,,",
+        "5,11,fifths,wind_positive,actual,,500,,,,,,-0.950000,-6.500000,5.000000,"
+        "1000,,,,",
+        "6,2,yardstick,,,,500,,,,,,12.345000,,,,,,,",
+    ],
     # The reverse cut within time of day and month: copied as saved, with
     # its attribution; the page reads the committed output.
     "q28_reverse_strata_exploratory.csv": [
@@ -568,6 +605,24 @@ EXPECTED_CHART_CSVS = {
     "short_joined_as_first_read_pct\n"
     "other,4000,21.100000,77.250000,21.250000\n"
     "gas_turbine,1200,0.166667,2.500000,0.333333\n",
+    # The actual on its five ways, then the forecast and the miss on the
+    # first.
+    "q28_wind_shortfall_per_gw.csv": BMRS_AND_CARBON_LINE
+    + "outcome,way,label,value,value_label,interval_low,interval_high\n"
+    'actual,Month and time held as well,"Carbon actual|month, time, plan held",'
+    "6.250000,+6.3,2.000000,9.000000\n"
+    "actual,Another way for the plan,Carbon actual|twenty bands of plan,"
+    "4.000000,+4.0,-0.040000,8.500000\n"
+    "actual,Another way for the plan,Carbon actual|plan as second variable,"
+    "2.500000,+2.5,-1.000000,6.000000\n"
+    'actual,Another way for the plan,"Carbon actual|five bands, own means",'
+    "1.240000,+1.2,-2.000000,4.000000\n"
+    "actual,Another way for the plan,Carbon actual|five bands of plan,"
+    "-0.950000,−1.0,-6.500000,5.000000\n"
+    'forecast,Month and time held as well,"Stored forecast|month, time, plan held",'
+    "5.050000,+5.1,1.000000,8.000000\n"
+    'signed_miss,Month and time held as well,"Miss|month, time, plan held",'
+    "1.200000,+1.2,0.500000,2.000000\n",
     "q28_shortfall_index_by_miss_fifth.csv": BMRS_AND_CARBON_LINE
     + "quintile,label,misses,half_hours,mean_shortfall_mwh,index,index_low,"
     "index_high\n"
@@ -686,6 +741,10 @@ WRITTEN_FILES = [
     "q28_shortfall_index_by_miss_fifth.csv",
     "q28_shortfall_index_by_miss_fifth.png",
     "q28_shortfall_index_by_miss_fifth.vl.json",
+    "q28_wind_shortfall_per_gw.csv",
+    "q28_wind_shortfall_per_gw.png",
+    "q28_wind_shortfall_per_gw.vl.json",
+    "q28_wind_under_delivery_cut.csv",
     "q29_context_demand_by_month.csv",
     "q29_context_demand_by_month.png",
     "q29_context_demand_by_month.vl.json",
@@ -1581,6 +1640,8 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q28_reverse_exploratory.csv": BMRS_AND_CARBON_LINE,
         "q28_reverse_strata_exploratory.csv": BMRS_AND_CARBON_LINE,
         "q28_shortfall_index_by_miss_fifth.csv": BMRS_AND_CARBON_LINE,
+        "q28_wind_shortfall_per_gw.csv": BMRS_AND_CARBON_LINE,
+        "q28_wind_under_delivery_cut.csv": BMRS_AND_CARBON_LINE,
         "q29_context_demand_by_month.csv": BMRS_LINE,
         "q29_final_forecast_error_by_month_and_block.csv": CARBON_LINE,
         "q2_changes_by_unit_prefix.csv": BMRS_LINE,
@@ -1730,6 +1791,7 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
         "q28_shortfall_index_by_miss_fifth.vl.json": (
             "results/q28_shortfall_index_by_miss_fifth.csv"
         ),
+        "q28_wind_shortfall_per_gw.vl.json": "results/q28_wind_shortfall_per_gw.csv",
         "q29_context_demand_by_month.vl.json": (
             "results/q29_context_demand_by_month.csv"
         ),
@@ -1766,7 +1828,7 @@ def test_every_fixed_axis_spans_its_whole_scale(written):
         "q24_flagged_share_by_fuel_group.vl.json": [[0, 100]],
         "q25_short_instructions_by_fuel_group.vl.json": [[0.01, 100]],
         "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json": [[-5, 3]],
-        "q28_shortfall_index_by_miss_fifth.vl.json": [[95, 130]],
+        "q28_wind_shortfall_per_gw.vl.json": [[-8, 16]],
         "q2_moved_energy_by_unit_type.vl.json": [[0, 100]],
         "q30_rank_correlations.vl.json": [[-0.3, 0.3]],
     }
@@ -1776,22 +1838,19 @@ def test_no_chart_reads_right_to_left(written):
     # Each chart's axis says which side is which ("left: below plan"); a
     # reversed scale would put every bar on the wrong side of those words.
     assert specs_reading_right_to_left(written) == []
-    assert len(written_specs(written)) == 16
+    assert len(written_specs(written)) == 17
 
 
 def test_reference_lines_sit_where_the_rules_put_them(written):
-    # Q28: supported at a ratio of 1.25; Q30: an absolute rank correlation
-    # under about 0.2 was expected. Q23: the provisional band runs from
-    # mid-August 2026 to just past September's point, where the time axis
-    # ends, with its word at its left edge.
+    # Q23: the provisional band runs from mid-August 2026 to just past
+    # September's point, where the time axis ends, with its word at its left
+    # edge. No chart draws a line for a threshold a result had to clear.
     assert nonzero_reference_lines(written) == {
         "q23_monthly_gap_by_fuel_group.vl.json": [
             BAND_FROM_17_AUGUST_2026,
             ENDS_12_SEPTEMBER_2026,
             BAND_FROM_17_AUGUST_2026,
         ],
-        "q28_shortfall_index_by_miss_fifth.vl.json": [125, 125],
-        "q30_rank_correlations.vl.json": [-0.2, 0.2],
     }
 
 
@@ -1992,36 +2051,35 @@ def test_q24s_part_month_starts_on_its_reads_first_day():
 
 
 def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
-    # Q28 sorts half-hours by the size of the carbon miss, not its sign,
-    # then compares under-delivery; the reverse is Q31's and Q32's. The
-    # limit shows in plain words; the rule's wording and the registered
-    # reverse questions are in the fold-outs.
+    # Sorting half-hours by the size of the carbon miss cannot give its
+    # direction; the page says so in view, and the fold-outs keep the
+    # measure's wording and the questions that would look the other way.
     page = PAGE.read_text(encoding="utf-8")
     shown = in_view(page, "q28")
     folded = fold_outs(page, "q28")
     reverse = (
-        "The reverse question, how far under-delivery goes with the "
-        "carbon forecast's miss, and in which direction, is registered as "
+        "The question the other way round, how far under-delivery goes with the "
+        "carbon forecast's miss, and in which direction, is written up as "
         f'<a href="{RULES_URL}#{register_anchor("Q31")}">Q31</a> and '
         f'<a href="{RULES_URL}#{register_anchor("Q32")}">Q32</a>, '
-        "not pursued; they would test this direction on new data.</dd>"
+        "not answered here; they would look at this direction on new data.</dd>"
     )
 
     assert (
         "<h3>Do the carbon forecast's misses go with units falling short of "
         "their plans?</h3>" in shown
     )
-    assert (
-        "<p>That test did not ask whether the grid came out cleaner or dirtier "
-        "than forecast. A later, unplanned look does.</p>" in shown
-    )
+    assert VISIBLE_LIMITS["q28"] in shown
     assert (
         "Half-hours are sorted by how far the forecast missed, not which way, so "
         "this cannot say whether under-delivery makes the forecast too clean or "
         "too dirty, or by how much.</dd>" in folded
     )
+    assert (
+        '"Yes" if the fifth of half-hours with the biggest carbon misses carries '
+        "at least 25% more under-delivery than the fifth with the smallest." in folded
+    )
     assert reverse in folded
-    assert "<!-- Q28-REVERSE-EXPLORATORY -->" in shown
 
 
 def signed_tenths(value):
@@ -2033,9 +2091,161 @@ def signed_tenths(value):
     return str(rounded)
 
 
+WIND_CHART = "q28_wind_shortfall_per_gw.vl.json"
+WIND_OUTPUT = "q28_wind_under_delivery_cut.csv"
+# Words for how a question was set up or judged, which no chart shows.
+CHART_FRAMING_WORDS = re.compile(
+    r"registered|set in advance|before the read|before reading|unplanned look|"
+    r"exploratory|needed for|expected|not tested|is tested|would mean yes|"
+    r"\bQ\d+",
+    re.IGNORECASE,
+)
+
+
+def spec_texts(node, texts):
+    """Every piece of fixed text a spec shows: titles, reading lines, axis
+    titles, key entries and labels."""
+    if isinstance(node, str):
+        texts.append(node)
+        return
+    if isinstance(node, list):
+        for item in node:
+            spec_texts(item, texts)
+        return
+    if not isinstance(node, dict):
+        return
+    for key, value in node.items():
+        if key in ("title", "subtitle", "description", "domain", "signal", "text"):
+            spec_texts(value, texts)
+        elif key in ("calculate", "value") and isinstance(value, str):
+            texts.append(value)
+        elif not isinstance(value, str):
+            spec_texts(value, texts)
+
+
+def charts_showing_framing_words(folder):
+    showing = {}
+    for name, spec in written_specs(folder).items():
+        texts = []
+        spec_texts(spec, texts)
+        found = CHART_FRAMING_WORDS.findall(" ".join(texts))
+        if found:
+            showing[name] = found
+    return showing
+
+
+def chart_script_strings_naming_a_question():
+    """Every string the chart script holds, docstrings aside, that names a
+    question by its number: the PNG titles and reading lines are drawn from
+    these strings, and no test reads a PNG's pixels."""
+    script = (REPOSITORY / "scripts" / "results_charts.py").read_text(encoding="utf-8")
+    tree = ast.parse(script)
+    docstrings = set()
+    for node in ast.walk(tree):
+        documented = isinstance(node, (ast.Module, ast.FunctionDef))
+        if documented and ast.get_docstring(node) is not None:
+            docstrings.add(id(node.body[0].value))
+    naming = []
+    for node in ast.walk(tree):
+        is_text = isinstance(node, ast.Constant) and isinstance(node.value, str)
+        if not is_text or id(node) in docstrings:
+            continue
+        if question_ids_in(node.value):
+            naming.append(node.value)
+    return naming
+
+
+def test_no_text_the_chart_script_draws_names_a_question_by_number():
+    assert chart_script_strings_naming_a_question() == []
+
+
+PUBLISHED_WIND_COMMENTS = (
+    "# One status row omitted; carbon, demand and registry cut 2026-10-26 "
+    "11:21:39 UTC; shortfall and wind level as held 24 November 2026; seed "
+    "20261025.\n"
+    "# Row labels reworded for publication; every figure is as read.\n"
+)
+INTERNAL_LABELS = re.compile(
+    r"James|HEADLINE|pre-registered|EXPLORATORY|Q\d|reverse cut"
+)
+
+
+def test_the_published_wind_output_carries_no_name_or_internal_label():
+    # The as-read output is kept out of the repository; the published form
+    # leaves out its status row and says so, with that row's facts.
+    text = (REPOSITORY / "docs" / "results" / WIND_OUTPUT).read_text(encoding="utf-8")
+    rows = saved_output_rows(WIND_OUTPUT)
+
+    assert text.startswith(BMRS_AND_CARBON_LINE + PUBLISHED_WIND_COMMENTS + "section,")
+    assert INTERNAL_LABELS.findall(text) == []
+    assert section_rows(rows, "1")[0]["line"] == "2"
+    assert len(rows) == 404
+    assert INTERNAL_LABELS.findall("HEADLINE; asked by James of Q28's reverse cut") == [
+        "HEADLINE",
+        "James",
+        "Q2",
+        "reverse cut",
+    ]
+
+
+def test_no_chart_shows_how_a_question_was_set_up_or_a_bar_it_had_to_clear(written):
+    assert charts_showing_framing_words(written) == {}
+
+
+def test_the_wind_chart_states_its_half_hours_dates_and_that_it_is_a_pattern(
+    written,
+):
+    # The fixture's population row: 500 half-hours, 1 September 2025 to
+    # 31 July 2026. The output's scale row (12.345) is not drawn, keyed or
+    # read out.
+    spec = written_specs(written)[WIND_CHART]
+
+    assert reading_line(written, WIND_CHART).endswith(
+        "500 half-hours, 1 Sep 2025 – 31 Jul 2026. A pattern, not proof of cause."
+    )
+    assert (
+        "The miss is the actual minus the forecast. 500 half-hours, "
+        in reading_line(written, WIND_CHART)
+    )
+    assert "1 GW of gas" not in json.dumps(spec, ensure_ascii=False)
+    assert "12.3" not in json.dumps(spec, ensure_ascii=False)
+    assert text_fields_drawn(written, WIND_CHART) == [("value_label", "value")]
+    assert titles_with_figures(written, [WIND_CHART]) == {}
+
+
+def test_a_wind_figure_past_the_charts_fixed_scale_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    with_dates_moved(saved / WIND_OUTPUT, {"2.000000,9.000000": "2.000000,17.000000"})
+
+    with pytest.raises(ValueError, match="runs past the scale"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_wind_output_whose_range_reaches_zero_is_refused_under_its_title(
+    tmp_path,
+):
+    # The title says a bigger shortfall went with a dirtier grid; a range
+    # that takes in zero does not bear that out.
+    saved = saved_outputs_folder(tmp_path / "saved")
+    with_dates_moved(saved / WIND_OUTPUT, {"6.250000,2.000000": "6.250000,-0.100000"})
+
+    with pytest.raises(ValueError, match="title would not hold"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_wind_output_without_one_of_its_rows_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    without_lines_containing(
+        saved / WIND_OUTPUT, "wind_positive,actual,,500,,,,,,-0.95"
+    )
+
+    with pytest.raises(ValueError, match="0 rows for section 5, line 11, actual"):
+        write_charts(saved, tmp_path / "out")
+
+
 def test_the_q28_reverse_chart_reads_its_range_from_its_saved_output(written):
     # The fixture's read runs 1 September 2025 to 31 July 2026.
-    assert "fifth of Q28's half-hours, 1 Sep 2025 – 31 Jul 2026, least" in (
+    assert "fifth of the half-hours, 1 Sep 2025 – 31 Jul 2026, least" in (
         reading_line(written, "q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json")
     )
 
@@ -2053,7 +2263,7 @@ def test_a_q28_reverse_range_past_the_fixed_scale_is_refused(tmp_path):
         write_charts(saved, tmp_path / "out")
 
 
-def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
+def test_q28s_answer_and_second_result_state_their_saved_figures():
     rows = saved_output_rows("q28_reverse_exploratory.csv")
     slope = [row for row in rows if row["section"] == "3" and row["line"] == "2"][0]
     read = [row for row in rows if row["section"] == "1"][0]
@@ -2076,17 +2286,29 @@ def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
     shown = FOLD_OUT.sub("", exploratory_block())
     folded = exploratory_fold_out()
 
+    ratio_low = Decimal(
+        item_row(q28, "3", "bootstrap 90% interval for the ratio, low")["value"]
+    )
+    ratio_high = Decimal(
+        item_row(q28, "3", "bootstrap 90% interval for the ratio, high")["value"]
+    )
     assert answer_of(page, "q28") == (
-        "<strong>Only slightly.</strong> When the carbon forecast missed most, "
-        "units' total shortfall against their plans was <strong>"
-        f"{whole((q28_ratio - 1) * 100)}% bigger</strong> than when it missed "
-        "least. The test set in advance needed 25%."
+        "<strong>Only slightly.</strong> "
+        "Units' total shortfall against their plans was <strong>"
+        f"{whole((q28_ratio - 1) * 100)}% bigger</strong> in the half-hours where "
+        "the carbon forecast missed most than where it missed least (90% range "
+        f"{whole((ratio_low - 1) * 100)}% to {whole((ratio_high - 1) * 100)}%). "
+        "Sorted by under-delivery instead, the grid came out "
+        f"{tenths(-Decimal(least))} g/kWh cleaner than forecast with the least "
+        f"and {tenths(most)} g/kWh dirtier with the most."
     )
+    assert "wind" not in answer_of(page, "q28")
+    assert page.count('<section class="further"') == 1
+    assert ratio_low > 1
     assert (
-        '<h4 id="q28-reverse-title">A later, unplanned look: more '
-        "under-delivery, slightly dirtier than forecast</h4>" in shown
+        '<h4 id="q28-reverse-title">More under-delivery, slightly dirtier than '
+        "forecast</h4>" in shown
     )
-    assert shown.count("unplanned") == 1
     assert (
         "<p>With the least under-delivery, the grid came out "
         f"{tenths(-Decimal(least))} g/kWh cleaner than forecast on average; with "
@@ -2115,9 +2337,9 @@ def test_q28s_exploratory_reverse_block_states_its_saved_figures_and_label():
     )
     assert f"Q28's {int(read['half_hours']):,} half-hours, {dates}; read once" in folded
     assert (
-        "<dd>Exploratory and association only: a further look at a window "
-        "already seen, asked after Q28 was read, so not pre-registered, and "
-        "published whatever it showed." in folded
+        "<dd>An association only. Asked after the first comparison had been "
+        "read, so not written down before the data was read: a further look at "
+        "a window already seen, published whatever it showed." in folded
     )
     assert read["result"] == "matches Q28"
     assert q28_bar["result"] == "not supported"
@@ -2227,13 +2449,20 @@ def latest_day(*days):
     return f"{max(parsed).day} {max(parsed):%B %Y}"
 
 
-def exploratory_block():
+def result_block(title_id):
+    """One of Q28's further results: the section its heading names."""
     page = PAGE.read_text(encoding="utf-8")
-    return page.split('<section class="exploratory"', 1)[1].split("</section>", 1)[0]
+    opening = f'<section class="further" aria-labelledby="{title_id}">'
+    return page.split(opening, 1)[1].split("</section>", 1)[0]
+
+
+def exploratory_block():
+    """Q28's second result: the half-hours sorted by under-delivery."""
+    return result_block("q28-reverse-title")
 
 
 def exploratory_fold_out():
-    """What the later look keeps inside its fold-out."""
+    """What that result keeps inside its fold-out."""
     return "\n".join(FOLD_OUT.findall(exploratory_block()))
 
 
@@ -2283,9 +2512,7 @@ def test_q28s_strata_cut_states_its_saved_figures_and_its_fixed_clause():
         f'<a href="results/{STRATA_RESULT}">Saved output</a></dd>' in block
     )
     assert (
-        "<dd>Exploratory and association only: a further look at a window "
-        "already seen, asked after Q28 was read, so not pre-registered, and "
-        "published whatever it showed. "
+        "a further look at a window already seen, published whatever it showed. "
         f"{NUMBER_WORDS[len(blocks) + len(months)].capitalize()} slopes were read, "
         "none corrected for reading many." in block
     )
@@ -2511,7 +2738,7 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
     afternoon = one_row(q29, "item", "UTC block 12:00-17:59")["mean_error"]
     evening = one_row(q29, "item", "UTC block 18:00-23:59")["mean_error"]
     assert (
-        "<summary>The typical half-hour: the measure set in advance</summary>\n"
+        "<summary>The typical half-hour: medians and spreads</summary>\n"
         "      <p><strong>Below plan in the typical half-hour, for most groups."
         "</strong> "
         "At wind, gas, nuclear, bioenergy and other units the median half-hour "
@@ -2538,7 +2765,7 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
         f"forecast and evenings about {whole(-Decimal(evening))} g cleaner."
     )
     assert (
-        "<figcaption>For scale only; no link is tested. Mean national demand on "
+        "<figcaption>For scale only: mean national demand on "
         f"the same {int(all_demand['half_hours_with_demand']):,} half-hours, "
         in in_view(page, "q29")
     )
@@ -2587,6 +2814,7 @@ ARTICLE_IDS = [
     "q25",
     "q29",
     "q28",
+    "wind-shortfall",
     "q8",
     "q30",
     "q1",
@@ -2673,7 +2901,7 @@ def rule_link(question_id):
     """The asterisk that links a question to its registered rule."""
     return (
         f'<a class="ref" href="{RULES_URL}#{register_anchor(question_id)}" '
-        f'aria-label="Registered rule, {question_id}">*</a>'
+        f'aria-label="Rule, {question_id}">*</a>'
     )
 
 
@@ -2735,6 +2963,20 @@ def highest_other_month(q23_rows):
     return highest
 
 
+def wind_output_held_day():
+    """'24 November 2026': the day the published wind output's shortfall was
+    held, from its comment line."""
+    text = (REPOSITORY / "docs" / "results" / WIND_OUTPUT).read_text(encoding="utf-8")
+    return re.search(rf"shortfall and wind level as held ({LONG_DATE});", text).group(1)
+
+
+def page_number(value, places):
+    """A value at a fixed number of decimals, halves rounded up, with a true
+    minus sign and no plus sign, as the page writes a range's ends."""
+    step = Decimal(1).scaleb(-places)
+    return with_true_minus(str(Decimal(value).quantize(step, rounding=ROUND_HALF_UP)))
+
+
 def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
     q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
     q8_q28 = saved_output_rows("q8_q28_history.csv")
@@ -2754,6 +2996,35 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
     shortfall_rho = item_row(
         q8_q28, "2", "rho_shortfall: abs(error_api_final) with positive shortfall"
     )["value"]
+    gap = item_row(q8_q28, "2", "gap, rho_demand minus rho_shortfall")["value"]
+    gap_low = item_row(q8_q28, "2", "bootstrap 90% interval for the gap, low")["value"]
+    gap_high = item_row(q8_q28, "2", "bootstrap 90% interval for the gap, high")[
+        "value"
+    ]
+    wind_rho_low = item_row(q30, "2", "rho_abs (primary): bootstrap 90% interval, low")[
+        "value"
+    ]
+    wind_rho_high = item_row(
+        q30, "2", "rho_abs (primary): bootstrap 90% interval, high"
+    )["value"]
+    delivered_direction = item_row(
+        q30,
+        "4",
+        "rho_signed (sensitivity): wind error, delivered outturn, with error_api_final",
+    )["value"]
+    added_back_direction = item_row(
+        q30,
+        "3",
+        "rho_signed (secondary): wind error, outturn with cohort curtailment "
+        "add-back, with error_api_final; expected direction negative",
+    )["value"]
+    ratio = Decimal(item_row(q8_q28, "3", "ratio, top over bottom")["value"])
+    ratio_low = Decimal(
+        item_row(q8_q28, "3", "bootstrap 90% interval for the ratio, low")["value"]
+    )
+    ratio_high = Decimal(
+        item_row(q8_q28, "3", "bootstrap 90% interval for the ratio, high")["value"]
+    )
     read = one_row(reverse, "section", "1")["item"]
     reverse_read_day = re.match(rf"read ({LONG_DATE}),", read).group(1)
     read_day = latest_day(
@@ -2761,6 +3032,7 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
         strata_read_day(saved_output_rows(STRATA_RESULT)),
         registered_read("Q1").partition(",")[0],
         registered_read("Q10").partition(",")[0],
+        wind_output_held_day(),
     )
     earliest = earliest_stated_read(PAGE.read_text(encoding="utf-8"))
 
@@ -2782,11 +3054,21 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
         "carbon miss.</li>",
         "<strong>No clear difference: both links are very weak.</strong> The "
         f"rank correlations are <strong>{hundredths(demand_rho)}</strong> for "
-        f"demand and {hundredths(shortfall_rho)} for under-delivery; to count as "
-        "stronger, one needed to lead by 0.1.</p>",
-        "<strong>Barely.</strong> The sizes of the two misses have a rank "
-        f"correlation of <strong>{hundredths(wind_rho)}</strong>, as weak as "
-        "expected before the read.</p>",
+        f"demand and {hundredths(shortfall_rho)} for under-delivery, and the gap "
+        f"between them ({page_number(gap, 2)}, 90% range {page_number(gap_low, 2)} "
+        f"to {page_number(gap_high, 2)}) cannot be told apart from zero.</p>",
+        "<strong>Barely, in size.</strong> The sizes of the two misses have a "
+        f"rank correlation of <strong>{hundredths(wind_rho)}</strong> (90% range "
+        f"{page_number(wind_rho_low, 2)} to {page_number(wind_rho_high, 2)}). In "
+        "direction the link is weak and its sign depends on the measure: "
+        f"{signed_to(delivered_direction, 2)} on delivered wind alone, "
+        f"{signed_to(added_back_direction, 2)} with turned-down wind added "
+        "back.</p>",
+        "In the fifth of half-hours with the biggest carbon misses (22 Aug 2025 – "
+        "16 Aug 2026), under-delivery was only "
+        f"{whole((ratio - 1) * 100)}% larger than in the fifth with the smallest "
+        f"(90% range {whole((ratio_low - 1) * 100)}% to "
+        f"{whole((ratio_high - 1) * 100)}%).{details_link('Q28')} Over the same",
         f"rank correlation of {hundredths(wind_rho)}, inside the ±0.2 written down "
         "as expected before the read. The direction,",
         f"Results read between {earliest.day} {earliest:%B} and {read_day}, from "
@@ -3812,7 +4094,16 @@ def test_q28s_reverse_note_states_its_wind_level_counts():
 
 def test_the_limitations_state_the_zero_actual_once_for_every_read_carbon_result():
     page = PAGE.read_text(encoding="utf-8")
-    names = [named_result(question_id) for question_id in READ_CARBON_RESULTS]
+    q8, q28, q29, q30 = [
+        named_result(question_id) for question_id in READ_CARBON_RESULTS
+    ]
+    names = [q8, q28, WIND_RESULT, q29, q30]
+    paired = (
+        f'<li id="carbon-label-alignment">The carbon API\'s half-hours may not '
+        f"line up with Elexon's. Four results ({q8}, {q28}, {WIND_RESULT} and "
+        f"{q30}) pair each carbon value with the Elexon half-hour of the same "
+        f"label, and {q29} sets the API's actual against its forecast"
+    )
     zero_actual = (
         '<li id="impossible-actual">GridSkew\'s data hold one impossible carbon '
         "actual, 0 g/kWh for 6 August 2026, 11:00 UTC. It lies inside the window "
@@ -3821,6 +4112,7 @@ def test_the_limitations_state_the_zero_actual_once_for_every_read_carbon_result
     )
 
     assert zero_actual in limitations_section(page)
+    assert paired in limitations_section(page)
     assert page.count("6 August 2026, 11:00 UTC") == 1
 
 
@@ -4373,14 +4665,16 @@ def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
         "is larger."
     )
     assert answer_of(page, "q2") == (
-        "<strong>Materially.</strong> In the week tested, "
+        "<strong>By a few per cent of the energy.</strong> In the week checked, "
         f"{share_as_percent(one_week['moved_share'])} of the energy was revised "
         "between the one-week and three-week runs, and "
-        f"<strong>{share_as_percent(three_weeks['moved_share'])}</strong> "
-        "between the three-week and two-month runs. The rule set in advance "
-        "counts 2% or more of the energy as material."
+        f"<strong>{share_as_percent(three_weeks['moved_share'])}</strong> ("
+        f"{whole(Decimal(three_weeks['moved_mwh']) / 1000)} GWh of "
+        f"{int(whole(Decimal(three_weeks['base_abs_mwh']) / 1000)):,}) between the "
+        "three-week and two-month runs."
     )
-    assert one_week["moved_label"] == three_weeks["moved_label"] == "material"
+    assert Decimal(one_week["moved_share"]) < Decimal("0.05")
+    assert "A change of 2% or more of the energy" in fold_outs(page, "q2")
     assert whole(earliest_mean / overall_mean) == "2"
     assert not_drawn_with_notice_mwh == 0
     assert prefix_moved_mwh == Decimal(three_weeks["moved_mwh"])
@@ -4459,20 +4753,22 @@ def test_no_instruction_reached_a_nuclear_unit_as_the_fuel_group_limit_says():
 def test_the_limitations_name_the_results_that_set_one_measure_against_another():
     # Q5 sets under-delivery against outage notices, Q8 and Q28 against the
     # carbon miss, Q30 the wind miss against it; each is an article on the
-    # page, beside the exploratory block.
+    # page; Q28's further results stand inside its article.
     page = PAGE.read_text(encoding="utf-8")
     named = ["Q5", "Q8", "Q28", "Q30"]
     names = [named_result(question_id) for question_id in named]
+    names.insert(3, WIND_RESULT)
     limitation = (
-        f"<li>Results that set one measure against another ({', '.join(names)} "
-        "and the exploratory cuts) are associations, not causes. Each result "
+        "<li>Results that set one measure against another ("
+        f"{', '.join(names[:-1])} and {names[-1]}) are associations, not causes. "
+        "Each result "
         "covers the period given beside it and may not hold in another.</li>"
     )
 
     assert limitation in page
     for question_id in named:
         assert f'<article id="{question_id.lower()}">' in page
-    assert '<section class="exploratory"' in page
+    assert '<article id="wind-shortfall">' in page
 
 
 PRE_REGISTRATION_EXCEPTIONS = [
@@ -4494,7 +4790,7 @@ def page_exception_openings():
     """How the page opens each exception: the result's plain name and its
     asterisk, in the register's order."""
     later_look = (
-        "The later, unplanned look at carbon misses and under-delivery"
+        "The later, unplanned looks at carbon misses and under-delivery"
         '<a class="ref" href="#q28-reverse-title" aria-label="Details, Q28\'s '
         'later look">*</a>'
     )
@@ -4508,6 +4804,14 @@ def page_exception_openings():
         capitalised(named_result("Q28")),
         later_look,
     ]
+
+
+def set_up_fold_out(page):
+    """The fold-out near the page's end on how the questions were set up."""
+    for fold_out in FOLD_OUT.findall(page):
+        if '<summary id="set-up">How the questions were set up</summary>' in fold_out:
+            return fold_out
+    return ""
 
 
 def exception_lines(text, opening, closing):
@@ -4534,10 +4838,13 @@ def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions(
         if line.startswith("- "):
             register_items.append(line)
 
+    set_up = set_up_fold_out(page)
     assert (
-        "Every reading rule was recorded before its result was read, except where "
-        "the result says otherwise" in page
+        "<p>Every reading rule was recorded before its result was read, except "
+        "where the result says otherwise" in set_up
     )
+    assert '<li id="pre-registration-exceptions">' in set_up
+    assert "Every reading rule" not in FOLD_OUT.sub("", page)
     assert "except where its status says\notherwise" in questions
     assert len(page_lines) == len(register_items) == len(PRE_REGISTRATION_EXCEPTIONS)
     for page_line, opening, register_item, named in zip(
@@ -4726,8 +5033,16 @@ def test_q1s_answer_and_checks_come_from_its_verdict_output():
     assert answer_of(page, "q1") == (
         "<strong>Up, over the window as a whole.</strong> The middle change "
         f"from first to final forecast was <strong>{median_drift} g/kWh</strong>, "
-        f"and {share_as_percent(verdict['positive_share'])} of non-zero changes "
-        "were upward. The rule set in advance needs at least +2 and at least 55%."
+        "and nearly three in four of the changes that were not zero ("
+        f"{share_as_percent(verdict['positive_share'])}) were upward. For scale, "
+        "a day ahead the forecast ran "
+        f"{whole(q10_accuracy(saved_output_rows(Q10_OUTPUT), 'about 24 hours')['bias'])} "
+        f"g/kWh below NESO's outturn estimate.{details_link('Q10')}"
+    )
+    assert Decimal("0.7") < Decimal(verdict["positive_share"]) < Decimal("0.75")
+    assert (
+        "Upward drift is supported when the median change is at least +2 g/kWh "
+        "and at least 55% of non-zero changes are upward" in fold_outs(page, "q1")
     )
     assert verdict["reported_verdict"] == "supported: upward drift"
     assert verdict["as_published_verdict"] == "supported: upward drift"
@@ -5095,8 +5410,14 @@ def test_the_archive_results_sit_apart_from_the_stored_forecasts_four():
     # Q1 and Q10 use the archive, so they have a section of their own.
     page = PAGE.read_text(encoding="utf-8")
 
-    assert "so these four questions use the" in page
-    assert articles_in(page, "carbon") == ["q29", "q28", "q8", "q30"]
+    assert "so these five questions use the" in page
+    assert articles_in(page, "carbon") == [
+        "q29",
+        "q28",
+        "wind-shortfall",
+        "q8",
+        "q30",
+    ]
     assert articles_in(page, "archive") == ["q1", "q10"]
 
 
@@ -5162,17 +5483,17 @@ def test_the_readme_gives_q10s_bias_and_q1s_verdict_beside_its_predictions():
         f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and the "
         f'rule\'s verdict is "{verdict["reported_verdict"]}"' in readme
     )
-    assert f"were each read once on {registered_read('Q1').partition(',')[0]}" in readme
+    assert f"were read on {registered_read('Q1').partition(',')[0]}" in readme
 
 
 def test_still_to_come_and_not_pursued_match_the_register():
-    # The page's "Still to come" names the registered questions that wait,
-    # with no promised date, and its "Registered, not pursued" table names
-    # exactly the questions the register marks not pursued.
+    # The page names the question that still waits, with no promised date,
+    # and its table of questions not answered names exactly the questions
+    # the register marks not pursued, each with an asterisk to its rule.
     page = PAGE.read_text(encoding="utf-8")
     questions = QUESTIONS.read_text(encoding="utf-8")
-    section = page.split('<section id="to-come"', 1)[1].split("</section>", 1)[0]
-    waiting, not_pursued = section.split('<h3 id="not-pursued">', 1)
+    section = page.split('<section id="not-answered"', 1)[1].split("</section>", 1)[0]
+    waiting, not_pursued = section.split('<p id="no-data">', 1)
     marked = []
     for question_id in NOT_PURSUED:
         if "Not pursued ([why](#registered-not-pursued))" in flattened(
@@ -5188,6 +5509,7 @@ def test_still_to_come_and_not_pursued_match_the_register():
     assert registered_rule_links(waiting) == WAITING
     assert question_ids_in(visible_text(section)) == []
     assert links_to_unregistered_rules(section) == []
+    assert '<h2 id="not-answered-title">Questions not answered here</h2>' in waiting
     for question_id in WAITING:
         assert "Not pursued" not in register_section(questions, question_id)
 
@@ -5195,7 +5517,7 @@ def test_still_to_come_and_not_pursued_match_the_register():
 def test_the_not_pursued_table_wraps_its_sentences():
     # Number tables keep one line per cell; this table holds sentences.
     page = PAGE.read_text(encoding="utf-8")
-    not_pursued = page.split('<h3 id="not-pursued">', 1)[1].split("</section>", 1)[0]
+    not_pursued = page.split('<p id="no-data">', 1)[1].split("</section>", 1)[0]
 
     assert '<table class="prose">' in not_pursued
     assert "table.prose td { white-space: normal; text-align: left; }" in page
@@ -5330,7 +5652,7 @@ def test_chart_reading_lines_give_scale_from_the_context_counts(written):
     assert "the mean carbon intensity was 125 g/kWh." in reading_line(
         written, "q29_error_by_time_of_day.vl.json"
     )
-    assert "for scale only; no link is tested." in reading_line(
+    assert "(NESO's initial outturn), for scale only." in reading_line(
         written, "q29_context_demand_by_month.vl.json"
     )
 
@@ -5350,8 +5672,9 @@ def test_q1s_chart_states_its_half_hours_dates_and_the_rows_left_out(written):
     # The fixture's verdict: 2,000 half-hours from 20 August to 30 September
     # 2026; its very low and unclassified bands hold no half-hours.
     assert reading_line(written, Q1_CHART).endswith(
-        "Described, not tested. 2,000 half-hours, 20 Aug 2026 – 30 Sep 2026. "
-        "Rows with no half-hours are left out: very low band, no band."
+        "the API gave its first forecast. 2,000 half-hours, 20 Aug 2026 – "
+        "30 Sep 2026. Rows with no half-hours are left out: very low band, no "
+        "band."
     )
 
 
@@ -5369,7 +5692,7 @@ def test_q1s_chart_names_no_row_left_out_when_every_cell_holds_half_hours(
     write_charts(saved, tmp_path / "out")
 
     assert reading_line(tmp_path / "out", Q1_CHART).endswith(
-        "Described, not tested. 2,000 half-hours, 20 Aug 2026 – 30 Sep 2026."
+        "the API gave its first forecast. 2,000 half-hours, 20 Aug 2026 – 30 Sep 2026."
     )
 
 
@@ -5391,7 +5714,7 @@ def test_the_page_and_rules_speak_as_i_or_neutrally():
 
     assert voice.findall(page) == []
     assert voice.findall(QUESTIONS.read_text(encoding="utf-8")) == []
-    assert page.count("<summary>How I measured it</summary>") == 14
+    assert page.count("<summary>How I measured it</summary>") == 15
     assert '<h2 id="found-title">What I found</h2>' in page
 
 
@@ -5873,6 +6196,7 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q29_context_demand_by_month.vl.json",
         "results/q28_shortfall_index_by_miss_fifth.vl.json",
         "results/q28_reverse_carbon_miss_by_under_delivery_fifth.vl.json",
+        "results/q28_wind_shortfall_per_gw.vl.json",
         "results/q30_rank_correlations.vl.json",
         "results/q1_median_drift_by_time_and_band.vl.json",
         "results/q2_moved_energy_by_unit_type.vl.json",
@@ -5924,7 +6248,7 @@ def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path)
 ANY_TAG = re.compile(r"<[^>]+>")
 ASTERISK_LINK = re.compile(r'<a class="ref" [^>]*>\*</a>')
 ASTERISK_LABEL = re.compile(
-    r"(?P<kind>Details|Registered rule), (?P<question>Q\d+(?:-R[0-9A-Z]+)?)"
+    r"(?P<kind>Details|Rule), (?P<question>Q\d+(?:-R[0-9A-Z]+)?)"
     r"(?:'s later look)?"
 )
 SENTENCE_END = re.compile(r"[.?!](?=\s|$)")
@@ -5939,13 +6263,20 @@ GLANCED_PARTS = {
     "footer": re.compile(r"<footer>(.*?)</footer>", re.DOTALL),
 }
 # Asterisks whose target is not their own question's article: the question
-# registered and not pursued, the later look inside Q28's article, and the
-# limitation on how the carbon API labels its half-hours.
+# not answered here, the later look inside Q28's article, and the limitation
+# on how the carbon API labels its half-hours.
 ASTERISK_TARGETS_ELSEWHERE = {
-    "Details, Q4": "#not-pursued",
+    "Details, Q4": "#not-answered",
     "Details, Q28's later look": "#q28-reverse-title",
     "Details, half-hour alignment": "#carbon-label-alignment",
+    "Details, wind's shortfall": "#wind-shortfall",
+    "Details, stored forecast": "#stored-forecast",
 }
+WIND_LINK = (
+    '<a class="ref" href="#wind-shortfall" aria-label="Details, wind\'s shortfall">'
+    "*</a>"
+)
+WIND_RESULT = f"wind's shortfall{WIND_LINK}"
 # The one line each article shows on what its answer cannot say.
 VISIBLE_LIMITS = {
     "q23": "<p>The gap shows how far a unit strayed from its plan, not why.</p>",
@@ -5983,8 +6314,15 @@ VISIBLE_LIMITS = {
         'alignment">*</a>; the "actual" is NESO\'s own estimate.</p>'
     ),
     "q28": (
-        "<p>That test did not ask whether the grid came out cleaner or dirtier "
-        "than forecast. A later, unplanned look does.</p>"
+        "<p>Sorting by the size of the miss cannot say whether the grid came "
+        "out cleaner or dirtier than forecast; the chart below looks at "
+        f"direction. Neither shows cause.{WIND_LINK}</p>"
+    ),
+    "wind-shortfall": (
+        "<p><strong>A pattern, not proof of cause, and not the same everywhere:"
+        "</strong> where the least wind was planned, more shortfall went with a "
+        "cleaner grid (−30.4). With nothing held fixed the figure is −23.7: "
+        "windy half-hours are both clean and prone to large shortfalls.</p>"
     ),
     "q8": (
         "<p>This shows what goes together in one year of the stored forecast, "
@@ -6026,8 +6364,8 @@ def sentence_count(markup):
 
 
 def registered_rule_links(markup):
-    """The questions whose registered rule an asterisk links, in order."""
-    return re.findall(r'aria-label="Registered rule, (Q[^"]+)"', markup)
+    """The questions whose rule in the register an asterisk links, in order."""
+    return re.findall(r'aria-label="Rule, (Q[^"]+)"', markup)
 
 
 def links_to_unregistered_rules(markup):
@@ -6121,7 +6459,7 @@ def asterisk_target(label, rule_anchors):
     named = ASTERISK_LABEL.fullmatch(label)
     if named is None:
         return None
-    if named["kind"] == "Registered rule":
+    if named["kind"] == "Rule":
         return f"{RULES_URL}#{rule_anchors.get(named['question'])}"
     return f"#{named['question'].lower()}"
 
@@ -6246,6 +6584,9 @@ def caption_windows(page):
         "q29-month-chart": stored_year,
         "q29-demand-chart": stored_year,
         "q28-chart": stored_year,
+        "wind-shortfall-chart": output_date_range(
+            [wind_population(saved_output_rows(WIND_OUTPUT))]
+        ),
         "q30-chart": q30,
         "q1-chart": ARCHIVE_WINDOW,
         "q2-chart": f"settlement dates {Q2_WEEK}",
@@ -6275,6 +6616,9 @@ def caption_counts():
         "under-delivery, TWh": tenths(under_delivery_mwh / 1_000_000),
         "Q29 half-hours": f"{int(one_row(q29, 'section', '1')['half_hours']):,}",
         "Q28 half-hours": f"{int(one_row(q8_q28, 'section', '1')['half_hours']):,}",
+        "wind half-hours": (
+            f"{int(wind_population(saved_output_rows(WIND_OUTPUT))['half_hours']):,}"
+        ),
         "Q30 half-hours": f"{int(wind_rho['half_hours']):,}",
         "Q1 half-hours": f"{int(verdict['complete_half_hours']):,}",
     }
@@ -6321,19 +6665,24 @@ def expected_captions(windows, counts):
             f"The same {q29_half_hours}, {windows['q29-month-chart']}. {carbon}"
         ),
         "q29-demand-chart": (
-            "For scale only; no link is tested. Mean national demand on the same "
+            "For scale only: mean national demand on the same "
             f"{q29_half_hours}, {windows['q29-demand-chart']}. {elexon}"
         ),
         "q28-chart": (
             f"{counts['Q28 half-hours']} half-hours, {windows['q28-chart']}, "
             f"all units together. {both}"
         ),
+        "wind-shortfall-chart": (
+            f"{counts['wind half-hours']} half-hours, "
+            f"{windows['wind-shortfall-chart']}, "
+            f"wind units. {both}"
+        ),
         "q30-chart": (
             f"{counts['Q30 half-hours']} half-hours, {windows['q30-chart']}. {both}"
         ),
         "q1-chart": (
             f"{counts['Q1 half-hours']} complete half-hours, "
-            f"{windows['q1-chart']}. Described, not tested. {carbon}"
+            f"{windows['q1-chart']}. {carbon}"
         ),
         "q2-chart": (
             f"Every unit, {windows['q2-chart']}, three-week to two-month runs. {elexon}"
@@ -6566,7 +6915,7 @@ def test_q3s_energy_chart_holds_the_one_way_groups_from_the_saved_output():
         )
 
 
-def test_q3_shows_the_energy_chart_and_folds_the_measure_set_in_advance_away():
+def test_q3_shows_the_energy_chart_and_folds_the_medians_away():
     page = PAGE.read_text(encoding="utf-8")
     shown = in_view(page, "q3")
     folded = fold_outs(page, "q3")
@@ -6581,7 +6930,7 @@ def test_q3_shows_the_energy_chart_and_folds_the_measure_set_in_advance_away():
     assert 'id="q3-chart"' not in shown
     assert median_limit not in shown
     registered = folded.split(
-        "<summary>The typical half-hour: the measure set in advance</summary>", 1
+        "<summary>The typical half-hour: medians and spreads</summary>", 1
     )[1].split("</details>", 1)[0]
     assert '<div class="chart" id="q3-chart">' in registered
     assert "<figcaption>" in registered
@@ -6662,6 +7011,492 @@ def column_strata_of(rows, column):
     for row in rows:
         values.append(row[column])
     return values
+
+
+# Words for how a question was set up or judged against a bar. None shows
+# before a fold-out is opened; each fold-out keeps the facts in its own
+# entry.
+FRAMING_WORDS = re.compile(
+    r"pre-regist\w*|\bregistered\b|set in advance|set beforehand|"
+    r"before the read|before its result was read|\bunplanned\b|one look|"
+    r"read once|exploratory|the test needed|the rule needs|not tested|is tested",
+    re.IGNORECASE,
+)
+# The same words used of the data itself, not of a question's set-up: an
+# outage notice's class, and who registered a unit.
+DATA_USES_OF_FRAMING_WORDS = [
+    "unplanned notices",
+    "Unplanned (",
+    "registered by suppliers",
+]
+# Bars a result once had to clear; each stays in its fold-out's measure.
+THRESHOLDS_OUT_OF_VIEW = [
+    "25%",
+    "at least +2",
+    "55%",
+    "lead by 0.1",
+    "±0.2",
+    "2% or more",
+]
+FOLD_OUT_BODY = re.compile(
+    r'(<details class="method">\s*<summary[^>]*>.*?</summary>).*?</details>',
+    re.DOTALL,
+)
+
+
+# How a bar a result had to clear is worded, wherever a reader glances:
+# answers, lead lines, limit lines, captions and the headline list. A use
+# that is not a bar is listed here with its reason.
+THRESHOLD_WORDING = re.compile(
+    r"\bneeded\b|\bat least\b|or more counts|to count as|\bthe bar\b|"
+    r"\bthreshold",
+    re.IGNORECASE,
+)
+PLAIN_USES_OF_THRESHOLD_WORDING = []
+
+
+def glanced_text(page):
+    """The text of every answer, lead line, caption and limit line, and of
+    the headline list."""
+    parts = []
+    for kind in ("answer", "lead line", "caption", "headline list"):
+        parts.extend(GLANCED_PARTS[kind].findall(page))
+    parts.extend(VISIBLE_LIMITS.values())
+    return visible_text(" ".join(parts))
+
+
+def threshold_wording_in(text):
+    for plain_use in PLAIN_USES_OF_THRESHOLD_WORDING:
+        text = text.replace(plain_use, "")
+    return THRESHOLD_WORDING.findall(text)
+
+
+def test_no_answer_caption_limit_line_or_headline_words_a_bar_to_clear():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert threshold_wording_in(glanced_text(page)) == []
+    assert limits_out_of_view(page) == []
+    assert threshold_wording_in("it needed 25%, at least +2, to count as yes") == [
+        "needed",
+        "at least",
+        "to count as",
+    ]
+
+
+def text_in_view(page):
+    """Everything a reader meets before opening a fold-out: the page's text
+    with each fold-out cut down to its summary, and the words carried by
+    image descriptions, link labels and the page's description."""
+    body = page.split("<body>", 1)[1].split("<script", 1)[0]
+    shown = [visible_text(FOLD_OUT_BODY.sub(r"\1", body))]
+    for _tag, attributes in page_tags():
+        for name in ("alt", "aria-label", "content"):
+            shown.append(attributes.get(name) or "")
+    return " ".join(" ".join(shown).split())
+
+
+def framing_words_in(text):
+    for data_use in DATA_USES_OF_FRAMING_WORDS:
+        text = text.replace(data_use, "")
+    return FRAMING_WORDS.findall(text)
+
+
+def thresholds_in(text):
+    found = []
+    for threshold in THRESHOLDS_OUT_OF_VIEW:
+        if threshold in text:
+            found.append(threshold)
+    return found
+
+
+def test_no_word_about_how_a_question_was_set_up_shows_before_a_fold_out_opens():
+    page = PAGE.read_text(encoding="utf-8")
+    in_view_text = text_in_view(page)
+
+    assert framing_words_in(in_view_text) == []
+    assert thresholds_in(in_view_text) == []
+    assert framing_words_in("an unplanned look, registered but not pursued") == [
+        "unplanned",
+        "registered",
+    ]
+    assert "How I measured it" in in_view_text
+    assert "Recorded 25 October 2026" not in in_view_text
+
+
+def test_the_set_up_fold_out_keeps_the_claim_its_context_counts_and_the_ranges_role():
+    page = PAGE.read_text(encoding="utf-8")
+    set_up = set_up_fold_out(page)
+
+    assert page.index('<section id="limitations"') < page.index('<summary id="set-up">')
+    assert (
+        "Each result was read once (the count of short instructions"
+        f"{details_link('Q25')} was re-run once on the same data," in set_up
+    )
+    assert (
+        "A figure given for scale sets a result against a context count read on "
+        "1 November 2026, a denominator, not a registered result: " in set_up
+    )
+    for context_count in (
+        "context_plan_per_unit_half_hour.csv",
+        "context_plan_pct_capacity.csv",
+        "context_demand.csv",
+        "context_carbon_intensity.csv",
+    ):
+        assert f'<a href="results/{context_count}">' in set_up
+    assert (
+        "<p>The 90% ranges are a guide to uncertainty, not part of any rule's "
+        "verdict.</p>" in set_up
+    )
+    assert (
+        '<p>"How I measured it", under each answer, gives the measure, the '
+        "numbers and the dates.</p>" in FOLD_OUT.sub("", page)
+    )
+
+
+def wind_population(rows):
+    return one_row(section_rows(rows, "1"), "line", "2")
+
+
+def per_gw(rows, section, line, outcome, measure="wind_positive"):
+    """One figure of the wind output: an outcome's change per extra GW of a
+    measure, at a section and line."""
+    found = []
+    for row in rows:
+        place = (row["section"], row["line"], row["measure"], row["outcome"])
+        if place == (section, line, measure, outcome):
+            found.append(row)
+    assert len(found) == 1
+    return found[0]
+
+
+def figure_and_range(row, places):
+    """'7.9 (4.9 to 11.2)' without the bracket: a figure's value, low and
+    high as the page writes them."""
+    return (
+        page_number(row["value"], places),
+        page_number(row["interval_low"], places),
+        page_number(row["interval_high"], places),
+    )
+
+
+def table_cell(row):
+    """'+7.93 (4.93 to 11.19)': a figure with its sign and its 90% range."""
+    return (
+        f"{signed_to(row['value'], 2)} ({page_number(row['interval_low'], 2)} to "
+        f"{page_number(row['interval_high'], 2)})"
+    )
+
+
+def gigawatts_of(mwh_per_half_hour):
+    return tenths(Decimal(mwh_per_half_hour) * 2 / 1000)
+
+
+NUMBER_WORDS_SMALL = {1: "one", 2: "two", 3: "three", 4: "four"}
+WAYS_OF_ALLOWING_FOR_THE_PLAN = [
+    (
+        "Same month and time of day, planned output as a second variable (the "
+        "answer's first figure)",
+        "4",
+        "4",
+    ),
+    ("Twenty bands of planned output", "5", "13"),
+    (
+        "Planned output as a second variable, month and time of day not held",
+        "3",
+        "4",
+    ),
+    ("Five bands of planned output, each band's own means removed", "5", "12"),
+    ("Five bands of planned output", "5", "11"),
+]
+NOTHING_HELD_FIXED = (
+    "Nothing held fixed (the misleading plain comparison)",
+    "3",
+    "2",
+)
+
+
+def wind_article_fold_out(summary):
+    """One of the wind article's fold-outs, by its summary."""
+    page = PAGE.read_text(encoding="utf-8")
+    for fold_out in FOLD_OUT.findall(article_text(page, "wind-shortfall")):
+        if f"<summary>{summary}</summary>" in fold_out:
+            return fold_out
+    return ""
+
+
+FIVE_WAYS = "The five ways of allowing for the plan"
+
+
+def test_the_wind_articles_answer_states_its_figures_from_the_published_output():
+    # Each figure to one decimal, halves up, straight from the saved value
+    # (0.649 is 0.6, not 0.65 rounded again). Every way allows for planned
+    # wind output; only the first also holds month and time of day fixed.
+    # A way cannot be told apart from zero when its 90% range takes zero in.
+    wind = saved_output_rows(WIND_OUTPUT)
+    carbon = saved_output_rows("context_carbon_intensity.csv")
+    actual, actual_low, actual_high = figure_and_range(
+        per_gw(wind, "4", "4", "actual"), 1
+    )
+    others = []
+    ranges_taking_in_zero = 0
+    for _name, section, line in WAYS_OF_ALLOWING_FOR_THE_PLAN[1:]:
+        row = per_gw(wind, section, line, "actual")
+        others.append(Decimal(row["value"]))
+        if Decimal(row["interval_low"]) <= 0 <= Decimal(row["interval_high"]):
+            ranges_taking_in_zero += 1
+    mean_actual = whole(
+        item_row(carbon, "1", "all half-hours")["mean_actual_g_per_kwh"]
+    )
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert answer_of(page, "wind-shortfall") == (
+        "<strong>It tended to be, but by how much depends on the method.</strong> "
+        "Allowing for how much wind was planned, half-hours in which wind farms "
+        "fell further short tended to have a dirtier grid: about "
+        f"{actual} g/kWh per extra GW (90% range {actual_low} to {actual_high}) "
+        "when month and time of day are also held fixed, and from "
+        f"{page_number(min(others), 1)} to {page_number(max(others), 1)} on "
+        f"{NUMBER_WORDS[len(others)]} other ways, "
+        f"{NUMBER_WORDS_SMALL[ranges_taking_in_zero]} of which cannot be told "
+        f"apart from zero. The mean carbon actual was {mean_actual} g/kWh."
+    )
+    assert (
+        "<h3>When wind farms fall short of their plans, is the grid dirtier?</h3>"
+        in in_view(page, "wind-shortfall")
+    )
+    assert answer_of(page, "wind-shortfall").count("<strong>") == 1
+    assert Decimal(per_gw(wind, "4", "4", "actual")["interval_low"]) > 0
+    assert "roughly 5 to 8" not in page
+
+
+def test_the_wind_article_says_what_the_forecast_did_and_that_it_is_a_pattern():
+    wind = saved_output_rows(WIND_OUTPUT)
+    forecast, forecast_low, forecast_high = figure_and_range(
+        per_gw(wind, "4", "4", "forecast"), 1
+    )
+    miss, miss_low, miss_high = figure_and_range(
+        per_gw(wind, "4", "4", "signed_miss"), 1
+    )
+    plain = page_number(per_gw(wind, "3", "2", "actual")["value"], 1)
+    least_planned = planned_fifths(wind)[0]
+    least = page_number(least_planned["value"], 1)
+    yardstick = tenths(one_row(section_rows(wind, "6"), "line", "2")["value"])
+    page = PAGE.read_text(encoding="utf-8")
+    shown = in_view(page, "wind-shortfall")
+    stored_forecast = (
+        '<a class="ref" href="#stored-forecast" aria-label="Details, stored '
+        'forecast">*</a>'
+    )
+
+    assert (
+        f"<p>The stored forecast moved almost as much ({forecast}; {forecast_low} "
+        f"to {forecast_high}), so its miss moved by only about {miss} ({miss_low} "
+        f"to {miss_high}). That does not show the forecast saw the shortfall "
+        "coming: NESO does not say when the stored forecast is made."
+        f"{stored_forecast}</p>" in shown
+    )
+    assert (
+        '<dt id="stored-forecast">Stored forecast</dt>' in page
+        and "NESO does not document when it is made."
+        in page.split('<dt id="stored-forecast">', 1)[1].split("</dd>", 1)[0]
+    )
+    assert "where checked" not in shown
+    assert (
+        "<p><strong>A pattern, not proof of cause, and not the same everywhere:"
+        "</strong> where the least wind was planned, more shortfall went with a "
+        f"cleaner grid ({least}). With nothing held fixed the figure is {plain}: "
+        "windy half-hours are both clean and prone to large shortfalls.</p>"
+    ) == VISIBLE_LIMITS["wind-shortfall"]
+    assert VISIBLE_LIMITS["wind-shortfall"] in shown
+    assert Decimal(least_planned["interval_high"]) < 0
+    assert Decimal(per_gw(wind, "3", "2", "actual")["interval_high"]) < 0
+    assert '<div class="chart" id="wind-shortfall-chart">' in shown
+    assert f"{yardstick} g/kWh" not in visible_text(shown)
+    assert f"<dd>{yardstick} g/kWh is what replacing 1 GW" in fold_outs(
+        page, "wind-shortfall"
+    )
+    assert (
+        "26.1 GW. It is a size for comparison, not something these figures "
+        "estimate.</dd>" in fold_outs(page, "wind-shortfall")
+    )
+
+
+def test_the_wind_fold_out_gives_every_way_of_allowing_for_the_plan():
+    wind = saved_output_rows(WIND_OUTPUT)
+    folded = wind_article_fold_out(FIVE_WAYS)
+    actuals = []
+    misses = []
+    for name, section, line in [*WAYS_OF_ALLOWING_FOR_THE_PLAN, NOTHING_HELD_FIXED]:
+        cells = []
+        for outcome in ("actual", "forecast", "signed_miss"):
+            cells.append(f"<td>{table_cell(per_gw(wind, section, line, outcome))}</td>")
+        assert f"<tr><td>{name}</td>{''.join(cells)}</tr>" in folded
+        misses.append(Decimal(per_gw(wind, section, line, "signed_miss")["value"]))
+        assert Decimal(per_gw(wind, section, line, "signed_miss")["interval_low"]) > 0
+    wholly_above_zero = []
+    for name, section, line in WAYS_OF_ALLOWING_FOR_THE_PLAN:
+        row = per_gw(wind, section, line, "actual")
+        actuals.append(page_number(row["value"], 1))
+        if Decimal(row["interval_low"]) > 0:
+            wholly_above_zero.append(name)
+    banded_forecast = per_gw(wind, "5", "13", "forecast")
+
+    assert (
+        "<dd>Across the five ways the actual's figure runs from "
+        f"{actuals[-1]} to {actuals[0]} ({', '.join(actuals)}). Only the first "
+        "two have ranges wholly above zero, and the first is the largest." in folded
+    )
+    assert wholly_above_zero == [
+        WAYS_OF_ALLOWING_FOR_THE_PLAN[0][0],
+        WAYS_OF_ALLOWING_FOR_THE_PLAN[1][0],
+    ]
+    assert (
+        "With twenty bands the forecast's figure cannot be told apart from zero "
+        f"({page_number(banded_forecast['interval_low'], 1)} to "
+        f"{page_number(banded_forecast['interval_high'], 1)}). On every row of "
+        "the table the miss's range lies above zero and its figure lies between "
+        f"{hundredths(min(misses))} and {hundredths(max(misses))}.</dd>" in folded
+    )
+
+
+def planned_fifths(rows):
+    """The actual's figure inside each fifth of planned wind output, least
+    planned first."""
+    fifths = []
+    for row in section_rows(rows, "5"):
+        place = (row["line"], row["measure"], row["outcome"])
+        if place == ("15", "wind_positive", "actual"):
+            fifths.append(row)
+    assert [row["fifth"] for row in fifths] == ["1", "2", "3", "4", "5"]
+    return fifths
+
+
+def test_the_wind_fold_out_says_where_the_sign_turns_and_what_cannot_be_said():
+    # Inside the fifth of half-hours with the least wind planned the figure
+    # is below zero with its whole range; in the rest it is above zero, with
+    # a range that takes zero in for all but one.
+    wind = saved_output_rows(WIND_OUTPUT)
+    least_planned, *rest = planned_fifths(wind)
+    least, least_low, least_high = figure_and_range(least_planned, 1)
+    others = []
+    ranges_taking_in_zero = 0
+    for row in rest:
+        others.append(Decimal(row["value"]))
+        if Decimal(row["interval_low"]) <= 0:
+            ranges_taking_in_zero += 1
+    folded = wind_article_fold_out(FIVE_WAYS)
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        "<dt>Inside one band of planned output</dt>\n        <dd>Taking only the "
+        "fifth of half-hours with the least wind planned, the figure for the "
+        f"actual is {least} ({least_low} to {least_high}): there, more shortfall "
+        "went with a cleaner grid. In the other four fifths it is "
+        f"{signed_to(min(others), 1)} to {signed_to(max(others), 1)}, and "
+        f"{NUMBER_WORDS_SMALL[ranges_taking_in_zero]} of those four ranges include "
+        "zero.</dd>" in folded
+    )
+    assert Decimal(least_planned["interval_high"]) < 0 < min(others)
+    assert (
+        "<dt>What cannot be said</dt>\n        <dd>That under-delivery causes the "
+        "higher actual. The comparison is of half-hours, not of an intervention; "
+        "weather, demand and imports move with a wind shortfall too.</dd>"
+        in wind_article_fold_out("How I measured it")
+    )
+    assert "What cannot be said" not in in_view(page, "wind-shortfall")
+
+
+def test_the_wind_fold_outs_give_the_measure_the_contrast_and_the_data_as_held():
+    wind = saved_output_rows(WIND_OUTPUT)
+    folded = fold_outs(PAGE.read_text(encoding="utf-8"), "wind-shortfall")
+    population = wind_population(wind)
+    every_half_hour = one_row(
+        section_rows(wind, "2"), "item", wind_item(wind, "2", "2", "actual")
+    )
+    fifths = {}
+    for row in section_rows(wind, "2"):
+        if row["line"] == "1" and row["measure"] == "wind_positive":
+            fifths[(row["outcome"], row["fifth"])] = row
+    middle = fifths[("actual", "3")]
+    plain, plain_low, plain_high = figure_and_range(per_gw(wind, "3", "2", "actual"), 1)
+    gas_actual = per_gw(wind, "4", "4", "actual", "gas_positive")
+    gas_miss = per_gw(wind, "4", "4", "signed_miss", "gas_positive")
+    units = {}
+    for row in section_rows(wind, "1"):
+        if row["line"] in ("3", "4"):
+            units[row["measure"]] = row["value"]
+    recomputed = one_row(
+        [row for row in section_rows(wind, "1") if row["line"] == "6"],
+        "measure",
+        "all fuels",
+    )
+    demand = one_row(section_rows(wind, "6"), "line", "1")["value"]
+    figures_read = one_row(section_rows(wind, "7"), "line", "2")["value"]
+    q28_half_hours = int(
+        one_row(saved_output_rows("q8_q28_history.csv"), "section", "1")["half_hours"]
+    )
+
+    assert (
+        f"It ran from {whole(every_half_hour['range_from'])} to "
+        f"{int(whole(every_half_hour['range_to'])):,} MWh in a half-hour ("
+        f"{gigawatts_of(every_half_hour['range_from'])} to "
+        f"{gigawatts_of(every_half_hour['range_to'])} GW); the middle fifth of "
+        f"half-hours is {whole(middle['range_from'])} to "
+        f"{whole(middle['range_to'])} MWh ({gigawatts_of(middle['range_from'])} "
+        f"to {gigawatts_of(middle['range_to'])} GW)." in folded
+    )
+    assert (
+        f"<dd>With nothing held fixed the actual's figure is {plain} ({plain_low} "
+        f"to {plain_high}). By fifth of wind under-delivery the mean actual falls "
+        f"from {tenths(fifths[('actual', '1')]['value'])} to "
+        f"{tenths(fifths[('actual', '5')]['value'])} g/kWh and the mean forecast "
+        f"from {tenths(fifths[('forecast', '1')]['value'])} to "
+        f"{tenths(fifths[('forecast', '5')]['value'])}: half-hours with much wind "
+        "under-delivery are windy, and windy half-hours are clean. That is not "
+        "an impact.</dd>" in folded
+    )
+    assert (
+        "with gas at 394 g/kWh would add at the mean national demand of "
+        f"{tenths(demand)} GW." in folded
+    )
+    assert (
+        "gas under-delivery's figure for the actual cannot be told apart from "
+        f"zero ({table_cell(gas_actual).replace(' (', '; ')}; its miss is "
+        f"{table_cell(gas_miss)}.</dd>" in folded
+    )
+    assert (
+        Decimal(gas_actual["interval_low"]) < 0 < Decimal(gas_actual["interval_high"])
+    )
+    assert (
+        f"<dd>{int(population['half_hours']):,} half-hours on "
+        f"{population['days']} days, 22 August 2025 to 16 August 2026: one more "
+        f"than the {q28_half_hours:,} behind carbon misses and under-delivery"
+        f"{details_link('Q28')}, because by this read the final settlement run had "
+        f"reached {recomputed['half_hours']} of the half-hours." in folded
+    )
+    assert int(population["half_hours"]) == q28_half_hours + 1
+    assert (
+        f"{units['wind']} wind units and {units['gas']} gas units of "
+        f"{units['all fuels']}." in folded
+    )
+    assert (
+        f"{figures_read} figures were read, none corrected for reading many; only "
+        "the rows above are reported on their own. "
+        f'<a href="results/{WIND_OUTPUT}">Saved output</a> · '
+        '<a href="results/q28_wind_shortfall_per_gw.csv">chart data</a></dd>' in folded
+    )
+    assert long_date_range([population]) == ("22 August 2025", "16 August 2026")
+
+
+def wind_item(rows, section, line, outcome):
+    """The item text of the wind output's one unmeasured row at a section
+    and line, for an outcome."""
+    found = []
+    for row in section_rows(rows, section):
+        if row["line"] == line and row["outcome"] == outcome and not row["measure"]:
+            found.append(row["item"])
+    assert len(found) == 1
+    return found[0]
 
 
 def test_q24s_answer_gives_each_groups_flagged_share_from_its_chart_data():
