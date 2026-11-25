@@ -29,6 +29,10 @@ records, with a checksum, in `raw.flyway_schema_history`.
 - A migration that adds a source table ships with the table's grant lines in
   `sql/provision/004_loader_grants.sql`, which is re-run on the host before
   that table's loader is released (the [deployment page](deployment.md)).
+  If dbt reads the table, its grant line also goes in
+  `sql/provision/001_bmu_snapshot_schema.sql`; it is re-run on the host
+  before the dbt model that reads the table is released, and a test fails
+  while a dbt source table is missing from it.
 
 ## Where migrations run
 

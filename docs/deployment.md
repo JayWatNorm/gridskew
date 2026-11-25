@@ -17,10 +17,8 @@ A new database needs these steps before the nightly dbt job can run. The
 `sql/provision/001_bmu_snapshot_schema.sql` with
 `-v snapshot_schema=dbt_dev_snapshots -v dbt_role=gridskew_dbt`. It creates
 the `dbt_dev` and `dbt_dev_snapshots` schemas, lets the role use and create
-in them and use `raw`, and grants it `SELECT` on the two registry tables.
-The role also needs `SELECT` on the other `raw` tables; no script in this
-repository grants that, so the owner grants it separately. Then the project
-is built once with
+in them and use `raw`, and grants it `SELECT` on every `raw` table
+declared as a dbt source. Then the project is built once with
 `dbt build`, as CI does (from a workstation, with `--target prod`). The
 nightly job's first step tests the staged
 B1610 data and its run hook writes to `dbt_dev.dbt_node_results`, so on an
