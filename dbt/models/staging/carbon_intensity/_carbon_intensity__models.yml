@@ -31,7 +31,8 @@
   - name: stg_carbon_intensity__outturn
     description: >
       One row per completed settlement period, per poll, containing observed
-      carbon intensity and the final-revision forecast. Values may be revised,
+      carbon intensity and the API's one stored forecast, whose timing NESO
+      does not document. Values may be revised,
       so every poll is retained.
     columns:
       - name: period_start
@@ -46,7 +47,8 @@
           run and forms part of the key
       - name: forecast_final
         description: >
-          Final-revision forecast for the settlement period, in gCO2/kWh.
+          The API's one stored forecast for the settlement period, in
+          gCO2/kWh; NESO does not document its timing.
           Expected to be non-null in outturn ingestion
       - name: actual
         description: >

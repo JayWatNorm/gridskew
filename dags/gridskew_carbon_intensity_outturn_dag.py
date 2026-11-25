@@ -1,4 +1,4 @@
-"""Load carbon-intensity outturn and final-revision forecasts each day.
+"""Load carbon-intensity outturn and the API's stored forecast each day.
 
 Rows are appended to raw.carbon_intensity_outturn in gridskew_prod.
 """

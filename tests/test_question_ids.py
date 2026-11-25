@@ -13,15 +13,16 @@ ANSWERED = (1, 2, 3, 5, 6, 8, 10, 12, 22, 23, 24, 25, 28, 29, 30)
 RETIRED = (7, 11, 13, 14, 17, 18, 19, 20, 21)
 # A question id as prose writes it (Q12) or as a file name does (q12_...),
 # with the settlement-run suffix a variant of a question would carry. The
-# suffix may follow a hyphen, a non-breaking hyphen, a minus sign, an
-# underscore or a space.
+# suffix may follow any hyphen or dash, a minus sign or an underscore.
 QUESTION_ID = re.compile(
     r"(?<![0-9A-Za-z])[Qq](?P<number>\d{1,2})"
-    r"(?P<variant>[-_ ‑−]?[Rr](?:\d[Rr])?[Ff])?"
+    r"(?P<variant>[-_\u2010-\u2015\u2212]?[Rr](?:\d[Rr])?[Ff])?"
     r"(?![0-9A-Za-z])"
 )
 # The word and a number on one line, or wrapped onto the next.
-QUESTION_BY_WORD = re.compile(r"\bquestion(?:[ \t ]+|[ \t]*\n[ \t]*)\d", re.IGNORECASE)
+QUESTION_BY_WORD = re.compile(
+    r"\bquestions?(?:[ \t ]+|[ \t]*\n[ \t]*)\d", re.IGNORECASE
+)
 # Wording for a question without an answer, for a method fixed in advance
 # and for a result on a register; each is built from its parts so this file
 # does not hold it.
@@ -155,7 +156,7 @@ def test_a_question_id_outside_the_answered_and_retired_ones_is_recognised():
         pytest.param("‑", id="non-breaking-hyphen"),
         pytest.param("−", id="minus-sign"),
         pytest.param("_", id="underscore"),
-        pytest.param(" ", id="space"),
+        pytest.param("\u2013", id="en-dash"),
         pytest.param("", id="nothing"),
     ],
 )
@@ -170,6 +171,7 @@ def test_a_variant_suffix_is_recognised_after_each_separator(separator):
     "entity",
     [
         pytest.param("&minus;", id="minus-entity"),
+        pytest.param("&ndash;", id="en-dash-entity"),
         pytest.param("&#8209;", id="non-breaking-hyphen-entity"),
         pytest.param("&#x2011;", id="hexadecimal-entity"),
     ],
@@ -178,14 +180,21 @@ def test_a_variant_suffix_is_recognised_behind_an_html_entity(entity):
     assert len(questions_not_on_the_page("Q22" + entity + "RF")) == 1
 
 
+def test_a_settlement_run_named_after_an_answered_question_is_not_a_variant():
+    assert questions_not_on_the_page("Q2 RF figures") == []
+
+
 def test_no_tracked_file_names_a_question_the_questions_page_does_not_hold():
     assert files_naming_unlisted_questions(tracked_text_files()) == {}
 
 
 def test_no_tracked_file_names_a_question_by_the_word_and_a_number():
-    assert QUESTION_BY_WORD.findall("see Question" + " 26 and question" + "\n9") == [
+    assert QUESTION_BY_WORD.findall(
+        "see Question" + " 26, question" + "\n9 and Questions" + " 31 to 36"
+    ) == [
         "Question" + " 2",
         "question" + "\n9",
+        "Questions" + " 3",
     ]
     assert files_worded(QUESTION_BY_WORD, tracked_text_files()) == {}
 

@@ -87,7 +87,7 @@ the outturn is above the forecast. Two results give the average miss
 instead, a bias and not a share above or below. Over 17,280 half-hours
 (22 August 2025 to 16 August 2026) the stored forecast's misses have a mean
 size of 9.3 g/kWh with almost no overall bias (mean −0.6 g/kWh;
-[Q29](https://jaywatnorm.github.io/gridskew/#q29)). The stored forecast is a late revision, so this says
+[Q29](https://jaywatnorm.github.io/gridskew/#q29)). NESO does not document when the stored forecast is made, so this says
 little about the mechanism. On the project's own forecast archive, over
 2,864 half-hours from 19 August to 12 November 2026, NESO's outturn estimate
 was on average 21 g/kWh above the forecast made about a day ahead and
@@ -119,8 +119,8 @@ missed revisions cannot be recovered.
 
 ## Limitations
 
-- Published historical forecast error is attenuated because the stored
-  forecast is a late revision.
+- NESO does not document when the stored forecast is made; if it is a late
+  version, its error understates the miss of earlier forecasts.
 - Forecast revisions also reflect weather, demand and interconnector updates;
   attributing them to generation shortfalls requires the per-unit Elexon join.
 - `B1610` includes metered BM-unit imports and exports, not only physical
