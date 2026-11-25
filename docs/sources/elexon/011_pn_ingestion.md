@@ -231,7 +231,7 @@ fetched for a period that has not passed Gate Closure is provisional.
 With a daily schedule and a one-day interval this takes care of itself: the run
 for a given day executes after that day has ended.
 
-## Pre-registered test: do PNs restate?
+## Restatement check: do PNs restate?
 
 **Status: a bounded two-day check, run once on 8 November 2026.** Since 1
 September 2026 no PN or QPN day has been captured later than 24.1 hours after
@@ -249,16 +249,15 @@ whether a capture repeats an earlier one, so such a capture is an echo.
 Whether the stream fills `bmUnit` from the registry when a request is served
 or the field was corrected later is not documented. By the decision rule this
 is no genuine change: the single daily fetch stays. Two days at different ages
-do not test the same day at several lags, and the registered four-week ladder
-has not run.
+do not test the same day at several lags.
 
 Gate Closure constrains when a PN is submitted. It does not establish that the
 endpoint never republishes or corrects a past period. PN has no explicit
 revision marker; `retrieved_at` identifies each captured response.
 
-**Design.** Re-poll the same settlement days at lags of 1, 8, 30 and 90 days
-for four weeks, then compare the captures. What ran is the bounded two-day
-check above, not the ladder.
+**A fuller design, not run.** Re-polling the same settlement days at lags of
+1, 8, 30 and 90 days for four weeks, then comparing the captures. What ran is
+the bounded two-day check above.
 
 **Comparison.** Compare complete, ordered segment sets within
 `national_grid_bm_unit, settlement_date, settlement_period, retrieved_at`:

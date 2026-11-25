@@ -51,9 +51,7 @@ Every capture is kept: `retrieved_at` is part of the key, and the source has
 no version to compare. Only the version in force at each capture is seen; a
 resubmission sent and replaced between two captures is not.
 `int_shortfall_by_unit_period` reads each unit-period from the latest capture
-that holds it. `dbt/analyses/qas_resubmissions.sql`
-counts, for dates captured more than once, the unit-periods that changed,
-appeared or were dropped between captures.
+that holds it.
 
 ## The backfill
 

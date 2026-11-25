@@ -4,7 +4,7 @@ How `raw.elexon_b1610` is loaded. For what the data means and what the columns
 are, see [020_b1610.md](020_b1610.md). For the reasoning behind these patterns,
 see [../ingestion-patterns.md](../ingestion-patterns.md).
 
-**Status: II and SF rungs deployed; the RF rung starts on 2026-11-15.** The II
+**Status: II, SF and RF rungs deployed; the RF rung runs from 2026-11-15.** The II
 backfill covers settlement days 2025-08-22 to 2026-08-10 in 354 runs, with no
 unexpected gaps; scheduled II and SF capture continues from there.
 
@@ -55,9 +55,7 @@ timetable and under any shorter one. The seven-month RF approved on
 15 September 2026 for settlement days from 1 October 2026 is one such
 shorter timetable; the capture is still after it. `R1` to `R3` are not
 standing rungs; Elexon stops serving a run once a later run replaces it, so
-a run not captured in its window cannot be recovered. The dbt var
-`b1610_rf_capture_offset_days` mirrors the RF DAG's `LAG`, so the Q2-RF
-analysis can say when each date's RF is due, and a test keeps the two equal.
+a run not captured in its window cannot be recovered.
 
 Before downloading, each capture asks which run Elexon serves for the date
 (one settlement period, `/datasets/B1610`). If a later run has already
@@ -214,7 +212,7 @@ II and SF):
 | **II + SF + RF, as implemented** | about 445M | **about 79 GB** |
 | All six rungs | 879M | ~156 GB |
 
-## Change-only append, not yet adopted
+## Change-only append, not adopted
 
 **75.3% of rows are zero**, and a metered zero is unlikely to move between runs.
 Storing it once per rung is storing the same nothing repeatedly.
@@ -225,12 +223,11 @@ updated, nothing deleted — but each row costs an index lookup on insert instea
 of a blind append, and storage collapses to the initial load plus genuine
 changes.
 
-**Deferred rather than rejected, because the change rate cannot be measured from
-history.** The II, SF and RF captures, and the R1 cohort, hold the same
-unit-periods at more than one run type; their measured difference determines
-whether change-only append is worthwhile.
+**Not adopted, because the change rate cannot be measured from history.** The
+II, SF and RF captures, and the R1 cohort, hold the same unit-periods at more
+than one run type, which is what a measure of it needs.
 
-**Both designs share the same table and key**, so switching later needs no
+**Both designs share the same table and key**, so switching needs no
 migration — only a change to the poller's insert.
 
 ## Backfill verification

@@ -4,6 +4,8 @@ import io
 import json
 import re
 import statistics
+import struct
+import sys
 from datetime import datetime, timedelta
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from html.parser import HTMLParser
@@ -120,9 +122,11 @@ ALIGNMENT_LINE = (
 # chart leaves out. Q12's order differs from the
 # chart's (largest gap first); interconnectors are left out. Q2's unit types
 # sum to round figures, with E beside T and C beside V.
-CONTEXT_LABEL = "context only: denominator, not a registered result"
-DISTRIBUTION_LABEL = "context only: distribution, not a registered result"
-BREAKDOWN_LABEL = "context only: breakdown, not a registered result"
+# The saved context files' own row labels.
+NOT_A_RESULT = "not a registered " + "result"
+CONTEXT_LABEL = "context only: denominator, " + NOT_A_RESULT
+DISTRIBUTION_LABEL = "context only: distribution, " + NOT_A_RESULT
+BREAKDOWN_LABEL = "context only: breakdown, " + NOT_A_RESULT
 # Q23's chart months, for the planned-output context fixture.
 Q23_FIXTURE_MONTHS = [
     "2025-09-01",
@@ -2050,20 +2054,13 @@ def test_q24s_part_month_starts_on_its_reads_first_day():
     )
 
 
-def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
+def test_q28_says_which_way_it_compares():
     # Sorting half-hours by the size of the carbon miss cannot give its
     # direction; the page says so in view, and the fold-outs keep the
-    # measure's wording and the questions that would look the other way.
+    # measure's wording.
     page = PAGE.read_text(encoding="utf-8")
     shown = in_view(page, "q28")
     folded = fold_outs(page, "q28")
-    reverse = (
-        "The question the other way round, how far under-delivery goes with the "
-        "carbon forecast's miss, and in which direction, is written up as "
-        f'<a href="{RULES_URL}#{register_anchor("Q31")}">Q31</a> and '
-        f'<a href="{RULES_URL}#{register_anchor("Q32")}">Q32</a>, '
-        "not answered here; they would look at this direction on new data.</dd>"
-    )
 
     assert (
         "<h3>Do the carbon forecast's misses go with units falling short of "
@@ -2079,7 +2076,6 @@ def test_q28_says_which_way_it_compares_and_points_to_the_reverse():
         '"Yes" if the fifth of half-hours with the biggest carbon misses carries '
         "at least 25% more under-delivery than the fifth with the smallest." in folded
     )
-    assert reverse in folded
 
 
 def signed_tenths(value):
@@ -2165,9 +2161,7 @@ PUBLISHED_WIND_COMMENTS = (
     "20261025.\n"
     "# Row labels reworded for publication; every figure is as read.\n"
 )
-INTERNAL_LABELS = re.compile(
-    r"James|HEADLINE|pre-registered|EXPLORATORY|Q\d|reverse cut"
-)
+INTERNAL_LABELS = re.compile(r"James|HEADLINE|pre-regist|EXPLORATORY|Q\d|reverse cut")
 
 
 def test_the_published_wind_output_carries_no_name_or_internal_label():
@@ -2294,9 +2288,10 @@ def test_q28s_answer_and_second_result_state_their_saved_figures():
     )
     assert answer_of(page, "q28") == (
         "<strong>Only slightly.</strong> "
-        "Units' total shortfall against their plans was <strong>"
-        f"{whole((q28_ratio - 1) * 100)}% bigger</strong> in the half-hours where "
-        "the carbon forecast missed most than where it missed least (90% range "
+        "Under-delivery was <strong>"
+        f"{whole((q28_ratio - 1) * 100)}% larger</strong> in the fifth of half-hours "
+        "where the carbon forecast missed most than in the fifth where it missed "
+        "least (90% range "
         f"{whole((ratio_low - 1) * 100)}% to {whole((ratio_high - 1) * 100)}%). "
         "Sorted by under-delivery instead, the grid came out "
         f"{tenths(-Decimal(least))} g/kWh cleaner than forecast with the least "
@@ -2555,23 +2550,6 @@ def test_q28s_strata_slopes_stay_in_the_saved_output_not_on_the_page():
         assert f"to {interval_high}</td>" not in block
 
 
-def test_q31_and_q32_note_the_strata_cut_from_its_saved_output():
-    rows = saved_output_rows(STRATA_RESULT)
-    within = strata_row(rows, "4", "1")
-    questions = QUESTIONS.read_text(encoding="utf-8")
-    sentence = (
-        f"A second cut, read on {strata_read_day(rows)}, held time of "
-        f"day and month fixed: a slope of {signed_tenths(within['value'])} g/kWh per "
-        f"GW (90% range {signed_tenths(within['interval_low'])} to "
-        f"{signed_tenths(within['interval_high'])}) remained. It uses no data in "
-        "this question's window and changes nothing in this method; it is on the "
-        "results page."
-    )
-
-    for question_id in ("Q31", "Q32"):
-        assert sentence in " ".join(register_section(questions, question_id).split())
-
-
 def whole(value):
     return str(Decimal(value).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
@@ -2773,9 +2751,6 @@ def test_each_scale_on_the_page_comes_from_its_context_count_or_output():
     assert 283_242 == int(metered["unit_periods"]) - int(cohort["unit_periods"])
 
 
-RULES_URL = (
-    "https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md"
-)
 SHORT_MONTHS = dict(zip(FULL_MONTHS.values(), FULL_MONTHS.keys(), strict=True))
 LONG_DATE = r"\d{1,2} [A-Z][a-z]+ \d{4}"
 
@@ -2892,18 +2867,6 @@ def register_anchors():
     for heading in re.findall(r"^### (Q[^\n]+)$", questions, re.MULTILINE):
         anchors[heading.split(".", 1)[0]] = heading_anchor(heading)
     return anchors
-
-
-def register_anchor(question_id):
-    return register_anchors()[question_id]
-
-
-def rule_link(question_id):
-    """The asterisk that links a question to its registered rule."""
-    return (
-        f'<a class="ref" href="{RULES_URL}#{register_anchor(question_id)}" '
-        f'aria-label="Rule, {question_id}">*</a>'
-    )
 
 
 def short_date(long_date):
@@ -3918,7 +3881,6 @@ def test_q30s_late_outturn_counts_come_from_its_lateness_count():
 
 WIND_MISS_COUNTS = "context_q30_wind_miss_sign.csv"
 WIND_LEVEL_COUNTS = "context_q28_wind_level.csv"
-UNREAD_RULES_WITH_A_CARBON_ACTUAL = ["Q31", "Q32", "Q33", "Q35", "Q36"]
 
 
 def counts_day(name):
@@ -4032,39 +3994,6 @@ def test_q30s_wind_note_comes_from_its_wind_miss_counts():
     )
 
 
-def test_q36s_split_reason_comes_from_the_wind_miss_counts():
-    totals = wind_miss_totals(saved_output_rows(WIND_MISS_COUNTS))
-    share = percent_of(
-        totals["no_instruction_delivered_below"], totals["no_wind_instruction"], 0
-    )
-    q36 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q36"))
-
-    assert (
-        "The reason for the splits: in Q30's year, delivered wind was below the "
-        f"wind forecast in {share}% of the {totals['no_wind_instruction']:,} "
-        "half-hours with no wind instruction," in q36
-    )
-    assert (
-        "Price split: half-hours whose system price for their settlement period "
-        "is below zero, and the rest. Export-limit split: half-hours with an "
-        "active cohort wind unit whose MEL level in force at the half-hour's "
-        "start, from the latest MEL published before then, was below its final "
-        "PN level at the half-hour's start, and the rest. A half-hour with no "
-        "system price is unknown for the price split; a half-hour in which any "
-        "active cohort wind unit has no MEL in force at its start, or no final "
-        "PN level, is unknown for the export-limit split. Unknown half-hours are "
-        "counted on their own and are in neither side. A split is reported only "
-        "if no half-hour of the primary's population is unknown for it: for the "
-        "price split, every half-hour has a price; for the export-limit split, "
-        "every active cohort wind unit has an MEL in force and a final PN level "
-        "in every half-hour. Otherwise it is reported as not available, with the "
-        "count of unknown half-hours and, for the export-limit split, the count "
-        "of units with a half-hour lacking an MEL or a PN. GridSkew does not yet "
-        "capture system prices or export limits (MEL), so neither split can be "
-        "made until they are captured." in q36
-    )
-
-
 def test_q28s_reverse_note_states_its_wind_level_counts():
     rows = saved_output_rows(WIND_LEVEL_COUNTS)
     dirtier = wind_level_shares(rows, "signed carbon miss")
@@ -4117,67 +4046,14 @@ def test_the_limitations_state_the_zero_actual_once_for_every_read_carbon_result
     assert page.count("6 August 2026, 11:00 UTC") == 1
 
 
-def test_the_unread_carbon_methods_write_an_invalid_value_rule_first():
-    questions = QUESTIONS.read_text(encoding="utf-8")
-    bullet = (
-        "- **Invalid carbon values.** "
-        "No rule for carbon actuals that cannot be right is chosen yet; "
-        "GridSkew's data already hold one, 0 g/kWh for 6 August 2026, 11:00 UTC. "
-        "Before any carbon actual in the window is looked at, an exact rule is "
-        "written here, with a reason that "
-        "does not depend on this question's results. The half-hours it leaves "
-        "out are counted and reported, and the result with none left out is "
-        "reported beside the primary."
-    )
-
-    assert sections_without(questions, UNREAD_RULES_WITH_A_CARBON_ACTUAL, bullet) == []
-    assert (
-        "the rule for invalid carbon values added to Q31 to Q36 does not apply to it."
-        in flattened(register_section(questions, "Q34"))
-    )
-
-
-def test_q32_splits_by_wind_level_beside_its_primary():
-    questions = QUESTIONS.read_text(encoding="utf-8")
-    q32 = flattened(register_section(questions, "Q32"))
-
-    assert (
-        "- **Wind level.** Beside the primary, never changing the primary result, "
-        "each group's correlation is repeated within each fifth of metered wind" in q32
-    )
-    assert "Q32's split by wind level," in flattened(questions_set_up(questions))
-
-
-def test_q28_describes_a_seven_day_block_sensitivity_not_yet_run():
-    q28 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q28"))
-
-    assert (
-        "recomputed by resampling blocks of seven consecutive days in place of "
-        "single days (1,000 draws). The window is cut into blocks of seven "
-        "consecutive days from its first day, without overlap; the window's 360 "
-        "days are not a multiple of seven, so the last block holds the remaining "
-        "3 days. Each draw takes blocks, each equally likely, with replacement "
-        "until 360 days are filled; the last block drawn keeps only its first "
-        "days needed to reach 360. The seed and the saved input snapshot are "
-        "recorded at the run. It is reported beside the results as read, which "
-        "stand whatever it shows," in q28
-    )
-    assert "Not yet run:" in q28
-
-
 ALIGNMENT_COUNTS = "context_carbon_label_alignment.csv"
 WIND_CLOCK = "1"
 ACTUAL_WHOLE = "2"
 ACTUAL_BY_SEASON = "3"
 ACTUAL_BY_MONTH = "4"
-FORECAST_STEPS = "5"
 SIGN_TEST = "6"
-FORECAST_AGAINST_MIX = "7"
 SAME_LABEL = "0"
 HALF_HOUR_AFTER = "1"
-HALF_HOUR_BEFORE = "-1"
-AN_HOUR_BEFORE = "-2"
-UNREAD_CARBON_RULES = ["Q4", "Q31", "Q32", "Q33", "Q35", "Q36"]
 READ_CARBON_RESULTS = ["Q8", "Q28", "Q29", "Q30"]
 
 
@@ -4398,7 +4274,7 @@ def test_the_page_credits_nesos_historic_generation_mix_under_its_licence():
         '<p>Historic generation mix: <a href="https://www.neso.energy/data-portal/'
         'historic-generation-mix">NESO Data Portal</a>, Supported by National '
         'Energy SO Open Data. <a href="https://www.neso.energy/data-portal/'
-        'ngeso-open-licence">NESO Open Data Licence v1.0</a></p>' in page
+        'neso-open-licence">NESO Open Data Licence v1.0</a></p>' in page
     )
 
 
@@ -4421,57 +4297,6 @@ def test_each_read_carbon_result_points_to_its_caveats_under_limitations():
     assert page.count(f"within 5 g/kWh in {within_5_after}%") == 1
 
 
-def test_the_unread_carbon_rules_state_the_alignment_basis_from_its_counts():
-    rows = alignment_rows()
-    wind_share = share_of_common(wind_clock_row(rows), "exactly_equal")
-    first, last = alignment_window()
-    whole_after, whole_same = step_pair(
-        rows, ACTUAL_WHOLE, "all", HALF_HOUR_AFTER, SAME_LABEL
-    )
-    months = len(groups_in(rows, ACTUAL_BY_MONTH))
-    missingness = (
-        "the half-hours the primary has and a sensitivity lacks are counted, at "
-        "the window's edges and within it."
-    )
-    basis = (
-        "The basis is a measured alignment, "
-        "not a documented convention: against NESO's historic generation mix, "
-        f"whose wind equals Elexon's at the same half-hour in {wind_share}% of "
-        "half-hours, the API's actual agrees best 30 minutes after its label in "
-        f"each of the {months} months from {first} to {last} (share within "
-        "5 g/kWh and mean absolute difference), and the correlation of half-hour "
-        f"changes is {whole_after} there, against {whole_same} at its own label; "
-        "the API's actual also moves with NESO's metered gas output one "
-        "half-hour after its label (correlation of half-hour changes 0.84, "
-        "against 0.63 at the label), in every season and on both sides of each "
-        "clock change; "
-        "a test of whether intensity moves against large changes in Elexon's "
-        "wind peaks one half-hour after the label for the API's actual and at "
-        "the label for NESO's series. The API's documentation gives each value's "
-        "start and end in UTC but does not say what interval its actual is "
-        "measured over."
-    )
-    questions = QUESTIONS.read_text(encoding="utf-8")
-
-    assert sections_without(questions, UNREAD_CARBON_RULES, missingness) == []
-    assert sections_without(
-        questions,
-        UNREAD_CARBON_RULES,
-        "never change the primary result; a sensitivity whose conclusion differs "
-        "is reported as such",
-    ) == ["Q33"]
-    assert (
-        sections_without(
-            questions,
-            ["Q33"],
-            "never changing the primary result (a sensitivity whose "
-            "conclusion differs is reported as such)",
-        )
-        == []
-    )
-    assert sections_without(questions, UNREAD_CARBON_RULES, basis) == []
-
-
 def test_the_read_carbon_results_state_the_alignment_limitation_from_its_counts():
     rows = alignment_rows()
     wind = wind_clock_row(rows)
@@ -4491,38 +4316,6 @@ def test_the_read_carbon_results_state_the_alignment_limitation_from_its_counts(
     questions = QUESTIONS.read_text(encoding="utf-8")
 
     assert sections_without(questions, READ_CARBON_RESULTS, limitation) == []
-
-
-def test_q33s_disclosure_of_the_forecasts_timing_comes_from_the_alignment_counts():
-    rows = alignment_rows()
-    actual_before, actual_same = step_pair(
-        rows, FORECAST_STEPS, "all", AN_HOUR_BEFORE, SAME_LABEL
-    )
-    mix_before, mix_same = step_pair(
-        rows, FORECAST_AGAINST_MIX, "all", HALF_HOUR_BEFORE, SAME_LABEL
-    )
-    disclosure = (
-        "over that year the stored forecast's half-hour changes follow the "
-        "actual's changes of an hour earlier most closely (correlation "
-        f"{actual_before}, against {actual_same} at the same label), and against "
-        f"NESO's generation mix, with the half-hour before ({mix_before}, against "
-        f"{mix_same})."
-    )
-
-    assert (
-        offset_with_highest(by_offset(rows, FORECAST_STEPS, "all"), "step_correlation")
-        == AN_HOUR_BEFORE
-    )
-    assert (
-        offset_with_highest(
-            by_offset(rows, FORECAST_AGAINST_MIX, "all"), "step_correlation"
-        )
-        == HALF_HOUR_BEFORE
-    )
-    assert (
-        sections_without(QUESTIONS.read_text(encoding="utf-8"), ["Q33"], disclosure)
-        == []
-    )
 
 
 def test_q2s_gas_units_are_lettered_and_their_share_of_the_group_is_derived():
@@ -4641,7 +4434,9 @@ def test_each_figure_added_to_an_answer_or_note_comes_from_its_saved_output():
         "A September 2026 exploration had partly seen the overall mean and "
         f"median ({seen['mean']} and {seen['median']}, measured with the "
         "opposite sign).",
-        "as a share of the earlier run's total "
+        "as a share of the earlier run's energy, the sizes of its half-hourly "
+        "figures added up, generation and demand alike, over the half-hours both "
+        "runs hold "
         f"({int(whole(Decimal(one_week['base_abs_mwh']) / 1000)):,} GWh for the "
         "one-week run, "
         f"{int(whole(Decimal(three_weeks['base_abs_mwh']) / 1000)):,} GWh for "
@@ -4774,12 +4569,11 @@ def test_the_limitations_name_the_results_that_set_one_measure_against_another()
     assert '<article id="wind-shortfall">' in page
 
 
-PRE_REGISTRATION_EXCEPTIONS = [
+SET_UP_EXCEPTIONS = [
     "Q24",
     "Q1 and Q10",
-    "Q26 and Q29",
+    "Q29",
     "Q25",
-    "Q23",
     "Q28:",
     "Q28's reverse cut",
 ]
@@ -4800,10 +4594,8 @@ def page_exception_openings():
     return [
         capitalised(named_result("Q24")),
         f"{capitalised(named_result('Q1'))} and {named_result('Q10')}",
-        f"Services outside the balancing mechanism{rule_link('Q26')} and "
-        f"{named_result('Q29')}",
+        capitalised(named_result("Q29")),
         capitalised(named_result("Q25")),
-        capitalised(named_result("Q23")),
         capitalised(named_result("Q28")),
         later_look,
     ]
@@ -4846,7 +4638,7 @@ def test_both_pages_qualify_the_written_first_claim_with_the_same_exceptions():
     page = PAGE.read_text(encoding="utf-8")
     questions = QUESTIONS.read_text(encoding="utf-8")
     page_lines = []
-    for line in exception_lines(page, '<li id="pre-registration-exceptions">', "</ul>"):
+    for line in exception_lines(page, '<li id="set-up-exceptions">', "</ul>"):
         if line.startswith("<li>"):
             page_lines.append(line)
     register_items = []
@@ -4860,29 +4652,34 @@ def test_both_pages_qualify_the_written_first_claim_with_the_same_exceptions():
 
     set_up = set_up_fold_out(page)
     assert (
-        "<p>Every reading rule was recorded before its result was read, except "
+        "<p>Every method was recorded before its result was read, except "
         "where the result says otherwise" in set_up
     )
-    assert '<li id="pre-registration-exceptions">' in set_up
-    assert "Every reading rule" not in FOLD_OUT.sub("", page)
+    assert '<li id="set-up-exceptions">' in set_up
+    assert "Every method was recorded" not in FOLD_OUT.sub("", page)
     assert questions_set_up(questions).startswith(
         "\nEach method was written before the query that answers it and before "
         "its\nresult was read, except where listed under [Exceptions](#exceptions); "
         "the\ntable below gives the dates kept. Each result was read once, at a "
         "fixed cutoff\n"
-        "(`analysis_read_until`); Q25 was re-run once on the same data."
+        "(`analysis_read_until`); Q25 was re-run once over the same period."
     )
-    assert len(page_lines) == len(register_items) == len(PRE_REGISTRATION_EXCEPTIONS)
+    assert len(page_lines) == len(register_items) == len(SET_UP_EXCEPTIONS)
     for page_line, opening, register_item, named in zip(
         page_lines,
         page_exception_openings(),
         register_items,
-        PRE_REGISTRATION_EXCEPTIONS,
+        SET_UP_EXCEPTIONS,
         strict=True,
     ):
         assert page_line.startswith(f"<li>{opening}: ")
         assert register_item.startswith(f"- {named}")
     assert question_ids_in(visible_text("".join(page_lines))) == []
+    assert (
+        "It was re-run once over the same period, with the two halves of "
+        "instructions that cross midnight joined; the method is unchanged.</li>"
+        in page_lines[3]
+    )
     assert re.findall(r"pre-regist\w*|exploratory", "".join(page_lines)) == []
     assert (
         "The mean change and the correlation beside the drift's verdict were "
@@ -4915,24 +4712,6 @@ def register_section(questions, question_id):
     heading = f"\n### {question_id}. "
     assert heading in questions
     return questions.split(heading, 1)[1].split("\n### ", 1)[0]
-
-
-NOT_PURSUED = [
-    "Q2-RF",
-    "Q2-R2RF",
-    "Q2-R1RF",
-    "Q22-RF",
-    "Q9",
-    "Q27",
-    "Q4",
-    "Q31",
-    "Q32",
-    "Q35",
-    "Q36",
-    "Q33",
-    "Q34",
-]
-WAITING = ["Q26"]
 
 
 def question_ids_in(text):
@@ -5036,7 +4815,7 @@ def test_q1s_answer_and_checks_come_from_its_verdict_output():
     # holds its half-hours and the prefix of its other columns.
     versions = [
         (
-            "The rule: partial and unchanged polls excluded",
+            "The method: partial and unchanged polls excluded",
             "complete_half_hours",
             "",
         ),
@@ -5058,12 +4837,12 @@ def test_q1s_answer_and_checks_come_from_its_verdict_output():
     ]
     median_drift = signed_without_trailing_zeros(verdict["median_drift"])
     expected = [
-        "<p>Up, over the window as a whole: the rule's verdict is "
+        "<p>Up, over the window as a whole: the answer is "
         f'"{verdict["reported_verdict"]}". Over '
         f"{int(verdict['complete_half_hours']):,} complete half-hours from "
         f"{ARCHIVE_WINDOW}, the middle change from first to final forecast was "
         f"{median_drift} g/kWh and {share_as_percent(verdict['positive_share'])} "
-        "of non-zero changes were upward; the rule needs at least +2 and at "
+        "of non-zero changes were upward; the method needs at least +2 and at "
         "least 55%.</p>",
     ]
     for version, half_hours_column, prefix in versions:
@@ -5534,36 +5313,6 @@ def test_the_readme_gives_q10s_bias_and_q1s_verdict_beside_its_predictions():
     assert f"were read on {status_read('Q1').partition(',')[0]}" in readme
 
 
-def test_still_to_come_and_not_pursued_match_the_register():
-    # The page names the question that still waits, with no promised date,
-    # and its table of questions not answered names exactly the questions
-    # the register marks not pursued, each with an asterisk to its rule.
-    page = PAGE.read_text(encoding="utf-8")
-    questions = QUESTIONS.read_text(encoding="utf-8")
-    section = page.split('<section id="not-answered"', 1)[1].split("</section>", 1)[0]
-    waiting, not_pursued = section.split('<p id="no-data">', 1)
-    marked = []
-    for question_id in NOT_PURSUED:
-        if NOT_PURSUED_STATUS in flattened(register_section(questions, question_id)):
-            marked.append(question_id)
-
-    assert re.findall(r"\(about [A-Z][a-z]+ \d{4}\)", section) == []
-    assert re.findall(r"\bAfter \d{1,2} [A-Z][a-z]+ \d{4}\b", section) == []
-    assert re.findall(r"\bon or after \d{1,2} [A-Z][a-z]+ \d{4}\b", section) == []
-    assert marked == NOT_PURSUED
-    assert registered_rule_links(not_pursued) == NOT_PURSUED
-    assert registered_rule_links(waiting) == WAITING
-    assert question_ids_in(visible_text(section)) == []
-    assert links_to_unregistered_rules(section) == []
-    assert '<h2 id="not-answered-title">Questions not answered here</h2>' in waiting
-    for question_id in WAITING:
-        assert "not pursued" not in register_section(questions, question_id).lower()
-
-
-NOT_PURSUED_STATUS = "**Status:** not pursued ([why](#not-pursued))."
-WAITING_STATUS = (
-    "**Status:** waiting for the counts-only resubmission check; not yet read."
-)
 READ_DAYS = {
     "Q1": "22 November 2026",
     "Q2": "11 October 2026",
@@ -5581,15 +5330,14 @@ READ_DAYS = {
     "Q29": "27 October 2026",
     "Q30": "27 October 2026",
 }
-Q25_RERUN = "re-run 25 October 2026 on the same data"
+Q25_RERUN = "re-run 25 October 2026 over the same period"
 STATUS_ROW = re.compile(
     r"^\| \[(Q[0-9A-Z-]+)\]\(#([^)]+)\) \| [^|]+ \| ([^|]+) \|$", re.MULTILINE
 )
-NOT_PURSUED_ROW = re.compile(r"^\| (Q[0-9A-Z-]+) \| [^|]+ \| [^|]+ \|$", re.MULTILINE)
 
 
 def status_table(questions):
-    return questions.split("\n## Status\n", 1)[1].split("\n### Not pursued\n", 1)[0]
+    return questions.split("\n## Status\n", 1)[1].split("\n## ", 1)[0]
 
 
 def status_cells(questions):
@@ -5613,10 +5361,6 @@ def expected_status_cells():
     for question_id, day in READ_DAYS.items():
         cells[question_id] = f"read ({day})"
     cells["Q25"] = f"read ({READ_DAYS['Q25']}; {Q25_RERUN})"
-    for question_id in NOT_PURSUED:
-        cells[question_id] = "not pursued"
-    for question_id in WAITING:
-        cells[question_id] = "waiting (the resubmission check, then the read)"
     return cells
 
 
@@ -5625,10 +5369,6 @@ def expected_status_openings():
     openings = {}
     for question_id, day in READ_DAYS.items():
         openings[question_id] = f"**Status:** read on {day}"
-    for question_id in NOT_PURSUED:
-        openings[question_id] = NOT_PURSUED_STATUS
-    for question_id in WAITING:
-        openings[question_id] = WAITING_STATUS
     return openings
 
 
@@ -5641,23 +5381,13 @@ def questions_whose_section_lacks(questions, phrases):
     return lacking
 
 
-def not_pursued_table_ids(questions):
-    table = questions.split("\n### Not pursued\n", 1)[1].split("\n## ", 1)[0]
-    return NOT_PURSUED_ROW.findall(table)
-
-
 def test_the_status_table_gives_each_question_its_plain_status():
     questions = QUESTIONS.read_text(encoding="utf-8")
 
     assert status_cells(questions) == expected_status_cells()
     assert list(status_cells(questions)) == list(register_anchors())
     assert status_row_anchors(questions) == register_anchors()
-    assert sorted(not_pursued_table_ids(questions)) == sorted(NOT_PURSUED)
-    assert (
-        "One row per question. A status is one of: read (the date of the read),\n"
-        "waiting (what it waits for), or not pursued (see\n"
-        "[Not pursued](#not-pursued))." in status_table(questions)
-    )
+    assert "One row per question, with the date of its read." in status_table(questions)
 
 
 def test_each_questions_own_status_opens_as_its_status_table_row_says():
@@ -5665,8 +5395,13 @@ def test_each_questions_own_status_opens_as_its_status_table_row_says():
 
     assert questions_whose_section_lacks(questions, expected_status_openings()) == []
     assert sorted(expected_status_openings()) == sorted(register_anchors())
-    assert "Re-run once on 25 October 2026 on the same data" in flattened(
-        register_section(questions, "Q25")
+    assert (
+        "Re-run once on 25 October 2026 over the same period, on the data then "
+        "held," in flattened(register_section(questions, "Q25"))
+    )
+    assert (
+        "from a run on 25 October 2026 over the same period, on the data then held;"
+        in (PAGE.read_text(encoding="utf-8"))
     )
 
 
@@ -5706,7 +5441,6 @@ def test_every_link_to_a_heading_of_the_method_pages_finds_its_heading():
 
     assert links_to_missing_headings(QUESTIONS) == []
     assert links_to_missing_headings(TRAJECTORY) == []
-    assert questions.count("([why](#not-pursued))") == len(NOT_PURSUED)
     assert "(research-questions.md#how-the-questions-were-set-up)" in trajectory
     assert "(#how-the-questions-were-set-up)" in questions_outside_set_up(questions)
     assert "exceptions" in heading_anchors(questions_set_up(questions))
@@ -5721,15 +5455,6 @@ def test_design_decisions_links_the_dbt_analyses_by_a_heading_that_exists():
 
     assert "analyses" in linked
     assert set(linked) <= set(heading_anchors(dbt_readme))
-
-
-def test_the_not_pursued_table_wraps_its_sentences():
-    # Number tables keep one line per cell; this table holds sentences.
-    page = PAGE.read_text(encoding="utf-8")
-    not_pursued = page.split('<p id="no-data">', 1)[1].split("</section>", 1)[0]
-
-    assert '<table class="prose">' in not_pursued
-    assert "table.prose td { white-space: normal; text-align: left; }" in page
 
 
 def test_the_settlement_run_ages_are_the_measured_runs_in_months():
@@ -5748,10 +5473,286 @@ def test_the_settlement_run_ages_are_the_measured_runs_in_months():
 
     expected = [
         "about one week (II), three weeks (SF), "
-        f"{ages[0]}, {ages[1]}, {ages[2]} and {ages[3]} after the day.",
+        f"{ages[0]}, {ages[1]}, {ages[2]} and {ages[3]} after the day for the "
+        "days studied here; for days from 1 October 2026 the final run comes at "
+        "about seven months.",
         f"the {r2_months}-month run (R2) to 29 April",
     ]
     assert missing_phrases(expected) == []
+
+
+REMIT_NOTICES = (
+    REPOSITORY / "dbt" / "models" / "intermediate" / "remit" / "int_remit__notices.sql"
+)
+
+
+def test_the_first_publication_tie_is_worded_as_the_notices_model_takes_it():
+    model = flattened(REMIT_NOTICES.read_text(encoding="utf-8"))
+    questions = flattened(QUESTIONS.read_text(encoding="utf-8"))
+
+    assert (
+        "where publish_time = notice_first_published_at and (valid_to is null "
+        "or valid_to > publish_time)" in model
+    )
+    assert (
+        "Its first publication is the one in force at its earliest "
+        "`publish_time`: when several share that time, the one with the later "
+        "`created_time`, then the higher `revision_number`." in questions
+    )
+
+
+def test_the_system_flag_is_worded_as_a_flag_and_no_more():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        "I report the share carrying NESO's system flag, which marks an "
+        "instruction as a system action, possibly for network reasons."
+        in article_text(page, "q24")
+    )
+    assert "<dt>Wind instructions flagged as system actions</dt>" in article_text(
+        page, "q23"
+    )
+    assert (
+        "asked at least one wind farm to cut output and flagged it as a system "
+        "action, and by" in article_text(page, "q23")
+    )
+
+
+def cohort_acceptances(counts):
+    """The acceptances of cohort units, added over every fuel group."""
+    total = 0
+    for row in counts:
+        if row["section"] == "2" and row["measure"].startswith("1 dispatch"):
+            total += int(row["n"])
+    return total
+
+
+def test_the_cohorts_share_of_instructions_names_the_count_it_comes_from():
+    counts = saved_output_rows("q25_instruction_fragmentation_corrected.csv")
+    cohort = cohort_acceptances(counts)
+    outside = int(
+        one_row(counts, "measure", "acceptances of units outside the cohort")["n"]
+    )
+    share = percent_of(cohort, cohort + outside, 1)
+
+    assert (
+        "Units with a published fuel type only: in the count of short "
+        f"instructions{details_link('Q25')} they carry {share}% of all "
+        f"instructions by number ({cohort:,} of {cohort + outside:,})."
+        in article_text(PAGE.read_text(encoding="utf-8"), "q24")
+    )
+
+
+def test_the_short_instruction_window_is_worded_as_the_questions_page_has_it():
+    page = PAGE.read_text(encoding="utf-8")
+    questions = flattened(QUESTIONS.read_text(encoding="utf-8"))
+
+    assert (
+        "issued from the start of the settlement period three before the one in "
+        "which it was issued to the end of the period three after" in questions
+    )
+    assert (
+        "issued from the start of the settlement period three before the one in "
+        "which it was issued to the end of the period three after."
+        in article_text(page, "q25")
+    )
+
+
+def test_a_published_outage_is_worded_as_the_known_outage_model_reads_it():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert (
+        'A unit\'s half-hour counts as "outage published" if an outage notice '
+        "for that unit, of any size, was live when the half-hour began and its "
+        "outage overlapped any part of the half-hour." in article_text(page, "q5")
+    )
+
+
+# Saved outputs that carry a note on how the committed query differs: the
+# note, and a column each still reads by.
+NOTED_SAVED_OUTPUTS = {
+    "q3_metered_vs_notified.csv": (
+        "# The query's column names changed after this read (q1_ and q3_ are now "
+        "p25_ and p75_); the query as committed at the read also returned "
+        "under_delivery_share_excluding_zero, which this output does not hold; "
+        "every figure is as read.",
+        "q1_deviation_mwh",
+    ),
+    "q3_coverage.csv": (
+        "# Section 4 of the query was added after this read.",
+        "breakdown",
+    ),
+    "q6_publication_lag.csv": (
+        "# The committed query also returns first_published_from and "
+        "first_published_to, which this output does not hold; every figure is as "
+        "read.",
+        "median_lag_minutes",
+    ),
+    "q25_instruction_fragmentation.csv": (
+        "# The committed query changed after this read: the related window at a "
+        "half-hour boundary (16 October), the capture kept for each ramp point "
+        "(25 October), and its coverage rows, where the row for acceptances "
+        "captured more than once is labelled acceptances spanning more than one "
+        "capture beside a new row for ramp points captured more than once; every "
+        "figure is as read.",
+        "measure",
+    ),
+    "q25_instruction_fragmentation_corrected.csv": (
+        "# The committed query labels the row for acceptances captured more than "
+        "once acceptances spanning more than one capture and adds a row for ramp "
+        "points captured more than once; every figure is as read.",
+        "measure",
+    ),
+    "q12_instructed_vs_residual.csv": (
+        "# The query gained first_date and last_date after this read; the query "
+        "as committed at the read also returned "
+        "median_unexplained_shortfall_mwh, which this output does not hold; every "
+        "figure is as read.",
+        "instructed_share_of_abs_deviation",
+    ),
+    "q29_final_forecast_error_by_month_and_block.csv": (
+        "# The query's label for the overall row changed after this read; every "
+        "figure is as read.",
+        "mean_absolute_error",
+    ),
+}
+
+
+def saved_outputs_not_read_under_their_note():
+    """Noted saved outputs whose second line is not their note, or whose
+    rows no longer read by their column."""
+    unread = []
+    for name, (note, column) in NOTED_SAVED_OUTPUTS.items():
+        text = (REPOSITORY / "docs" / "results" / name).read_text(encoding="utf-8")
+        second_line = text.splitlines()[1]
+        rows = saved_output_rows(name)
+        if second_line != note or not rows or column not in rows[0]:
+            unread.append(name)
+    return unread
+
+
+def test_every_saved_output_with_a_note_still_reads_by_its_columns():
+    assert saved_outputs_not_read_under_their_note() == []
+
+
+def medians_by_group(rows, column):
+    medians = {}
+    for row in rows:
+        medians[row["fuel_group"]] = Decimal(row[column])
+    return medians
+
+
+def groups_with_a_median_of_zero(medians):
+    tied = []
+    for group, median in sorted(medians.items()):
+        if median == 0:
+            tied.append(group)
+    return tied
+
+
+def untied_groups_by_median(medians):
+    """The groups whose median is not zero, largest median first."""
+    untied = []
+    for group, median in medians.items():
+        if median != 0:
+            untied.append((median, group))
+    ordered = []
+    for _median, group in sorted(untied, reverse=True):
+        ordered.append(group)
+    return ordered
+
+
+def test_q22_states_its_first_run_condition_and_its_ties_from_the_saved_output():
+    rows = saved_output_rows("q22_first_against_latest_run.csv")
+    first = medians_by_group(rows, "first_median_exact")
+    latest = medians_by_group(rows, "latest_median_exact")
+    q22 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q22"))
+
+    assert groups_with_a_median_of_zero(first) == [
+        "coal",
+        "hydro",
+        "interconnector",
+        "pumped_storage",
+    ]
+    assert groups_with_a_median_of_zero(latest) == groups_with_a_median_of_zero(first)
+    assert untied_groups_by_median(latest) == untied_groups_by_median(first)
+    assert min(first.values()) >= 0 and min(latest.values()) >= 0
+    assert "No numeric threshold. Unit-periods need a first-run value. - **Ties" in q22
+    assert (
+        "- **Ties (added 25 November 2026, after the read).** Coal, hydro, "
+        "interconnector and pumped storage have a median of 0 on both runs; tied "
+        "medians have no order between them. The other groups keep their order, "
+        "and no median changes sign." in q22
+    )
+
+
+def test_q23_counts_idle_units_and_promises_no_further_version():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    q23 = flattened(register_section(questions, "Q23"))
+
+    assert "left out and counted. Idle units count; their share is not reported." in q23
+    assert q23.endswith("are not applied and no unit is called inaccurate.")
+    assert "ensitivity" not in q23
+
+
+def test_the_stored_forecasts_one_check_is_worded_as_unpublished():
+    page = PAGE.read_text(encoding="utf-8")
+    questions = flattened(QUESTIONS.read_text(encoding="utf-8"))
+    check = (
+        "(17 August to 10 September 2026), it matched a late poll of the archive, "
+        "in a check whose output is not published"
+    )
+
+    assert f"Where GridSkew's archive overlaps it {check}; after" in page
+    assert f"where GridSkew's archive could check it {check}." in questions
+
+
+def test_remit_is_worded_as_law_in_great_britain_with_eu_guidance_as_context():
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    assert (
+        "In Great Britain REMIT is enforced by Ofgem; the EU energy regulator "
+        "ACER's one-hour guidance is EU guidance, given as context, not a test."
+        in article_text(page, "q6")
+    )
+    assert (
+        "In Great Britain REMIT is assimilated law derived from Regulation (EU) "
+        "1227/2011, enforced by Ofgem. ACER's one-hour guidance is EU guidance; "
+        "it and Regulation 543/2013 Article 15 are context, not a compliance test."
+        in flattened(register_section(questions, "Q6"))
+    )
+
+
+DAG_COUNT_WORDS = {2: "Two", 13: "Thirteen"}
+
+
+def dag_files_by_kind():
+    """How many DAG files run dbt and how many collect data."""
+    counts = {"dbt": 0, "collection": 0}
+    for path in sorted((REPOSITORY / "dags").glob("*.py")):
+        kind = "dbt" if path.name.startswith("gridskew__dbt_") else "collection"
+        counts[kind] += 1
+    return counts
+
+
+def test_the_readme_counts_the_dags_in_the_dags_folder():
+    readme = flattened(README.read_text(encoding="utf-8"))
+    counts = dag_files_by_kind()
+
+    assert (
+        f"{DAG_COUNT_WORDS[counts['collection']]} Airflow DAGs collect carbon intensity "
+        "forecasts and outturn" in readme
+    )
+    assert f"{DAG_COUNT_WORDS[counts['dbt']]} more run dbt: hourly" in readme
+
+
+def test_the_readme_says_the_carbon_data_were_modified():
+    assert (
+        "licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); "
+        "modified: aggregated by GridSkew."
+        in flattened(README.read_text(encoding="utf-8"))
+    )
 
 
 def test_the_unit_glossary_states_each_conversion_the_page_uses():
@@ -6440,7 +6441,7 @@ def test_the_chart_png_fits_its_box_on_a_white_ground_in_either_colour_mode():
 
 def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path):
     # The committed folder is the input as it stands, attribution lines and
-    # all. PNGs are left out: their pixels depend on the platform's fonts.
+    # all. The PNGs have their own test below.
     results = REPOSITORY / "docs" / "results"
     written = tmp_path / "written"
     write_charts(results, written)
@@ -6454,12 +6455,51 @@ def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path)
     assert stale == []
 
 
+def png_width_and_height(path):
+    """A PNG's size in pixels, from the header chunk that opens the file."""
+    header = path.read_bytes()[:24]
+    assert header[:8] == b"\x89PNG\r\n\x1a\n"
+    assert header[12:16] == b"IHDR"
+    return struct.unpack(">II", header[16:24])
+
+
+def test_the_script_writes_each_committed_chart_png_at_its_size(tmp_path):
+    # Text is drawn with the machine's fonts, so pixels can differ between
+    # platforms; the set of charts and each one's size cannot.
+    results = REPOSITORY / "docs" / "results"
+    written = tmp_path / "written"
+    write_charts(results, written)
+
+    written_sizes = {}
+    for path in sorted(written.glob("*.png")):
+        written_sizes[path.name] = png_width_and_height(path)
+    committed_sizes = {}
+    for path in sorted(results.glob("*.png")):
+        committed_sizes[path.name] = png_width_and_height(path)
+    assert len(committed_sizes) == 17
+    assert written_sizes == committed_sizes
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="the committed PNGs were drawn with Windows fonts",
+)
+def test_the_committed_chart_pngs_are_what_the_script_writes(tmp_path):
+    results = REPOSITORY / "docs" / "results"
+    written = tmp_path / "written"
+    write_charts(results, written)
+
+    stale = []
+    for path in sorted(written.glob("*.png")):
+        if path.read_bytes() != (results / path.name).read_bytes():
+            stale.append(path.name)
+    assert len(sorted(written.glob("*.png"))) == 17
+    assert stale == []
+
+
 ANY_TAG = re.compile(r"<[^>]+>")
 ASTERISK_LINK = re.compile(r'<a class="ref" [^>]*>\*</a>')
-ASTERISK_LABEL = re.compile(
-    r"(?P<kind>Details|Rule), (?P<question>Q\d+(?:-R[0-9A-Z]+)?)"
-    r"(?:'s later look)?"
-)
+ASTERISK_LABEL = re.compile(r"Details, (?P<question>Q\d+)(?:'s later look)?")
 SENTENCE_END = re.compile(r"[.?!](?=\s|$)")
 # Where a reader glances: none of these names a question by its number.
 GLANCED_PARTS = {
@@ -6471,11 +6511,10 @@ GLANCED_PARTS = {
     "headline list": re.compile(r'<ul class="findings">(.*?)</ul>', re.DOTALL),
     "footer": re.compile(r"<footer>(.*?)</footer>", re.DOTALL),
 }
-# Asterisks whose target is not their own question's article: the question
-# not answered here, the later look inside Q28's article, and the limitation
-# on how the carbon API labels its half-hours.
+# Asterisks whose target is not their own question's article: the later
+# look inside Q28's article, and the limitation on how the carbon API
+# labels its half-hours.
 ASTERISK_TARGETS_ELSEWHERE = {
-    "Details, Q4": "#not-answered",
     "Details, Q28's later look": "#q28-reverse-title",
     "Details, half-hour alignment": "#carbon-label-alignment",
     "Details, wind's shortfall": "#wind-shortfall",
@@ -6512,9 +6551,9 @@ VISIBLE_LIMITS = {
         "network constraint, and later corrections to it are not read.</p>"
     ),
     "q25": (
-        "<p>This covers only units with a published fuel type and counts "
-        "instructions that touch or overlap as one run; the other group is "
-        "mostly, not wholly, batteries.</p>"
+        "<p>This covers only units with a published fuel type and measures "
+        "each instruction by the run of instructions that touch or overlap it; "
+        "the other group is mostly, not wholly, batteries.</p>"
     ),
     "q29": (
         "<p>The times rest on the API's half-hour labels, which may not match "
@@ -6570,20 +6609,6 @@ def without_asterisks(markup):
 
 def sentence_count(markup):
     return len(SENTENCE_END.findall(visible_text(markup)))
-
-
-def registered_rule_links(markup):
-    """The questions whose rule in the register an asterisk links, in order."""
-    return re.findall(r'aria-label="Rule, (Q[^"]+)"', markup)
-
-
-def links_to_unregistered_rules(markup):
-    """The questions whose asterisk is not the link to their own rule."""
-    wrong = []
-    for question_id in registered_rule_links(markup):
-        if rule_link(question_id) not in markup:
-            wrong.append(question_id)
-    return wrong
 
 
 def glanced_parts(page):
@@ -6660,41 +6685,36 @@ def asterisk_links():
     return parser.links
 
 
-def asterisk_target(label, rule_anchors):
+def asterisk_target(label):
     """Where an asterisk with this label must lead: its question's article,
-    its registered rule, or the place named for it."""
+    or the place named for it."""
     if label in ASTERISK_TARGETS_ELSEWHERE:
         return ASTERISK_TARGETS_ELSEWHERE[label]
     named = ASTERISK_LABEL.fullmatch(label)
     if named is None:
         return None
-    if named["kind"] == "Rule":
-        return f"{RULES_URL}#{rule_anchors.get(named['question'])}"
     return f"#{named['question'].lower()}"
 
 
-def asterisks_off_their_target(links, rule_anchors):
+def asterisks_off_their_target(links):
     """Asterisks that do not show one asterisk, carry no label naming their
     question, or lead somewhere other than that question."""
     wrong = []
     for link in links:
         attributes = link["attributes"]
-        target = asterisk_target(attributes.get("aria-label") or "", rule_anchors)
+        target = asterisk_target(attributes.get("aria-label") or "")
         if link["text"] != "*" or attributes.get("href") != target:
             wrong.append(attributes)
     return wrong
 
 
-def asterisks_leading_nowhere(links, page_ids, rule_anchors):
-    """Asterisks whose link is neither an id on the page nor the heading of
-    a rule in the register."""
+def asterisks_leading_nowhere(links, page_ids):
+    """Asterisks whose link is not an id on the page."""
     lost = []
     for link in links:
         target = link["attributes"].get("href") or ""
         on_page = target.startswith("#") and target[1:] in page_ids
-        rule_heading = target.removeprefix(f"{RULES_URL}#")
-        in_register = target != rule_heading and rule_heading in rule_anchors
-        if not on_page and not in_register:
+        if not on_page:
             lost.append(target)
     return lost
 
@@ -6703,13 +6723,12 @@ def test_every_asterisk_is_labelled_with_its_question_and_leads_to_it():
     page = PAGE.read_text(encoding="utf-8")
     links = asterisk_links()
     page_ids = set(re.findall(r'\bid="([^"]+)"', page))
-    anchors = register_anchors()
 
     assert len(links) == page.count('class="ref"') > 0
-    assert asterisks_off_their_target(links, anchors) == []
-    assert asterisks_leading_nowhere(links, page_ids, set(anchors.values())) == []
-    assert heading_anchor("Q9. Is the grid's price (PN) higher, when?") == (
-        "q9-is-the-grids-price-pn-higher-when"
+    assert asterisks_off_their_target(links) == []
+    assert asterisks_leading_nowhere(links, page_ids) == []
+    assert heading_anchor("Q5. Is the grid's price (PN) higher, when?") == (
+        "q5-is-the-grids-price-pn-higher-when"
     )
 
 
@@ -6960,7 +6979,7 @@ def test_the_contents_list_each_section_and_question_in_its_headings_words():
     listed = contents_links(page)
 
     assert listed == headings_in_page_order(page)
-    assert len(listed) == len(ARTICLE_IDS) + 8
+    assert len(listed) == len(ARTICLE_IDS) + 7
 
 
 # The groups whose units send power one way: the only ones a metered total
@@ -7066,7 +7085,7 @@ def instructed_share_bounds(q3_rows, q12_rows, fuel_group):
 
 
 def test_q3s_answer_gives_the_direction_then_each_groups_energy_against_plan():
-    # The registered result is the direction of the typical half-hour; the
+    # The result is the direction of the typical half-hour; the
     # percentages are scale from the same saved output. Each is a whole
     # percent, halves away from zero, with "less" or "more" for its sign; a
     # percentage that rounded to nothing would hide its sign, so none may.
@@ -7324,7 +7343,7 @@ def test_no_word_about_how_a_question_was_set_up_shows_before_a_fold_out_opens()
 
     assert framing_words_in(in_view_text) == []
     assert thresholds_in(in_view_text) == []
-    assert framing_words_in("an unplanned look, registered but not pursued") == [
+    assert framing_words_in("an unplanned look, registered but never read") == [
         "unplanned",
         "registered",
     ]
@@ -7379,22 +7398,9 @@ EARLIER_LOOKS = {
         "**Earlier look.** On 11 September 2026 an exploration compared, for 851 "
         "half-hours from 19 August to 10 September 2026,"
     ),
-    "Q4": (
-        "**Earlier look.** The half-hour alignment sensitivity was added on "
-        "7 November 2026, when the window had held data since 17 August 2026."
-    ),
-    "Q9": (
-        "**Earlier look.** GridSkew's note on this source and its test data hold "
-        "one half-hour fetched on 20 August 2026"
-    ),
     "Q10": (
         "**Earlier look.** On 11 September 2026 an exploration compared every "
         "stored forecast with outturn"
-    ),
-    "Q22-RF": (
-        "- **Earlier look.** That week's largest unit revisions between SF and R1 "
-        "(two gas stations) were seen in Q2's read, and the other generating "
-        "units moved little at that step."
     ),
     "Q24": (
         "**Earlier look.** An exploration read level-energy shares on 11 October "
@@ -7407,34 +7413,9 @@ EARLIER_LOOKS = {
         "acceptances, as the BSC does, on 15 October 2026, both before measure "
         "(2) was first read."
     ),
-    "Q26": (
-        "**Earlier look.** An exploration on 11 October 2026 computed ABSVD's "
-        "effect on four days (recomputed on 17 October 2026), before GridSkew "
-        "captured any ABSVD."
-    ),
     "Q30": (
         "- **Earlier look.** One day of wind values (22 August 2025), during "
         "endpoint checks."
-    ),
-    "Q31": (
-        "**Earlier look.** On 1 November 2026, after this method was written "
-        "and after Q28 was read, a cut of Q28's window (22 August 2025 to "
-        "16 August 2026) looked at this direction:"
-    ),
-    "Q32": (
-        "**Earlier look.** On 1 November 2026, after this method was written "
-        "and after Q28 was read, a cut of Q28's window (22 August 2025 to "
-        "16 August 2026) looked at a related direction:"
-    ),
-    "Q33": (
-        "**Earlier look.** The alignment counts behind the half-hour alignment "
-        "sensitivity, for 22 August 2025 to 16 August 2026, were seen before it "
-        "was added on 7 November 2026; they use no data in this question's window."
-    ),
-    "Q36": (
-        "**Earlier look.** On 1 November 2026, after this method was written "
-        "and after Q28 was read, a cut of Q28's window (22 August 2025 to "
-        "16 August 2026) looked at a related direction:"
     ),
 }
 
@@ -7460,46 +7441,28 @@ def test_each_question_whose_data_was_seen_earlier_says_so_in_its_own_section():
 
     assert questions_whose_earlier_look_opens_otherwise(questions) == []
     assert questions_with_an_earlier_look(questions) == list(EARLIER_LOOKS)
-    assert (
-        "captures. Added on 7 November 2026 after this was seen in the window's "
-        "data: from 17 August 2026, the one-week run held readings of exactly "
-        "zero at some gas units that later runs show as not zero."
-        in flattened(register_section(questions, "Q4"))
-    )
 
 
 WRITTEN_DATES_ROWS = [
     "| Q1 | 5 October | 6, 12, 13, 25 and 31 October | no drift value read |",
     "| Q2 | 25 September | | no metered quantity read |",
-    "| Q2-RF | 12 October | 31 October | no RF value compared |",
-    "| Q2-R2RF, Q2-R1RF | 31 October | | no RF value for their dates compared |",
     "| Q3 | before its read, date not kept | | |",
-    "| Q4 | before 12 October | 12, 25, 26 and 31 October, 7 November | not read; "
-    "its window has held data since 17 August |",
     "| Q5 | before its read; population and definitions 12 October | | no Q5 "
     "value read |",
     "| Q6 | before its read; population 11 October | | no lag read |",
     "| Q8 | before its read; completed 25 October | | no demand value held; a "
     "counts-only check of the demand data's coverage on 26 October |",
-    "| Q9 | date not kept | 31 October | no system prices captured; two dates in "
-    "its window fetched (see Q9) |",
     "| Q10 | before 12 October | 12, 25 and 31 October | not read |",
     "| Q12 | restated 11 October | | no Q12 read |",
     "| Q22 | 9 October | | no Q3 or Q22 query run |",
-    "| Q22-RF | 31 October | | no RF value for its dates existed |",
     "| Q23 | 12 October | 12 October | not read |",
     "| Q24 | 12 October | 12 October | level-energy shares read on 11 October |",
     "| Q25 | 12 October | 12 and 15 October | measure (1) read on 11 October; "
     "measure (2) not read |",
-    "| Q26 | 12 October | 31 October | not read; no ABSVD captured when written |",
-    "| Q27 | 25 October | 25 and 31 October | no poll in its window existed |",
     "| Q28 | 25 October | 26 October | no figure of it read |",
     "| Q29 | 27 October | | no figure of it read |",
     "| Q30 | 27 October | 27 October | no wind data held when written; not read "
     "when changed |",
-    "| Q31, Q32, Q33, Q35, Q36 | 31 October | 7 and 8 November | no data in their "
-    "windows existed |",
-    "| Q34 | 31 October | | no export-limit data held |",
 ]
 
 
@@ -7520,15 +7483,14 @@ def test_the_set_up_section_dates_each_questions_method():
 
     assert rows == WRITTEN_DATES_ROWS
     assert sorted(question_ids_in(" ".join(rows))) == sorted(register_anchors())
-    assert (
-        "That does not hold for Q4: both of its changes followed a look at data "
-        "in its own window, as its section says."
-        in flattened(questions_set_up(questions))
+    assert flattened(questions_set_up(questions)).endswith(
+        flattened(WRITTEN_DATES_ROWS[-1])
     )
 
 
 Q1_VERDICT_QUERY = REPOSITORY / "dbt" / "analyses" / "q1_forecast_drift_verdict.sql"
-Q4_QUERY = REPOSITORY / "dbt" / "analyses" / "q4_forecast_error_vs_shortfall.sql"
+QUINTILE_TIE_ORDER = REPOSITORY / "dbt" / "macros" / "quintile_tie_order.sql"
+Q30_QUERY = REPOSITORY / "dbt" / "analyses" / "q30_wind_vs_carbon_error.sql"
 Q8_Q28_QUERY = REPOSITORY / "dbt" / "analyses" / "q8_q28_history.sql"
 QUINTILE_RATIO_IN_SQL = (
     ">= 1.25 * observed.bottom_sum * observed.top_half_hours then 'supported' "
@@ -7576,18 +7538,12 @@ def test_q1s_answer_thresholds_on_both_method_pages_are_its_querys():
 
 
 def test_each_other_method_keeps_the_thresholds_its_answer_is_called_by():
-    q4_query = flattened(Q4_QUERY.read_text(encoding="utf-8"))
     history_query = flattened(Q8_Q28_QUERY.read_text(encoding="utf-8"))
     questions = QUESTIONS.read_text(encoding="utf-8")
     answers = {
         "Q2": (
             "- **Labels.** Moved share: small below 0.5%, material at 2% or more. "
             "Changed share: small below 5%, material at 20% or more."
-        ),
-        "Q4": (
-            'The answer is called "yes" (`supported` in the query\'s output) when '
-            "the top quintile's mean is at least 25% above the bottom quintile's, "
-            'otherwise "no" (`not supported`).'
         ),
         "Q8": (
             "- **Answer.** Demand is called stronger at a gap of 0.1 or more, "
@@ -7598,36 +7554,68 @@ def test_each_other_method_keeps_the_thresholds_its_answer_is_called_by():
             "top quintile's mean is at least 25% above the bottom's, otherwise "
             '"no" (`not supported`).'
         ),
-        "Q31": (
-            "- **Answer.** A link is called positive at 0.10 or more with an "
-            "interval above zero; weak with an interval above zero below 0.10; no "
-            "clear link when the interval includes zero."
-        ),
-        "Q32": (
-            "- **Answer.** For each group, a link is called positive, weak or not "
-            "clear as in Q31."
-        ),
-        "Q33": (
-            '- **Answer.** The stored forecast "lines up better with the half-hour '
-            "before\" if the same half-hour's mean absolute difference exceeds the "
-            "half-hour before's by at least 0.5 g/kWh, with an interval above zero; "
-            "the half-hour two before is described only."
-        ),
-        "Q35": "- **Answer.** A link is called positive, weak or not clear as in Q31.",
-        "Q36": (
-            "- **Answer.** A link is called positive at 1.00 g/kWh per GW or more "
-            "with an interval above zero; weak with an interval above zero below "
-            "that; no clear link when the interval includes zero."
-        ),
     }
 
-    assert QUINTILE_RATIO_IN_SQL in q4_query
     assert QUINTILE_RATIO_IN_SQL in history_query
     assert (
         "when observed.gap >= 0.1 then 'demand stronger' when observed.gap <= -0.1 "
         "then 'shortfall stronger' else 'no clear difference'" in history_query
     )
     assert questions_whose_section_lacks(questions, answers) == []
+
+
+def test_q28_states_its_measure_and_tie_order_as_its_query_computes_them():
+    tie_order = flattened(QUINTILE_TIE_ORDER.read_text(encoding="utf-8"))
+    history_query = flattened(Q8_Q28_QUERY.read_text(encoding="utf-8"))
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    q28 = flattened(register_section(questions, "Q28"))
+
+    assert (
+        "md5('{{ seed }}:' || {{ draw }} || ':' || {{ pick }} || ':' || "
+        "extract(epoch from {{ period_start }})::bigint)" in tie_order
+    )
+    assert (
+        "order by abs_carbon_error, "
+        "{{ quintile_tie_order(bootstrap_seed, 'draw', 'pick', 'period_start') }}, "
+        "period_start, pick" in history_query
+    )
+    assert (
+        "sum(greatest(shortfall.unexplained_shortfall_mwh, 0)) as "
+        "positive_shortfall_mwh" in history_query
+    )
+    assert "where shortfall.determinability = 'determinable'" in history_query
+    assert (
+        "- **Measure.** Per half-hour, the cohort sum of the positive part of "
+        "`unexplained_shortfall_mwh` (under-delivery, as Q5) over determinable "
+        "unit-periods." in q28
+    )
+    assert (
+        "- **Answer.** Quintiles of `abs(error_api_final)`. Ties are ordered by a "
+        "fixed pseudo-random number (the first eight hexadecimal digits of the "
+        "md5 of the seed, the bootstrap draw and pick, and the half-hour's epoch "
+        "seconds), then by period start; the "
+        "half-hours sharing the bottom quintile's largest error are reported." in q28
+    )
+    assert "substr(md5(" in tie_order and ", 1, 8))::bit(32)::bigint" in tie_order
+    assert (
+        "Resampling whole days keeps the correlation within a day; correlation "
+        "between days is not modelled." in q28
+    )
+    assert (
+        "Resampling whole days keeps the correlation within a day; correlation "
+        "between days is not modelled." in history_query.replace("-- ", "")
+    )
+    q30_query = flattened(Q30_QUERY.read_text(encoding="utf-8"))
+    assert "{% set bootstrap_seed = 20261025 %}" in history_query
+    assert "{% set bootstrap_seed = var('q30_bootstrap_seed') %}" in q30_query
+    assert (
+        "{{ quintile_tie_order(bootstrap_seed, '0', '0', 'period_start') }}"
+        in q30_query
+    )
+    assert (
+        "quintiles of the absolute wind error, with Q28's tie order on Q30's own "
+        "seed." in flattened(register_section(questions, "Q30"))
+    )
 
 
 def test_the_set_up_fold_out_keeps_the_claim_its_context_counts_and_the_ranges_role():
@@ -7637,11 +7625,11 @@ def test_the_set_up_fold_out_keeps_the_claim_its_context_counts_and_the_ranges_r
     assert page.index('<section id="limitations"') < page.index('<summary id="set-up">')
     assert (
         "Each result was read once (the count of short instructions"
-        f"{details_link('Q25')} was re-run once on the same data," in set_up
+        f"{details_link('Q25')} was re-run once over the same period," in set_up
     )
     assert (
         "A figure given for scale sets a result against a context count read on "
-        "1 November 2026, a denominator, not a registered result: " in set_up
+        "1 November 2026, a denominator, not a result: " in set_up
     )
     for context_count in (
         "context_plan_per_unit_half_hour.csv",
@@ -7651,8 +7639,8 @@ def test_the_set_up_fold_out_keeps_the_claim_its_context_counts_and_the_ranges_r
     ):
         assert f'<a href="results/{context_count}">' in set_up
     assert (
-        "<p>The 90% ranges are a guide to uncertainty, not part of any rule's "
-        "verdict.</p>" in set_up
+        "<p>The 90% ranges are a guide to uncertainty, not part of any method's "
+        "answer.</p>" in set_up
     )
     assert (
         '<p>"How I measured it", under each answer, gives the measure, the '

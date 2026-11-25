@@ -13,6 +13,12 @@ and WWF.
 | Docs | https://carbon-intensity.github.io/api-definitions/ |
 | Terms | https://github.com/carbon-intensity/terms |
 
+The alignment check on the results page also uses the historic generation
+mix from the
+[NESO Data Portal](https://www.neso.energy/data-portal/historic-generation-mix),
+Supported by National Energy SO Open Data, under the
+[NESO Open Data Licence v1.0](https://www.neso.energy/data-portal/neso-open-licence).
+
 Carbon intensity is measured in **gCO2/kWh** at half-hourly settlement period
 granularity, for the GB electricity system as a whole.
 
@@ -64,8 +70,8 @@ thresholds.
 
 The API **re-runs its forecast model every 30 minutes and overwrites the stored
 value in place**. Asking today what it predicted for yesterday afternoon
-returns the final revision, made minutes before the event, not the 48-hour-ahead
-prediction.
+returns a single stored value whose timing NESO does not document, not the
+48-hour-ahead prediction.
 
 There is therefore no public record of how a forecast changed as its period
 approached. `raw.carbon_intensity_forecast` exists to build that record, and it

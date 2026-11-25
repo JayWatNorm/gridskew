@@ -57,7 +57,7 @@ stays.
 
 ## Modelling
 
-**Clock changes are handled by the database's own time zone rules.** A UK
+**Clock changes are handled by the database's own time zone rules.** A GB
 settlement day has 46 or 50 half-hours when the clocks change. PostgreSQL's
 `Europe/London` rules work these out for any year, so no dates are written
 into the code.
@@ -75,7 +75,8 @@ as rebuilding everything because:
   new row arrives;
 - every input a half-hour depends on is one of those checked: its own
   captures, its unit's registry entry and its date's ABSVD;
-- a scheduled load finishes within 20 minutes, far inside the three days.
+- a scheduled load's task is stopped after 20 minutes at most (its Airflow
+  execution timeout), far inside the three days.
 
 Two simpler options were measured and rejected: comparing all history every
 night took longer than rebuilding from scratch, and a fixed date window would
@@ -117,28 +118,26 @@ numbers are the participant's own counter and do not always rise.
 
 ## Answering the questions
 
-**Each question's method is written down before its result is read, and
-each result is read at a fixed cutoff.** A result cannot then be tuned
-after it has been seen. Each analysis states its method at the top of its
-file, and [research questions](research-questions.md) lists every method
-with its status. Where a method was not wholly written before its data was
-seen, its question says so, and the
-[exceptions](research-questions.md#exceptions) are listed there.
+**Each question's method is recorded beside its result.** Most were written
+before the result was read; where one was written or changed after data had
+been seen, the question says so and the
+[exceptions](research-questions.md#exceptions) list it. Each result is read
+at a fixed cutoff. Each analysis states its method at the top of its file,
+and [research questions](research-questions.md) lists every method with the
+date of its read.
 [Carbon forecast trajectory](carbon-forecast-trajectory.md),
 [the analyses](../dbt/README.md#analyses)
 
 **Results tables are built by hand at a fixed cutoff.** The shortfall and
-coverage results come from two tables rebuilt together when the results are
-refreshed, each recording its cutoff. No scheduled job or full refresh
+coverage results come from two tables built together, each recording its
+cutoff. No scheduled job or full refresh
 rebuilds them. The cutoff (`analysis_read_until`)
 fixes which settlement periods count, not which data is read: a later build
 reads later settlement runs and refreshed sources for the same periods, so
 it can give different figures. Each build therefore runs at least 14 days
-after its cutoff, when every period has its interim run (II), and saves with
-the figures it reports its build time, its outputs and the inputs it read:
-the latest capture time of each source, which is enough to rebuild them,
-since every source keeps its captures. Where a source cannot be rebuilt as
-it was, the record says so.
+after its cutoff, when every period has its interim run (II). The outputs
+are saved in `docs/results/`; the record of each build's time and of the
+captures it read is not published.
 [Shortfall](../dbt/README.md#shortfall)
 
 ## Running it
@@ -148,9 +147,8 @@ view also drops the views that depend on it, so the nightly job only updates
 tables and runs tests, and views change only in a release.
 [Period facts](../dbt/README.md#period-facts)
 
-**A release pauses only what it changes.** The forecast is paused last, and
-only when at least ten minutes remain before its next poll, so a release
-rarely costs a forecast version.
+**A release pauses only what it changes.** The platform repository's release
+workflow pauses and drains the affected DAGs, then restores their schedules.
 [Deployment](deployment.md)
 
 **The raw schema is versioned by migrations.** Each change is a numbered
@@ -170,10 +168,14 @@ everything derived from it. Settlement runs Elexon has since replaced are not
 copied.
 [Operations](operations.md#if-the-database-is-lost)
 
-**Failures are found by a daily check, not alerts.** A one-person research
-project checks the Airflow UI each morning; each DAG's first action on a
-failure is in the runbook.
+**Nothing sends an alert.** Failed runs show in the Airflow UI. Alerting was
+considered and not built for a one-person research project on a single
+host; each DAG's first action on a failure is in the runbook.
 [Operations](operations.md)
+
+**Known limitation: the freshness DAG sets up dbt on its own.**
+`gridskew__dbt_freshness_dag` builds its connection settings itself, where
+the nightly and registry DAGs share `ingestion/dbt_environment.py`.
 
 **The platform repository owns deployment.** Airflow and PostgreSQL run on
 a shared homelab platform kept in its own repository, which mounts this

@@ -126,8 +126,8 @@ unit_tests:
     description: >
       QAS for 14 January was captured twice (16 and 30 January); 15 January
       never. Q1 period 21 takes the later value (4.125), and period 22 the
-      later of two values (6.5). Q4 period 22 is only in the earlier capture
-      and keeps it (-1.25); Q4 period 21 is in both, unchanged. Q2 has no row
+      later of two values (6.5). QG period 22 is only in the earlier capture
+      and keeps it (-1.25); QG period 21 is in both, unchanged. Q2 has no row
       in either capture of a captured date: 0. Q3's date was never captured:
       null, and so is unexplained_after_absvd_mwh. Q2 period 22 has no
       metered value, so ABSVD is 0 but nothing is left to explain.
@@ -146,7 +146,7 @@ unit_tests:
           Q1,T_Q1,PS,other
           Q2,T_Q2,PS,other
           Q3,T_Q3,PS,other
-          Q4,T_Q4,CCGT,gas_turbine
+          QG,T_QG,CCGT,gas_turbine
       - input: ref('int_elexon__pn_period_mapped')
         format: csv
         rows: |
@@ -156,8 +156,8 @@ unit_tests:
           Q2,2026-01-14,21,2026-01-14 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
           Q2,2026-01-14,22,2026-01-14 10:30:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
           Q3,2026-01-15,21,2026-01-15 10:00:00+00,50,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q4,2026-01-14,21,2026-01-14 10:00:00+00,30,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
-          Q4,2026-01-14,22,2026-01-14 10:30:00+00,30,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          QG,2026-01-14,21,2026-01-14 10:00:00+00,30,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
+          QG,2026-01-14,22,2026-01-14 10:30:00+00,30,complete,mapped,2026-01-16 00:00:00+00,2026-01-16 00:00:00+00
       - input: ref('stg_elexon__pn')
         format: csv
         rows: |
@@ -170,8 +170,8 @@ unit_tests:
           T_Q1,2026-01-14,22,2026-01-14 10:30:00+00,mapped,Q1,44,SF,2026-01-20 00:00:00+00,44,SF,2026-01-20 00:00:00+00
           T_Q2,2026-01-14,21,2026-01-14 10:00:00+00,mapped,Q2,45,SF,2026-01-20 00:00:00+00,45,SF,2026-01-20 00:00:00+00
           T_Q3,2026-01-15,21,2026-01-15 10:00:00+00,mapped,Q3,45,SF,2026-01-20 00:00:00+00,45,SF,2026-01-20 00:00:00+00
-          T_Q4,2026-01-14,21,2026-01-14 10:00:00+00,mapped,Q4,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
-          T_Q4,2026-01-14,22,2026-01-14 10:30:00+00,mapped,Q4,33,SF,2026-01-20 00:00:00+00,33,SF,2026-01-20 00:00:00+00
+          T_QG,2026-01-14,21,2026-01-14 10:00:00+00,mapped,QG,20,SF,2026-01-20 00:00:00+00,20,SF,2026-01-20 00:00:00+00
+          T_QG,2026-01-14,22,2026-01-14 10:30:00+00,mapped,QG,33,SF,2026-01-20 00:00:00+00,33,SF,2026-01-20 00:00:00+00
       - input: ref('int_elexon__instruction_intervals')
         format: csv
         rows: |
@@ -182,11 +182,11 @@ unit_tests:
           national_grid_bm_unit,settlement_date,settlement_period,qas_mwh,retrieved_at
           Q1,2026-01-14,21,2.5,2026-01-16 00:00:00+00
           Q1,2026-01-14,22,3.5,2026-01-16 00:00:00+00
-          Q4,2026-01-14,21,7.75,2026-01-16 00:00:00+00
-          Q4,2026-01-14,22,-1.25,2026-01-16 00:00:00+00
+          QG,2026-01-14,21,7.75,2026-01-16 00:00:00+00
+          QG,2026-01-14,22,-1.25,2026-01-16 00:00:00+00
           Q1,2026-01-14,21,4.125,2026-01-30 00:00:00+00
           Q1,2026-01-14,22,6.5,2026-01-30 00:00:00+00
-          Q4,2026-01-14,21,7.75,2026-01-30 00:00:00+00
+          QG,2026-01-14,21,7.75,2026-01-30 00:00:00+00
           Q3,2026-01-16,21,11,2026-01-30 00:00:00+00
     # dbt compares numbers as text: the rounded energies carry six decimals.
     expect:
@@ -198,8 +198,8 @@ unit_tests:
         Q2,2026-01-14,21,5.000000,0.000000,5.000000,2026-01-30 00:00:00+00
         Q2,2026-01-14,22,,0.000000,,2026-01-30 00:00:00+00
         Q3,2026-01-15,21,5.000000,,,2026-01-20 00:00:00+00
-        Q4,2026-01-14,21,10.000000,7.750000,17.750000,2026-01-30 00:00:00+00
-        Q4,2026-01-14,22,-3.000000,-1.250000,-4.250000,2026-01-30 00:00:00+00
+        QG,2026-01-14,21,10.000000,7.750000,17.750000,2026-01-30 00:00:00+00
+        QG,2026-01-14,22,-3.000000,-1.250000,-4.250000,2026-01-30 00:00:00+00
 
   - name: test_shortfall_new_qas_capture_touches_its_whole_date
     description: >

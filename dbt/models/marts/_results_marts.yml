@@ -7,7 +7,8 @@ models:
       cohort is every registry unit with a fuel type; units without one are left
       out, as are periods that cannot be judged and periods with no PN.
       q3_metered_vs_notified.sql and q12_instructed_vs_residual.sql select from
-      it. Table, built by hand when the README results are refreshed.
+      it. Table, built by hand; it holds the figures behind Q3 and Q12 on the
+      results page.
     config:
       contract:
         enforced: true

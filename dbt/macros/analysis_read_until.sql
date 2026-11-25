@@ -1,5 +1,5 @@
 {% macro analysis_read_until() %}
-    {#- The fixed cutoff of a one-look analysis: a date and time with an
+    {#- The fixed cutoff of an analysis: a date and time with an
         explicit UTC offset, such as '2026-09-30 22:30:00+00'. Without the
         offset PostgreSQL would read it in the session's time zone and move
         every population's edge by an hour in summer, so anything else stops

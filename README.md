@@ -12,6 +12,9 @@ it captures, which those APIs later overwrite.
 
 **Results:** <https://jaywatnorm.github.io/gridskew>
 
+**Status:** the analysis is complete (25 November 2026). The Airflow DAGs
+keep collecting data, and the nightly dbt job keeps building and testing it.
+
 ## What it found
 
 The [results page](https://jaywatnorm.github.io/gridskew) gives every figure
@@ -56,13 +59,14 @@ forecast, not a day-ahead one.
 3. **Explain them.** Test planned and unplanned outages (`REMIT`), demand
    forecast error and market stress signals as possible explanations.
 
-The [rules](docs/research-questions.md#terms) call the shortfall NESO did not
+The [methods](docs/research-questions.md#terms) call the shortfall NESO did not
 instruct *unexplained shortfall*; the results page calls its positive part
 *under-delivery*.
 
 The analysis stays at unit level because aggregating to fuel type first can
-wash out the signal. It covers every registered unit with a published fuel
-type, interconnectors and pumped storage included; a unit without one has no
+wash out the signal. The shortfall table covers every registered unit with a
+published fuel type, interconnectors and pumped storage included; each result
+states which units it counts. A unit without a published fuel type has no
 physical baseline.
 
 A related question runs independently: **how does a forecast for a given
@@ -83,7 +87,7 @@ the outturn is above the forecast. Two results give the average miss
 instead, a bias and not a share above or below. Over 17,280 half-hours
 (22 August 2025 to 16 August 2026) the stored forecast's misses have a mean
 size of 9.3 g/kWh with almost no overall bias (mean −0.6 g/kWh;
-[Q29](https://jaywatnorm.github.io/gridskew/#q29)). The stored forecast is a late revision, so this says
+[Q29](https://jaywatnorm.github.io/gridskew/#q29)). NESO does not document when the stored forecast is made, so this says
 little about the mechanism. On the project's own forecast archive, over
 2,864 half-hours from 19 August to 12 November 2026, NESO's outturn estimate
 was on average 21 g/kWh above the forecast made about a day ahead and
@@ -115,8 +119,8 @@ missed revisions cannot be recovered.
 
 ## Limitations
 
-- Published historical forecast error is attenuated because the stored
-  forecast is a late revision.
+- NESO does not document when the stored forecast is made; if it is a late
+  version, its error understates the miss of earlier forecasts.
 - Forecast revisions also reflect weather, demand and interconnector updates;
   attributing them to generation shortfalls requires the per-unit Elexon join.
 - `B1610` includes metered BM-unit imports and exports, not only physical
@@ -126,7 +130,7 @@ missed revisions cannot be recovered.
   and is later restated, so the full analysis trails real time.
 - The project measures associations and accounting relationships, not causal
   proof.
-- Weather data, a later extension, can only approximate the inputs used by the
+- Weather data is not used; it could only approximate the inputs used by the
   national forecast model.
 
 ## Data and architecture
@@ -142,9 +146,9 @@ The platform uses a medallion structure inside PostgreSQL:
 
 | Layer | Implementation | Purpose |
 |---|---|---|
-| **Bronze** | `raw` schema | Append-only source-grain records, retrieval context and rejected payloads |
-| **Silver** | dbt `staging/` and `intermediate/` | Source-conformed records, joins and business logic |
-| **Gold** | dbt `marts/` | Terminal facts, dimensions and aggregates at business grain |
+| **Bronze** | `raw` schema | Append-only source-grain records and retrieval context; rejected payloads, whose rows are only marked resolved |
+| **Silver** | `dbt/models/staging/` and `dbt/models/intermediate/` | Source-conformed records, joins and business logic |
+| **Gold** | `dbt/models/marts/` | Terminal facts, dimensions and aggregates at business grain |
 
 Bronze is a database schema rather than object storage because this project
 does not need a lake. Its essential rule is that source records are never
@@ -162,8 +166,8 @@ they do not establish a unit's actual fuel or emissions. See the
 [dbt guide](dbt/README.md) for their contracts and load commands.
 
 The stack is Python ingestion → PostgreSQL → dbt → Airflow on a self-hosted
-Linux server, with separate development and production databases. As of
-20 November 2026, thirteen Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
+Linux server, with separate development and production databases. Thirteen
+Airflow DAGs collect carbon intensity forecasts and outturn, `PN`, `QPN`,
 three `B1610` settlement runs (`II`, `SF` and `RF`), the BM unit registry,
 balancing instructions (`BOALF`), outage notices (`REMIT`, hourly, with a
 daily re-read of the last seven days), balancing services volume (`QAS`,
@@ -178,16 +182,22 @@ time behaviour differs. See
 ## Data sources and licences
 
 - Contains BMRS data © Elexon Limited copyright and database right 2026.
-  Used under the [BMRS open data licence](https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/).
+  Used under the [BMRS open data licence](https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/).
 - Carbon intensity data from the NESO Carbon Intensity API
   ([carbonintensity.org.uk](https://carbonintensity.org.uk/)), licensed under
-  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); modified:
+  aggregated by GridSkew.
 - Historic generation mix from the
   [NESO Data Portal](https://www.neso.energy/data-portal/historic-generation-mix),
   Supported by National Energy SO Open Data, under the
-  [NESO Open Data Licence v1.0](https://www.neso.energy/data-portal/ngeso-open-licence).
+  [NESO Open Data Licence v1.0](https://www.neso.energy/data-portal/neso-open-licence).
 
 Neither provider endorses this project.
+
+## Licence
+
+The code is under the [MIT licence](LICENSE). The data in `docs/results/` and
+on the results page stays under its providers' licences, listed above.
 
 ## Reliability and validation
 
@@ -229,8 +239,8 @@ are under `tests/adhoc/`. pytest collects neither.
 Much of the code supports the results rather than the pipeline. The chart
 script renders every figure on the results page from the saved outputs, and
 its tests check each figure's values and the page's text against them. CI
-checks the arithmetic of eleven of the analyses on hand-worked rows, and every
-analysis compiles against the test database.
+checks the arithmetic of the Q1, Q10, Q25, Q8, Q28, Q29 and Q30 analyses on
+hand-worked rows, and every analysis compiles against the test database.
 
 ## Repository guide
 
@@ -270,18 +280,22 @@ repository's release runbook, which is not public.
 
 ## Status
 
+The analysis is complete (25 November 2026). The DAGs keep collecting data,
+and the nightly dbt job keeps building and testing it.
+
 **Complete and running**
 
 - Carbon intensity forecast and outturn collection
 - `PN`, `QPN`, `B1610`, `BOALF`, `REMIT`, `QAS` and wind ingestion, backfills
   and scheduled Airflow runs; a one-off demand back-fill
-- Append-only raw storage, with a loader role that can insert and read but
-  not update or delete
+- Append-only source tables in `raw`, with a loader role that can insert and
+  read but not update or delete; quarantine rows are only marked resolved,
+  by the owner
 - Runtime validation and quarantine for the twelve time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks
 - dbt sources, production freshness checks and fourteen source-grain staging
-  views (20 November 2026)
+  views
 - Settlement-period conversion covering normal days and UK clock changes
 - BM unit registry capture, current dimension and observed-history snapshot
 - Pull-request CI with Python tests, linting, DAG compilation, `dbt parse`,
@@ -309,8 +323,8 @@ repository's release runbook, which is not public.
 **Read**
 
 - The [results page](https://jaywatnorm.github.io/gridskew) holds every
-  result read so far, with its chart, method and saved output; the headline
-  findings are under [What it found](#what-it-found). Each rule is in
+  result, with its chart, method and saved output; the headline
+  results are under [What it found](#what-it-found). Each method is in
   [research questions](docs/research-questions.md).
 - Four views trace each half-hour's carbon forecast from its first to its
   final version; see
@@ -320,8 +334,7 @@ repository's release runbook, which is not public.
   22 November 2026, on 2,910 and 2,864 half-hours from 19 August to
   12 November 2026 ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
-Questions not answered here are listed on the results page. System prices
-and weather remain later extensions.
+System prices and weather are not used.
 
 The shortfall does not subtract `QPN` from PN; the
 [QPN dataset notes](docs/sources/elexon/015_qpn.md) explain why.

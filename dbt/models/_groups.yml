@@ -15,4 +15,4 @@ groups:
     description: >
       Private intermediate models that prepare the research questions, and the
       analyses that read them. The carbon models hold forecast drift and
-      forecast error; a result is read only through its recorded reading rule.
+      forecast error; a result is read only through its recorded method.

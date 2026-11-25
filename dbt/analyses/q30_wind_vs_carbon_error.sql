@@ -43,7 +43,7 @@
 --
 -- Quintiles are ntile(5), the lower quintiles taking one extra half-hour
 -- when the count is not a multiple of 5, ordered by abs(wind error), then
--- Q4's fixed pseudo-random key (quintile_tie_order), then period start. For
+-- Q28's fixed pseudo-random key (quintile_tie_order), then period start. For
 -- each quintile below the top, the half-hours sharing its largest
 -- abs(wind error) are counted, with how many of them it holds.
 --

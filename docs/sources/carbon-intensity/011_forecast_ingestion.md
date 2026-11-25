@@ -24,7 +24,8 @@ cannot prove that it received the new forecast vintage.
 
 **This source is not addressable in time.** The API re-runs its model every 30
 minutes and overwrites the stored value in place, so a request for a past period
-returns the final revision, not the forecast that existed then.
+returns a single stored value whose timing NESO does not document, not the
+forecast that existed then.
 
 A backfilled run would therefore fetch **current** data for every historical
 logical interval. The poller uses the actual execution time for `retrieved_at`,
@@ -88,9 +89,8 @@ models must not count it as one.
 ## The question this table answers
 
 Does the forecast drift one way between its first and its final version? The
-rule for reading the answer is fixed before any drift value is read, and the
-answer is read once. The rule, and how short and repeated polls are treated,
-are in [Carbon forecast trajectory](../../carbon-forecast-trajectory.md).
+method, and how short and repeated polls are treated, are in
+[Carbon forecast trajectory](../../carbon-forecast-trajectory.md).
 
 ## Politeness
 

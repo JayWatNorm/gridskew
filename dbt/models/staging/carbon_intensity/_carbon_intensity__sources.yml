@@ -37,7 +37,8 @@ sources:
 
           - name: forecast_final
             description: >
-              Final-revision forecast for the settlement period, in gCO2/kWh.
+              The API's one stored forecast for the settlement period, in
+              gCO2/kWh; NESO does not document its timing.
               Never null: the outturn poller's contract quarantines a null.
 
           - name: actual

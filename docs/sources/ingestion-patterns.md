@@ -20,7 +20,8 @@ Everything follows from this.
 **Not addressable** means the endpoint always returns current state regardless of
 what you ask. The Carbon Intensity forecast is not addressable — it re-runs its
 model every 30 minutes and overwrites in place, so asking today what it forecast
-last March returns the final revision, not the 48-hour-ahead figure.
+last March returns a single stored value whose timing NESO does not document,
+not the 48-hour-ahead figure.
 
 | | Airflow setting | Backfill |
 |---|---|---|
@@ -152,8 +153,8 @@ failure; the QAS and demand back-fills log a failed day and go on.
   `elexon` pool. The measured PN backfill averaged about 1.4 requests per minute,
   so no additional client-side delay is required. REMIT, which fetches its own
   history in day windows, waits 0.2 seconds between requests.
-- **Identify yourself.** Both sets of terms prohibit concealing an application's
-  identity. `gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
+- **Identify yourself.** NESO's terms prohibit concealing an application's
+  identity; Elexon's say nothing on it. `gridskew/0.1 (+https://github.com/JayWatNorm/gridskew)`.
 - **Add expected-volume checks, not just status-code and container checks.**
   The current Elexon pollers reject empty and malformed outer responses
   (REMIT accepts an empty window, because nothing may have been published). A
@@ -198,7 +199,7 @@ a run rather than of a row.
 | Carbon intensity forecast | `catchup=False`, poll now | Source not addressable. History does not exist |
 | Carbon intensity outturn | `catchup=False`, rolling 7-day window, weekly re-fetch of any gap in history | Addressable; a small share of actuals changes after the first capture. Volume so small the overlap is free |
 | Elexon PN and QPN | `catchup=True`, daily chunks | Addressable, high volume, and responsible for the historical load |
-| Elexon B1610 II, SF, RF | `catchup=True`, fixed lags of 14, 35 and 450 days, about four days of retries | Each run is captured while it is in force; RF is final, so its long lag loses nothing |
+| Elexon B1610 II, SF, RF | `catchup=True`, fixed lags of 14, 35 and 450 days, about four days of retries | Each run is captured while it is in force; RF is the last run captured, so its long lag loses nothing |
 | Elexon B1610 R1 cohort | captured once, 5 to 11 October 2026 | One week (10 to 16 August 2026) held at II, SF and R1 to measure restatement; RF reaches it through the RF rung |
 | Elexon BOALF | `catchup=True`, explicit daily data interval | Addressable and high volume; an acceptance that crosses midnight arrives in two daily polls, so the latest capture of each ramp point wins downstream |
 | Elexon QAS | `catchup=True`, settlement dates 14, 35 and 450 days back, about four days of retries; earlier dates from a one-off backfill | ABSVD has no version marker, so each capture beside the matching B1610 run is the only way to see a resubmission |

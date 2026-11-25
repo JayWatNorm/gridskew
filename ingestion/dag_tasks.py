@@ -1,4 +1,4 @@
-"""The task bodies the daily Elexon DAGs share.
+"""The task bodies the capture DAGs share, all but the BM-unit registry's.
 
 Each DAG imports its own poller and passes the poller's functions in: the
 release controller reads a DAG file's imports to see which DAG runs which

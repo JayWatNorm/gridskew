@@ -1,4 +1,5 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
+# The committed query labels the row for acceptances captured more than once acceptances spanning more than one capture and adds a row for ramp points captured more than once; every figure is as read.
 section,fuel_group,settlement_month,measure,n,under_10_minutes,under_10_minutes_pct,median_minutes
 1,bioenergy,2025-08-01,1 dispatch granularity (acceptances),597,8,1.3,34.0
 1,bioenergy,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",597,0,0.0,157.0

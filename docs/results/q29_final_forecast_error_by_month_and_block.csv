@@ -1,4 +1,5 @@
 # Carbon intensity data: NESO Carbon Intensity API, CC BY 4.0, modified: aggregated by GridSkew.
+# The query's label for the overall row changed after this read; every figure is as read.
 section,item,half_hours,half_hours_with_error,half_hours_without_error,mean_absolute_error,mean_error,median_error,zero_error_share
 1,"all half-hours (partly seen before the rule: mean +0.43, median 0)",17280,17280,0,9.327,-0.615,-1.000,0.042
 2,settlement month 2025-08 (partial: 22 to 31),480,480,0,9.865,-0.494,-1.000,0.054

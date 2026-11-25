@@ -1,4 +1,5 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
+# Section 4 of the query was added after this read.
 section,breakdown,item,unit_periods,abs_metered_mwh,abs_pn_mwh
 1,all metered unit-periods,"mapped, no fuel type",39297780,312269965.2,
 1,all metered unit-periods,"mapped, fuel type known (the cohort)",8936288,227599943.2,

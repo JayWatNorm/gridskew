@@ -140,7 +140,7 @@ jobs:
           GRIDSKEW_DISPOSABLE_TEST: "1"
         run: python -m tests.integration.check_analyses_compile
 
-      - name: Check the one-look analyses on worked values
+      - name: Check the analyses on worked values
         env:
           PYTHONPATH: .
           GRIDSKEW_DISPOSABLE_TEST: "1"
