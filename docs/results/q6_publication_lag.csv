@@ -1,4 +1,5 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
+# The committed query also returns first_published_from and first_published_to, which this output does not hold; every figure is as read.
 section,outage_class,event_type,item,notices,median_lag_minutes,p90_lag_minutes
 1,Planned,,,8545,-1362.9,-4.9
 1,Unplanned,,,11811,0.9,29.9

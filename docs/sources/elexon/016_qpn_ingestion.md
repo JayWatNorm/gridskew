@@ -76,16 +76,14 @@ poller. The table comment says so too.
 QPN", not "the deduction is zero". Only an outer join is safe when combining with
 PN.
 
-## Pre-registered test: do QPNs restate?
+## Restatement check: do QPNs restate?
 
 **Status: a bounded two-day check, run once on 8 November 2026**, with PN:
 the same two days and the same result.
 
-Same as PN, same rule, same ladder — see
+Same as PN — see
 [011_pn_ingestion.md](011_pn_ingestion.md). QPN carries no revision marker
 either, so `retrieved_at` is again the only instrument.
-
-Run both experiments over the same four weeks so the results are comparable.
 
 ## Settlement shortfall
 

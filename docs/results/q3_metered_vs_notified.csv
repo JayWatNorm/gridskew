@@ -1,4 +1,5 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
+# The query's column names changed after this read (q1_ and q3_ are now p25_ and p75_); every figure is as read.
 fuel_group,unit_periods,units,first_date,last_date,median_deviation_mwh,q1_deviation_mwh,q3_deviation_mwh,abs_metered_mwh,abs_pn_mwh
 wind,4296432,230,2025-08-22,2026-09-26,0.304,-1.063,2.925,80477152.9,94940226.4
 gas_turbine,1501032,78,2025-08-22,2026-09-26,0.170,0.000,1.110,77636491.9,65397727.0

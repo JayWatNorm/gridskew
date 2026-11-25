@@ -1,4 +1,4 @@
-"""Draw the results charts from the saved one-look outputs.
+"""Draw the results charts from the saved outputs.
 
 Reads each read's saved output from a folder, under the file names below,
 and writes into the output folder:

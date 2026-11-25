@@ -81,16 +81,6 @@ vars:
     - '2028-08-28'
     - '2028-12-25'
     - '2028-12-26'
-  # Q4 is read once, on the first day it holds this many matched days.
-  shortfall_error_matched_days_needed: 90
-  # Q4's bootstrap interval needs this many of its 1,000 draws to form a ratio.
-  shortfall_error_bootstrap_min_usable_draws: 900
-  # Q4's read time, with an explicit UTC offset, passed at the read: B1610 rows
-  # stored at or before it decide each settlement date's run and give the
-  # metered values, so a rerun with the same instant reads the same meter
-  # data. Null counts rows stored up to the query's own time and shows no
-  # result.
-  shortfall_error_capture_cutoff: null
   # Q8 and Q28 read one fixed window of history: settlement dates from and
   # until these, both included, ending the day before the forecast archive
   # starts. Each bootstrap interval needs this many of its 1,000 draws.
@@ -108,22 +98,6 @@ vars:
   q30_window_until: '2026-08-16'
   q30_bootstrap_seed: 20261027
   q30_bootstrap_min_usable_draws: 900
-  # Q2-RF works out when the RF capture first asks for each settlement date
-  # from this many days, the RF DAG's LAG (a test keeps them equal). It reads
-  # B1610 rows stored at or before the capture cutoff, a UTC instant with its
-  # offset passed at the read; null counts rows up to the query's own time
-  # and shows no energy.
-  b1610_rf_capture_offset_days: 450
-  rf_restatement_capture_cutoff: null
-  # Q2-RF is read once, when this many settlement dates hold RF and R3.
-  rf_restatement_dates_needed: 30
-  # Q27 (forecast stalls) counts slot polls from this start and is read once
-  # the window holds this many days. The exploratory window is the record
-  # before the window, to its last slot, reported apart.
-  forecast_stalls_from: '2026-11-01 00:00:00+00'
-  forecast_stalls_days_needed: 90
-  forecast_stalls_exploratory_from: '2026-08-17 00:00:00+00'
-  forecast_stalls_exploratory_until: '2026-10-31 23:30:00+00'
   # How long record_run_results keeps a node result.
   node_results_retention_days: 180
   # The daily wind capture holds publish days and settlement dates from this

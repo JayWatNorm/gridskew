@@ -1,4 +1,5 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
+# The query's row labels changed after this read: its row for acceptances captured more than once is now two rows; every figure is as read.
 section,fuel_group,settlement_month,measure,n,under_10_minutes,under_10_minutes_pct,median_minutes
 1,bioenergy,2025-08-01,1 dispatch granularity (acceptances),597,9,1.5,34.0
 1,bioenergy,2025-08-01,"2 continuous acceptance duration, BSC (acceptances)",597,0,0.0,156.0

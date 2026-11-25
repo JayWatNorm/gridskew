@@ -36,8 +36,7 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://data.elexon.co.uk/bmrs/api/v1/datasets"
 WIND_FUEL_TYPE = "WIND"
 
-# Q36's reading rule holds every day from at least four weeks before its window
-# opens; four weeks before is 3 November 2026 at the earliest.
+# The daily capture holds every publish day and settlement date from this day.
 FIRST_CAPTURE_DAY = date(2026, 11, 1)
 LOOK_BACK_DAYS = 7
 ISSUES_PER_PUBLISH_DAY = 8

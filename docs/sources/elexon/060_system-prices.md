@@ -22,13 +22,9 @@ Two numbers matter here:
   MWh. [Positive means a short system, negative a long
   one](https://www.elexon.co.uk/bsc/settlement/imbalance-pricing/).
 
-Of the two, **the volume is the more direct measure** for this project. Price
+Of the two, **the volume is the more direct measure**. Price
 is the market's reaction to scarcity and is affected by bidding behaviour;
 volume is the scarcity itself.
-
-If shortfalls drive carbon forecast error, periods with large positive imbalance
-volumes and high system prices should be the periods where carbon intensity
-overshot its forecast.
 
 ---
 
@@ -118,8 +114,7 @@ the default, not the exception.
 ## Observed live, 2026-08-20
 
 One settlement period fetched
-(`/balancing/settlement/system-prices/2026-08-01/5`, see
-`tests/fixtures/elexon/system_prices.json`):
+(`/balancing/settlement/system-prices/2026-08-01/5`):
 
 - **The response wraps rows in `{"metadata": {"datasets": ["DISEBSP"]}, "data": [...]}`.**
   Observed envelopes across the API: bare array (streams), `{data}` (dataset

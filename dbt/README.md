@@ -272,15 +272,13 @@ the results at once), and another unit starting or ceasing to share a cohort
 unit's Elexon ID, which `warn_cohort_elexon_id_shared` reports each night
 until a full refresh rebuilds the unit's rows.
 
-Two tables in `marts/` hold the figures the README's results will quote,
+Two tables in `marts/` hold the figures behind Q3 and Q12 on the results page,
 each with the cutoff it was built with. `agg_delivery_by_fuel_group` gives, per fuel
 group, how far metered output is from the PN and how much of that gap was
 instructed; `q3_metered_vs_notified.sql` and `q12_instructed_vs_residual.sql`
 read it. `agg_generation_coverage` gives the share of metered generation the
-cohort holds, by kind of BM unit. No job builds them; they are rebuilt
-together when the results are refreshed, at least 14 days after the cutoff,
-with the build time and each source's latest capture time recorded beside
-the outputs:
+cohort holds, by kind of BM unit. No job builds them; they are built
+together by hand, at least 14 days after the cutoff:
 
 ```bash
 dbt build --project-dir dbt --target prod --select agg_delivery_by_fuel_group agg_generation_coverage --vars '{analysis_read_until: "<cutoff>"}'
@@ -307,43 +305,31 @@ runs their key tests, which return a count of failing rows and no forecast
 value; no scheduled job builds them.
 `analyses/q1_forecast_drift_population.sql` counts the population without
 reading a forecast value and can run on any day.
-`analyses/q1_forecast_drift_verdict.sql` is read once, when the population
+`analyses/q1_forecast_drift_verdict.sql` gives a result once the population
 reaches 2,880 half-hours. `analyses/q10_forecast_accuracy_by_lead_time.sql`
-is read once, after the verdict and at the same cutoff;
-`analyses/q4_forecast_error_vs_shortfall.sql` is read once, when 90
-settlement dates each hold both the forecast error and the cohort's
-shortfall for at least 46 half-hours; its quintiles use only half-hours
-whose final forecast was made at most 30 minutes ahead. All three wait
-until three slot polls are stored after the cutoff, so a forecast stall
+is read after the verdict, at the same cutoff. Both give a result only
+once three slot polls are stored after the cutoff, so a forecast stall
 that runs past it is settled, and are read at least 8 days after it, so
-outturn has settled. See
+outturn has settled. Both were read on 22 November 2026. See
 [Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
 
 ## Analyses
 
-`analyses/` also holds the analyses for Q2-RF
-(`q2rf_restatement_r3_to_rf.sql`, read at 30 dates with RF and R3), Q5
-(`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`) and
-Q23 to Q26 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
-`q25_instruction_fragmentation.sql`, `q26_instructed_and_absvd_share.sql`),
-Q27 (`q27_forecast_stalls.sql`, how often and how long the published
-forecast stops changing, read after 90 days of polls from 1 November 2026)
+`analyses/` also holds the analyses for Q5
+(`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`),
+Q23 to Q25 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
+`q25_instruction_fragmentation.sql`)
 and Q8 with Q28 (`q8_q28_history.sql`, on one shared population of
 settlement dates 22 August 2025 to 16 August 2026: whether demand
 forecast error or unexplained shortfall lines up more with the API's
-final carbon forecast error, and Q4's quintile test on that error; read
-once on 26 October 2026, after the demand back-fill and its coverage check).
+stored carbon forecast error, and a quintile test of the shortfall on that
+error; read on 26 October 2026, after the demand back-fill and its coverage
+check).
 Each states its method in its header.
 `analysis_read_until` is a UTC date and time with its offset (for example
 `2026-09-30 22:30:00+00`); a value without one stops the compile. A read
 records its time and keeps the compiled query and output, so a rerun can
-limit every source to the captures stored by then. Q2-RF reads
-`rf_restatement_capture_cutoff` instead, an instant of the same form: only
-B1610 rows stored at or before it count, so a rerun with the same cutoff
-reads the same rows. With no cutoff it shows counts and dates only, up to
-the query's own time, and no energy. Its sections 4 and 5 list each
-settlement date's runs and RF capture due time and say when the population
-was reached or is projected to be.
+limit every source to the captures stored by then.
 
 ## Local setup
 

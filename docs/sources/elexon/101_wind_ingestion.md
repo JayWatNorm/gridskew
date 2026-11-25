@@ -6,7 +6,7 @@ patterns, see [../ingestion-patterns.md](../ingestion-patterns.md).
 
 **A daily capture from 1 November 2026, beside a one-off back-fill of a
 year.** The DAG `gridskew_elexon_wind` captures every publish day and
-settlement date from 1 November 2026 for Q36. The back-fill holds a year of
+settlement date from 1 November 2026. The back-fill holds a year of
 history for the Q30 analysis (`dbt/analyses/q30_wind_vs_carbon_error.sql`):
 WINDFOR publish days 20 August 2025 to 16 August 2026 and FUELHH WIND
 settlement dates 22 August 2025 to 16 August 2026. The days between are not
@@ -101,7 +101,7 @@ look-back, after asking for its other days. To release a held day:
 1. Read the day's `validation_errors` and `payload` in the quarantine
    ([operations](../../operations.md#the-quarantine)).
 2. If Elexon legitimately sends a null `generation`, the contract, the
-   tables' `NOT NULL` and the Q36 analysis must change together before the
+   tables' `NOT NULL` and any analysis reading it must change together before the
    day can load.
 3. List that day's rows, by `dataset` and the day in `request_context`,
    and mark them resolved by id, with who and why

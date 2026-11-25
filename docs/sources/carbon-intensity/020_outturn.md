@@ -87,9 +87,8 @@ tuple order will corrupt data without raising.
 
 ### Why `forecast_final` and not `forecast`
 
-The API's stored forecast for a past period is its **last revision**, made
-minutes before the event when the model had already observed most of what it
-was predicting. That is a different quantity from
+The API keeps a **single stored forecast** for a past period, and NESO does
+not document when it is made. That is a different quantity from
 `raw.carbon_intensity_forecast.forecast`, which is horizon-resolved.
 
 Two columns called `forecast` meaning different things is a join waiting to go
@@ -108,9 +107,9 @@ settled periods. A null value is retained in quarantine and the run fails.
 
 The dbt test `warn_outturn_actual_impossible`, run by the nightly job, warns
 on every stored capture whose `actual` is zero or below. The API's own method
-is not documented as able to give one, so the test reports it for a decision.
-As of 20 November 2026 the table holds 48,861 rows over 21,951 half-hours;
-one row, 0 g/kWh for 6 August 2026 11:00 UTC, has an actual of zero or
+is not documented as able to give one, so the test reports it; the row is
+kept. On 20 November 2026 the table held 48,861 rows over 21,951 half-hours;
+one row, 0 g/kWh for 6 August 2026 11:00 UTC, had an actual of zero or
 below, and the results page reports it.
 
 ## Ingestion
@@ -123,11 +122,9 @@ See [021_outturn_ingestion.md](021_outturn_ingestion.md).
 means one period can have several rows. Use `DISTINCT ON (period_start)` with
 `ORDER BY period_start, retrieved_at DESC` to take the latest.
 
-## Findings from this table
+## Results from this table
 
-The root README's first prediction, that actual intensity exceeds the forecast
-more often than not, was tested against a year of this table on 2026-08-19.
-Median of `actual - forecast_final` was -1 gCO2/kWh over 17,522 periods,
-deduplicated with `DISTINCT ON`, with actual above forecast 47.5% of the time
-excluding ties. See
-[the mechanism being tested](../../../README.md#the-mechanism-being-tested).
+No saved result measures how often the actual exceeds the stored forecast.
+The stored forecast's mean error by month and time of day is on the
+[results page](https://jaywatnorm.github.io/gridskew/#q29); see
+[the mechanism behind the question](../../../README.md#the-mechanism-behind-the-question).

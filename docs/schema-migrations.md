@@ -41,10 +41,11 @@ then applies every migration as it to an empty PostgreSQL before fixtures
 load, in both jobs, with the `flyway/flyway` image at the version pinned in
 `.github/workflows/ci.yml`.
 
-**A workstation without Docker** creates the same role and applies the same
-files in order with `psql`:
+**A workstation without Docker** creates the database and the same role, and
+applies the same files in order with `psql`:
 
 ```powershell
+createdb -h localhost -U postgres gridskew_dev
 psql -h localhost -U postgres -d gridskew_dev -v ON_ERROR_STOP=1 -c "CREATE ROLE gridskew LOGIN; GRANT CREATE ON DATABASE gridskew_dev TO gridskew;"
 Get-ChildItem sql\migrations\V*.sql | Sort-Object Name | ForEach-Object {
     psql -h localhost -U gridskew -d gridskew_dev -v ON_ERROR_STOP=1 --single-transaction -f $_.FullName

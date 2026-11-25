@@ -5,8 +5,9 @@ Each step links to the page that holds the full procedure.
 
 ## Noticing a failure
 
-Nothing sends an alert. Failed and skipped runs show in the Airflow UI,
-which is checked each morning. The nightly dbt job also records every
+Nothing sends an alert. Failed and skipped runs show in the Airflow UI, and
+a failure is noticed when someone looks there. The nightly dbt job also
+records every
 model's and test's result in `dbt_dev.dbt_node_results`.
 
 ## When a DAG fails
@@ -28,8 +29,8 @@ model's and test's result in `dbt_dev.dbt_node_results`.
 ## Nightly warnings
 
 Six tests in `dbt/tests`, named `warn_*`, report rows without failing the
-nightly job; each test's header says what a row means. As of 22 November
-2026 two of them return one row each night:
+nightly job; each test's header says what a row means. On 22 November
+2026 two of them returned one row:
 
 - `warn_outturn_actual_impossible`: one stored carbon actual of 0 g/kWh, for
   6 August 2026 11:00 UTC. The warning stays while the row does.
@@ -138,11 +139,15 @@ the copies, without the superseded settlement runs.
 To rebuild:
 
 1. Apply the raw migrations ([schema migrations](schema-migrations.md)).
-2. Provision the dbt schemas ([deployment](deployment.md)).
-3. Restore the copied tables (above) from their copy.
-4. Build the dbt project once, as the deployment page describes.
-5. Let the capture DAGs catch up; backfill any long gap.
-6. Trigger one full refresh of the nightly dbt job.
+2. Provision the dbt schemas and the dbt role's read access to the `raw`
+   tables ([deployment](deployment.md)).
+3. Grant the loader role again with `sql/provision/004_loader_grants.sql`
+   and check it with `003_verify_loader_role.sql`; if the role itself is
+   gone, create it first with `002_loader_role.sql`.
+4. Restore the copied tables (above) from their copy.
+5. Build the dbt project once, as the deployment page describes.
+6. Let the capture DAGs catch up; backfill any long gap.
+7. Trigger one full refresh of the nightly dbt job.
 
 ## Releases
 

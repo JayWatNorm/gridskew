@@ -12,10 +12,15 @@ holds schedules according to the selected activation mode. GridSkew's `dags/`,
 `ingestion/` and `dbt/` directories are mounted into Airflow from the
 GridSkew checkout, so a DAG change needs only a GridSkew commit.
 
-A new database needs two steps before the nightly dbt job can run. The
-database owner runs `sql/provision/001_bmu_snapshot_schema.sql`, which
-creates the `dbt_dev` and `dbt_dev_snapshots` schemas and grants the
-`gridskew_dbt` role what it needs, and the project is built once with
+A new database needs these steps before the nightly dbt job can run. The
+`gridskew_dbt` role is created first. The database owner then runs
+`sql/provision/001_bmu_snapshot_schema.sql` with
+`-v snapshot_schema=dbt_dev_snapshots -v dbt_role=gridskew_dbt`. It creates
+the `dbt_dev` and `dbt_dev_snapshots` schemas, lets the role use and create
+in them and use `raw`, and grants it `SELECT` on the two registry tables.
+The role also needs `SELECT` on the other `raw` tables; no script in this
+repository grants that, so the owner grants it separately. Then the project
+is built once with
 `dbt build`, as CI does (from a workstation, with `--target prod`). The
 nightly job's first step tests the staged
 B1610 data and its run hook writes to `dbt_dev.dbt_node_results`, so on an

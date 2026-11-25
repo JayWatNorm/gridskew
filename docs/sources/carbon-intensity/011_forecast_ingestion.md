@@ -88,9 +88,8 @@ models must not count it as one.
 ## The question this table answers
 
 Does the forecast drift one way between its first and its final version? The
-rule for reading the answer is fixed before any drift value is read, and the
-answer is read once. The rule, and how short and repeated polls are treated,
-are in [Carbon forecast trajectory](../../carbon-forecast-trajectory.md).
+method, and how short and repeated polls are treated, are in
+[Carbon forecast trajectory](../../carbon-forecast-trajectory.md).
 
 ## Politeness
 

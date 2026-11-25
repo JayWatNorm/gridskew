@@ -2,7 +2,8 @@
 
 The index of `docs/`: the design, operations and deployment pages, the
 research questions and their saved results, and a page per dataset, grouped
-by source. Every dataset page opens with an **In plain terms** section.
+by source. Every Elexon dataset page opens with an **In plain terms**
+section; the carbon pages open with a plain summary.
 
 ## Two pages per dataset
 
@@ -12,7 +13,7 @@ volumes, and any experiment running against it.
 
 They change on different schedules. What `level_from` means will be true in five
 years; the chunk size will not. Ingestion pages exist **only for datasets
-actually being ingested** — the rest have one page until something reads them.
+actually being ingested** — the rest have one page.
 
 The reasoning that would otherwise be repeated across every ingestion page lives
 once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
@@ -56,10 +57,10 @@ docs/sources/
     041_boalf_ingestion.md      daily, catchup=True, every poll kept
     050_demand.md             Expected versus actual usage             [NDF, INDO]
     051_demand_ingestion.md     one-off back-fill of a year, no DAG
-    060_system-prices.md      The cost of fixing the imbalance         [later]
+    060_system-prices.md      The cost of fixing the imbalance         [not ingested]
     070_bmunits.md            The address book                         [running]
     071_bmunits_ingestion.md    daily registry capture and observed history
-    080_mels-mils.md          The headroom                             [optional]
+    080_mels-mils.md          The headroom                             [not ingested]
     090_qas.md                Services outside the mechanism (ABSVD)   [running]
     091_qas_ingestion.md        14, 35 and 450 days; one-off backfill
     100_wind.md               Expected versus metered wind             [WINDFOR, FUELHH]
@@ -71,7 +72,9 @@ market works, briefly** in [sources/elexon/README.md](sources/elexon/README.md).
 
 ## Raw layer conventions
 
-These hold for every table in the `raw` schema.
+These hold for every source table in the `raw` schema. The quarantine,
+`raw.endpoint_quarantine`, differs in one way: its rows are marked resolved by
+an update, and none is deleted.
 
 **Append only.** No updates, no deletes. A re-fetch lands as a new row rather
 than overwriting, so revisions stay visible and every downstream read collapses
@@ -124,7 +127,7 @@ Everything else is a belief, and beliefs get tested.
 - chunk size and why
 - backfill approach, or why one is impossible
 - measured volumes
-- any pre-registered experiment running against the table, and its result
+- any check run against the table, and its result
 
 ## House style
 

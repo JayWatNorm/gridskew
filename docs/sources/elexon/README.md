@@ -88,9 +88,9 @@ Numbered in build order, not alphabetically.
 | [030_remit.md](030_remit.md) | [031](031_remit_ingestion.md) | `REMIT` | Outage notice, planned or unplanned | Running: hourly, and a daily re-read of the previous seven days |
 | [040_boalf.md](040_boalf.md) | [041](041_boalf_ingestion.md) | `BOALF` | The intervention | Running |
 | [050_demand.md](050_demand.md) | [051](051_demand_ingestion.md) | `NDF` `TSDF` `INDO` `ITSDO` | What the country was expected to use, and did | `NDF` and `INDO`: one-off back-fill |
-| [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Later |
+| [060_system-prices.md](060_system-prices.md) | — | system prices | What it cost to fix the imbalance | Not ingested |
 | [070_bmunits.md](070_bmunits.md) | [071](071_bmunits_ingestion.md) | `/reference/bmunits/all` | The address book | Running |
-| [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Optional |
+| [080_mels-mils.md](080_mels-mils.md) | — | `MELS` `MILS` | The headroom | Not ingested |
 | [090_qas.md](090_qas.md) | [091](091_qas_ingestion.md) | `QAS` (`/balancing/nonbm/volumes`) | Services outside the mechanism (ABSVD) | Running |
 | [100_wind.md](100_wind.md) | [101](101_wind_ingestion.md) | `WINDFOR` `FUELHH` (WIND) | What the wind was expected to do, and did | Daily at 06:00 UTC; a year's back-fill |
 
@@ -268,9 +268,9 @@ hosting with Application Insights.
 ### Policy that follows
 
 **Nothing observed pushed back at 30 req/s across 50 requests.** But the test is
-small: a year of PN at daily chunks is 365 requests, seven times larger, and the
-terms state a limit exists and that applications making many calls may be
-blocked.
+small: a year of PN at daily chunks is 365 requests, seven times larger, and
+Elexon's API licence lets it cap requests and treats calling more than once a
+half hour for half-hourly data as misuse.
 
 So:
 
@@ -286,6 +286,5 @@ So:
   blocked on a fall of more than five percent. QAS checks that a captured
   date has every settlement period, not how many units it holds. PN, QPN,
   BOALF and REMIT load such rows normally.
-- **Identify yourself.** The terms prohibit concealing an application's
-  identity, and a descriptive `User-Agent` means an operator can contact you
-  rather than simply blocking the address.
+- **Identify yourself.** A descriptive `User-Agent` lets an operator make
+  contact rather than block.

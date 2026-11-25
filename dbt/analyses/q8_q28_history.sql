@@ -14,7 +14,7 @@
 -- forecast. Demand error: demand_error_final_mw, the first INDO outturn
 -- minus the last national NDF issued before the half-hour starts. Shortfall:
 -- per half-hour, the cohort sum of the positive part of
--- unexplained_shortfall_mwh over determinable unit-periods, as Q4.
+-- unexplained_shortfall_mwh over determinable unit-periods.
 --
 -- Population: matched days are settlement dates in the window with all three
 -- values in at least 46 half-hours; the population is every half-hour on
@@ -27,10 +27,10 @@
 -- rho_demand minus rho_shortfall: demand is stronger at a gap of 0.1 or
 -- more, shortfall at -0.1 or less, otherwise there is no clear difference.
 --
--- Q28 (sections 3 and 4): Q4's test on abs(error_api_final). Quintiles are
+-- Q28 (sections 3 and 4): a quintile test on abs(error_api_final). Quintiles are
 -- ntile(5), so the lower quintiles take one extra half-hour when the count
 -- is not a multiple of 5. Ties are ordered by quintile_tie_order (amended
--- 26 October 2026, before any read, with Q4): the errors are whole
+-- 26 October 2026, before any read): the errors are whole
 -- gCO2/kWh, and a date order would fill the bottom quintile with the
 -- earliest of many tied half-hours. Section 4 reports how many half-hours
 -- share the bottom quintile's largest error. Supported if the

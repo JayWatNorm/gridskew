@@ -13,11 +13,10 @@ Where `PN` says what a unit *intends* to do, these say what it *could* do. The
 gap between a unit's PN and its export limit is spare capacity the operator can
 call on.
 
-Why that is useful here: a generator running at 200 MW with a 600 MW limit has
+A generator running at 200 MW with a 600 MW limit has
 plenty of headroom, so a shortfall elsewhere can be covered cheaply. A grid
 where everything is already at its limit has nowhere to go but the expensive,
-fast-starting plant. **Tight headroom is a scarcity signal**, and it may explain
-why some shortfalls move carbon intensity more than others.
+fast-starting plant. **Tight headroom is a scarcity signal.**
 
 It also catches a specific case: a unit's export limit dropping to zero
 mid-period often signals a breakdown, and can appear before the REMIT notice.

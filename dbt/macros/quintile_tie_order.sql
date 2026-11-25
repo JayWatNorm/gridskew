@@ -1,6 +1,6 @@
 {#
     Orders half-hours that share a value before ntile() splits them into
-    quintiles (Q4 and Q28, amended 26 October 2026 before either was read).
+    quintiles (Q28 and Q30; written 26 October 2026, before either was read).
     A tie says nothing about size, so the order inside one must not follow
     the calendar: it is a fixed pseudo-random number from md5 of the
     analysis's seed, the bootstrap draw and pick (0 and 0 for the observed

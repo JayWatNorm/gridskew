@@ -2,8 +2,8 @@
 
 -- Q24: what share of each fuel group's instructed energy is flagged as a
 -- system action rather than energy balancing? Reading rule: research
--- questions, Q24 (amended 12 October 2026 after a first read, so not called
--- pre-registered). "Flagged as system actions" is NESO's real-time SO flag,
+-- questions, Q24 (amended 12 October 2026 after a first read).
+-- "Flagged as system actions" is NESO's real-time SO flag,
 -- not constraint volume.
 --
 -- Acceptance volume of a stretch of int_elexon__instruction_intervals (one

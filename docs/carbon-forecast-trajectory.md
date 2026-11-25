@@ -94,7 +94,8 @@ forecast.
   `dbt/analyses/q1_forecast_drift_verdict.sql` gives a result when the
   population reaches 2,880 and at least three slot polls are stored after the
   cutoff, so a stall that runs past it is settled; before then it returns the
-  count and no result.
+  count and no result. The population reached 2,880 and the result was read;
+  [research questions](research-questions.md) gives the date.
   `dbt/analyses/q1_forecast_drift_splits.sql` runs in the same read, and so
   does `dbt/analyses/q1_forecast_drift_beside.sql`, behind the same gate: the
   mean drift with a 90% day-block bootstrap interval and the correlation of

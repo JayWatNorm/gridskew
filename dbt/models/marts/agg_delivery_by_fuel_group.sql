@@ -3,7 +3,7 @@
 -- Delivery by fuel group: the single definition behind Q3 (metered against
 -- notified) and Q12 (instructed against unexplained deviation). Determinable
 -- periods with a PN, cohort units only, up to analysis_read_until; built by
--- hand when the README results are refreshed. The two analyses select from
+-- hand, it holds the figures behind Q3 and Q12 on the results page. The two analyses select from
 -- this table. unit_periods_by_run is context only: how many unit-periods
 -- each settlement run supplied, never a statistic per run.
 
