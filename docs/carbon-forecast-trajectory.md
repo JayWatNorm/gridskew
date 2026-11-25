@@ -10,10 +10,11 @@ half-hour, from the first forecast to the final one.
 The question: does the forecast drift one way between its first and its final
 version?
 
-The rule for reading the answer is fixed before any drift value is read. The
-poll and trajectory thresholds are the `forecast_*` variables in
-`dbt/dbt_project.yml`. The population minimum and the verdict thresholds are
-in `dbt/analyses/q1_forecast_drift_verdict.sql`.
+The poll and trajectory thresholds are the `forecast_*` variables in
+`dbt/dbt_project.yml`. The population minimum and the answer's thresholds are
+in `dbt/analyses/q1_forecast_drift_verdict.sql`. When the method was written
+is under
+[How the questions were set up](research-questions.md#how-the-questions-were-set-up).
 
 ---
 
@@ -42,7 +43,7 @@ had just ended. Since 11:05 UTC it is polled five minutes later, and each
 window begins with the half-hour in progress. The extra half-hour in each of
 the 1,129 earlier polls had already ended, so it is never a first, final,
 24-hour or 4-hour forecast. It adds a slot to that half-hour's count, but
-removing it leaves the same half-hours complete, under the rule and as
+removing it leaves the same half-hours complete, with the exclusions and as
 published.
 
 ## The trajectory of one half-hour
@@ -76,32 +77,35 @@ forecast.
 
 - **Population:** half-hours from 17 August 2026 with an outturn and a
   complete trajectory; at least 2,880 of them (60 days' worth).
-- **Verdict:** upward drift is supported when the median drift is at least +2
-  and at least 55% of non-zero drifts are positive; contradicted when the
+- **Answer:** drift is called upward when the median drift is at least +2
+  and at least 55% of non-zero drifts are positive; downward when the
   median is at most −2 and at most 45% are positive; otherwise there is no
-  directional drift.
-- **Sensitivity check:** the same verdict as published. If the two differ, the
+  directional drift. The saved output writes these as
+  `supported: upward drift`, `contradicted: downward drift` and
+  `no directional drift`, in columns named verdict.
+- **Sensitivity check:** the same answer as published. If the two differ, the
   result is "not robust to frozen polls" and no direction is reported.
 - **Secondary splits:** the same median drift and positive share, with n,
   in four time-of-day blocks (UTC start) and by the source's band on the
   poll that gave the first forecast (no band counts as unclassified).
-  They are described, not tested.
-- **One look.** `dbt/analyses/q1_forecast_drift_population.sql` counts the
+  They are described only.
+- **The read.** `dbt/analyses/q1_forecast_drift_population.sql` counts the
   population without reading a forecast value and can run on any day.
-  `dbt/analyses/q1_forecast_drift_verdict.sql` runs once, when the population
-  reaches 2,880 and at least three slot polls are stored after the cutoff, so
-  a stall that runs past it is settled; before then it returns the count and
-  no result.
-  `dbt/analyses/q1_forecast_drift_splits.sql` runs in the same look, and so
+  `dbt/analyses/q1_forecast_drift_verdict.sql` gives a result when the
+  population reaches 2,880 and at least three slot polls are stored after the
+  cutoff, so a stall that runs past it is settled; before then it returns the
+  count and no result.
+  `dbt/analyses/q1_forecast_drift_splits.sql` runs in the same read, and so
   does `dbt/analyses/q1_forecast_drift_beside.sql`, behind the same gate: the
   mean drift with a 90% day-block bootstrap interval and the correlation of
-  successive revisions within a half-hour, described beside the verdict and
-  not called pre-registered. All four take the `analysis_read_until`
-  variable, the last half-hour start they read, so the look can be repeated
-  on the same half-hours.
+  successive revisions within a half-hour, described beside the answer;
+  these two were added after related figures had been seen
+  ([exceptions](research-questions.md#exceptions)). All four take the
+  `analysis_read_until` variable, the last half-hour start they read, so the
+  read can be repeated on the same half-hours.
 
 ## Where the models run
 
 The four models are private views in the `analysis` group. No scheduled job
 builds them. The nightly job runs their data tests, which return a count of
-failing rows and no forecast value; the verdict is read once, by hand.
+failing rows and no forecast value; the result is read by hand.

@@ -319,9 +319,9 @@ that runs past it is settled, and are read at least 8 days after it, so
 outturn has settled. See
 [Carbon forecast trajectory](../docs/carbon-forecast-trajectory.md).
 
-## One-look analyses
+## Analyses
 
-`analyses/` also holds the one-look analyses for Q2-RF
+`analyses/` also holds the analyses for Q2-RF
 (`q2rf_restatement_r3_to_rf.sql`, read at 30 dates with RF and R3), Q5
 (`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`) and
 Q23 to Q26 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
@@ -333,7 +333,7 @@ settlement dates 22 August 2025 to 16 August 2026: whether demand
 forecast error or unexplained shortfall lines up more with the API's
 final carbon forecast error, and Q4's quintile test on that error; read
 once on 26 October 2026, after the demand back-fill and its coverage check).
-Each states its reading rule in its header and is read once.
+Each states its method in its header.
 `analysis_read_until` is a UTC date and time with its offset (for example
 `2026-09-30 22:30:00+00`); a value without one stops the compile. A read
 records its time and keeps the compiled query and output, so a rerun can
