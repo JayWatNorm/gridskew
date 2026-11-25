@@ -4,6 +4,8 @@ import io
 import json
 import re
 import statistics
+import struct
+import sys
 from datetime import datetime, timedelta
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from html.parser import HTMLParser
@@ -6320,6 +6322,35 @@ def test_the_committed_specs_and_chart_csvs_are_what_the_script_writes(tmp_path)
     assert stale == []
 
 
+def png_width_and_height(path):
+    """A PNG's size in pixels, from the header chunk that opens the file."""
+    header = path.read_bytes()[:24]
+    assert header[:8] == b"\x89PNG\r\n\x1a\n"
+    assert header[12:16] == b"IHDR"
+    return struct.unpack(">II", header[16:24])
+
+
+def test_the_script_writes_each_committed_chart_png_at_its_size(tmp_path):
+    # Text is drawn with the machine's fonts, so pixels can differ between
+    # platforms; the set of charts and each one's size cannot.
+    results = REPOSITORY / "docs" / "results"
+    written = tmp_path / "written"
+    write_charts(results, written)
+
+    written_sizes = {}
+    for path in sorted(written.glob("*.png")):
+        written_sizes[path.name] = png_width_and_height(path)
+    committed_sizes = {}
+    for path in sorted(results.glob("*.png")):
+        committed_sizes[path.name] = png_width_and_height(path)
+    assert len(committed_sizes) == 17
+    assert written_sizes == committed_sizes
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="the committed PNGs were drawn with Windows fonts",
+)
 def test_the_committed_chart_pngs_are_what_the_script_writes(tmp_path):
     results = REPOSITORY / "docs" / "results"
     written = tmp_path / "written"
