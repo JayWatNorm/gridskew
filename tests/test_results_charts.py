@@ -2560,11 +2560,12 @@ def test_q31_and_q32_note_the_strata_cut_from_its_saved_output():
     within = strata_row(rows, "4", "1")
     questions = QUESTIONS.read_text(encoding="utf-8")
     sentence = (
-        f"A second exploratory cut, read on {strata_read_day(rows)}, held time of "
+        f"A second cut, read on {strata_read_day(rows)}, held time of "
         f"day and month fixed: a slope of {signed_tenths(within['value'])} g/kWh per "
         f"GW (90% range {signed_tenths(within['interval_low'])} to "
         f"{signed_tenths(within['interval_high'])}) remained. It uses no data in "
-        "this question's window"
+        "this question's window and changes nothing in this method; it is on the "
+        "results page."
     )
 
     for question_id in ("Q31", "Q32"):
@@ -3030,8 +3031,8 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
     read_day = latest_day(
         reverse_read_day,
         strata_read_day(saved_output_rows(STRATA_RESULT)),
-        registered_read("Q1").partition(",")[0],
-        registered_read("Q10").partition(",")[0],
+        status_read("Q1").partition(",")[0],
+        status_read("Q10").partition(",")[0],
         wind_output_held_day(),
     )
     earliest = earliest_stated_read(PAGE.read_text(encoding="utf-8"))
@@ -4116,13 +4117,14 @@ def test_the_limitations_state_the_zero_actual_once_for_every_read_carbon_result
     assert page.count("6 August 2026, 11:00 UTC") == 1
 
 
-def test_the_unread_carbon_rules_register_an_invalid_value_rule_first():
+def test_the_unread_carbon_methods_write_an_invalid_value_rule_first():
     questions = QUESTIONS.read_text(encoding="utf-8")
     bullet = (
+        "- **Invalid carbon values.** "
         "No rule for carbon actuals that cannot be right is chosen yet; "
         "GridSkew's data already hold one, 0 g/kWh for 6 August 2026, 11:00 UTC. "
         "Before any carbon actual in the window is looked at, an exact rule is "
-        "registered here, with a reason that "
+        "written here, with a reason that "
         "does not depend on this question's results. The half-hours it leaves "
         "out are counted and reported, and the result with none left out is "
         "reported beside the primary."
@@ -4135,17 +4137,18 @@ def test_the_unread_carbon_rules_register_an_invalid_value_rule_first():
     )
 
 
-def test_q32_registers_a_split_by_wind_level_beside_its_primary():
-    q32 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q32"))
+def test_q32_splits_by_wind_level_beside_its_primary():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    q32 = flattened(register_section(questions, "Q32"))
 
     assert (
-        "Beside the primary, never changing the registered primary verdict, each "
-        "group's correlation is repeated within each fifth of metered wind" in q32
+        "- **Wind level.** Beside the primary, never changing the primary result, "
+        "each group's correlation is repeated within each fifth of metered wind" in q32
     )
-    assert "a split by wind level is added beside the primary" in q32
+    assert "Q32's split by wind level," in flattened(questions_set_up(questions))
 
 
-def test_q28_registers_a_seven_day_block_sensitivity_not_yet_run():
+def test_q28_describes_a_seven_day_block_sensitivity_not_yet_run():
     q28 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q28"))
 
     assert (
@@ -4156,8 +4159,8 @@ def test_q28_registers_a_seven_day_block_sensitivity_not_yet_run():
         "3 days. Each draw takes blocks, each equally likely, with replacement "
         "until 360 days are filled; the last block drawn keeps only its first "
         "days needed to reach 360. The seed and the saved input snapshot are "
-        "recorded at the run. It is reported beside the registered results, which stand whatever it "
-        "shows," in q28
+        "recorded at the run. It is reported beside the results as read, which "
+        "stand whatever it shows," in q28
     )
     assert "Not yet run:" in q28
 
@@ -4454,14 +4457,14 @@ def test_the_unread_carbon_rules_state_the_alignment_basis_from_its_counts():
     assert sections_without(
         questions,
         UNREAD_CARBON_RULES,
-        "registered primary verdict; a sensitivity whose conclusion differs "
+        "never change the primary result; a sensitivity whose conclusion differs "
         "is reported as such",
     ) == ["Q33"]
     assert (
         sections_without(
             questions,
             ["Q33"],
-            "never changing the registered primary verdict (a sensitivity whose "
+            "never changing the primary result (a sensitivity whose "
             "conclusion differs is reported as such)",
         )
         == []
@@ -4823,10 +4826,23 @@ def exception_lines(text, opening, closing):
     return lines
 
 
-def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions():
-    # The blanket claim holds except where a result says otherwise; the
-    # results page and the register each list the same exceptions, one line
-    # each, in the same order.
+def questions_set_up(questions):
+    """The questions page's one section on how the questions were set up,
+    which is its last."""
+    assert questions.count(SET_UP_HEADING) == 1
+    set_up = questions.split(SET_UP_HEADING, 1)[1]
+    assert "\n## " not in set_up
+    return set_up
+
+
+def questions_outside_set_up(questions):
+    return questions.split(SET_UP_HEADING, 1)[0]
+
+
+def test_both_pages_qualify_the_written_first_claim_with_the_same_exceptions():
+    # The blanket claim holds except where listed; the results page and the
+    # questions page each list the same exceptions, one line each, in the
+    # same order, and the questions page lists them in its set-up section.
     page = PAGE.read_text(encoding="utf-8")
     questions = QUESTIONS.read_text(encoding="utf-8")
     page_lines = []
@@ -4834,7 +4850,11 @@ def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions(
         if line.startswith("<li>"):
             page_lines.append(line)
     register_items = []
-    for line in exception_lines(questions, "### Exceptions", "**The thesis.**"):
+    for line in exception_lines(
+        questions_set_up(questions),
+        "### Exceptions",
+        "### When each method was written",
+    ):
         if line.startswith("- "):
             register_items.append(line)
 
@@ -4845,7 +4865,13 @@ def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions(
     )
     assert '<li id="pre-registration-exceptions">' in set_up
     assert "Every reading rule" not in FOLD_OUT.sub("", page)
-    assert "except where its status says\notherwise" in questions
+    assert questions_set_up(questions).startswith(
+        "\nEach method was written before the query that answers it and before "
+        "its\nresult was read, except where listed under [Exceptions](#exceptions); "
+        "the\ntable below gives the dates kept. Each result was read once, at a "
+        "fixed cutoff\n"
+        "(`analysis_read_until`); Q25 was re-run once on the same data."
+    )
     assert len(page_lines) == len(register_items) == len(PRE_REGISTRATION_EXCEPTIONS)
     for page_line, opening, register_item, named in zip(
         page_lines,
@@ -4857,6 +4883,23 @@ def test_both_pages_qualify_the_pre_registration_claim_with_the_same_exceptions(
         assert page_line.startswith(f"<li>{opening}: ")
         assert register_item.startswith(f"- {named}")
     assert question_ids_in(visible_text("".join(page_lines))) == []
+    assert re.findall(r"pre-regist\w*|exploratory", "".join(page_lines)) == []
+    assert (
+        "The mean change and the correlation beside the drift's verdict were "
+        "added after related figures had been seen.</li>" in page_lines[1]
+    )
+    assert (
+        "The mean drift and the correlation beside Q1's answer were added after "
+        "related figures had been seen." in flattened(questions_set_up(questions))
+    )
+
+
+def test_the_results_page_links_each_method_by_that_name():
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert page.count(">Full method</a>") == 15
+    assert page.count(">Every method</a>") == 1
+    assert re.findall(r">(?:Full|Every) rule<", page) == []
 
 
 def test_design_decisions_links_the_exceptions_instead_of_listing_them():
@@ -4909,15 +4952,19 @@ Q10_PERSISTENCE = (
     "before the pick's poll"
 )
 ARCHIVE_WINDOW = "19 August to 12 November 2026"
-READ_ONCE = re.compile(rf"Read once on ({LONG_DATE}, \d{{2}}:\d{{2}} UTC)")
+STATUS_READ_AT = re.compile(
+    rf"\*\*Status:\*\* read on ({LONG_DATE}, \d{{2}}:\d{{2}} UTC)"
+)
+SET_UP_HEADING = "\n## How the questions were set up\n"
+TRAJECTORY = REPOSITORY / "docs" / "carbon-forecast-trajectory.md"
 
 
-def registered_read(question_id):
-    """The day and time the register's status gives for a question's one
+def status_read(question_id):
+    """The day and time the questions page's status gives for a question's
     read, as '22 November 2026, 08:20 UTC'."""
     questions = QUESTIONS.read_text(encoding="utf-8")
     status = flattened(register_section(questions, question_id))
-    return READ_ONCE.search(status).group(1)
+    return STATUS_READ_AT.search(status).group(1)
 
 
 def with_true_minus(text):
@@ -5382,8 +5429,8 @@ def test_q10s_weekday_and_weekend_entry_comes_from_its_calendar_split():
 def test_each_archive_result_states_the_read_its_register_status_records():
     page = PAGE.read_text(encoding="utf-8")
 
-    assert f"Read once on {registered_read('Q1')}.</dd>" in article_text(page, "q1")
-    assert f"Read once on {registered_read('Q10')}, after Q1's look.</dd>" in (
+    assert f"Read once on {status_read('Q1')}.</dd>" in article_text(page, "q1")
+    assert f"Read once on {status_read('Q10')}, after Q1's look.</dd>" in (
         article_text(page, "q10")
     )
 
@@ -5480,10 +5527,11 @@ def test_the_readme_gives_q10s_bias_and_q1s_verdict_beside_its_predictions():
     assert (
         f"Over {int(verdict['complete_half_hours']):,} half-hours from "
         f"{ARCHIVE_WINDOW} the middle change from first to final forecast was "
-        f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and the "
-        f'rule\'s verdict is "{verdict["reported_verdict"]}"' in readme
+        f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and "
+        f"{share_as_percent(verdict['positive_share'])} of the changes that were "
+        "not zero were upward" in readme
     )
-    assert f"were read on {registered_read('Q1').partition(',')[0]}" in readme
+    assert f"were read on {status_read('Q1').partition(',')[0]}" in readme
 
 
 def test_still_to_come_and_not_pursued_match_the_register():
@@ -5496,9 +5544,7 @@ def test_still_to_come_and_not_pursued_match_the_register():
     waiting, not_pursued = section.split('<p id="no-data">', 1)
     marked = []
     for question_id in NOT_PURSUED:
-        if "Not pursued ([why](#registered-not-pursued))" in flattened(
-            register_section(questions, question_id)
-        ):
+        if NOT_PURSUED_STATUS in flattened(register_section(questions, question_id)):
             marked.append(question_id)
 
     assert re.findall(r"\(about [A-Z][a-z]+ \d{4}\)", section) == []
@@ -5511,7 +5557,170 @@ def test_still_to_come_and_not_pursued_match_the_register():
     assert links_to_unregistered_rules(section) == []
     assert '<h2 id="not-answered-title">Questions not answered here</h2>' in waiting
     for question_id in WAITING:
-        assert "Not pursued" not in register_section(questions, question_id)
+        assert "not pursued" not in register_section(questions, question_id).lower()
+
+
+NOT_PURSUED_STATUS = "**Status:** not pursued ([why](#not-pursued))."
+WAITING_STATUS = (
+    "**Status:** waiting for the counts-only resubmission check; not yet read."
+)
+READ_DAYS = {
+    "Q1": "22 November 2026",
+    "Q2": "11 October 2026",
+    "Q3": "11 October 2026",
+    "Q5": "12 October 2026",
+    "Q6": "12 October 2026",
+    "Q8": "26 October 2026",
+    "Q10": "22 November 2026",
+    "Q12": "11 October 2026",
+    "Q22": "11 October 2026",
+    "Q23": "15 October 2026",
+    "Q24": "15 October 2026",
+    "Q25": "15 October 2026",
+    "Q28": "26 October 2026",
+    "Q29": "27 October 2026",
+    "Q30": "27 October 2026",
+}
+Q25_RERUN = "re-run 25 October 2026 on the same data"
+STATUS_ROW = re.compile(
+    r"^\| \[(Q[0-9A-Z-]+)\]\(#([^)]+)\) \| [^|]+ \| ([^|]+) \|$", re.MULTILINE
+)
+NOT_PURSUED_ROW = re.compile(r"^\| (Q[0-9A-Z-]+) \| [^|]+ \| [^|]+ \|$", re.MULTILINE)
+
+
+def status_table(questions):
+    return questions.split("\n## Status\n", 1)[1].split("\n### Not pursued\n", 1)[0]
+
+
+def status_cells(questions):
+    """Each question's status in the Status table, by question, in order."""
+    cells = {}
+    for question_id, _anchor, status in STATUS_ROW.findall(status_table(questions)):
+        cells[question_id] = status
+    return cells
+
+
+def status_row_anchors(questions):
+    """The heading each Status row links, by question."""
+    anchors = {}
+    for question_id, anchor, _status in STATUS_ROW.findall(status_table(questions)):
+        anchors[question_id] = anchor
+    return anchors
+
+
+def expected_status_cells():
+    cells = {}
+    for question_id, day in READ_DAYS.items():
+        cells[question_id] = f"read ({day})"
+    cells["Q25"] = f"read ({READ_DAYS['Q25']}; {Q25_RERUN})"
+    for question_id in NOT_PURSUED:
+        cells[question_id] = "not pursued"
+    for question_id in WAITING:
+        cells[question_id] = "waiting (the resubmission check, then the read)"
+    return cells
+
+
+def expected_status_openings():
+    """How each question's own status opens, for its Status table row."""
+    openings = {}
+    for question_id, day in READ_DAYS.items():
+        openings[question_id] = f"**Status:** read on {day}"
+    for question_id in NOT_PURSUED:
+        openings[question_id] = NOT_PURSUED_STATUS
+    for question_id in WAITING:
+        openings[question_id] = WAITING_STATUS
+    return openings
+
+
+def questions_whose_section_lacks(questions, phrases):
+    """The questions whose own section does not hold the phrase given for it."""
+    lacking = []
+    for question_id, phrase in phrases.items():
+        if phrase not in flattened(register_section(questions, question_id)):
+            lacking.append(question_id)
+    return lacking
+
+
+def not_pursued_table_ids(questions):
+    table = questions.split("\n### Not pursued\n", 1)[1].split("\n## ", 1)[0]
+    return NOT_PURSUED_ROW.findall(table)
+
+
+def test_the_status_table_gives_each_question_its_plain_status():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    assert status_cells(questions) == expected_status_cells()
+    assert list(status_cells(questions)) == list(register_anchors())
+    assert status_row_anchors(questions) == register_anchors()
+    assert sorted(not_pursued_table_ids(questions)) == sorted(NOT_PURSUED)
+    assert (
+        "One row per question. A status is one of: read (the date of the read),\n"
+        "waiting (what it waits for), or not pursued (see\n"
+        "[Not pursued](#not-pursued))." in status_table(questions)
+    )
+
+
+def test_each_questions_own_status_opens_as_its_status_table_row_says():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    assert questions_whose_section_lacks(questions, expected_status_openings()) == []
+    assert sorted(expected_status_openings()) == sorted(register_anchors())
+    assert "Re-run once on 25 October 2026 on the same data" in flattened(
+        register_section(questions, "Q25")
+    )
+
+
+def heading_anchors(markdown):
+    anchors = []
+    for heading in re.findall(r"^#{1,6} (.+)$", markdown, re.MULTILINE):
+        anchors.append(heading_anchor(heading))
+    return anchors
+
+
+def pages_that_link_the_method_pages():
+    pages = [README, REPOSITORY / "dbt" / "README.md", PAGE]
+    pages.extend(sorted((REPOSITORY / "docs").rglob("*.md")))
+    return pages
+
+
+def links_to_missing_headings(method_page):
+    """Each link to a heading of one method page, from that page or any
+    other, that no heading of the page answers."""
+    anchors = heading_anchors(method_page.read_text(encoding="utf-8"))
+    from_elsewhere = re.compile(rf"{re.escape(method_page.name)}#([A-Za-z0-9_-]+)")
+    missing = []
+    for page in pages_that_link_the_method_pages():
+        text = page.read_text(encoding="utf-8")
+        linked = from_elsewhere.findall(text)
+        if page == method_page:
+            linked.extend(re.findall(r"\]\(#([A-Za-z0-9_-]+)\)", text))
+        for anchor in linked:
+            if anchor not in anchors:
+                missing.append(f"{page.name}: #{anchor}")
+    return missing
+
+
+def test_every_link_to_a_heading_of_the_method_pages_finds_its_heading():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    trajectory = TRAJECTORY.read_text(encoding="utf-8")
+
+    assert links_to_missing_headings(QUESTIONS) == []
+    assert links_to_missing_headings(TRAJECTORY) == []
+    assert questions.count("([why](#not-pursued))") == len(NOT_PURSUED)
+    assert "(research-questions.md#how-the-questions-were-set-up)" in trajectory
+    assert "(#how-the-questions-were-set-up)" in questions_outside_set_up(questions)
+    assert "exceptions" in heading_anchors(questions_set_up(questions))
+
+
+def test_design_decisions_links_the_dbt_analyses_by_a_heading_that_exists():
+    decisions = (REPOSITORY / "docs" / "design-decisions.md").read_text(
+        encoding="utf-8"
+    )
+    dbt_readme = (REPOSITORY / "dbt" / "README.md").read_text(encoding="utf-8")
+    linked = re.findall(r"\(\.\./dbt/README\.md#([A-Za-z0-9_-]+)\)", decisions)
+
+    assert "analyses" in linked
+    assert set(linked) <= set(heading_anchors(dbt_readme))
 
 
 def test_the_not_pursued_table_wraps_its_sentences():
@@ -7121,6 +7330,304 @@ def test_no_word_about_how_a_question_was_set_up_shows_before_a_fold_out_opens()
     ]
     assert "How I measured it" in in_view_text
     assert "Recorded 25 October 2026" not in in_view_text
+
+
+# Further words the two method pages once used for a question's set-up.
+# Outside the questions page's set-up section, neither page keeps any.
+METHOD_PAGE_FRAMING_WORDS = re.compile(
+    r"reading rule|rule comes first|already seen|recorded before|"
+    r"\bamended\b|expected before|\bverdicts?\b|predict\w*",
+    re.IGNORECASE,
+)
+# The same words used of the data itself: an outage notice's class, a
+# unit's place in the Balancing Mechanism, and the name of the saved
+# output's columns, which Q1 gives once on each page.
+METHOD_PAGE_DATA_USES = [
+    "planned and unplanned",
+    "`unplanned`",
+    "registered in the Balancing Mechanism",
+    "`no directional drift`, in columns named verdict.",
+]
+
+
+def method_page_framing_words_in(text):
+    text = flattened(text)
+    for data_use in METHOD_PAGE_DATA_USES:
+        text = text.replace(data_use, "")
+    return FRAMING_WORDS.findall(text) + METHOD_PAGE_FRAMING_WORDS.findall(text)
+
+
+def test_no_word_about_how_a_question_was_set_up_shows_outside_the_set_up_section():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    trajectory = TRAJECTORY.read_text(encoding="utf-8")
+
+    assert method_page_framing_words_in(questions_outside_set_up(questions)) == []
+    assert method_page_framing_words_in(trajectory) == []
+    assert method_page_framing_words_in(
+        "**Already seen.** Registered 5 October, amended before the\nread; one\nlook."
+    ) == ["Registered", "before the read", "one look", "Already seen", "amended"]
+    assert method_page_framing_words_in(
+        "**Predicted.** No verdict; the two verdicts, in columns named verdict."
+    ) == ["Predicted", "verdict", "verdicts", "verdict"]
+    assert questions.count("in columns named verdict") == 1
+    assert trajectory.count("in columns named verdict") == 1
+    assert "Each result was read once" in questions_set_up(questions)
+
+
+EARLIER_LOOKS = {
+    "Q1": (
+        "**Earlier look.** On 11 September 2026 an exploration compared, for 851 "
+        "half-hours from 19 August to 10 September 2026,"
+    ),
+    "Q4": (
+        "**Earlier look.** The half-hour alignment sensitivity was added on "
+        "7 November 2026, when the window had held data since 17 August 2026."
+    ),
+    "Q9": (
+        "**Earlier look.** GridSkew's note on this source and its test data hold "
+        "one half-hour fetched on 20 August 2026"
+    ),
+    "Q10": (
+        "**Earlier look.** On 11 September 2026 an exploration compared every "
+        "stored forecast with outturn"
+    ),
+    "Q22-RF": (
+        "- **Earlier look.** That week's largest unit revisions between SF and R1 "
+        "(two gas stations) were seen in Q2's read, and the other generating "
+        "units moved little at that step."
+    ),
+    "Q24": (
+        "**Earlier look.** An exploration read level-energy shares on 11 October "
+        "2026. The measure was changed to acceptance volume on 12 October 2026, "
+        "after that first look at the data."
+    ),
+    "Q25": (
+        "**Earlier look.** An exploration read measure (1) on 11 October 2026. "
+        "Measure (2), the result, was added on 12 October 2026 and set to count "
+        "acceptances, as the BSC does, on 15 October 2026, both before measure "
+        "(2) was first read."
+    ),
+    "Q26": (
+        "**Earlier look.** An exploration on 11 October 2026 computed ABSVD's "
+        "effect on four days (recomputed on 17 October 2026), before GridSkew "
+        "captured any ABSVD."
+    ),
+    "Q30": (
+        "- **Earlier look.** One day of wind values (22 August 2025), during "
+        "endpoint checks."
+    ),
+    "Q31": (
+        "**Earlier look.** On 1 November 2026, after this method was written "
+        "and after Q28 was read, a cut of Q28's window (22 August 2025 to "
+        "16 August 2026) looked at this direction:"
+    ),
+    "Q32": (
+        "**Earlier look.** On 1 November 2026, after this method was written "
+        "and after Q28 was read, a cut of Q28's window (22 August 2025 to "
+        "16 August 2026) looked at a related direction:"
+    ),
+    "Q33": (
+        "**Earlier look.** The alignment counts behind the half-hour alignment "
+        "sensitivity, for 22 August 2025 to 16 August 2026, were seen before it "
+        "was added on 7 November 2026; they use no data in this question's window."
+    ),
+    "Q36": (
+        "**Earlier look.** On 1 November 2026, after this method was written "
+        "and after Q28 was read, a cut of Q28's window (22 August 2025 to "
+        "16 August 2026) looked at a related direction:"
+    ),
+}
+
+
+def questions_with_an_earlier_look(questions):
+    with_one = []
+    for question_id in register_anchors():
+        if "**Earlier look.**" in register_section(questions, question_id):
+            with_one.append(question_id)
+    return with_one
+
+
+def questions_whose_earlier_look_opens_otherwise(questions):
+    otherwise = []
+    for question_id, opening in EARLIER_LOOKS.items():
+        if opening not in flattened(register_section(questions, question_id)):
+            otherwise.append(question_id)
+    return otherwise
+
+
+def test_each_question_whose_data_was_seen_earlier_says_so_in_its_own_section():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    assert questions_whose_earlier_look_opens_otherwise(questions) == []
+    assert questions_with_an_earlier_look(questions) == list(EARLIER_LOOKS)
+    assert (
+        "captures. Added on 7 November 2026 after this was seen in the window's "
+        "data: from 17 August 2026, the one-week run held readings of exactly "
+        "zero at some gas units that later runs show as not zero."
+        in flattened(register_section(questions, "Q4"))
+    )
+
+
+WRITTEN_DATES_ROWS = [
+    "| Q1 | 5 October | 6, 12, 13, 25 and 31 October | no drift value read |",
+    "| Q2 | 25 September | | no metered quantity read |",
+    "| Q2-RF | 12 October | 31 October | no RF value compared |",
+    "| Q2-R2RF, Q2-R1RF | 31 October | | no RF value for their dates compared |",
+    "| Q3 | before its read, date not kept | | |",
+    "| Q4 | before 12 October | 12, 25, 26 and 31 October, 7 November | not read; "
+    "its window has held data since 17 August |",
+    "| Q5 | before its read; population and definitions 12 October | | no Q5 "
+    "value read |",
+    "| Q6 | before its read; population 11 October | | no lag read |",
+    "| Q8 | before its read; completed 25 October | | no demand value held; a "
+    "counts-only check of the demand data's coverage on 26 October |",
+    "| Q9 | date not kept | 31 October | no system prices captured; two dates in "
+    "its window fetched (see Q9) |",
+    "| Q10 | before 12 October | 12, 25 and 31 October | not read |",
+    "| Q12 | restated 11 October | | no Q12 read |",
+    "| Q22 | 9 October | | no Q3 or Q22 query run |",
+    "| Q22-RF | 31 October | | no RF value for its dates existed |",
+    "| Q23 | 12 October | 12 October | not read |",
+    "| Q24 | 12 October | 12 October | level-energy shares read on 11 October |",
+    "| Q25 | 12 October | 12 and 15 October | measure (1) read on 11 October; "
+    "measure (2) not read |",
+    "| Q26 | 12 October | 31 October | not read; no ABSVD captured when written |",
+    "| Q27 | 25 October | 25 and 31 October | no poll in its window existed |",
+    "| Q28 | 25 October | 26 October | no figure of it read |",
+    "| Q29 | 27 October | | no figure of it read |",
+    "| Q30 | 27 October | 27 October | no wind data held when written; not read "
+    "when changed |",
+    "| Q31, Q32, Q33, Q35, Q36 | 31 October | 7 and 8 November | no data in their "
+    "windows existed |",
+    "| Q34 | 31 October | | no export-limit data held |",
+]
+
+
+def written_dates_rows(questions):
+    table = questions_set_up(questions).split(
+        "\n### When each method was written\n", 1
+    )[1]
+    rows = []
+    for line in table.splitlines():
+        if line.startswith("| Q"):
+            rows.append(line)
+    return rows
+
+
+def test_the_set_up_section_dates_each_questions_method():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    rows = written_dates_rows(questions)
+
+    assert rows == WRITTEN_DATES_ROWS
+    assert sorted(question_ids_in(" ".join(rows))) == sorted(register_anchors())
+    assert (
+        "That does not hold for Q4: both of its changes followed a look at data "
+        "in its own window, as its section says."
+        in flattened(questions_set_up(questions))
+    )
+
+
+Q1_VERDICT_QUERY = REPOSITORY / "dbt" / "analyses" / "q1_forecast_drift_verdict.sql"
+Q4_QUERY = REPOSITORY / "dbt" / "analyses" / "q4_forecast_error_vs_shortfall.sql"
+Q8_Q28_QUERY = REPOSITORY / "dbt" / "analyses" / "q8_q28_history.sql"
+QUINTILE_RATIO_IN_SQL = (
+    ">= 1.25 * observed.bottom_sum * observed.top_half_hours then 'supported' "
+    "else 'not supported'"
+)
+
+
+def test_q1s_answer_thresholds_on_both_method_pages_are_its_querys():
+    query = flattened(Q1_VERDICT_QUERY.read_text(encoding="utf-8"))
+    verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    q1 = flattened(register_section(questions, "Q1"))
+    trajectory = flattened(TRAJECTORY.read_text(encoding="utf-8"))
+
+    assert (
+        "when median_drift >= 2 and positive_weight >= 0.55 * "
+        "nullif(non_zero_weight, 0) then 'supported: upward drift' when "
+        "median_drift <= -2 and positive_weight <= 0.45 * "
+        "nullif(non_zero_weight, 0) then 'contradicted: downward drift' else "
+        "'no directional drift' end as verdict" in query
+    )
+    assert verdict["half_hours_needed"] == "2880"
+    assert (
+        "- **Answer.** Drift is called upward when the median drift is at least +2 "
+        "and the share of positive drifts, zeros excluded, is at least 55%; "
+        "downward when the median is at most −2 and the positive share at most "
+        "45%; otherwise there is no directional drift. The saved output writes "
+        "these as `supported: upward drift`, `contradicted: downward drift` and "
+        "`no directional drift`, in columns named verdict." in q1
+    )
+    assert "a complete trajectory; at least 2,880 of them." in q1
+    assert "on the first day the population reaches 2,880, under the" in q1
+    assert (
+        "- **Answer:** drift is called upward when the median drift is at least +2 "
+        "and at least 55% of non-zero drifts are positive; downward when the "
+        "median is at most −2 and at most 45% are positive; otherwise there is no "
+        "directional drift. The saved output writes these as "
+        "`supported: upward drift`, `contradicted: downward drift` and "
+        "`no directional drift`, in columns named verdict." in trajectory
+    )
+    assert "complete trajectory; at least 2,880 of them (60 days' worth)." in (
+        trajectory
+    )
+    assert "gives a result when the population reaches 2,880 and" in trajectory
+
+
+def test_each_other_method_keeps_the_thresholds_its_answer_is_called_by():
+    q4_query = flattened(Q4_QUERY.read_text(encoding="utf-8"))
+    history_query = flattened(Q8_Q28_QUERY.read_text(encoding="utf-8"))
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    answers = {
+        "Q2": (
+            "- **Labels.** Moved share: small below 0.5%, material at 2% or more. "
+            "Changed share: small below 5%, material at 20% or more."
+        ),
+        "Q4": (
+            'The answer is called "yes" (`supported` in the query\'s output) when '
+            "the top quintile's mean is at least 25% above the bottom quintile's, "
+            'otherwise "no" (`not supported`).'
+        ),
+        "Q8": (
+            "- **Answer.** Demand is called stronger at a gap of 0.1 or more, "
+            "shortfall at −0.1 or less; otherwise there is no clear difference."
+        ),
+        "Q28": (
+            'The answer is called "yes" (`supported` in the saved output) when the '
+            "top quintile's mean is at least 25% above the bottom's, otherwise "
+            '"no" (`not supported`).'
+        ),
+        "Q31": (
+            "- **Answer.** A link is called positive at 0.10 or more with an "
+            "interval above zero; weak with an interval above zero below 0.10; no "
+            "clear link when the interval includes zero."
+        ),
+        "Q32": (
+            "- **Answer.** For each group, a link is called positive, weak or not "
+            "clear as in Q31."
+        ),
+        "Q33": (
+            '- **Answer.** The stored forecast "lines up better with the half-hour '
+            "before\" if the same half-hour's mean absolute difference exceeds the "
+            "half-hour before's by at least 0.5 g/kWh, with an interval above zero; "
+            "the half-hour two before is described only."
+        ),
+        "Q35": "- **Answer.** A link is called positive, weak or not clear as in Q31.",
+        "Q36": (
+            "- **Answer.** A link is called positive at 1.00 g/kWh per GW or more "
+            "with an interval above zero; weak with an interval above zero below "
+            "that; no clear link when the interval includes zero."
+        ),
+    }
+
+    assert QUINTILE_RATIO_IN_SQL in q4_query
+    assert QUINTILE_RATIO_IN_SQL in history_query
+    assert (
+        "when observed.gap >= 0.1 then 'demand stronger' when observed.gap <= -0.1 "
+        "then 'shortfall stronger' else 'no clear difference'" in history_query
+    )
+    assert questions_whose_section_lacks(questions, answers) == []
 
 
 def test_the_set_up_fold_out_keeps_the_claim_its_context_counts_and_the_ranges_role():

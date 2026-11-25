@@ -117,15 +117,15 @@ numbers are the participant's own counter and do not always rise.
 
 ## Answering the questions
 
-**Each question's reading rule is fixed before its data is read, and each
-result is read once.** A result cannot then be tuned after it has been
-seen. Each one-look analysis states its rule at the top of its file, and
-[research questions](research-questions.md) lists every rule with its
-status. Where a rule was not wholly recorded before its data was seen, its
-status says so, and the [exceptions](research-questions.md#exceptions) are
-listed there.
+**Each question's method is written down before its result is read, and
+each result is read at a fixed cutoff.** A result cannot then be tuned
+after it has been seen. Each analysis states its method at the top of its
+file, and [research questions](research-questions.md) lists every method
+with its status. Where a method was not wholly written before its data was
+seen, its question says so, and the
+[exceptions](research-questions.md#exceptions) are listed there.
 [Carbon forecast trajectory](carbon-forecast-trajectory.md),
-[one-look analyses](../dbt/README.md#one-look-analyses)
+[the analyses](../dbt/README.md#analyses)
 
 **Results tables are built by hand at a fixed cutoff.** The shortfall and
 coverage results come from two tables rebuilt together when the results are

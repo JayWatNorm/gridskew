@@ -69,16 +69,16 @@ A related question runs independently: **how does a forecast for a given
 half-hour change as that half-hour approaches?** This can be answered without
 waiting for Elexon settlement data.
 
-## The mechanism being tested
+## The mechanism behind the question
 
 If committed generation fails, gas peakers may fill the gap at short notice.
-Because gas is dirtier than much of what it replaces, two predictions follow:
+Because gas is dirtier than much of what it replaces, two effects would follow:
 
 1. Actual carbon intensity should exceed the published forecast more often
    than it falls below it.
 2. Forecasts should revise upwards as the target period approaches.
 
-No result tests the first prediction, which is about how often
+No result measures the first effect, which is about how often
 the outturn is above the forecast. Two results give the average miss
 instead, a bias and not a share above or below. Over 17,280 half-hours
 (22 August 2025 to 16 August 2026) the stored forecast's misses have a mean
@@ -90,9 +90,9 @@ was on average 21 g/kWh above the forecast made about a day ahead and
 3 g/kWh above the one made about half an hour ahead
 ([Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
-The archive reads the second prediction. Over 2,910 half-hours from
+The archive measures the second. Over 2,910 half-hours from
 19 August to 12 November 2026 the middle change from first to final forecast
-was +19 g/kWh, and the rule's verdict is "supported: upward drift"
+was +19 g/kWh, and 72.6% of the changes that were not zero were upward
 ([Q1](https://jaywatnorm.github.io/gridskew/#q1)); on the 2,530 half-hours after 10 September 2026 it was
 +23 g/kWh. Q10's bias changes sign inside the window: negative on its 365
 earliest half-hours (19 August to 4 September 2026), positive on the 2,499
@@ -100,7 +100,7 @@ from 11 September. That points to a reversal for Q1 on the earliest
 half-hours, for which Q1's own output has no figure. The split falls across
 a week-long gap in the sample as well as a change in the archive's poll
 schedule on 10 September 2026. The window holds no winter or spring. Neither
-result shows why the forecast moves, so neither tests the mechanism.
+result shows why the forecast moves, so neither shows the mechanism.
 
 ## Why archive the forecasts?
 
@@ -313,7 +313,7 @@ repository's release runbook, which is not public.
   findings are under [What it found](#what-it-found). Each rule is in
   [research questions](docs/research-questions.md).
 - Four views trace each half-hour's carbon forecast from its first to its
-  final version under a reading rule fixed in advance; see
+  final version; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 - Q1 and Q10, how the carbon forecast is revised as a half-hour approaches
   and how accurate it is at each lead time, were read on

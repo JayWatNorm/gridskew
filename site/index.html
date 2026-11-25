@@ -460,7 +460,7 @@
         <dt>Wind cut back to relieve the network</dt>
         <dd>Over the whole window, the median wind farm missed by 7.8% of capacity on days when NESO asked at least one wind farm to cut output and flagged it as managing the network, and by 4.5% on days without (363 and 42 days): an association, not a cause.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 12 October 2026; interconnectors were left out the same day, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q23-how-close-to-their-pns-do-units-run-when-not-instructed">Full rule</a> · query <code>q23_pn_accuracy_proxy.sql</code> · <a href="results/q23_pn_accuracy_proxy.csv">saved output</a> · chart data: <a href="results/q23_typical_gap_by_fuel_group.csv">median</a>, <a href="results/q23_monthly_gap_by_fuel_group.csv">month by month</a></dd>
+        <dd>Recorded 12 October 2026; interconnectors were left out the same day, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q23-how-close-to-their-pns-do-units-run-when-not-instructed">Full method</a> · query <code>q23_pn_accuracy_proxy.sql</code> · <a href="results/q23_pn_accuracy_proxy.csv">saved output</a> · chart data: <a href="results/q23_typical_gap_by_fuel_group.csv">median</a>, <a href="results/q23_monthly_gap_by_fuel_group.csv">month by month</a></dd>
       </dl>
     </details>
   </article>
@@ -505,9 +505,9 @@
         <dt>Left out</dt>
         <dd>583,913 half-hours of individual units with a plan and no meter reading (6.3%), and 283,242 with a meter reading and no plan (3.2%).</dd>
         <dt>Rule</dt>
-        <dd>Recorded before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q3-is-metered-output-usually-above-or-below-the-notified-position-pn-by-fuel-group">Full rule</a> · query <code>q3_metered_vs_notified.sql</code> · saved outputs: <a href="results/q3_metered_vs_notified.csv">figures</a>, <a href="results/q3_coverage.csv">coverage</a> · chart data: <a href="results/q3_gap_from_plan_by_fuel_group.csv">typical half-hour</a>, <a href="results/q3_energy_against_plan_by_fuel_group.csv">energy against plan</a></dd>
+        <dd>Recorded before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q3-is-metered-output-usually-above-or-below-the-notified-position-pn-by-fuel-group">Full method</a> · query <code>q3_metered_vs_notified.sql</code> · saved outputs: <a href="results/q3_metered_vs_notified.csv">figures</a>, <a href="results/q3_coverage.csv">coverage</a> · chart data: <a href="results/q3_gap_from_plan_by_fuel_group.csv">typical half-hour</a>, <a href="results/q3_energy_against_plan_by_fuel_group.csv">energy against plan</a></dd>
         <dt>Q22, one week</dt>
-        <dd>I took each fuel group's median gap for 10 to 16 August 2026, first on one-week data, then on two-month data. The picture changes if the groups' order, or the sign of any median gap, changes. No group's median gap changed sign or order, and the biggest change was 0.03 MWh per unit per half-hour (bioenergy, 10–16 Aug 2026): its median gap moved from 0.78 to 0.75 MWh. The test cannot see large corrections at single stations: in the same week, <a href="#q2">Q2</a> finds large revisions at three gas units between the three-week and two-month runs. This answer covers only that week, the last before a change in the one-week run: gas units read exactly zero on it, and not zero on a later run, in 172 unit half-hours that week and in 1,002 to 2,514 in each week from 17 August to 27 September 2026 (<a href="results/context_ii_zero_readings.csv">zero readings by week</a>). Recorded 9 October 2026; read 11 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q22-did-later-meter-data-change-one-weeks-fuel-group-picture">Full rule</a> · <a href="results/q22_first_against_latest_run.sql">query as run</a> · <a href="results/q22_first_against_latest_run.csv">saved output</a></dd>
+        <dd>I took each fuel group's median gap for 10 to 16 August 2026, first on one-week data, then on two-month data. The picture changes if the groups' order, or the sign of any median gap, changes. No group's median gap changed sign or order, and the biggest change was 0.03 MWh per unit per half-hour (bioenergy, 10–16 Aug 2026): its median gap moved from 0.78 to 0.75 MWh. The test cannot see large corrections at single stations: in the same week, <a href="#q2">Q2</a> finds large revisions at three gas units between the three-week and two-month runs. This answer covers only that week, the last before a change in the one-week run: gas units read exactly zero on it, and not zero on a later run, in 172 unit half-hours that week and in 1,002 to 2,514 in each week from 17 August to 27 September 2026 (<a href="results/context_ii_zero_readings.csv">zero readings by week</a>). Recorded 9 October 2026; read 11 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q22-did-later-meter-data-change-one-weeks-fuel-group-picture">Full method</a> · <a href="results/q22_first_against_latest_run.sql">query as run</a> · <a href="results/q22_first_against_latest_run.csv">saved output</a></dd>
       </dl>
       <div class="table-wrap">
         <table>
@@ -553,7 +553,7 @@
         <dt>Data</dt>
         <dd>The same 8,653,046 half-hours of individual units as Q3. Read 11 October 2026, with overlapping instructions ordered by time, then number; Elexon's settlement orders them by number. The two orders differ for 32 of 3,620,900 instructions.</dd>
         <dt>Rule</dt>
-        <dd>Restated 11 October 2026, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q12-how-much-of-the-deviation-from-pn-was-instructed-boalf-rather-than-unexplained">Full rule</a> · query <code>q12_instructed_vs_residual.sql</code> · <a href="results/q12_instructed_vs_residual.csv">saved output</a> · <a href="results/q12_instructed_share_by_fuel_group.csv">chart data</a></dd>
+        <dd>Restated 11 October 2026, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q12-how-much-of-the-deviation-from-pn-was-instructed-boalf-rather-than-unexplained">Full method</a> · query <code>q12_instructed_vs_residual.sql</code> · <a href="results/q12_instructed_vs_residual.csv">saved output</a> · <a href="results/q12_instructed_share_by_fuel_group.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -597,7 +597,7 @@
         <dt>Left out</dt>
         <dd>255,473 half-hours of individual units with no meter reading (2.9%); 10 of 45,247 outage publications that name no unit that could be matched.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 12 October 2026, before any value was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q5-how-much-positive-unexplained-shortfall-coincides-with-outages-published-in-remit-at-the-period-start">Full rule</a> · query <code>q5_shortfall_with_known_outage.sql</code> · <a href="results/q5_shortfall_with_known_outage.csv">saved output</a> · <a href="results/q5_under_delivery_by_outage_notice.csv">chart data</a></dd>
+        <dd>Recorded 12 October 2026, before any value was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q5-how-much-positive-unexplained-shortfall-coincides-with-outages-published-in-remit-at-the-period-start">Full method</a> · query <code>q5_shortfall_with_known_outage.sql</code> · <a href="results/q5_shortfall_with_known_outage.csv">saved output</a> · <a href="results/q5_under_delivery_by_outage_notice.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -633,7 +633,7 @@
         <dt>Note</dt>
         <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. The EU energy regulator ACER's one-hour guidance is context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
         <dt>Rule</dt>
-        <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full rule</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a> · <a href="results/context_q6_start_alignment.csv">context data</a> · <a href="results/context_q6_lag_quartiles.csv">lag quartiles</a> · <a href="results/context_q6_publication_timing.csv">publication timing</a></dd>
+        <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full method</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a> · <a href="results/context_q6_start_alignment.csv">context data</a> · <a href="results/context_q6_lag_quartiles.csv">lag quartiles</a> · <a href="results/context_q6_publication_timing.csv">publication timing</a></dd>
       </dl>
     </details>
   </article>
@@ -666,7 +666,7 @@
         <dt>Data</dt>
         <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 20:10 UTC.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 12 October 2026, after an exploration had read level-energy shares, and amended the same day to the energy moved, so it does not count as written down before the data was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q24-what-share-of-each-fuel-groups-instructed-energy-is-flagged-as-a-system-action-rather-than-energy-balancing">Full rule</a> · query <code>q24_system_action_share.sql</code> · <a href="results/q24_system_action_share.csv">saved output</a> · <a href="results/q24_flagged_share_by_fuel_group.csv">chart data</a></dd>
+        <dd>Recorded 12 October 2026, after an exploration had read level-energy shares, and amended the same day to the energy moved, so it does not count as written down before the data was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q24-what-share-of-each-fuel-groups-instructed-energy-is-flagged-as-a-system-action-rather-than-energy-balancing">Full method</a> · query <code>q24_system_action_share.sql</code> · <a href="results/q24_system_action_share.csv">saved output</a> · <a href="results/q24_flagged_share_by_fuel_group.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -691,7 +691,7 @@
         <dt>Data</dt>
         <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 22:01 UTC. The figures shown join the two halves of instructions that cross midnight, from a run on 25 October 2026 on the read's data; the table gives the read's own figures beside them. I count a unit as a battery when its registered name contains "batter", "BESS" or "storage" (any case), or its ID ends in "B-" and a number. Units identified as batteries by name or ID receive 92% (730,344 of 796,257) of the other group's instructions. Units with no published fuel type are not in the other group; of the instructions to them, units identified as batteries by name or ID receive 58% (1,169,425 of 2,021,245). Both counts use the read's data and unit register.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 12 October 2026, after an exploration had read the instruction-on-its-own measure; the joined measure, the result, was added before any read of it. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q25-how-fragmented-are-instructions-to-units-typed-other-mostly-batteries-and-pumped-storage-compared-with-thermal-plant">Full rule</a> · query <code>q25_instruction_fragmentation.sql</code> · saved outputs: <a href="results/q25_instruction_fragmentation_corrected.csv">shown</a>, <a href="results/q25_instruction_fragmentation.csv">as first read</a> · <a href="results/q25_short_instructions_by_fuel_group.csv">chart data</a> · context data: <a href="results/context_q25_battery_named_units.csv">battery counts</a>, <a href="results/context_q25_cadl_check.csv">check against Elexon's test</a></dd>
+        <dd>Recorded 12 October 2026, after an exploration had read the instruction-on-its-own measure; the joined measure, the result, was added before any read of it. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q25-how-fragmented-are-instructions-to-units-typed-other-mostly-batteries-and-pumped-storage-compared-with-thermal-plant">Full method</a> · query <code>q25_instruction_fragmentation.sql</code> · saved outputs: <a href="results/q25_instruction_fragmentation_corrected.csv">shown</a>, <a href="results/q25_instruction_fragmentation.csv">as first read</a> · <a href="results/q25_short_instructions_by_fuel_group.csv">chart data</a> · context data: <a href="results/context_q25_battery_named_units.csv">battery counts</a>, <a href="results/context_q25_cadl_check.csv">check against Elexon's test</a></dd>
       </dl>
       <div class="table-wrap">
         <table>
@@ -751,7 +751,7 @@
         <dt>Caveats</dt>
         <dd><a href="#carbon-label-alignment">The half-hour alignment</a> and <a href="#impossible-actual">the one impossible actual</a>: see Limitations.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 27 October 2026, before any figure of it was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history">Full rule</a> · query <code>q29_final_forecast_error_by_month_and_block.sql</code> · <a href="results/q29_final_forecast_error_by_month_and_block.csv">saved output</a></dd>
+        <dd>Recorded 27 October 2026, before any figure of it was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history">Full method</a> · query <code>q29_final_forecast_error_by_month_and_block.sql</code> · <a href="results/q29_final_forecast_error_by_month_and_block.csv">saved output</a></dd>
       </dl>
     </details>
   </article>
@@ -804,7 +804,7 @@
         <dt>Caveats</dt>
         <dd><a href="#carbon-label-alignment">The half-hour alignment</a> and <a href="#impossible-actual">the one impossible actual</a>: see Limitations.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 25 October 2026; the order of tied misses was fixed on 26 October 2026, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q28-are-half-hours-with-a-larger-error-in-the-apis-stored-carbon-forecast-associated-with-more-unexplained-shortfall-from-august-2025-to-august-2026">Full rule</a> · query <code>q8_q28_history.sql</code> · <a href="results/q8_q28_history.csv">saved output</a> · <a href="results/q28_shortfall_index_by_miss_fifth.csv">chart data</a></dd>
+        <dd>Recorded 25 October 2026; the order of tied misses was fixed on 26 October 2026, before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q28-are-half-hours-with-a-larger-error-in-the-apis-stored-carbon-forecast-associated-with-more-unexplained-shortfall-from-august-2025-to-august-2026">Full method</a> · query <code>q8_q28_history.sql</code> · <a href="results/q8_q28_history.csv">saved output</a> · <a href="results/q28_shortfall_index_by_miss_fifth.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -885,7 +885,7 @@
         <dt>Caveats</dt>
         <dd><a href="#carbon-label-alignment">The half-hour alignment</a> and <a href="#impossible-actual">the one impossible actual</a>: see Limitations.</dd>
         <dt>Rule</dt>
-        <dd>Recorded before the read and completed 25 October 2026, before any demand value was held. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q8-is-demand-forecast-error-more-strongly-associated-with-carbon-forecast-error-than-shortfall-is">Full rule</a> · query <code>q8_q28_history.sql</code> · <a href="results/q8_q28_history.csv">saved output</a></dd>
+        <dd>Recorded before the read and completed 25 October 2026, before any demand value was held. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q8-is-demand-forecast-error-more-strongly-associated-with-carbon-forecast-error-than-shortfall-is">Full method</a> · query <code>q8_q28_history.sql</code> · <a href="results/q8_q28_history.csv">saved output</a></dd>
       </dl>
     </details>
   </article>
@@ -916,7 +916,7 @@
         <dt>Caveats</dt>
         <dd><a href="#carbon-label-alignment">The half-hour alignment</a> and <a href="#impossible-actual">the one impossible actual</a>: see Limitations.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 27 October 2026, before any wind data was held; one day of wind values (22 August 2025) was seen in checks of the data feed before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026">Full rule</a> · query <code>q30_wind_vs_carbon_error.sql</code> · <a href="results/q30_wind_vs_carbon_error.csv">saved output</a> · <a href="results/q30_rank_correlations.csv">chart data</a></dd>
+        <dd>Recorded 27 October 2026, before any wind data was held; one day of wind values (22 August 2025) was seen in checks of the data feed before the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026">Full method</a> · query <code>q30_wind_vs_carbon_error.sql</code> · <a href="results/q30_wind_vs_carbon_error.csv">saved output</a> · <a href="results/q30_rank_correlations.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -969,7 +969,7 @@
         <dt>Caveats</dt>
         <dd>One source and one window. The drift is associated with lead time in this archive; it does not say why the forecast moves, and it is not an accuracy result (that is <a href="#q10">Q10</a>).</dd>
         <dt>Rule</dt>
-        <dd>Recorded 5 October 2026 and amended up to 31 October 2026, before any drift value was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version">Full rule</a> · queries <code>q1_forecast_drift_verdict.sql</code>, <code>q1_forecast_drift_splits.sql</code>, <code>q1_forecast_drift_beside.sql</code> and <code>q1_forecast_drift_population.sql</code> · saved outputs: <a href="results/q1_forecast_drift_verdict.csv">verdict</a>, <a href="results/q1_forecast_drift_splits.csv">time of day and band</a>, <a href="results/q1_forecast_drift_beside.csv">beside the verdict</a>, <a href="results/context_q1_population.csv">population</a> · <a href="results/q1_median_drift_by_time_and_band.csv">chart data</a></dd>
+        <dd>Recorded 5 October 2026 and amended up to 31 October 2026, before any drift value was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q1-does-the-carbon-intensity-forecast-drift-one-way-between-its-first-and-final-version">Full method</a> · queries <code>q1_forecast_drift_verdict.sql</code>, <code>q1_forecast_drift_splits.sql</code>, <code>q1_forecast_drift_beside.sql</code> and <code>q1_forecast_drift_population.sql</code> · saved outputs: <a href="results/q1_forecast_drift_verdict.csv">verdict</a>, <a href="results/q1_forecast_drift_splits.csv">time of day and band</a>, <a href="results/q1_forecast_drift_beside.csv">beside the verdict</a>, <a href="results/context_q1_population.csv">population</a> · <a href="results/q1_median_drift_by_time_and_band.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -1013,7 +1013,7 @@
         <dt>Caveats</dt>
         <dd>The outturn is NESO's own estimate, as later stored, not a meter reading. One source and one window; this describes one forecast's accuracy and is not a judgement of NESO's method. <a href="#carbon-label-alignment">The half-hour alignment</a>: see Limitations.</dd>
         <dt>Rule</dt>
-        <dd>Recorded before 12 October 2026 and amended up to 31 October 2026, before any read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q10-how-accurate-is-the-forecast-at-each-lead-time">Full rule</a> · query <code>q10_forecast_accuracy_by_lead_time.sql</code> · <a href="results/q10_forecast_accuracy_by_lead_time.csv">saved output</a></dd>
+        <dd>Recorded before 12 October 2026 and amended up to 31 October 2026, before any read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q10-how-accurate-is-the-forecast-at-each-lead-time">Full method</a> · query <code>q10_forecast_accuracy_by_lead_time.sql</code> · <a href="results/q10_forecast_accuracy_by_lead_time.csv">saved output</a></dd>
       </dl>
     </details>
   </article>
@@ -1046,7 +1046,7 @@
         <dt>The three gas units</dt>
         <dd>At two of them, the three-week run filled two days the one-week run had at zero, and the two-month run zeroed one of them. At the third, the three-week run repeated the one-week values, and the two-month run replaced every value from 11 to 16 August. Each unit's revised energy, net change and three-week-run energy are in a <a href="results/q2_gas_units_revisions.csv">saved output</a>; the units are lettered, not named.</dd>
         <dt>Rule</dt>
-        <dd>Recorded 25 September 2026, before any metered figure was read. It tests only the two run-pair shares; the split by unit type and the three gas units are described after the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">Full rule</a> · <a href="results/q2_settlement_run_changes.sql">query as run</a> · saved outputs: <a href="results/q2_settlement_run_changes.csv">run pairs</a>, <a href="results/q2_changes_by_unit_prefix.csv">by unit type</a>, <a href="results/q2_gas_units_revisions.csv">the three gas units</a> · <a href="results/q2_moved_energy_by_unit_type.csv">chart data</a></dd>
+        <dd>Recorded 25 September 2026, before any metered figure was read. It tests only the two run-pair shares; the split by unit type and the three gas units are described after the read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q2-how-much-does-metered-output-change-between-settlement-runs">Full method</a> · <a href="results/q2_settlement_run_changes.sql">query as run</a> · saved outputs: <a href="results/q2_settlement_run_changes.csv">run pairs</a>, <a href="results/q2_changes_by_unit_prefix.csv">by unit type</a>, <a href="results/q2_gas_units_revisions.csv">the three gas units</a> · <a href="results/q2_moved_energy_by_unit_type.csv">chart data</a></dd>
       </dl>
       <div class="table-wrap">
         <table>
@@ -1107,13 +1107,13 @@
     <ul>
     <li id="pre-registration-exceptions">Exceptions to "recorded before its result was read", each stated with its result:
       <ul>
-        <li>System flags<a class="ref" href="#q24" aria-label="Details, Q24">*</a>: its measure was amended after an exploration had read the data, so the result is not called pre-registered.</li>
-        <li>The forecast's drift<a class="ref" href="#q1" aria-label="Details, Q1">*</a> and accuracy by lead time<a class="ref" href="#q10" aria-label="Details, Q10">*</a>: the drift's thresholds were set after an exploration had seen 380 of its half-hours, and whether they were set knowing it is not recorded; the same exploration saw the accuracy measure, error by lead time, on 365 of its population's half-hours. The mean change and the correlation beside the drift's verdict are not called pre-registered.</li>
+        <li>System flags<a class="ref" href="#q24" aria-label="Details, Q24">*</a>: its measure was changed after an exploration had read the data.</li>
+        <li>The forecast's drift<a class="ref" href="#q1" aria-label="Details, Q1">*</a> and accuracy by lead time<a class="ref" href="#q10" aria-label="Details, Q10">*</a>: the drift's thresholds were set after an exploration had seen 380 of its half-hours, and whether they were set knowing it is not recorded; the same exploration saw the accuracy measure, error by lead time, on 365 of its population's half-hours. The mean change and the correlation beside the drift's verdict were added after related figures had been seen.</li>
         <li>Services outside the balancing mechanism<a class="ref" href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q26-how-much-of-the-deviation-from-pn-do-balancing-actions-explain-once-services-settled-outside-the-balancing-mechanism-absvd-are-counted" aria-label="Rule, Q26">*</a> and misses by month and time of day<a class="ref" href="#q29" aria-label="Details, Q29">*</a>: part of each had been seen in an exploration before the rule was recorded (ABSVD's effect on four days; the overall mean and median error).</li>
         <li>Short instructions<a class="ref" href="#q25" aria-label="Details, Q25">*</a>: an exploration had read its instruction-on-its-own measure before the rule was recorded; the continuous-duration measure, the result, was added before any read of it. It was re-run once on the same data, with the two halves of instructions that cross midnight joined; the rule is unchanged.</li>
-        <li>Following the plan<a class="ref" href="#q23" aria-label="Details, Q23">*</a>: its ABSVD sensitivity is informed by an exploration, so only its base result is called pre-registered.</li>
+        <li>Following the plan<a class="ref" href="#q23" aria-label="Details, Q23">*</a>: its ABSVD sensitivity is informed by an exploration; its base result is not.</li>
         <li>Carbon misses and under-delivery<a class="ref" href="#q28" aria-label="Details, Q28">*</a>: the overall error of its forecast had already been seen in a September 2026 exploration.</li>
-        <li>The later, unplanned looks at carbon misses and under-delivery<a class="ref" href="#q28-reverse-title" aria-label="Details, Q28's later look">*</a>: asked after that result was read, so exploratory and not pre-registered; the look at wind on its own had its method written down before its data was read, on a year already seen.</li>
+        <li>The later, unplanned looks at carbon misses and under-delivery<a class="ref" href="#q28-reverse-title" aria-label="Details, Q28's later look">*</a>: asked after that result was read; the look at wind on its own had its method written down before its data was read, on a year already seen.</li>
       </ul>
     </li>
     </ul>
@@ -1122,7 +1122,7 @@
 </main>
 
 <footer>
-  <p class="stamp">Results read between 11 October and 24 November 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it (two, run by hand, are kept beside their saved outputs), read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every rule</a></p>
+  <p class="stamp">Results read between 11 October and 24 November 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it (two, run by hand, are kept beside their saved outputs), read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every method</a></p>
   <p>Contains BMRS data © Elexon Limited copyright and database right 2026. <a href="https://www.elexon.co.uk/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/">BMRS licence</a></p>
   <p>Carbon intensity data: <a href="https://carbonintensity.org.uk/">NESO Carbon Intensity API</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, modified: aggregated by GridSkew.</p>
   <p>Historic generation mix: <a href="https://www.neso.energy/data-portal/historic-generation-mix">NESO Data Portal</a>, Supported by National Energy SO Open Data. <a href="https://www.neso.energy/data-portal/ngeso-open-licence">NESO Open Data Licence v1.0</a></p>
