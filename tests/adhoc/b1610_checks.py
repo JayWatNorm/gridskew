@@ -8,8 +8,8 @@ Six questions the design depends on:
   5. what does a market-wide day contain?
   6. is settlementDate British local time, and halfHourEndTime UTC?
 
-Question 4 is the one that decides whether II is usable or whether analysis has
-to wait a year. Questions 1 to 3 only tell you which label is current.
+The fourth is the one that decides whether II is usable or whether analysis has
+to wait a year. The first three only tell you which label is current.
 
 This remains self-contained so its original API evidence can be reproduced
 without using production poller behaviour.
@@ -105,7 +105,7 @@ print()
 # ------------------------------------------ 3. can a past run be requested?
 # the endpoint takes settlementRunType as a parameter, but the sweep above
 # returned one run per date - so it may only serve the current one. If past
-# runs ARE retrievable, question 4 can be answered today rather than in a year.
+# runs ARE retrievable, the fourth can be answered today rather than in a year.
 
 probe_age = min(300, max(ages))
 print(f"3. explicit run retrieval, {today - timedelta(days=probe_age):%Y-%m-%d}")

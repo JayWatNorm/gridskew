@@ -269,8 +269,9 @@ hosting with Application Insights.
 
 **Nothing observed pushed back at 30 req/s across 50 requests.** But the test is
 small: a year of PN at daily chunks is 365 requests, seven times larger, and
-Elexon's API licence lets it cap requests and treats calling more than once a
-half hour for half-hourly data as misuse.
+Elexon's API licence lets it cap requests and counts "invoking the API more
+than once in a half hour period for data that is only updated on a half hourly
+basis" as misuse (4.1).
 
 So:
 

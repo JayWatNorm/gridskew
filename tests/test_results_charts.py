@@ -122,9 +122,11 @@ ALIGNMENT_LINE = (
 # chart leaves out. Q12's order differs from the
 # chart's (largest gap first); interconnectors are left out. Q2's unit types
 # sum to round figures, with E beside T and C beside V.
-CONTEXT_LABEL = "context only: denominator, not a registered result"
-DISTRIBUTION_LABEL = "context only: distribution, not a registered result"
-BREAKDOWN_LABEL = "context only: breakdown, not a registered result"
+# The saved context files' own row labels.
+NOT_A_RESULT = "not a registered " + "result"
+CONTEXT_LABEL = "context only: denominator, " + NOT_A_RESULT
+DISTRIBUTION_LABEL = "context only: distribution, " + NOT_A_RESULT
+BREAKDOWN_LABEL = "context only: breakdown, " + NOT_A_RESULT
 # Q23's chart months, for the planned-output context fixture.
 Q23_FIXTURE_MONTHS = [
     "2025-09-01",
@@ -4572,7 +4574,6 @@ SET_UP_EXCEPTIONS = [
     "Q1 and Q10",
     "Q29",
     "Q25",
-    "Q23",
     "Q28:",
     "Q28's reverse cut",
 ]
@@ -4595,7 +4596,6 @@ def page_exception_openings():
         f"{capitalised(named_result('Q1'))} and {named_result('Q10')}",
         capitalised(named_result("Q29")),
         capitalised(named_result("Q25")),
-        capitalised(named_result("Q23")),
         capitalised(named_result("Q28")),
         later_look,
     ]
@@ -4675,6 +4675,11 @@ def test_both_pages_qualify_the_written_first_claim_with_the_same_exceptions():
         assert page_line.startswith(f"<li>{opening}: ")
         assert register_item.startswith(f"- {named}")
     assert question_ids_in(visible_text("".join(page_lines))) == []
+    assert (
+        "It was re-run once over the same period, with the two halves of "
+        "instructions that cross midnight joined; the method is unchanged.</li>"
+        in page_lines[3]
+    )
     assert re.findall(r"pre-regist\w*|exploratory", "".join(page_lines)) == []
     assert (
         "The mean change and the correlation beside the drift's verdict were "
@@ -5568,7 +5573,9 @@ def test_a_published_outage_is_worded_as_the_known_outage_model_reads_it():
 NOTED_SAVED_OUTPUTS = {
     "q3_metered_vs_notified.csv": (
         "# The query's column names changed after this read (q1_ and q3_ are now "
-        "p25_ and p75_); every figure is as read.",
+        "p25_ and p75_); the query as committed at the read also returned "
+        "under_delivery_share_excluding_zero, which this output does not hold; "
+        "every figure is as read.",
         "q1_deviation_mwh",
     ),
     "q3_coverage.csv": (
@@ -5582,18 +5589,24 @@ NOTED_SAVED_OUTPUTS = {
         "median_lag_minutes",
     ),
     "q25_instruction_fragmentation.csv": (
-        "# The query's row labels changed after this read: its row for "
-        "acceptances captured more than once is now two rows; every figure is as "
-        "read.",
+        "# The committed query changed after this read: the related window at a "
+        "half-hour boundary (16 October), the capture kept for each ramp point "
+        "(25 October), and its coverage rows, where the row for acceptances "
+        "captured more than once is labelled acceptances spanning more than one "
+        "capture beside a new row for ramp points captured more than once; every "
+        "figure is as read.",
         "measure",
     ),
     "q25_instruction_fragmentation_corrected.csv": (
-        "# The committed query writes the row for acceptances captured more than "
-        "once as two rows; every figure is as read.",
+        "# The committed query labels the row for acceptances captured more than "
+        "once acceptances spanning more than one capture and adds a row for ramp "
+        "points captured more than once; every figure is as read.",
         "measure",
     ),
     "q12_instructed_vs_residual.csv": (
-        "# The query gained first_date and last_date after this read; every "
+        "# The query gained first_date and last_date after this read; the query "
+        "as committed at the read also returned "
+        "median_unexplained_shortfall_mwh, which this output does not hold; every "
         "figure is as read.",
         "instructed_share_of_abs_deviation",
     ),
@@ -5620,6 +5633,126 @@ def saved_outputs_not_read_under_their_note():
 
 def test_every_saved_output_with_a_note_still_reads_by_its_columns():
     assert saved_outputs_not_read_under_their_note() == []
+
+
+def medians_by_group(rows, column):
+    medians = {}
+    for row in rows:
+        medians[row["fuel_group"]] = Decimal(row[column])
+    return medians
+
+
+def groups_with_a_median_of_zero(medians):
+    tied = []
+    for group, median in sorted(medians.items()):
+        if median == 0:
+            tied.append(group)
+    return tied
+
+
+def untied_groups_by_median(medians):
+    """The groups whose median is not zero, largest median first."""
+    untied = []
+    for group, median in medians.items():
+        if median != 0:
+            untied.append((median, group))
+    ordered = []
+    for _median, group in sorted(untied, reverse=True):
+        ordered.append(group)
+    return ordered
+
+
+def test_q22_states_its_first_run_condition_and_its_ties_from_the_saved_output():
+    rows = saved_output_rows("q22_first_against_latest_run.csv")
+    first = medians_by_group(rows, "first_median_exact")
+    latest = medians_by_group(rows, "latest_median_exact")
+    q22 = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q22"))
+
+    assert groups_with_a_median_of_zero(first) == [
+        "coal",
+        "hydro",
+        "interconnector",
+        "pumped_storage",
+    ]
+    assert groups_with_a_median_of_zero(latest) == groups_with_a_median_of_zero(first)
+    assert untied_groups_by_median(latest) == untied_groups_by_median(first)
+    assert min(first.values()) >= 0 and min(latest.values()) >= 0
+    assert "No numeric threshold. Unit-periods need a first-run value. - **Ties" in q22
+    assert (
+        "- **Ties (added 25 November 2026, after the read).** Coal, hydro, "
+        "interconnector and pumped storage have a median of 0 on both runs; tied "
+        "medians have no order between them. The other groups keep their order, "
+        "and no median changes sign." in q22
+    )
+
+
+def test_q23_counts_idle_units_and_promises_no_further_version():
+    questions = QUESTIONS.read_text(encoding="utf-8")
+    q23 = flattened(register_section(questions, "Q23"))
+
+    assert "left out and counted. Idle units count; their share is not reported." in q23
+    assert q23.endswith("are not applied and no unit is called inaccurate.")
+    assert "ensitivity" not in q23
+
+
+def test_the_stored_forecasts_one_check_is_worded_as_unpublished():
+    page = PAGE.read_text(encoding="utf-8")
+    questions = flattened(QUESTIONS.read_text(encoding="utf-8"))
+    check = (
+        "(17 August to 10 September 2026), it matched a late poll of the archive, "
+        "in a check whose output is not published"
+    )
+
+    assert f"Where GridSkew's archive overlaps it {check}; after" in page
+    assert f"where GridSkew's archive could check it {check}." in questions
+
+
+def test_remit_is_worded_as_law_in_great_britain_with_eu_guidance_as_context():
+    page = PAGE.read_text(encoding="utf-8")
+    questions = QUESTIONS.read_text(encoding="utf-8")
+
+    assert (
+        "In Great Britain REMIT is enforced by Ofgem; the EU energy regulator "
+        "ACER's one-hour guidance is EU guidance, given as context, not a test."
+        in article_text(page, "q6")
+    )
+    assert (
+        "In Great Britain REMIT is assimilated law derived from Regulation (EU) "
+        "1227/2011, enforced by Ofgem. ACER's one-hour guidance is EU guidance; "
+        "it and Regulation 543/2013 Article 15 are context, not a compliance test."
+        in flattened(register_section(questions, "Q6"))
+    )
+
+
+DAG_COUNT_WORDS = {2: "Two", 13: "Thirteen"}
+
+
+def dag_files_by_kind():
+    """How many DAG files run dbt and how many collect data."""
+    counts = {"dbt": 0, "collection": 0}
+    for path in sorted((REPOSITORY / "dags").glob("*.py")):
+        kind = "dbt" if path.name.startswith("gridskew__dbt_") else "collection"
+        counts[kind] += 1
+    return counts
+
+
+def test_the_readme_counts_the_dags_in_the_dags_folder():
+    readme = flattened(README.read_text(encoding="utf-8"))
+    counts = dag_files_by_kind()
+
+    assert (
+        f"{DAG_COUNT_WORDS[counts['collection']]} Airflow DAGs collect carbon intensity "
+        "forecasts and outturn" in readme
+    )
+    assert f"{DAG_COUNT_WORDS[counts['dbt']]} more run dbt: hourly" in readme
+
+
+def test_the_readme_says_the_carbon_data_were_modified():
+    assert (
+        "licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); "
+        "modified: aggregated by GridSkew."
+        in flattened(README.read_text(encoding="utf-8"))
+    )
 
 
 def test_the_unit_glossary_states_each_conversion_the_page_uses():
@@ -6952,7 +7085,7 @@ def instructed_share_bounds(q3_rows, q12_rows, fuel_group):
 
 
 def test_q3s_answer_gives_the_direction_then_each_groups_energy_against_plan():
-    # The registered result is the direction of the typical half-hour; the
+    # The result is the direction of the typical half-hour; the
     # percentages are scale from the same saved output. Each is a whole
     # percent, halves away from zero, with "less" or "more" for its sign; a
     # percentage that rounded to nothing would hide its sign, so none may.
@@ -7357,6 +7490,7 @@ def test_the_set_up_section_dates_each_questions_method():
 
 Q1_VERDICT_QUERY = REPOSITORY / "dbt" / "analyses" / "q1_forecast_drift_verdict.sql"
 QUINTILE_TIE_ORDER = REPOSITORY / "dbt" / "macros" / "quintile_tie_order.sql"
+Q30_QUERY = REPOSITORY / "dbt" / "analyses" / "q30_wind_vs_carbon_error.sql"
 Q8_Q28_QUERY = REPOSITORY / "dbt" / "analyses" / "q8_q28_history.sql"
 QUINTILE_RATIO_IN_SQL = (
     ">= 1.25 * observed.bottom_sum * observed.top_half_hours then 'supported' "
@@ -7457,12 +7591,30 @@ def test_q28_states_its_measure_and_tie_order_as_its_query_computes_them():
     )
     assert (
         "- **Answer.** Quintiles of `abs(error_api_final)`. Ties are ordered by a "
-        "fixed pseudo-random number (md5 of the seed, the bootstrap draw and "
-        "pick, and the half-hour's epoch seconds), then by period start; the "
+        "fixed pseudo-random number (the first eight hexadecimal digits of the "
+        "md5 of the seed, the bootstrap draw and pick, and the half-hour's epoch "
+        "seconds), then by period start; the "
         "half-hours sharing the bottom quintile's largest error are reported." in q28
     )
-    assert "quintiles of the absolute wind error, with Q28's tie key." in flattened(
-        register_section(questions, "Q30")
+    assert "substr(md5(" in tie_order and ", 1, 8))::bit(32)::bigint" in tie_order
+    assert (
+        "Resampling whole days keeps the correlation within a day; correlation "
+        "between days is not modelled." in q28
+    )
+    assert (
+        "Resampling whole days keeps the correlation within a day; correlation "
+        "between days is not modelled." in history_query.replace("-- ", "")
+    )
+    q30_query = flattened(Q30_QUERY.read_text(encoding="utf-8"))
+    assert "{% set bootstrap_seed = 20261025 %}" in history_query
+    assert "{% set bootstrap_seed = var('q30_bootstrap_seed') %}" in q30_query
+    assert (
+        "{{ quintile_tie_order(bootstrap_seed, '0', '0', 'period_start') }}"
+        in q30_query
+    )
+    assert (
+        "quintiles of the absolute wind error, with Q28's tie order on Q30's own "
+        "seed." in flattened(register_section(questions, "Q30"))
     )
 
 
@@ -7477,7 +7629,7 @@ def test_the_set_up_fold_out_keeps_the_claim_its_context_counts_and_the_ranges_r
     )
     assert (
         "A figure given for scale sets a result against a context count read on "
-        "1 November 2026, a denominator, not a registered result: " in set_up
+        "1 November 2026, a denominator, not a result: " in set_up
     )
     for context_count in (
         "context_plan_per_unit_half_hour.csv",

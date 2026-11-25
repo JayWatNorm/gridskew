@@ -17,10 +17,11 @@ pushing carbon intensity above forecast. Planned outages are known about days
 ahead and should already be in the forecast.
 
 REMIT stands for the Regulation on Wholesale Energy Markets Integrity and
-Transparency, an EU regulation aimed at preventing market abuse. This endpoint
-returns information participants publish to comply with **Article 4 of
-Regulation (EU) 1227/2011**. The planned-versus-unplanned split is the field
-used by this project.
+Transparency, aimed at preventing market abuse. In Great Britain it is
+assimilated law derived from Regulation (EU) 1227/2011, enforced by Ofgem.
+This endpoint returns information participants publish to comply with its
+**Article 4**. The planned-versus-unplanned split is the field used by this
+project.
 
 **Caveat before building on it:** the API does not enumerate the values of
 `unavailabilityType`. In the 5,497 messages published in September 2026 it is

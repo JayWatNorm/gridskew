@@ -64,9 +64,18 @@ dbt parse --project-dir dbt
 dbt build --project-dir dbt
 ```
 
-Without Docker, [schema migrations](../../docs/schema-migrations.md) has a
-`psql` recipe for the migration step. The checks in the table above then run
-in the workflow's order.
+Before these steps, PostgreSQL 16 runs on port 5432 with an empty local
+database `gridskew_dev` and a `postgres` administrator. The Flyway command
+assumes Linux host networking; where the container cannot reach the host's
+database, or without Docker,
+[schema migrations](../../docs/schema-migrations.md) has a `psql` recipe for
+the migration step.
+
+The checks then run in the order `.github/workflows/ci.yml` sets, which is
+not the table's. Two run elsewhere: `check_period_tables.py` in its own job,
+on a database with the migrations and no fixtures, and `check_dag_import.py`
+in the Airflow image. Provision the loader role (below) before
+`check_database_writes.py`.
 
 This builds the fixture database only. Rerunning a published result needs
 the project's own archive of captured data, which is not public.

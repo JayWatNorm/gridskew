@@ -24,7 +24,8 @@ cannot prove that it received the new forecast vintage.
 
 **This source is not addressable in time.** The API re-runs its model every 30
 minutes and overwrites the stored value in place, so a request for a past period
-returns the final revision, not the forecast that existed then.
+returns a single stored value whose timing NESO does not document, not the
+forecast that existed then.
 
 A backfilled run would therefore fetch **current** data for every historical
 logical interval. The poller uses the actual execution time for `retrieved_at`,

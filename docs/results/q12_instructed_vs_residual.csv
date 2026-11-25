@@ -1,5 +1,5 @@
 # Contains BMRS data © Elexon Limited copyright and database right 2026.
-# The query gained first_date and last_date after this read; every figure is as read.
+# The query gained first_date and last_date after this read; the query as committed at the read also returned median_unexplained_shortfall_mwh, which this output does not hold; every figure is as read.
 fuel_group,unit_periods,instructed_periods,instructed_period_share,abs_deviation_mwh,abs_instructed_deviation_mwh,abs_unexplained_shortfall_mwh,instructed_share_of_abs_deviation
 wind,4296432,317896,0.073991,29628667.2,13072856.1,16688841.0,0.439251
 gas_turbine,1501032,165571,0.110305,23229736.9,20019768.7,3988939.1,0.833854

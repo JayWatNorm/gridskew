@@ -20,7 +20,8 @@ Everything follows from this.
 **Not addressable** means the endpoint always returns current state regardless of
 what you ask. The Carbon Intensity forecast is not addressable — it re-runs its
 model every 30 minutes and overwrites in place, so asking today what it forecast
-last March returns the final revision, not the 48-hour-ahead figure.
+last March returns a single stored value whose timing NESO does not document,
+not the 48-hour-ahead figure.
 
 | | Airflow setting | Backfill |
 |---|---|---|

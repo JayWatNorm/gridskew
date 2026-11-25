@@ -98,8 +98,8 @@ explanations.
   own estimate.
 - **`error_api_final`:** the error of the stored forecast, the one value
   NESO's API keeps for each past half-hour; where GridSkew's archive could
-  check it (17 August to 10 September 2026), it matched the forecast as it
-  stood at about the end of the half-hour. The archive starts on 17 August
+  check it (17 August to 10 September 2026), it matched a late poll of the
+  archive, in a check whose output is not published. The archive starts on 17 August
   2026, so the year before it has only this value.
 
 ### Forecast read controls
@@ -308,8 +308,10 @@ the one starting at 22:30 UTC on 27 September 2026.
   headline, split by type beside it; other market information is excluded.
   Every exclusion is counted in the coverage section.
 - REMIT's "without delay" duty is not judged from this: the data cannot
-  show when the participant knew. ACER's one-hour guidance and Regulation
-  543/2013 Article 15 are context, not a compliance test.
+  show when the participant knew. In Great Britain REMIT is assimilated law
+  derived from Regulation (EU) 1227/2011, enforced by Ofgem. ACER's
+  one-hour guidance is EU guidance; it and Regulation 543/2013 Article 15
+  are context, not a compliance test.
 - "Dismissed" means dismissed as of the read, so the result cannot be
   regenerated exactly later.
 
@@ -459,8 +461,11 @@ the query as run by hand, kept beside its saved output.
   run of settlement dates 10 to 16 August 2026, side by side.
 - **Answer.** The headline is called changed when the order of the fuel
   groups by median deviation changes, or when any group's median changes
-  sign. No numeric threshold. Unit-periods need a first-run value; tied
-  medians have no order between them.
+  sign. No numeric threshold. Unit-periods need a first-run value.
+- **Ties (added 25 November 2026, after the read).** Coal, hydro,
+  interconnector and pumped storage have a median of 0 on both runs; tied
+  medians have no order between them. The other groups keep their order,
+  and no median changes sign.
 - **At the read.** "Latest" was R1, so the read compares II with R1. There
   is no re-read.
 
@@ -491,13 +496,7 @@ the one starting at 22:30 UTC on 30 September 2026.
 - **Reported.** The median and 90th percentile per fuel group and month.
 - **Declared split.** Days with SO-flagged wind bids against days without.
 - **A proxy.** ABSVD and dynamic MEL/MIL are not used, so NESO's thresholds
-  are not applied and no unit is called inaccurate. This is the base
-  result.
-- **Sensitivity.** With ABSVD captured, an ABSVD-inclusive version (ABSVD
-  added to the PN, as NESO's September 2026 guidance) is reported beside
-  it, labelled a sensitivity analysis, its method fixed before it is run.
-  It is informed by an exploration that had shown ABSVD moving batteries'
-  unexplained shortfall on some days; the base result is not.
+  are not applied and no unit is called inaccurate.
 
 ### Q24. What share of each fuel group's instructed energy is flagged as a system action rather than energy balancing?
 
@@ -578,8 +577,9 @@ shared with Q8.
   `unexplained_shortfall_mwh` (under-delivery, as Q5) over determinable
   unit-periods.
 - **Answer.** Quintiles of `abs(error_api_final)`. Ties are ordered by a
-  fixed pseudo-random number (md5 of the seed, the bootstrap draw and
-  pick, and the half-hour's epoch seconds), then by period start; the
+  fixed pseudo-random number (the first eight hexadecimal digits of the
+  md5 of the seed, the bootstrap draw and pick, and the half-hour's epoch
+  seconds), then by period start; the
   half-hours sharing the bottom quintile's largest error are reported. The
   answer is called "yes" (`supported` in the saved output) when the top
   quintile's mean is at least 25% above the bottom's, otherwise "no"
@@ -587,7 +587,9 @@ shared with Q8.
 - **Edge.** If the bottom mean is 0 or less, both means and their
   difference are reported and the answer is not applicable.
 - **Interval.** A 90% day-block bootstrap interval for the ratio (1,000
-  draws; fewer than 900 usable: unavailable) is descriptive.
+  draws; fewer than 900 usable: unavailable) is descriptive. Resampling
+  whole days keeps the correlation within a day; correlation between days
+  is not modelled.
 - **Limitations stated with the result.** The forecast is the stored
   forecast (see [Terms](#terms)), not a day-ahead forecast; the overall
   error of that forecast had already been seen in a September 2026
@@ -685,7 +687,7 @@ after a counts-only coverage check.
   wind error with the absolute carbon error. Secondary: `rho_signed`
   (negative when wind coming in short goes with carbon dirtier than
   forecast) and quintiles of the absolute wind error, with Q28's
-  tie key. Both rhos on the sensitivity. 90% day-block bootstrap intervals
+  tie order on Q30's own seed. Both rhos on the sensitivity. 90% day-block bootstrap intervals
   (1,000 draws; with fewer than 900 usable draws, unavailable). No test,
   threshold or answer.
 - **Earlier look.** One day of wind values (22 August 2025), during
@@ -750,8 +752,6 @@ Where a method was not wholly written before its data was seen:
   measure (2), the result, was added before any read of it. It was re-run
   once over the same period, with acceptances that cross midnight joined; the
   method is unchanged.
-- Q23: its ABSVD sensitivity is informed by an exploration; its base
-  result is not.
 - Q28: the overall error of its forecast had already been seen in a
   September 2026 exploration.
 - Q28's reverse cut (on the results page): asked after Q28 was read.

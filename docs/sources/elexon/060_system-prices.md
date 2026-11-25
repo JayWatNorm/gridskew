@@ -90,10 +90,11 @@ than data.
 
 ## Things to know
 
-**The "system tagged" fields are the useful split.** They separate volume
-accepted for *system* reasons (network constraints, voltage) from volume
-accepted for *energy* balancing. Same distinction as `soFlag` on BOALF, and the
-same reason it matters: constraint actions are not evidence of energy shortfall.
+**The "system tagged" fields are the useful split.** They are meant to
+separate volume accepted for *system* reasons (network constraints, voltage)
+from volume accepted for *energy* balancing; `soFlag` on BOALF is believed to
+mark the same split. It matters for the same reason: constraint actions are
+not evidence of energy shortfall.
 
 **The first calculation is indicative and later refreshed.** [Elexon
 publishes](https://bmrs.elexon.co.uk/system-prices) an indicative calculation

@@ -80,7 +80,7 @@ Q28_REVERSE_STRATA_RESULT = "q28_reverse_strata_exploratory.csv"
 # the miss, per GW, with planned output allowed for in several ways.
 WIND_CUT_RESULT = "q28_wind_under_delivery_cut.csv"
 # Context counts read on 1 November 2026: denominators for scale, each row
-# labelled "context only: denominator, not a registered result".
+# labelled as context only, a denominator.
 CONTEXT_CARBON_RESULT = "context_carbon_intensity.csv"
 CONTEXT_DEMAND_RESULT = "context_demand.csv"
 CONTEXT_PLAN_RESULT = "context_plan_per_unit_half_hour.csv"

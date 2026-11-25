@@ -146,7 +146,7 @@ The platform uses a medallion structure inside PostgreSQL:
 
 | Layer | Implementation | Purpose |
 |---|---|---|
-| **Bronze** | `raw` schema | Append-only source-grain records, retrieval context and rejected payloads |
+| **Bronze** | `raw` schema | Append-only source-grain records and retrieval context; rejected payloads, whose rows are only marked resolved |
 | **Silver** | `dbt/models/staging/` and `dbt/models/intermediate/` | Source-conformed records, joins and business logic |
 | **Gold** | `dbt/models/marts/` | Terminal facts, dimensions and aggregates at business grain |
 
@@ -288,8 +288,9 @@ and the nightly dbt job keeps building and testing it.
 - Carbon intensity forecast and outturn collection
 - `PN`, `QPN`, `B1610`, `BOALF`, `REMIT`, `QAS` and wind ingestion, backfills
   and scheduled Airflow runs; a one-off demand back-fill
-- Append-only raw storage, with a loader role that can insert and read but
-  not update or delete
+- Append-only source tables in `raw`, with a loader role that can insert and
+  read but not update or delete; quarantine rows are only marked resolved,
+  by the owner
 - Runtime validation and quarantine for the twelve time-series datasets, plus
   complete-response validation for the BM-unit registry
 - Carbon forecast and outturn period-completeness checks

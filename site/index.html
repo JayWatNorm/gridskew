@@ -329,7 +329,7 @@
       </div>
       <div>
         <dt id="stored-forecast">Stored forecast</dt>
-        <dd>The one carbon forecast NESO's API keeps for each past half-hour; NESO does not document when it is made. Where GridSkew's archive overlaps it (17 August to 10 September 2026), it matched the forecast as it stood at about the end of the half-hour; after 10 September 2026, half the stored values match none of the archive's polls.</dd>
+        <dd>The one carbon forecast NESO's API keeps for each past half-hour; NESO does not document when it is made. Where GridSkew's archive overlaps it (17 August to 10 September 2026), it matched a late poll of the archive, in a check whose output is not published; after 10 September 2026, half the stored values match none of the archive's polls.</dd>
       </div>
       <div>
         <dt>Rank correlation</dt>
@@ -625,7 +625,7 @@
         <dt>Left out</dt>
         <dd>9,488 notices dismissed as of the read (29%), 2,331 first published before 1 November 2024 (7%), 514 other market information, and 8 whose event starts before 22 August 2024. 12 notices with no class are not shown.</dd>
         <dt>Note</dt>
-        <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. The EU energy regulator ACER's one-hour guidance is context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
+        <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. In Great Britain REMIT is enforced by Ofgem; the EU energy regulator ACER's one-hour guidance is EU guidance, given as context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
         <dt>Method</dt>
         <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full method</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a> · <a href="results/context_q6_start_alignment.csv">context data</a> · <a href="results/context_q6_lag_quartiles.csv">lag quartiles</a> · <a href="results/context_q6_publication_timing.csv">publication timing</a></dd>
       </dl>
@@ -1071,7 +1071,7 @@
   </ul>
   <details class="method">
     <summary id="set-up">How the questions were set up</summary>
-    <p>Every method was recorded before its result was read, except where the result says otherwise; the <a href="#set-up-exceptions">exceptions</a> are listed below, and where the data had been explored first, or a result is exploratory, the details say so. Each result was read once (the count of short instructions<a class="ref" href="#q25" aria-label="Details, Q25">*</a> was re-run once over the same period, with the two halves of instructions that cross midnight joined). "How I measured it", under each answer, gives the method, the numbers and the dates. A figure given for scale sets a result against a context count read on 1 November 2026, a denominator, not a registered result: <a href="results/context_plan_per_unit_half_hour.csv">planned energy</a>, <a href="results/context_plan_pct_capacity.csv">planned share of capacity</a>, <a href="results/context_demand.csv">national demand</a> and <a href="results/context_carbon_intensity.csv">carbon intensity</a>.</p>
+    <p>Every method was recorded before its result was read, except where the result says otherwise; the <a href="#set-up-exceptions">exceptions</a> are listed below, and where the data had been explored first, or a result is exploratory, the details say so. Each result was read once (the count of short instructions<a class="ref" href="#q25" aria-label="Details, Q25">*</a> was re-run once over the same period, with the two halves of instructions that cross midnight joined). "How I measured it", under each answer, gives the method, the numbers and the dates. A figure given for scale sets a result against a context count read on 1 November 2026, a denominator, not a result: <a href="results/context_plan_per_unit_half_hour.csv">planned energy</a>, <a href="results/context_plan_pct_capacity.csv">planned share of capacity</a>, <a href="results/context_demand.csv">national demand</a> and <a href="results/context_carbon_intensity.csv">carbon intensity</a>.</p>
     <p>The 90% ranges are a guide to uncertainty, not part of any method's answer.</p>
     <ul>
     <li id="set-up-exceptions">Exceptions to "recorded before its result was read", each stated with its result:
@@ -1080,7 +1080,6 @@
         <li>The forecast's drift<a class="ref" href="#q1" aria-label="Details, Q1">*</a> and accuracy by lead time<a class="ref" href="#q10" aria-label="Details, Q10">*</a>: the drift's thresholds were set after an exploration had seen 380 of its half-hours, and whether they were set knowing it is not recorded; the same exploration saw the accuracy measure, error by lead time, on 365 of its population's half-hours. The mean change and the correlation beside the drift's verdict were added after related figures had been seen.</li>
         <li>Misses by month and time of day<a class="ref" href="#q29" aria-label="Details, Q29">*</a>: part of it had been seen in an exploration before the method was recorded (the overall mean and median error).</li>
         <li>Short instructions<a class="ref" href="#q25" aria-label="Details, Q25">*</a>: an exploration had read its instruction-on-its-own measure before the method was recorded; the continuous-duration measure, the result, was added before any read of it. It was re-run once over the same period, with the two halves of instructions that cross midnight joined; the method is unchanged.</li>
-        <li>Following the plan<a class="ref" href="#q23" aria-label="Details, Q23">*</a>: its ABSVD sensitivity is informed by an exploration; its base result is not.</li>
         <li>Carbon misses and under-delivery<a class="ref" href="#q28" aria-label="Details, Q28">*</a>: the overall error of its forecast had already been seen in a September 2026 exploration.</li>
         <li>The later, unplanned looks at carbon misses and under-delivery<a class="ref" href="#q28-reverse-title" aria-label="Details, Q28's later look">*</a>: asked after that result was read; the look at wind on its own had its method written down before its data was read, on a year already seen.</li>
       </ul>

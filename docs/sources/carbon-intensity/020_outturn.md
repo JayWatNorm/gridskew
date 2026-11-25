@@ -3,10 +3,9 @@
 What the carbon intensity **actually turned out to be** in each settlement
 period, once it had happened. The scorecard the forecasts get marked against.
 
-The endpoint also hands back a forecast figure for the same period, but it is
-the last-minute version, issued when the model already knew nearly everything.
-Useful, but not the same thing as the 48-hour-ahead prediction, which is why
-the column is called `forecast_final`.
+The endpoint also returns one stored forecast for the same period, whose
+timing NESO does not document. It is not the 48-hour-ahead prediction, which
+is why the column is called `forecast_final`.
 
 Unlike the forecast archive, this data can be fetched again, so missing windows
 are re-fetched and a full rebuild remains possible.
@@ -51,7 +50,7 @@ populated, and the API's own examples reach back to 2017.
 |---|---|---|
 | `from` | `str` | Period start |
 | `to` | `str` | Period end |
-| `intensity.forecast` | `int` | **The final revision**, not a horizon-resolved forecast |
+| `intensity.forecast` | `int` | One stored value whose timing NESO does not document; not horizon-resolved |
 | `intensity.actual` | `int` or `None` | Null before the actual is published; never null in this table |
 | `intensity.index` | `str` | Band at time of publication |
 

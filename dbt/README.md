@@ -318,7 +318,9 @@ outturn has settled. Both were read on 22 November 2026. See
 `analyses/` also holds the analyses for Q5
 (`q5_shortfall_with_known_outage.sql`), Q6 (`q6_publication_lag.sql`),
 Q23 to Q25 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
-`q25_instruction_fragmentation.sql`)
+`q25_instruction_fragmentation.sql`), Q29
+(`q29_final_forecast_error_by_month_and_block.sql`), Q30
+(`q30_wind_vs_carbon_error.sql`)
 and Q8 with Q28 (`q8_q28_history.sql`, on one shared population of
 settlement dates 22 August 2025 to 16 August 2026: whether demand
 forecast error or unexplained shortfall lines up more with the API's

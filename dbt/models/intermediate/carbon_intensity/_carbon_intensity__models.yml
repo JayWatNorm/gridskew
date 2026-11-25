@@ -2,7 +2,7 @@ models:
   - name: int_carbon_forecast__revisions
     description: >
       One row per forecast half-hour per poll, with the poll flags of the
-      forecast drift reading rule (docs/carbon-forecast-trajectory.md). No row
+      forecast drift method (docs/carbon-forecast-trajectory.md). No row
       is dropped. The rule counts a poll when it is the earliest poll of its
       half-hour slot, is not partial and is not part of a no-change run; those
       rows have is_counted_poll true.
@@ -50,13 +50,13 @@ models:
           polls count towards the run. A shorter repeat is normal and stays.
       - name: is_counted_poll
         description: >
-          True when the reading rule counts the poll: earliest in its slot,
+          True when the method counts the poll: earliest in its slot,
           not partial and not a no-change poll.
 
   - name: int_carbon_forecast__by_period
     description: >
       One row per forecast half-hour: the forecast trajectory under the
-      forecast drift reading rule (docs/carbon-forecast-trajectory.md), and
+      forecast drift method (docs/carbon-forecast-trajectory.md), and
       beside it the same trajectory "as published", with one poll per slot and
       no poll excluded.
       A trajectory is complete when it has at least
@@ -144,7 +144,7 @@ models:
       One row per half-hour that has both an archived forecast and an
       outturn. Error is actual minus forecast, in gCO2/kWh: positive means the
       half-hour was dirtier than forecast. The forecast columns follow the
-      forecast drift reading rule; see int_carbon_forecast__by_period.
+      forecast drift method; see int_carbon_forecast__by_period.
     columns:
       - name: period_start
         description: Start of the half-hour, UTC. The key.

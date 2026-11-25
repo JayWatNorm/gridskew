@@ -7,8 +7,8 @@
 -- Window: settlement dates demand_history_from to demand_history_until, both
 -- included (22 August 2025 to 16 August 2026). It is fixed, and ends the day
 -- before the carbon forecast archive starts. Carbon error: error_api_final,
--- the outturn minus the API's own final forecast, which is made minutes
--- before the half-hour and is the only carbon forecast held for that year.
+-- the outturn minus the API's own stored forecast, whose timing NESO does
+-- not document; the only carbon forecast held for that year.
 -- It is taken from int_carbon_outturn__latest, because
 -- int_carbon_error_by_period holds only half-hours with an archived
 -- forecast. Demand error: demand_error_final_mw, the first INDO outturn
