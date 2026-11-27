@@ -1138,16 +1138,24 @@
 <script src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.1/build/vega-lite.min.js" integrity="sha384-QtG7pnWvq1Tk0Rcvl53B1TEVw7U1PUqfciCz3XMUqSmi1fNpJwiv5ml+m5NeOOzH" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/vega-embed@7.3.0/build/vega-embed.min.js" integrity="sha384-Muy1QRxYFeNrA1zShc1KtN4OfipkR/61gt+HWqN57c1Zxu3Oe16TsilsruVVjfKL" crossorigin="anonymous"></script>
 <script>
-  // Every results CSV starts with its attribution line; a chart reads the
-  // rows after it.
+  // A results CSV opens with comment lines: its attribution, then any
+  // note on the read. A chart reads the rows below them.
   const fileLoader = vega.loader();
 
-  async function loadWithoutAttribution(uri, options) {
-    const text = await fileLoader.load(uri, options);
-    if (!text.startsWith("# ")) {
-      return text;
+  function withoutLeadingComments(text) {
+    let rows = text;
+    if (rows.startsWith("# ")) {
+      const lineEnd = rows.indexOf("\n");
+      if (lineEnd === -1) {
+        return "";
+      }
+      rows = rows.slice(lineEnd + 1);
     }
-    return text.slice(text.indexOf("\n") + 1);
+    return rows;
+  }
+
+  async function loadBelowComments(uri, options) {
+    return withoutLeadingComments(await fileLoader.load(uri, options));
   }
 
   // The charts take the page's font and its text, axis and gridline
@@ -1255,7 +1263,7 @@
   const chartOptions = {
     actions: false,
     renderer: "svg",
-    loader: { ...fileLoader, load: loadWithoutAttribution },
+    loader: { ...fileLoader, load: loadBelowComments },
     config: chartTheme(),
     tooltip: { theme: prefersDark ? "dark" : "light" },
   };

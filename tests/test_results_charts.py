@@ -2,9 +2,12 @@ import ast
 import csv
 import io
 import json
+import os
 import re
+import shutil
 import statistics
 import struct
+import subprocess
 import sys
 from datetime import datetime, timedelta
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
@@ -911,8 +914,15 @@ def chart_csvs(folder):
 
 
 def csv_header(path):
-    lines = path.read_text(encoding="utf-8").split("\n")
-    return lines[1].split(",")
+    """The column names: the first line below the leading comment lines."""
+    return header_of(path.read_text(encoding="utf-8"))
+
+
+def header_of(csv_text):
+    for line in csv_text.split("\n"):
+        if not line.startswith("# "):
+            return line.split(",")
+    return []
 
 
 def collect_fields(node, used, derived):
@@ -955,16 +965,111 @@ def spec_data_urls(folder):
 
 def fields_missing_from_their_csv(folder):
     """Per spec, the fields it reads that its CSV's header does not hold."""
+    headers = {}
+    for name, spec in written_specs(folder).items():
+        headers[name] = csv_header(
+            folder / spec["data"]["url"].removeprefix("results/")
+        )
+    return fields_missing_from(headers, folder)
+
+
+def fields_missing_from(headers, folder):
+    """Per spec in a folder, the fields it reads that the header given
+    for it does not hold."""
     missing_fields = {}
     for name, spec in written_specs(folder).items():
-        header = csv_header(folder / spec["data"]["url"].removeprefix("results/"))
         used = set()
         derived = set()
         collect_fields(spec, used, derived)
-        missing = sorted(used - derived - set(header))
+        missing = sorted(used - derived - set(headers[name]))
         if missing:
             missing_fields[name] = missing
     return missing_fields
+
+
+NODE = shutil.which("node")
+needs_node = pytest.mark.skipif(
+    NODE is None and "CI" not in os.environ,
+    reason="Node runs the page's own script; CI has it",
+)
+
+
+def page_function(name):
+    """The source of a named top-level function in the page's script."""
+    source = re.search(
+        rf"^  function {name}\(.*?^  }}$",
+        PAGE.read_text(encoding="utf-8"),
+        re.DOTALL | re.MULTILINE,
+    )
+    return source.group(0)
+
+
+def page_function_results(name, arguments):
+    """What one of the page's functions returns for each argument, run
+    by Node."""
+    program = (
+        "const given = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
+        "const pageFunction = eval('(' + given.source + ')');"
+        "const results = given.arguments.map((argument) => pageFunction(argument));"
+        "process.stdout.write(JSON.stringify(results));"
+    )
+    finished = subprocess.run(
+        [NODE, "-e", program],
+        input=json.dumps({"source": page_function(name), "arguments": arguments}),
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+    )
+    return json.loads(finished.stdout)
+
+
+@needs_node
+def test_the_page_gives_a_chart_the_rows_below_every_leading_comment_line():
+    rows = "section,item\n1,a\n"
+
+    assert page_function_results(
+        "withoutLeadingComments",
+        [
+            rows,
+            "# Attribution.\n" + rows,
+            "# Attribution.\n# A note on the read.\n" + rows,
+            "# Attribution.\n# A note.\n# Another.\nitem\n# not leading\n",
+            "# Attribution, and nothing below it.",
+        ],
+    ) == [rows, rows, rows, "item\n# not leading\n", ""]
+
+
+@needs_node
+def test_the_page_gives_every_committed_chart_its_columns():
+    # Q29's two charts read a saved output whose note is a second comment
+    # line; the page once dropped only the first and drew them empty.
+    results = REPOSITORY / "docs" / "results"
+    names = []
+    texts = []
+    for name, data_url in spec_data_urls(results).items():
+        names.append(name)
+        texts.append(
+            (results / data_url.removeprefix("results/")).read_text(encoding="utf-8")
+        )
+    headers = {}
+    given = page_function_results("withoutLeadingComments", texts)
+    for name, rows in zip(names, given, strict=True):
+        headers[name] = rows.split("\n", 1)[0].split(",")
+
+    assert len(names) == 18
+    assert fields_missing_from(headers, results) == {}
+
+
+def test_every_committed_charts_columns_are_below_its_comment_lines():
+    # Runs without Node: a comment line the page would not drop, or a
+    # header without a field its chart reads, fails here.
+    results = REPOSITORY / "docs" / "results"
+
+    assert fields_missing_from_their_csv(results) == {}
+    assert header_of("# Attribution.\n# A note on the read.\nsection,item\n1,a\n") == [
+        "section",
+        "item",
+    ]
 
 
 def x_domains(node, domains):
