@@ -29,6 +29,7 @@ method.
 | [Q28](#q28-are-half-hours-with-a-larger-error-in-the-apis-stored-carbon-forecast-associated-with-more-unexplained-shortfall-from-august-2025-to-august-2026) | Stored forecast error against unexplained shortfall, a year of history | read (26 October 2026) |
 | [Q29](#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history) | Stored forecast error by month and time of day | read (27 October 2026) |
 | [Q30](#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026) | Wind forecast miss against stored carbon forecast error | read (27 October 2026) |
+| [Q37](#q37-when-neso-turns-wind-farms-down-what-does-it-turn-up-in-the-same-half-hours) | Wind turned down, and what is turned up in the same half-hours | method written (27 November 2026) |
 
 Questions dropped before a method was written are under
 [Retired](#retired).
@@ -708,6 +709,50 @@ after a counts-only coverage check.
   documented convention. The result stands as read; no claim is made about
   how the alignment bears on it.
 
+### Q37. When NESO turns wind farms down, what does it turn up in the same half-hours?
+
+**Data:** BOALF flags and instruction intervals; PN.
+**Analysis:**
+[q37_wind_turn_down_and_turn_up.sql](../dbt/analyses/q37_wind_turn_down_and_turn_up.sql)
+
+**Status:** method written on 27 November 2026.
+
+**Earlier look.** Q24 read wind's flagged share and its acceptance volume,
+both directions together, on 15 October 2026. No figure by direction, by
+half-hour or by what else was instructed in the same half-hour was read
+before this method was written.
+
+**Method:**
+
+- **Measure.** Q24's acceptance volume with its direction kept. For the
+  minutes each acceptance is in force, the energy between the instructed
+  level and the PN is turned down where the instructed level is below the
+  PN and turned up where it is above.
+- **Units.** Every unit with an acceptance and a complete PN capture: cohort
+  units by fuel group, and units with no published fuel type as one group
+  of their own.
+- **Half-hours.** Every half-hour in which at least one wind unit has a
+  complete PN capture, from the first half-hour that holds an acceptance
+  to the cutoff.
+- **Part 1, wind turned down.** Per settlement month and over all months:
+  the flagged energy turned down at wind units; all energy turned down at
+  them; the flagged energy as a share of the energy the wind units planned
+  (their PN energy); and the share of half-hours with any flagged wind
+  turn-down, with 100 MW or more and with 1 GW or more. A half-hour's MW
+  is its energy in MWh times two.
+- **Part 2, what is turned up.** Each half-hour goes in a band by its
+  flagged wind turn-down: none; under 100 MW; 100 MW to under 500 MW;
+  500 MW to under 1 GW; 1 GW to under 2 GW; 2 GW or more. Per band and
+  fuel group: the energy turned up and the energy turned down, each with
+  its flagged part, and the number of half-hours in the band. The result
+  is each group's share of the energy turned up in half-hours with any
+  flagged wind turn-down, beside its share in half-hours with none.
+- **Turn-up is counted with or without the flag.** Energy turned up to
+  replace energy turned down behind a constraint need not carry the flag.
+- **Wording.** "In the same half-hours", never "replaced by": the result
+  is an association in time, not a matched pair of instructions. No
+  location and no price is read.
+
 ## Retired
 
 Dropped questions stay listed, with the reason.
@@ -720,7 +765,7 @@ Dropped questions stay listed, with the reason.
 | Q14 | Is the forecast worse on weekends, holidays or in high wind? | Its calendar part is answered inside Q10; Q30 reads the wind forecast's miss, not high wind. |
 | Q17 | Capture timeliness per source and day | An operations measure, not research. Retired 12 October 2026. |
 | Q18 | Storage delivery fidelity against thermal units | Q23 reports how closely each fuel group, storage and thermal plant included, follows its PN; Q25 covers instructions. A test of storage against thermal plant would be its own question. |
-| Q19 | Instructed wind reductions per day | Q24 describes wind's system-action share; a daily chart would be its own question. |
+| Q19 | Instructed wind reductions per day | Q24 describes wind's system-action share and Q37 the energy turned down by month; a daily chart would be its own question. |
 | Q20 | GridSkew-observed replay at a fixed cutoff | It does not bear on the main question, and the time GridSkew first held each record is an inferred bound, not a measured time. Dropped 9 October 2026. |
 | Q21 | Registry churn | Low analytical value. Dropped before 9 October 2026. |
 
@@ -778,3 +823,4 @@ added after a read is dated in its question.
 | Q28 | 25 October | 26 October | no figure of it read |
 | Q29 | 27 October | | no figure of it read |
 | Q30 | 27 October | 27 October | no wind data held when written; not read when changed |
+| Q37 | 27 November | | Q24's acceptance volume for wind read on 15 October; no figure by direction or by half-hour read |
