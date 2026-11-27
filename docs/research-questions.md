@@ -527,7 +527,8 @@ after that first look at the data.
 - **Superseded acceptances (added 27 November 2026, after the read).**
   For the minutes where a later acceptance supersedes an earlier one,
   all of the acceptance volume between the later acceptance's level and
-  the PN carries the later acceptance's flag.
+  the PN carries the later acceptance's flag. When the flags differ,
+  this rule can change the reported share flagged as a system action.
 
 ### Q25. How fragmented are instructions to units typed other (mostly batteries) and pumped storage compared with thermal plant?
 

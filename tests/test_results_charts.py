@@ -8540,7 +8540,11 @@ def test_the_pages_workflow_deploys_in_a_job_after_the_upload():
     assert actions_used(build)[-1] == "actions/upload-pages-artifact"
     assert actions_used(deploy) == ["actions/deploy-pages"]
     assert deploy["needs"] == "build"
-    assert deploy["environment"]["name"] == "github-pages"
+    assert deploy["environment"] == {
+        "name": "github-pages",
+        "url": "${{ steps.deployment.outputs.page_url }}",
+    }
+    assert deploy["steps"][0]["id"] == "deployment"
 
 
 def test_the_pages_workflow_asks_for_exactly_its_three_permissions():
