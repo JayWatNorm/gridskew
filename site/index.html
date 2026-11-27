@@ -1144,7 +1144,7 @@
 
   function withoutLeadingComments(text) {
     let rows = text;
-    if (rows.startsWith("# ")) {
+    while (rows.startsWith("# ")) {
       const lineEnd = rows.indexOf("\n");
       if (lineEnd === -1) {
         return "";
