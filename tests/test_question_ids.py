@@ -9,7 +9,7 @@ import pytest
 
 REPOSITORY = Path(__file__).parent.parent
 QUESTIONS = REPOSITORY / "docs" / "research-questions.md"
-ANSWERED = (1, 2, 3, 5, 6, 8, 10, 12, 22, 23, 24, 25, 28, 29, 30)
+ANSWERED = (1, 2, 3, 5, 6, 8, 10, 12, 22, 23, 24, 25, 28, 29, 30, 37)
 RETIRED = (7, 11, 13, 14, 17, 18, 19, 20, 21)
 # A question id as prose writes it (Q12) or as a file name does (q12_...),
 # with the settlement-run suffix a variant of a question would carry. The

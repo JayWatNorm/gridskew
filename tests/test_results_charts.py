@@ -163,7 +163,63 @@ def planned_output_fixture_lines():
     return lines
 
 
+Q37_FIXTURE_HEADER = (
+    "section,settlement_month,wind_turn_down_band,fuel_group,item,half_hours,"
+    "half_hours_with_flagged_wind_turn_down,half_hours_at_100_mw_or_more,"
+    "half_hours_at_1_gw_or_more,half_hours_wind_not_measured,turned_up_mwh,"
+    "flagged_turned_up_mwh,turned_down_mwh,flagged_turned_down_mwh,planned_mwh,"
+    "flagged_turned_down_pct_of_planned,first_half_hour,last_half_hour,stretches,"
+    "level_energy_mwh"
+)
+
+
+def turn_up_fixture_line(band, fuel_group, half_hours, turned_up_mwh):
+    """One fuel group's row in one band of Q37's saved output; the three
+    energies the chart does not draw are unlike any it does."""
+    return (
+        f"3,,{band},{fuel_group},energy turned up and down in the band's "
+        f"half-hours,{half_hours},,,,,{turned_up_mwh},1.000,2.000,3.000,,,,,,"
+    )
+
+
 NEW_SAVED_OUTPUTS = {
+    # Q37, unlike the real output: two months, so its range is a span the
+    # chart works out, and six bands. A half-hour's MWh times two is its
+    # average MW: with no wind turned down, gas's 250,000 MWh over 1,000
+    # half-hours is 500 MW and the rest's 18,775 MWh is 37.55 MW, a half
+    # rounded up; the largest band's 1,250 half-hours show a thousands comma.
+    "q37_wind_turn_down_and_turn_up.csv": [
+        Q37_FIXTURE_HEADER,
+        "1,2025-08-01,,wind,wind turned down,480,200,150,90,0,,,9000.000,8000.000,"
+        "80000.000,10.00,2025-08-22 00:00:00+00:00,2025-08-31 22:30:00+00:00,,",
+        "1,2026-09-01,,wind,wind turned down,1440,900,800,500,0,,,60000.000,"
+        "50000.000,400000.000,12.50,2026-08-31 23:00:00+00:00,"
+        "2026-09-30 22:30:00+00:00,,",
+        turn_up_fixture_line("0 none", "gas_turbine", 1000, "250000.000"),
+        turn_up_fixture_line("0 none", "hydro", 1000, "12500.000"),
+        turn_up_fixture_line("0 none", "other", 1000, "6275.000"),
+        turn_up_fixture_line("1 under 100 MW", "gas_turbine", 200, "60000.000"),
+        turn_up_fixture_line("1 under 100 MW", "pumped_storage", 200, "4000.000"),
+        turn_up_fixture_line(
+            "2 100 MW to under 500 MW", "gas_turbine", 300, "105000.000"
+        ),
+        turn_up_fixture_line("2 100 MW to under 500 MW", "bioenergy", 300, "7500.000"),
+        turn_up_fixture_line(
+            "3 500 MW to under 1 GW", "gas_turbine", 250, "100000.000"
+        ),
+        turn_up_fixture_line("3 500 MW to under 1 GW", "other", 250, "7500.000"),
+        turn_up_fixture_line("4 1 GW to under 2 GW", "gas_turbine", 400, "180000.000"),
+        turn_up_fixture_line("4 1 GW to under 2 GW", "wind", 400, "14000.000"),
+        turn_up_fixture_line("5 2 GW or more", "gas_turbine", 1250, "1250000.000"),
+        turn_up_fixture_line(
+            "5 2 GW or more", "no published fuel type", 1250, "62500.000"
+        ),
+        turn_up_fixture_line("5 2 GW or more", "hydro", 1250, "31250.000"),
+        # Not a band of the chart: its half-hours are in no bar.
+        turn_up_fixture_line(
+            "6 wind turn-down not measured", "gas_turbine", 7, "7700.000"
+        ),
+    ],
     # Context counts, each unlike the real ones so a typed figure fails: 124.5
     # g/kWh and 21,350 MW are halves rounded up; wind's mean plan 18.25 MWh a
     # half-hour and its median 7.25; its 5,600 MWh planned makes Q5's 700 MWh
@@ -604,6 +660,17 @@ EXPECTED_CHART_CSVS = {
     + "fuel_group,acceptance_volume_mwh,flagged_pct,not_flagged_pct\n"
     "wind,9000.0,96.0,4.0\n"
     "gas_turbine,16000.0,35.0,65.0\n",
+    # Worked above NEW_SAVED_OUTPUTS: each band's MWh times two over its
+    # half-hours, gas and the rest.
+    "q37_turn_up_by_wind_turn_down_band.csv": BMRS_LINE
+    + "wind_turn_down_band,half_hours,gas_mw,other_mw,label\n"
+    '0 none,1000,500.0,37.6,"No wind turned down as a system action|1,000 half-hours"\n'
+    "1 under 100 MW,200,600.0,40.0,Under 100 MW|200 half-hours\n"
+    "2 100 MW to under 500 MW,300,700.0,50.0,"
+    "100 MW to under 500 MW|300 half-hours\n"
+    "3 500 MW to under 1 GW,250,800.0,60.0,500 MW to under 1 GW|250 half-hours\n"
+    "4 1 GW to under 2 GW,400,900.0,70.0,1 GW to under 2 GW|400 half-hours\n"
+    '5 2 GW or more,1250,2000.0,150.0,"2 GW or more|1,250 half-hours"\n',
     "q25_short_instructions_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,instructions,short_joined_pct,short_on_its_own_pct,"
     "short_joined_as_first_read_pct\n"
@@ -767,6 +834,10 @@ WRITTEN_FILES = [
     "q30_rank_correlations.png",
     "q30_rank_correlations.vl.json",
     "q30_wind_vs_carbon_error.csv",
+    "q37_turn_up_by_wind_turn_down_band.csv",
+    "q37_turn_up_by_wind_turn_down_band.png",
+    "q37_turn_up_by_wind_turn_down_band.vl.json",
+    "q37_wind_turn_down_and_turn_up.csv",
     "q3_coverage.csv",
     "q3_energy_against_plan_by_fuel_group.csv",
     "q3_energy_against_plan_by_fuel_group.png",
@@ -1654,6 +1725,8 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q2_settlement_run_changes.csv": BMRS_LINE,
         "q30_rank_correlations.csv": BMRS_AND_CARBON_LINE,
         "q30_wind_vs_carbon_error.csv": BMRS_AND_CARBON_LINE,
+        "q37_turn_up_by_wind_turn_down_band.csv": BMRS_LINE,
+        "q37_wind_turn_down_and_turn_up.csv": BMRS_LINE,
         "q3_coverage.csv": BMRS_LINE,
         "q3_energy_against_plan_by_fuel_group.csv": BMRS_LINE,
         "q3_gap_from_plan_by_fuel_group.csv": BMRS_LINE,
@@ -1809,6 +1882,9 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
             "results/q2_moved_energy_by_unit_type.csv"
         ),
         "q30_rank_correlations.vl.json": "results/q30_rank_correlations.csv",
+        "q37_turn_up_by_wind_turn_down_band.vl.json": (
+            "results/q37_turn_up_by_wind_turn_down_band.csv"
+        ),
         "q3_energy_against_plan_by_fuel_group.vl.json": (
             "results/q3_energy_against_plan_by_fuel_group.csv"
         ),
@@ -1842,7 +1918,7 @@ def test_no_chart_reads_right_to_left(written):
     # Each chart's axis says which side is which ("left: below plan"); a
     # reversed scale would put every bar on the wrong side of those words.
     assert specs_reading_right_to_left(written) == []
-    assert len(written_specs(written)) == 17
+    assert len(written_specs(written)) == 18
 
 
 def test_reference_lines_sit_where_the_rules_put_them(written):
@@ -1919,6 +1995,7 @@ def test_bars_split_into_parts_take_the_page_split_greys(written):
     assert split_schemes(written) == {
         "q12_instructed_share_by_fuel_group.vl.json": SPLIT_TWO_SCHEME,
         "q24_flagged_share_by_fuel_group.vl.json": SPLIT_TWO_SCHEME,
+        "q37_turn_up_by_wind_turn_down_band.vl.json": SPLIT_TWO_SCHEME,
         "q5_under_delivery_by_outage_notice.vl.json": SPLIT_THREE_SCHEME,
     }
 
@@ -1936,7 +2013,7 @@ def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
     # Q3's fixture covers 22 August 2025 to 26 September 2026, and Q12 reads
     # Q3's half-hours; Q5's rows run 22 August 2025 to 27 September 2026;
     # Q24's fixture holds August 2025 and September 2026, as settlement
-    # months; Q2's week is its rule's.
+    # months, and so does Q37's; Q2's week is its rule's.
     q3 = "22 Aug 2025 – 26 Sep 2026"
     assert q3 in x_axis_titles(written, "q3_gap_from_plan_by_fuel_group.vl.json")
     assert q3 in x_axis_titles(written, Q3_ENERGY_CHART)
@@ -1946,6 +2023,9 @@ def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
     )
     assert "energy in TWh, settlement months Aug 2025 – Sep 2026." in reading_line(
         written, "q24_flagged_share_by_fuel_group.vl.json"
+    )
+    assert "half-hours, settlement months Aug 2025 – Sep 2026." in reading_line(
+        written, "q37_turn_up_by_wind_turn_down_band.vl.json"
     )
     assert (
         f"for {Q2_WEEK} came from"
@@ -2234,6 +2314,14 @@ def test_a_wind_output_without_one_of_its_rows_is_refused(tmp_path):
     )
 
     with pytest.raises(ValueError, match="0 rows for section 5, line 11, actual"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_turn_up_output_without_one_of_its_bands_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    without_lines_containing(saved / Q37_OUTPUT, ",5 2 GW or more,")
+
+    with pytest.raises(ValueError, match="no row for band '5 2 GW or more'"):
         write_charts(saved, tmp_path / "out")
 
 
@@ -2787,6 +2875,7 @@ ARTICLE_IDS = [
     "q5",
     "q6",
     "q24",
+    "q37",
     "q25",
     "q29",
     "q28",
@@ -2811,6 +2900,7 @@ RESULT_NAMES = {
     "Q28": "carbon misses and under-delivery",
     "Q29": "misses by month and time of day",
     "Q30": "wind and carbon misses",
+    "Q37": "what is turned up with wind turned down",
 }
 
 
@@ -4550,10 +4640,11 @@ def test_no_instruction_reached_a_nuclear_unit_as_the_fuel_group_limit_says():
 
 def test_the_limitations_name_the_results_that_set_one_measure_against_another():
     # Q5 sets under-delivery against outage notices, Q8 and Q28 against the
-    # carbon miss, Q30 the wind miss against it; each is an article on the
+    # carbon miss, Q30 the wind miss against it, Q37 the energy turned up
+    # against the wind turned down; each is an article on the
     # page; Q28's further results stand inside its article.
     page = PAGE.read_text(encoding="utf-8")
-    named = ["Q5", "Q8", "Q28", "Q30"]
+    named = ["Q5", "Q8", "Q28", "Q30", "Q37"]
     names = [named_result(question_id) for question_id in named]
     names.insert(3, WIND_RESULT)
     limitation = (
@@ -4694,7 +4785,7 @@ def test_both_pages_qualify_the_written_first_claim_with_the_same_exceptions():
 def test_the_results_page_links_each_method_by_that_name():
     page = PAGE.read_text(encoding="utf-8")
 
-    assert page.count(">Full method</a>") == 15
+    assert page.count(">Full method</a>") == 16
     assert page.count(">Every method</a>") == 1
     assert re.findall(r">(?:Full|Every) rule<", page) == []
 
@@ -5329,6 +5420,7 @@ READ_DAYS = {
     "Q28": "26 October 2026",
     "Q29": "27 October 2026",
     "Q30": "27 October 2026",
+    "Q37": "27 November 2026",
 }
 Q25_RERUN = "re-run 25 October 2026 over the same period"
 STATUS_ROW = re.compile(
@@ -5924,7 +6016,7 @@ def test_the_page_and_rules_speak_as_i_or_neutrally():
 
     assert voice.findall(page) == []
     assert voice.findall(QUESTIONS.read_text(encoding="utf-8")) == []
-    assert page.count("<summary>How I measured it</summary>") == 15
+    assert page.count("<summary>How I measured it</summary>") == 16
     assert '<h2 id="found-title">What I found</h2>' in page
 
 
@@ -6400,6 +6492,7 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q12_instructed_share_by_fuel_group.vl.json",
         "results/q5_under_delivery_by_outage_notice.vl.json",
         "results/q24_flagged_share_by_fuel_group.vl.json",
+        "results/q37_turn_up_by_wind_turn_down_band.vl.json",
         "results/q25_short_instructions_by_fuel_group.vl.json",
         "results/q29_error_by_time_of_day.vl.json",
         "results/q29_error_by_month.vl.json",
@@ -6476,7 +6569,7 @@ def test_the_script_writes_each_committed_chart_png_at_its_size(tmp_path):
     committed_sizes = {}
     for path in sorted(results.glob("*.png")):
         committed_sizes[path.name] = png_width_and_height(path)
-    assert len(committed_sizes) == 17
+    assert len(committed_sizes) == 18
     assert written_sizes == committed_sizes
 
 
@@ -6493,7 +6586,7 @@ def test_the_committed_chart_pngs_are_what_the_script_writes(tmp_path):
     for path in sorted(written.glob("*.png")):
         if path.read_bytes() != (results / path.name).read_bytes():
             stale.append(path.name)
-    assert len(sorted(written.glob("*.png"))) == 17
+    assert len(sorted(written.glob("*.png"))) == 18
     assert stale == []
 
 
@@ -6549,6 +6642,10 @@ VISIBLE_LIMITS = {
     "q24": (
         "<p>The flag is NESO's label in real time, not a measured volume of "
         "network constraint, and later corrections to it are not read.</p>"
+    ),
+    "q37": (
+        "<p>This shows what NESO did in the same half-hours, not that one "
+        "instruction replaced another; no location and no price is read.</p>"
     ),
     "q25": (
         "<p>This covers only units with a published fuel type and measures "
@@ -6794,6 +6891,7 @@ def caption_windows(page):
     q3 = output_date_range(saved_output_rows("q3_metered_vs_notified.csv"))
     q5 = output_date_range(saved_output_rows("q5_shortfall_with_known_outage.csv"))
     q24 = output_month_range(saved_output_rows("q24_system_action_share.csv"))
+    q37 = output_month_range(saved_output_rows(Q37_OUTPUT))
     stored_year = output_date_range(saved_output_rows("q8_q28_history.csv"))
     q30 = output_date_range(saved_output_rows("q30_wind_vs_carbon_error.csv"))
     q25_first, q25_last = data_entry_range(page, "q25")
@@ -6807,6 +6905,7 @@ def caption_windows(page):
         "q12-chart": q3,
         "q5-chart": q5,
         "q24-chart": f"Settlement months {q24}",
+        "q37-chart": f"Settlement months {q37}",
         "q25-chart": f"{short_date(q25_first)} – {short_date(q25_last)}",
         "q29-time-chart": stored_year,
         "q29-month-chart": stored_year,
@@ -6882,6 +6981,7 @@ def expected_captions(windows, counts):
         "q24-chart": (
             f"{windows['q24-chart']}, units with a published fuel type. {elexon}"
         ),
+        "q37-chart": f"{windows['q37-chart']}, every unit NESO instructed. {elexon}",
         "q25-chart": (
             "Instructions to units with a published fuel type, "
             f"{windows['q25-chart']}. {elexon}"
@@ -7417,6 +7517,12 @@ EARLIER_LOOKS = {
         "- **Earlier look.** One day of wind values (22 August 2025), during "
         "endpoint checks."
     ),
+    "Q37": (
+        "**Earlier look.** Q24 read wind's flagged share and its acceptance "
+        "volume, both directions together, on 15 October 2026. No figure by "
+        "direction, by half-hour or by what else was instructed in the same "
+        "half-hour was read before this method was written."
+    ),
 }
 
 
@@ -7463,6 +7569,8 @@ WRITTEN_DATES_ROWS = [
     "| Q29 | 27 October | | no figure of it read |",
     "| Q30 | 27 October | 27 October | no wind data held when written; not read "
     "when changed |",
+    "| Q37 | 27 November | 27 November | Q24's acceptance volume for wind "
+    "read on 15 October; no figure by direction or by half-hour read |",
 ]
 
 
@@ -8006,6 +8114,306 @@ def test_q24s_answer_gives_each_groups_flagged_share_from_its_chart_data():
         f"Hydro {flagged['hydro']}%, pumped storage {flagged['pumped_storage']}%, "
         f"gas {flagged['gas_turbine']}%, the other group (mostly batteries) "
         f"{flagged['other']}%, bioenergy {flagged['bioenergy']}%."
+    )
+
+
+Q37_OUTPUT = "q37_wind_turn_down_and_turn_up.csv"
+Q37_CHART_DATA = "q37_turn_up_by_wind_turn_down_band.csv"
+Q37_ALL_MONTHS = "wind turned down, all months"
+Q37_NO_WIND_TURNED_DOWN = "0 none"
+Q37_WIND_NOT_MEASURED = "6 wind turn-down not measured"
+Q37_LARGEST_BAND = "5 2 GW or more"
+
+
+def turn_up_with_and_without_wind_turn_down(rows):
+    """Q37's energy turned up in the half-hours with wind turned down as a
+    system action and in those with none: every group's, gas's and gas's
+    flagged part, in MWh, beside each side's half-hours and fuel groups."""
+    sides = {}
+    for side_name in ["with", "without"]:
+        sides[side_name] = {
+            "half_hours": 0,
+            "all_mwh": Decimal(0),
+            "gas_mwh": Decimal(0),
+            "flagged_gas_mwh": Decimal(0),
+            "fuel_groups": set(),
+        }
+    bands_counted = set()
+    for row in section_rows(rows, "3"):
+        band = row["wind_turn_down_band"]
+        if band == Q37_WIND_NOT_MEASURED:
+            # On neither side of the comparison.
+            continue
+        side = sides["with"]
+        if band == Q37_NO_WIND_TURNED_DOWN:
+            side = sides["without"]
+        if band not in bands_counted:
+            side["half_hours"] += int(row["half_hours"])
+            bands_counted.add(band)
+        side["all_mwh"] += Decimal(row["turned_up_mwh"])
+        side["fuel_groups"].add(row["fuel_group"])
+        if row["fuel_group"] == "gas_turbine":
+            side["gas_mwh"] += Decimal(row["turned_up_mwh"])
+            side["flagged_gas_mwh"] += Decimal(row["flagged_turned_up_mwh"])
+    return sides
+
+
+def average_gas_gw(side):
+    """A side's gas energy turned up as average power: a half-hour's MWh
+    times two is its MW."""
+    return tenths(2 * side["gas_mwh"] / side["half_hours"] / 1000)
+
+
+def gas_share(side):
+    return percent_of(side["gas_mwh"], side["all_mwh"], 0)
+
+
+def month_in_full(settlement_month):
+    """'2026-08-01' as 'August 2026'."""
+    return long_date(settlement_month).split(" ", 1)[1]
+
+
+def flagged_share_of_planned(row):
+    """The wind energy turned down as a system action, as an exact
+    percentage of the energy the wind farms planned."""
+    return (
+        Decimal(100)
+        * Decimal(row["flagged_turned_down_mwh"])
+        / Decimal(row["planned_mwh"])
+    )
+
+
+def lowest_and_highest_month(rows):
+    """Q37's months with the smallest and the largest share of planned wind
+    energy turned down as a system action."""
+    lowest = None
+    highest = None
+    for row in section_rows(rows, "1"):
+        share = flagged_share_of_planned(row)
+        if lowest is None or share < flagged_share_of_planned(lowest):
+            lowest = row
+        if highest is None or share > flagged_share_of_planned(highest):
+            highest = row
+    return lowest, highest
+
+
+def test_q37s_answer_takes_its_shares_and_gas_power_from_its_saved_output():
+    rows = saved_output_rows(Q37_OUTPUT)
+    all_months = item_row(rows, "2", Q37_ALL_MONTHS)
+    half_hours = all_months["half_hours"]
+    any_turn_down = all_months["half_hours_with_flagged_wind_turn_down"]
+    sides = turn_up_with_and_without_wind_turn_down(rows)
+
+    assert answer_of(PAGE.read_text(encoding="utf-8"), "q37") == (
+        "<strong>Mostly gas, and on average more gas the more wind is turned "
+        "down in the same half-hour.</strong> NESO turned wind down as a "
+        "system action in "
+        f"{percent_of(any_turn_down, half_hours, 0)}% of half-hours, and by 1 GW "
+        "or more in "
+        f"{percent_of(all_months['half_hours_at_1_gw_or_more'], half_hours, 0)}%. "
+        "Where wind is turned down as a system action, gas is "
+        f"{gas_share(sides['with'])}% of the energy turned up, "
+        f"{average_gas_gw(sides['with'])} GW on average; elsewhere, gas is still "
+        f"{gas_share(sides['without'])}% of it, but "
+        f"{average_gas_gw(sides['without'])} GW."
+    )
+
+
+def test_q37s_result_gives_the_wind_turned_down_from_its_saved_output():
+    rows = saved_output_rows(Q37_OUTPUT)
+    all_months = item_row(rows, "2", Q37_ALL_MONTHS)
+    half_hours = int(all_months["half_hours"])
+    any_turn_down = int(all_months["half_hours_with_flagged_wind_turn_down"])
+    at_100_mw = int(all_months["half_hours_at_100_mw_or_more"])
+    at_1_gw = int(all_months["half_hours_at_1_gw_or_more"])
+    lowest, highest = lowest_and_highest_month(rows)
+
+    assert (half_hours, any_turn_down, at_100_mw, at_1_gw) == (
+        20_928,
+        13_873,
+        12_580,
+        9_322,
+    )
+    assert (
+        f"<dd>NESO turned down {twh(all_months['flagged_turned_down_mwh'])} TWh at "
+        "wind farms as system actions (settlement months "
+        f"{output_month_range(rows)}), "
+        f"{whole(flagged_share_of_planned(all_months))}% of the energy the wind "
+        f"farms planned; by month from {whole(flagged_share_of_planned(lowest))}% "
+        f"({month_in_full(lowest['settlement_month'])}) to "
+        f"{whole(flagged_share_of_planned(highest))}% "
+        f"({month_in_full(highest['settlement_month'])}). Of {half_hours:,} "
+        f"half-hours, {any_turn_down:,} have such a turn-down "
+        f"({percent_of(any_turn_down, half_hours, 0)}%), {at_100_mw:,} one of 100 "
+        f"MW or more ({percent_of(at_100_mw, half_hours, 0)}%) and {at_1_gw:,} one "
+        f"of 1 GW or more ({percent_of(at_1_gw, half_hours, 0)}%). In the "
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+    )
+
+
+def test_q37s_result_gives_the_energy_turned_up_on_each_side_from_its_bands():
+    # The half-hours on each side are the bands' own, so they must add up
+    # to the counts the months give.
+    rows = saved_output_rows(Q37_OUTPUT)
+    all_months = item_row(rows, "2", Q37_ALL_MONTHS)
+    sides = turn_up_with_and_without_wind_turn_down(rows)
+    with_wind = sides["with"]
+    without = sides["without"]
+
+    assert with_wind["half_hours"] == int(
+        all_months["half_hours_with_flagged_wind_turn_down"]
+    )
+    assert with_wind["half_hours"] + without["half_hours"] == int(
+        all_months["half_hours"]
+    )
+    assert without["half_hours"] == 7_055
+    assert (
+        f"In the {with_wind['half_hours']:,}, NESO turned up "
+        f"{twh(with_wind['all_mwh'])} TWh, {twh(with_wind['gas_mwh'])} TWh of it at "
+        f"gas units ({gas_share(with_wind)}%). In the {without['half_hours']:,} "
+        f"with none, it turned up {twh(without['all_mwh'])} TWh, "
+        f"{twh(without['gas_mwh'])} TWh of it at gas units "
+        f"({gas_share(without)}%). By band, gas averages "
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+    )
+
+
+def test_q37s_measure_gives_the_flagged_share_of_gas_turned_up_from_its_bands():
+    with_wind = turn_up_with_and_without_wind_turn_down(saved_output_rows(Q37_OUTPUT))[
+        "with"
+    ]
+    flagged = percent_of(with_wind["flagged_gas_mwh"], with_wind["gas_mwh"], 0)
+
+    assert (
+        "energy turned up to replace energy turned down behind a bottleneck need "
+        f"not carry the flag ({flagged}% of the gas energy turned up in half-hours "
+        "with wind turned down as a system action does).</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+    )
+
+
+def test_q37s_days_are_its_saved_outputs_first_and_last_half_hours():
+    # The output's months open with a part month; the day it starts and the
+    # last half-hour read are the all-months row's.
+    rows = saved_output_rows(Q37_OUTPUT)
+    all_months = item_row(rows, "2", Q37_ALL_MONTHS)
+    first_day = half_hour_long_date(all_months["first_half_hour"])
+    last_day = half_hour_long_date(all_months["last_half_hour"])
+    last_time = all_months["last_half_hour"].partition(" ")[2][:5]
+    folded = fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+
+    assert (
+        f"<dd>Settlement months {output_month_range(rows)}; the first is a part "
+        f"month, from {first_day}. Each half-hour is placed by" in folded
+    )
+    assert (
+        f"<dd>{first_day} to {last_day}, with data to {last_day} {last_time} UTC. "
+        f"Read {status_read('Q37')}.</dd>" in folded
+    )
+
+
+def test_q37s_chart_entry_names_every_group_its_second_part_holds():
+    sides = turn_up_with_and_without_wind_turn_down(saved_output_rows(Q37_OUTPUT))
+
+    assert sorted(sides["with"]["fuel_groups"] | sides["without"]["fuel_groups"]) == [
+        "bioenergy",
+        "gas_turbine",
+        "hydro",
+        "no published fuel type",
+        "other",
+        "pumped_storage",
+        "wind",
+    ]
+    assert (
+        "Everything else is bioenergy, hydro, pumped storage, wind, the other "
+        "group and units with no published fuel type.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+    )
+
+
+def test_q37s_title_holds_band_by_band_in_its_chart_data():
+    # "The more wind NESO turns down in a half-hour, the more gas": the gas
+    # bar grows at every step from no wind turned down to 2 GW or more.
+    bands = []
+    gas_mw = []
+    for row in saved_output_rows(Q37_CHART_DATA):
+        bands.append(row["wind_turn_down_band"])
+        gas_mw.append(Decimal(row["gas_mw"]))
+
+    assert bands == sorted(bands)
+    assert len(bands) == 6
+    assert gas_mw == sorted(set(gas_mw))
+
+
+def turn_up_by_band(rows):
+    """Q37's energy turned up in each band of wind turned down as a system
+    action: every group's and gas's, in MWh, beside the band's half-hours."""
+    bands = {}
+    for row in section_rows(rows, "3"):
+        band = bands.setdefault(
+            row["wind_turn_down_band"],
+            {
+                "half_hours": int(row["half_hours"]),
+                "all_mwh": Decimal(0),
+                "gas_mwh": Decimal(0),
+            },
+        )
+        band["all_mwh"] += Decimal(row["turned_up_mwh"])
+        if row["fuel_group"] == "gas_turbine":
+            band["gas_mwh"] += Decimal(row["turned_up_mwh"])
+    return bands
+
+
+def test_q37s_result_gives_gas_at_both_ends_of_its_bands_from_its_saved_output():
+    # "Falls from ... to ...": gas's share drops at every step up the bands.
+    bands = turn_up_by_band(saved_output_rows(Q37_OUTPUT))
+    none = bands[Q37_NO_WIND_TURNED_DOWN]
+    largest = bands[Q37_LARGEST_BAND]
+    exact_shares = []
+    for name in sorted(bands):
+        exact_shares.append(bands[name]["gas_mwh"] / bands[name]["all_mwh"])
+
+    assert exact_shares == sorted(set(exact_shares), reverse=True)
+    assert (
+        f"By band, gas averages {average_gas_gw(none)} GW with no wind turned "
+        f"down as a system action and {average_gas_gw(largest)} GW at 2 GW or "
+        "more, while its share of the energy turned up falls from "
+        f"{gas_share(none)}% to {gas_share(largest)}%.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+    )
+
+
+def test_q37s_limits_say_gas_is_most_of_the_turn_up_in_every_band():
+    bands = turn_up_by_band(saved_output_rows(Q37_OUTPUT))
+
+    assert len(bands) == 6
+    for band in bands.values():
+        assert 2 * band["gas_mwh"] > band["all_mwh"]
+    assert (
+        "Gas is most of the energy NESO turns up in every band, including "
+        "half-hours with no wind turned down as a system action."
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+    )
+
+
+def test_q37_leaves_nothing_out_in_its_saved_output():
+    # Section 4 holds what is left out and what fails a check; a half-hour
+    # with a wind stretch left out is counted in its month.
+    rows = saved_output_rows(Q37_OUTPUT)
+    not_measured = set()
+    for row in section_rows(rows, "1") + section_rows(rows, "2"):
+        not_measured.add(row["half_hours_wind_not_measured"])
+    bands = []
+    for row in section_rows(rows, "3"):
+        bands.append(row["wind_turn_down_band"])
+
+    assert section_rows(rows, "4") == []
+    assert not_measured == {"0"}
+    assert Q37_WIND_NOT_MEASURED not in bands
+    assert (
+        "<dd>Nothing: every instruction in the period had a plan to compare "
+        "with, a single ramp to read its level from and a flag value.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
     )
 
 

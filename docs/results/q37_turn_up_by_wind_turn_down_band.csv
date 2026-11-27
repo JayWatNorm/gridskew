@@ -1,0 +1,8 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026.
+wind_turn_down_band,half_hours,gas_mw,other_mw,label
+0 none,7055,798.7,86.9,"No wind turned down as a system action|7,055 half-hours"
+1 under 100 MW,1293,1014.5,123.5,"Under 100 MW|1,293 half-hours"
+2 100 MW to under 500 MW,1738,1197.6,177.5,"100 MW to under 500 MW|1,738 half-hours"
+3 500 MW to under 1 GW,1520,1449.4,251.7,"500 MW to under 1 GW|1,520 half-hours"
+4 1 GW to under 2 GW,2660,1880.0,342.9,"1 GW to under 2 GW|2,660 half-hours"
+5 2 GW or more,6662,3334.7,635.3,"2 GW or more|6,662 half-hours"

@@ -72,6 +72,9 @@ Q6_RESULT = "q6_publication_lag.csv"
 Q23_RESULT = "q23_pn_accuracy_proxy.csv"
 Q24_RESULT = "q24_system_action_share.csv"
 Q25_RESULT = "q25_instruction_fragmentation.csv"
+# Read 27 November 2026: wind turned down by month, and what is turned up
+# and down in the same half-hours.
+Q37_RESULT = "q37_wind_turn_down_and_turn_up.csv"
 Q25_CORRECTED_RESULT = "q25_instruction_fragmentation_corrected.csv"
 Q8_Q28_RESULT = "q8_q28_history.csv"
 Q28_REVERSE_RESULT = "q28_reverse_exploratory.csv"
@@ -271,6 +274,18 @@ Q3_ENERGY_LABEL_ROOM_PIXELS = 64
 Q12_PARTS = {"instructed_mwh": "Instructed by NESO", "rest_mwh": "Not instructed"}
 Q24_PARTS = {"flagged_pct": "Flagged", "not_flagged_pct": "Not flagged"}
 Q24_AXIS_TITLE = "Share of the energy instructions moved, %"
+# The bands of flagged wind turn-down in a half-hour, as the saved output
+# names them and as the chart shows them, least first.
+Q37_BAND_NAMES = {
+    "0 none": "No wind turned down as a system action",
+    "1 under 100 MW": "Under 100 MW",
+    "2 100 MW to under 500 MW": "100 MW to under 500 MW",
+    "3 500 MW to under 1 GW": "500 MW to under 1 GW",
+    "4 1 GW to under 2 GW": "1 GW to under 2 GW",
+    "5 2 GW or more": "2 GW or more",
+}
+Q37_PARTS = {"gas_mw": "Gas", "other_mw": "Everything else"}
+Q37_AXIS_TITLE = "Average power turned up, MW"
 
 Q25_KEY_JOINED = "Joined with follow-ons (Elexon's test)"
 Q25_KEY_ON_ITS_OWN = "Each instruction on its own"
@@ -433,6 +448,10 @@ Q24_TITLE = (
     "NESO flags almost all the energy its instructions move at wind farms as "
     "system actions"
 )
+Q37_TITLE = (
+    "On average, the more wind NESO turns down in a half-hour, the more gas it "
+    "turns up in it"
+)
 Q25_TITLE = (
     "The other group (mostly batteries) and pumped storage get far more short "
     "instructions than power stations"
@@ -496,6 +515,12 @@ Q24_READING = (
     "Each bar is one fuel group's instructed energy as 100%, split into the "
     "share NESO flagged as system actions and the rest. Under each name "
     "is that energy in TWh, settlement months {months}."
+)
+Q37_READING = (
+    "Each bar is the average power NESO turned up in the half-hours where it "
+    "turned down that much wind as a system action, split into gas and "
+    "everything else. Under each name is the number of half-hours, "
+    "settlement months {months}."
 )
 Q25_READING = (
     "Each row is a fuel group. The dot is the share of its instructions "
@@ -2552,6 +2577,95 @@ def write_q24_chart(rows, output):
     write_spec(chart, output / f"{name}.vl.json")
 
 
+# Q37: what is turned up where wind is turned down
+
+
+def turn_up_by_band_rows(rows):
+    """One row per band of flagged wind turn-down: the average power turned
+    up in its half-hours, gas and everything else, in MW."""
+    half_hours = {}
+    gas_mwh = {}
+    all_mwh = {}
+    for band in Q37_BAND_NAMES:
+        gas_mwh[band] = Decimal(0)
+        all_mwh[band] = Decimal(0)
+    for row in matching_rows(rows, "section", "3"):
+        band = row["wind_turn_down_band"]
+        if band not in Q37_BAND_NAMES:
+            continue
+        half_hours[band] = Decimal(row["half_hours"])
+        turned_up = Decimal(row["turned_up_mwh"])
+        all_mwh[band] += turned_up
+        if row["fuel_group"] == "gas_turbine":
+            gas_mwh[band] += turned_up
+    chart_rows = []
+    for band in Q37_BAND_NAMES:
+        if band not in half_hours:
+            raise ValueError(f"The saved output has no row for band {band!r}")
+        # A half-hour's MWh times two is its average MW.
+        gas_mw = 2 * gas_mwh[band] / half_hours[band]
+        all_mw = 2 * all_mwh[band] / half_hours[band]
+        chart_rows.append(
+            {
+                "wind_turn_down_band": band,
+                "half_hours": str(half_hours[band]),
+                "gas_mw": fixed(gas_mw, 1),
+                "other_mw": fixed(all_mw - gas_mw, 1),
+            }
+        )
+    return chart_rows
+
+
+def band_label(row):
+    """The band's name over its number of half-hours."""
+    name = Q37_BAND_NAMES[row["wind_turn_down_band"]]
+    return f"{name}|{int(row['half_hours']):,} half-hours"
+
+
+def write_q37_chart(rows, output):
+    name = "q37_turn_up_by_wind_turn_down_band"
+    chart_rows = turn_up_by_band_rows(rows)
+    for row in chart_rows:
+        row["label"] = band_label(row)
+    # The output holds settlement months, not days.
+    months = output_month_range(rows)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
+
+    figure, axes = new_figure(len(chart_rows))
+    stacked_bars(axes, chart_rows, Q37_PARTS, split_greys_light(SPLIT_TWO), 1)
+    row_labels(axes, column_of(chart_rows, "label"))
+    x_label(axes, Q37_AXIS_TITLE)
+    png_title(axes, Q37_TITLE, [f"Settlement months {months}"])
+    save_figure(figure, output / f"{name}.png", legend_handles(axes))
+
+    data = csv_data(csv_name, ["half_hours", "gas_mw", "other_mw"])
+    tooltip = [
+        altair.Tooltip("band_name:N", title="Wind turned down"),
+        altair.Tooltip("half_hours:Q", title="Half-hours", format=","),
+        altair.Tooltip("part_name:N", title="Part"),
+        altair.Tooltip("scaled:Q", title="Average turned up, MW", format=",.0f"),
+    ]
+    rows_axis = row_axis("label", column_of(chart_rows, "label"))
+    bars = stacked_parts(
+        rows_axis, Q37_PARTS, SPLIT_TWO_SCHEME, [Q37_AXIS_TITLE], tooltip, 1
+    )
+    chart = (
+        altair.layer(bars, data=data)
+        .transform_calculate(
+            band_name=display_name("wind_turn_down_band", Q37_BAND_NAMES)
+        )
+        .properties(
+            **page_layout(
+                Q37_TITLE,
+                Q37_READING.format(months=months),
+                len(chart_rows) * TWO_LINE_ROW_STEP_PIXELS,
+            )
+        )
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
 # Q25: how many instructions are short
 
 
@@ -3854,6 +3968,8 @@ def write_charts(result_folder, output_folder):
     write_q23_monthly_chart(q23, capacity, output)
     q24 = copy_saved_output(results, output, Q24_RESULT, BMRS_ATTRIBUTION)
     write_q24_chart(q24, output)
+    q37 = copy_saved_output(results, output, Q37_RESULT, BMRS_ATTRIBUTION)
+    write_q37_chart(q37, output)
     q25 = copy_saved_output(results, output, Q25_RESULT, BMRS_ATTRIBUTION)
     q25_corrected = copy_saved_output(
         results, output, Q25_CORRECTED_RESULT, BMRS_ATTRIBUTION
