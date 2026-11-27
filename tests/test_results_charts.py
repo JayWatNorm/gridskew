@@ -3086,7 +3086,8 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
         strata_read_day(saved_output_rows(STRATA_RESULT)),
         status_read("Q1").partition(",")[0],
         status_read("Q10").partition(",")[0],
-        status_read("Q37").partition(",")[0],
+        # Every result's read day, so a result added later moves the stamp.
+        *READ_DAYS.values(),
         wind_output_held_day(),
     )
     earliest = earliest_stated_read(PAGE.read_text(encoding="utf-8"))
@@ -4668,6 +4669,7 @@ SET_UP_EXCEPTIONS = [
     "Q25",
     "Q28:",
     "Q28's reverse cut",
+    "Q37",
 ]
 
 
@@ -4690,6 +4692,7 @@ def page_exception_openings():
         capitalised(named_result("Q25")),
         capitalised(named_result("Q28")),
         later_look,
+        capitalised(named_result("Q37")),
     ]
 
 

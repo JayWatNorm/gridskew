@@ -821,6 +821,9 @@ Where a method was not wholly written before its data was seen:
 - Q28: the overall error of its forecast had already been seen in a
   September 2026 exploration.
 - Q28's reverse cut (on the results page): asked after Q28 was read.
+- Q37: Q24 had read wind's acceptance volume, both directions together,
+  before the method was written; no figure by direction or by half-hour
+  had been read.
 
 ### When each method was written
 
