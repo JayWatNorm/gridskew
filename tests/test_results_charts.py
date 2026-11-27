@@ -215,6 +215,10 @@ NEW_SAVED_OUTPUTS = {
             "5 2 GW or more", "no published fuel type", 1250, "62500.000"
         ),
         turn_up_fixture_line("5 2 GW or more", "hydro", 1250, "31250.000"),
+        # Not a band of the chart: its half-hours are in no bar.
+        turn_up_fixture_line(
+            "6 wind turn-down not measured", "gas_turbine", 7, "7700.000"
+        ),
     ],
     # Context counts, each unlike the real ones so a typed figure fails: 124.5
     # g/kWh and 21,350 MW are halves rounded up; wind's mean plan 18.25 MWh a
@@ -2896,6 +2900,7 @@ RESULT_NAMES = {
     "Q28": "carbon misses and under-delivery",
     "Q29": "misses by month and time of day",
     "Q30": "wind and carbon misses",
+    "Q37": "what is turned up with wind turned down",
 }
 
 
@@ -4635,10 +4640,11 @@ def test_no_instruction_reached_a_nuclear_unit_as_the_fuel_group_limit_says():
 
 def test_the_limitations_name_the_results_that_set_one_measure_against_another():
     # Q5 sets under-delivery against outage notices, Q8 and Q28 against the
-    # carbon miss, Q30 the wind miss against it; each is an article on the
+    # carbon miss, Q30 the wind miss against it, Q37 the energy turned up
+    # against the wind turned down; each is an article on the
     # page; Q28's further results stand inside its article.
     page = PAGE.read_text(encoding="utf-8")
-    named = ["Q5", "Q8", "Q28", "Q30"]
+    named = ["Q5", "Q8", "Q28", "Q30", "Q37"]
     names = [named_result(question_id) for question_id in named]
     names.insert(3, WIND_RESULT)
     limitation = (
@@ -8199,9 +8205,10 @@ def test_q37s_answer_takes_its_shares_and_gas_power_from_its_saved_output():
         f"{percent_of(any_turn_down, half_hours, 0)}% of half-hours, and by 1 GW "
         "or more in "
         f"{percent_of(all_months['half_hours_at_1_gw_or_more'], half_hours, 0)}%. "
-        f"Where any wind is turned down, gas is {gas_share(sides['with'])}% of "
-        f"the energy turned up, {average_gas_gw(sides['with'])} GW on average; "
-        f"where none is, gas is still {gas_share(sides['without'])}% of it, but "
+        "Where wind is turned down as a system action, gas is "
+        f"{gas_share(sides['with'])}% of the energy turned up, "
+        f"{average_gas_gw(sides['with'])} GW on average; elsewhere, gas is still "
+        f"{gas_share(sides['without'])}% of it, but "
         f"{average_gas_gw(sides['without'])} GW."
     )
 
@@ -8273,8 +8280,9 @@ def test_q37s_measure_gives_the_flagged_share_of_gas_turned_up_from_its_bands():
 
     assert (
         "energy turned up to replace energy turned down behind a bottleneck need "
-        f"not carry the flag ({flagged}% of the gas energy turned up in these "
-        "half-hours does).</dd>" in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
+        f"not carry the flag ({flagged}% of the gas energy turned up in half-hours "
+        "with wind turned down as a system action does).</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
     )
 
 
