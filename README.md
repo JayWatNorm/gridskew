@@ -12,8 +12,9 @@ it captures, which those APIs later overwrite.
 
 **Results:** <https://jaywatnorm.github.io/gridskew>
 
-**Status:** the analysis is complete (27 November 2026). The Airflow DAGs
-keep collecting data, and the nightly dbt job keeps building and testing it.
+**Status:** the analysis is complete; the last question was read on
+27 November 2026. The Airflow DAGs keep collecting data, and the nightly dbt
+job keeps building and testing it.
 
 ## What it found
 
@@ -280,8 +281,9 @@ repository's release runbook, which is not public.
 
 ## Status
 
-The analysis is complete (27 November 2026). The DAGs keep collecting data,
-and the nightly dbt job keeps building and testing it.
+The analysis is complete; the last question was read on 27 November 2026.
+The DAGs keep collecting data, and the nightly dbt job keeps building and
+testing it.
 
 **Complete and running**
 

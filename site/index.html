@@ -668,10 +668,10 @@
 
   <article id="q37">
     <h3>When NESO turns wind farms down, what does it turn up?</h3>
-    <p class="answer"><strong>Mostly gas, and more of it the more wind is turned down.</strong> NESO turned wind down as a system action in 66% of half-hours, and by 1 GW or more in 45%. Where wind is turned down as a system action, gas is 85% of the energy turned up, 2.4 GW on average; elsewhere, gas is still 90% of it, but 0.8 GW.</p>
+    <p class="answer"><strong>Mostly gas, and on average more gas the more wind is turned down in the same half-hour.</strong> NESO turned wind down as a system action in 66% of half-hours, and by 1 GW or more in 45%. Where wind is turned down as a system action, gas is 85% of the energy turned up, 2.4 GW on average; elsewhere, gas is still 90% of it, but 0.8 GW.</p>
     <figure>
       <div class="chart" id="q37-chart">
-        <img src="results/q37_turn_up_by_wind_turn_down_band.png" alt="The more wind NESO turns down, the more gas it turns up in the same half-hours" loading="lazy">
+        <img src="results/q37_turn_up_by_wind_turn_down_band.png" alt="On average, the more wind NESO turns down in a half-hour, the more gas it turns up in it" loading="lazy">
       </div>
       <figcaption>Settlement months Aug 2025 – Oct 2026, every unit NESO instructed. Source: Elexon BMRS.</figcaption>
     </figure>
@@ -680,7 +680,7 @@
       <summary>How I measured it</summary>
       <dl>
         <dt>Result</dt>
-        <dd>NESO turned down 14.9 TWh at wind farms as system actions (settlement months Aug 2025 – Oct 2026), 14% of the energy the wind farms planned; by month from 9% (August 2026) to 22% (September 2026). Of 20,928 half-hours, 13,873 have such a turn-down (66%), 12,580 one of 100 MW or more (60%) and 9,322 one of 1 GW or more (45%). In the 13,873, NESO turned up 19.4 TWh, 16.4 TWh of it at gas units (85%). In the 7,055 with none, it turned up 3.1 TWh, 2.8 TWh of it at gas units (90%).</dd>
+        <dd>NESO turned down 14.9 TWh at wind farms as system actions (settlement months Aug 2025 – Oct 2026), 14% of the energy the wind farms planned; by month from 9% (August 2026) to 22% (September 2026). Of 20,928 half-hours, 13,873 have such a turn-down (66%), 12,580 one of 100 MW or more (60%) and 9,322 one of 1 GW or more (45%). In the 13,873, NESO turned up 19.4 TWh, 16.4 TWh of it at gas units (85%). In the 7,055 with none, it turned up 3.1 TWh, 2.8 TWh of it at gas units (90%). By band, gas averages 0.8 GW with no wind turned down as a system action and 3.3 GW at 2 GW or more, while its share of the energy turned up falls from 90% to 84%.</dd>
         <dt>Chart</dt>
         <dd>Settlement months Aug 2025 – Oct 2026; the first is a part month, from 22 August 2025. Each half-hour is placed by the wind NESO turned down in it as a system action; a half-hour's energy in MWh times two is its average power in MW. Everything else is bioenergy, hydro, pumped storage, wind, the other group and units with no published fuel type.</dd>
         <dt>Measure</dt>
@@ -688,7 +688,7 @@
         <dt>Left out</dt>
         <dd>Nothing: every instruction in the period had a plan to compare with, a single ramp to read its level from and a flag value.</dd>
         <dt>Limits</dt>
-        <dd>Only Balancing Mechanism instructions are read: no trades, and no wind outside the Balancing Mechanism. At a battery, pumped-storage, interconnector or demand unit, turned up can mean importing less. Half-hours with wind turned down differ from the others in wind and demand, and nothing here allows for that. Gas is most of the energy NESO turns up in every band, with or without wind turned down.</dd>
+        <dd>Only Balancing Mechanism instructions are read: no trades, and no wind outside the Balancing Mechanism. At a battery, pumped-storage, interconnector or demand unit, turned up can mean importing less. Half-hours with wind turned down differ from the others in wind and demand, and nothing here allows for that. Gas is most of the energy NESO turns up in every band, including half-hours with no wind turned down as a system action. Where a later instruction replaces an earlier one, the whole distance from the plan carries the later instruction's flag.</dd>
         <dt>Data</dt>
         <dd>22 August 2025 to 31 October 2026, with data to 31 October 2026 23:30 UTC. Read 27 November 2026, 07:54 UTC.</dd>
         <dt>Method</dt>
@@ -1094,7 +1094,7 @@
     <li>The metered figure is the latest settlement run held at each read, which differs by date.</li>
     <li>The plan (PN) is the latest published Final Physical Notification captured after gate closure.</li>
     <li>Services NESO buys outside the balancing mechanism are not in the instructions (BOALF).</li>
-    <li>The units studied are not the whole grid: wind and solar on local networks outside the Balancing Mechanism are not in them, and batteries with no published fuel type are counted only in what is turned up with wind turned down<a class="ref" href="#q37" aria-label="Details, Q37">*</a>.</li>
+    <li>The units studied are not the whole grid: wind and solar on local networks outside the Balancing Mechanism are not in them, and batteries with no published fuel type are counted only in settlement revisions<a class="ref" href="#q2" aria-label="Details, Q2">*</a> and what is turned up with wind turned down<a class="ref" href="#q37" aria-label="Details, Q37">*</a>.</li>
     <li>Results that set one measure against another (published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a>, demand or under-delivery<a class="ref" href="#q8" aria-label="Details, Q8">*</a>, carbon misses and under-delivery<a class="ref" href="#q28" aria-label="Details, Q28">*</a>, wind's shortfall<a class="ref" href="#wind-shortfall" aria-label="Details, wind's shortfall">*</a>, wind and carbon misses<a class="ref" href="#q30" aria-label="Details, Q30">*</a> and what is turned up with wind turned down<a class="ref" href="#q37" aria-label="Details, Q37">*</a>) are associations, not causes. Each result covers the period given beside it and may not hold in another.</li>
     <li>The forecast's drift<a class="ref" href="#q1" aria-label="Details, Q1">*</a> and accuracy by lead time<a class="ref" href="#q10" aria-label="Details, Q10">*</a> cover one window, 19 August to 12 November 2026, with no winter or spring. Inside it the accuracy result's bias changes sign: negative on its 365 earliest half-hours (19 August to 4 September 2026), positive on the 2,499 from 11 September. The drift's upward direction also holds on the 2,530 half-hours after 10 September 2026, 05:30 UTC; the accuracy figures point to a reversal on the earliest half-hours, for which the drift's own output has no figure. The split falls across a week-long gap in the sample as well as the change in the archive's poll schedule on 10 September 2026, and the saved outputs cannot tell a seasonal change from a capture effect.</li>
     <li>The results cannot be rebuilt from public data: the archived forecast versions behind them cannot be fetched again from the public APIs, so only GridSkew's own copies hold them; superseded settlement runs cannot be fetched again either and are not copied.</li>

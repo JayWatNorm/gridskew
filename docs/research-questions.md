@@ -768,6 +768,10 @@ before this method was written.
   interconnector or demand unit, turned up can mean importing less.
   Half-hours with wind turned down differ from the others in wind and
   demand, and nothing here controls for that.
+- **Superseded acceptances (added 27 November 2026, after the read).**
+  Where a later acceptance supersedes an earlier one for the same
+  minutes, all of the energy between its level and the PN carries the
+  later acceptance's flag.
 
 ## Retired
 

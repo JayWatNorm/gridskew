@@ -21,7 +21,7 @@
     },
     "url": "results/q37_turn_up_by_wind_turn_down_band.csv"
   },
-  "description": "The more wind NESO turns down, the more gas it turns up in the same half-hours",
+  "description": "On average, the more wind NESO turns down in a half-hour, the more gas it turns up in it",
   "height": 264,
   "layer": [
     {
@@ -95,7 +95,7 @@
             "paddingInner": 0.3
           },
           "sort": [
-            "No wind turned down|7,055 half-hours",
+            "No wind turned down as a system action|7,055 half-hours",
             "Under 100 MW|1,293 half-hours",
             "100 MW to under 500 MW|1,738 half-hours",
             "500 MW to under 1 GW|1,520 half-hours",
@@ -142,13 +142,13 @@
       "signal": "containerSize()[0] + 0 * width < 400 ? [\"Each bar is the average power NESO turned up in the\", \"half-hours where it turned down that much wind as a\", \"system action, split into gas and everything else.\", \"Under each name is the number of half-hours,\", \"settlement months Aug 2025 \u2013 Oct 2026.\"] : (containerSize()[0] + 0 * width < 480 ? [\"Each bar is the average power NESO turned up in the half-hours\", \"where it turned down that much wind as a system action, split\", \"into gas and everything else. Under each name is the number of\", \"half-hours, settlement months Aug 2025 \u2013 Oct 2026.\"] : (containerSize()[0] + 0 * width < 560 ? [\"Each bar is the average power NESO turned up in the half-hours where it turned\", \"down that much wind as a system action, split into gas and everything else.\", \"Under each name is the number of half-hours, settlement months Aug 2025 \u2013 Oct\", \"2026.\"] : (containerSize()[0] + 0 * width < 640 ? [\"Each bar is the average power NESO turned up in the half-hours where it turned down that much\", \"wind as a system action, split into gas and everything else. Under each name is the number of\", \"half-hours, settlement months Aug 2025 \u2013 Oct 2026.\"] : (containerSize()[0] + 0 * width < 720 ? [\"Each bar is the average power NESO turned up in the half-hours where it turned down that much wind as a\", \"system action, split into gas and everything else. Under each name is the number of half-hours, settlement\", \"months Aug 2025 \u2013 Oct 2026.\"] : ([\"Each bar is the average power NESO turned up in the half-hours where it turned down that much wind as a system action,\", \"split into gas and everything else. Under each name is the number of half-hours, settlement months Aug 2025 \u2013 Oct 2026.\"])))))"
     },
     "text": {
-      "expr": "containerSize()[0] + 0 * width < 400 ? [\"The more wind NESO turns down, the more gas it\", \"turns up in the same half-hours\"] : (containerSize()[0] + 0 * width < 480 ? [\"The more wind NESO turns down, the more gas it turns up\", \"in the same half-hours\"] : (containerSize()[0] + 0 * width < 560 ? [\"The more wind NESO turns down, the more gas it turns up in the same\", \"half-hours\"] : (containerSize()[0] + 0 * width < 640 ? [\"The more wind NESO turns down, the more gas it turns up in the same half-hours\"] : (containerSize()[0] + 0 * width < 720 ? [\"The more wind NESO turns down, the more gas it turns up in the same half-hours\"] : ([\"The more wind NESO turns down, the more gas it turns up in the same half-hours\"])))))"
+      "expr": "containerSize()[0] + 0 * width < 400 ? [\"On average, the more wind NESO turns down in a\", \"half-hour, the more gas it turns up in it\"] : (containerSize()[0] + 0 * width < 480 ? [\"On average, the more wind NESO turns down in a half-hour,\", \"the more gas it turns up in it\"] : (containerSize()[0] + 0 * width < 560 ? [\"On average, the more wind NESO turns down in a half-hour, the more\", \"gas it turns up in it\"] : (containerSize()[0] + 0 * width < 640 ? [\"On average, the more wind NESO turns down in a half-hour, the more gas it turns\", \"up in it\"] : (containerSize()[0] + 0 * width < 720 ? [\"On average, the more wind NESO turns down in a half-hour, the more gas it turns up in it\"] : ([\"On average, the more wind NESO turns down in a half-hour, the more gas it turns up in it\"])))))"
     }
   },
   "transform": [
     {
       "as": "band_name",
-      "calculate": "datum.wind_turn_down_band == \"0 none\" ? \"No wind turned down\" : datum.wind_turn_down_band == \"1 under 100 MW\" ? \"Under 100 MW\" : datum.wind_turn_down_band == \"2 100 MW to under 500 MW\" ? \"100 MW to under 500 MW\" : datum.wind_turn_down_band == \"3 500 MW to under 1 GW\" ? \"500 MW to under 1 GW\" : datum.wind_turn_down_band == \"4 1 GW to under 2 GW\" ? \"1 GW to under 2 GW\" : datum.wind_turn_down_band == \"5 2 GW or more\" ? \"2 GW or more\" : datum.wind_turn_down_band"
+      "calculate": "datum.wind_turn_down_band == \"0 none\" ? \"No wind turned down as a system action\" : datum.wind_turn_down_band == \"1 under 100 MW\" ? \"Under 100 MW\" : datum.wind_turn_down_band == \"2 100 MW to under 500 MW\" ? \"100 MW to under 500 MW\" : datum.wind_turn_down_band == \"3 500 MW to under 1 GW\" ? \"500 MW to under 1 GW\" : datum.wind_turn_down_band == \"4 1 GW to under 2 GW\" ? \"1 GW to under 2 GW\" : datum.wind_turn_down_band == \"5 2 GW or more\" ? \"2 GW or more\" : datum.wind_turn_down_band"
     }
   ],
   "width": "container"

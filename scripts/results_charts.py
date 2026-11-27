@@ -277,7 +277,7 @@ Q24_AXIS_TITLE = "Share of the energy instructions moved, %"
 # The bands of flagged wind turn-down in a half-hour, as the saved output
 # names them and as the chart shows them, least first.
 Q37_BAND_NAMES = {
-    "0 none": "No wind turned down",
+    "0 none": "No wind turned down as a system action",
     "1 under 100 MW": "Under 100 MW",
     "2 100 MW to under 500 MW": "100 MW to under 500 MW",
     "3 500 MW to under 1 GW": "500 MW to under 1 GW",
@@ -449,7 +449,8 @@ Q24_TITLE = (
     "system actions"
 )
 Q37_TITLE = (
-    "The more wind NESO turns down, the more gas it turns up in the same half-hours"
+    "On average, the more wind NESO turns down in a half-hour, the more gas it "
+    "turns up in it"
 )
 Q25_TITLE = (
     "The other group (mostly batteries) and pumped storage get far more short "

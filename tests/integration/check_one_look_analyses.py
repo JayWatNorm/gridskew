@@ -1095,7 +1095,14 @@ Q25_EXPECTED = {
 #   because the stretch is not wind's.
 # 11:00: WIND-1 flagged to 0: 1,000 down, exactly 2 GW. PS-1 flagged from 0
 #   to 120 for 11:00 to 11:10 only: 20 up; its PN segment from 11:20, at
-#   60, adds nothing.
+#   60, adds nothing. HYDRO-1 plans 0, in two PN segments that meet at
+#   11:15, and its ramp point climbs from 0 to 300 over the half-hour,
+#   but its stretch is 11:10 to 11:20 only: the level is 100, 150 and
+#   200 at 11:10, 11:15 and 11:20, so 125 MW then 175 MW for a twelfth
+#   of an hour each, 25 up. BIO-1 is held at 0 for 11:10 to 11:20 while
+#   its PN climbs from 0 to 300 over the half-hour: the PN is 100 at
+#   11:10 and 200 at 11:20, 150 MW on average for a sixth of an hour,
+#   25 down.
 # 12:00: WIND-1 flagged to 1,999 until 12:15: 0.25 down; then, not flagged,
 #   to 2,040: 10 up. A second ramp point of that acceptance, from 12:00 at
 #   2,100, also spans the later stretch; the one that starts latest is
@@ -1110,7 +1117,8 @@ Q25_EXPECTED = {
 #   half-hour is not read: WIND-1's stretch (700 MWh at its level) is left
 #   out and GAS-1's 50 up, from 100 to 200, is counted beside the result.
 # 15:00: WIND-1's ramp points run to 15:10 and from 15:20 but its stretch
-#   is 15:00 to 15:20, so the stretch (900 MWh) is left out; the half-hour
+#   is 15:00 to 15:20, so the stretch (900 MWh) is left out, though an
+#   earlier capture of the first ramp point ran to 15:30; the half-hour
 #   is read, in the band for wind turn-down not measured. Its next
 #   stretch, 15:20 to 15:30 to 1,940 and not flagged, is measured: 60 MW
 #   for a sixth of an hour, 10 down. GAS-1 from 100 to 130, not flagged:
@@ -1163,6 +1171,10 @@ insert into synthetic_intervals values
         '2026-09-01 11:00+00', '2026-09-01 11:30+00', 9, true, 0),
     ('PS-1', '2026-09-01 11:00+00',
         '2026-09-01 11:00+00', '2026-09-01 11:10+00', 10, true, 20),
+    ('HYDRO-1', '2026-09-01 11:00+00',
+        '2026-09-01 11:10+00', '2026-09-01 11:20+00', 26, false, 25),
+    ('BIO-1', '2026-09-01 11:00+00',
+        '2026-09-01 11:10+00', '2026-09-01 11:20+00', 27, false, 0),
     ('WIND-1', '2026-09-01 12:00+00',
         '2026-09-01 12:00+00', '2026-09-01 12:15+00', 11, true, 499.75),
     ('WIND-1', '2026-09-01 12:00+00',
@@ -1197,7 +1209,9 @@ insert into synthetic_cohort values
     ('WIND-1', 'wind'),
     ('WIND-2', 'wind'),
     ('GAS-1', 'gas_turbine'),
-    ('PS-1', 'pumped_storage');
+    ('PS-1', 'pumped_storage'),
+    ('HYDRO-1', 'hydro'),
+    ('BIO-1', 'bioenergy');
 create temporary table synthetic_boalf (
     national_grid_bm_unit text,
     acceptance_number integer,
@@ -1234,6 +1248,10 @@ insert into synthetic_boalf values
         10, 10, '2026-09-02 01:00+00'),
     ('PS-1', 10, '2026-09-01 11:00+00', '2026-09-01 11:10+00',
         120, 120, '2026-09-02 01:00+00'),
+    ('HYDRO-1', 26, '2026-09-01 11:00+00', '2026-09-01 11:30+00',
+        0, 300, '2026-09-02 01:00+00'),
+    ('BIO-1', 27, '2026-09-01 11:10+00', '2026-09-01 11:20+00',
+        0, 0, '2026-09-02 01:00+00'),
     ('WIND-1', 11, '2026-09-01 12:00+00', '2026-09-01 12:15+00',
         1999, 1999, '2026-09-02 01:00+00'),
     ('WIND-1', 21, '2026-09-01 12:00+00', '2026-09-01 12:30+00',
@@ -1250,6 +1268,8 @@ insert into synthetic_boalf values
         200, 200, '2026-09-02 01:00+00'),
     ('WIND-1', 16, '2026-09-01 14:00+00', '2026-09-01 14:30+00',
         1400, 1400, '2026-09-02 01:00+00'),
+    ('WIND-1', 17, '2026-09-01 15:00+00', '2026-09-01 15:30+00',
+        1800, 1800, '2026-09-01 20:00+00'),
     ('WIND-1', 17, '2026-09-01 15:00+00', '2026-09-01 15:10+00',
         1800, 1800, '2026-09-02 01:00+00'),
     ('WIND-1', 17, '2026-09-01 15:20+00', '2026-09-01 15:30+00',
@@ -1286,6 +1306,8 @@ insert into synthetic_commitments values
     ('WIND-2', '2026-09-01', 23, '2026-09-01 10:00+00', 250, 'complete', '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-01', 25, '2026-09-01 11:00+00', 1000, 'complete', '2026-09-06 00:00+00'),
     ('PS-1', '2026-09-01', 25, '2026-09-01 11:00+00', 0, 'complete', '2026-09-06 00:00+00'),
+    ('HYDRO-1', '2026-09-01', 25, '2026-09-01 11:00+00', 0, 'complete', '2026-09-06 00:00+00'),
+    ('BIO-1', '2026-09-01', 25, '2026-09-01 11:00+00', 75, 'complete', '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-01', 27, '2026-09-01 12:00+00', 1000, 'complete', '2026-09-06 00:00+00'),
     ('GAS-1', '2026-09-01', 27, '2026-09-01 12:00+00', 50, 'complete', '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-01', 29, '2026-09-01 13:00+00', 1000, 'complete', '2026-09-06 00:00+00'),
@@ -1339,6 +1361,12 @@ insert into synthetic_pn values
         0, 0, '2026-09-06 00:00+00'),
     ('PS-1', '2026-09-01', 25, '2026-09-01 11:20+00', '2026-09-01 11:30+00',
         60, 60, '2026-09-06 00:00+00'),
+    ('HYDRO-1', '2026-09-01', 25, '2026-09-01 11:00+00', '2026-09-01 11:15+00',
+        0, 0, '2026-09-06 00:00+00'),
+    ('HYDRO-1', '2026-09-01', 25, '2026-09-01 11:15+00', '2026-09-01 11:30+00',
+        0, 0, '2026-09-06 00:00+00'),
+    ('BIO-1', '2026-09-01', 25, '2026-09-01 11:00+00', '2026-09-01 11:30+00',
+        0, 300, '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-01', 27, '2026-09-01 12:00+00', '2026-09-01 12:30+00',
         2000, 2000, '2026-09-06 00:00+00'),
     ('GAS-1', '2026-09-01', 27, '2026-09-01 12:00+00', '2026-09-01 12:30+00',
@@ -1474,6 +1502,10 @@ Q37_EXPECTED = dict(
         ),
         q37_band_row(
             BAND_FROM_2_GW, "pumped_storage", 1, "20.000", "20.000", "0.000", "0.000"
+        ),
+        q37_band_row(BAND_FROM_2_GW, "hydro", 1, "25.000", "0.000", "0.000", "0.000"),
+        q37_band_row(
+            BAND_FROM_2_GW, "bioenergy", 1, "0.000", "0.000", "25.000", "0.000"
         ),
         (
             (4, None, None, "wind", "left out: no complete PN capture, flagged"),
