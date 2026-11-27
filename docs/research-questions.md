@@ -789,8 +789,9 @@ before this method was written.
   The gas group pools combined-cycle and open-cycle units (651 gCO2/kWh)
   and the output does not split them, and a part-loaded unit emits
   more per kWh, so the factor is more likely low than high. The gas
-  counted is all that was turned up in those half-hours, for any
-  reason, and 4.6 TWh of it is flagged. The
+  counted is all the gas turned up in those half-hours, for any
+  reason, and 4.6 TWh of it is flagged; no acceptance is linked to
+  another. The
   figure is the CO2 of the gas turned up in the same half-hours, not
   a saving had the wind run: half-hours with no flagged wind
   turn-down also have more gas turned up than down, and they differ
