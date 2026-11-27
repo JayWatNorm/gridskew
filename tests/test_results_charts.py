@@ -8520,6 +8520,29 @@ def test_the_pages_workflow_runs_on_pushes_to_main_for_the_site_and_results():
     }
 
 
+def actions_used(job):
+    """The actions a workflow job's steps use, without their versions."""
+    used = []
+    for step in job["steps"]:
+        if "uses" in step:
+            used.append(step["uses"].partition("@")[0])
+    return used
+
+
+def test_the_pages_workflow_deploys_in_a_job_after_the_upload():
+    # In one job the deploy step looked the upload up before GitHub listed
+    # it, and the run failed.
+    workflow = yaml.load(PAGES_WORKFLOW.read_text(encoding="utf-8"), yaml.BaseLoader)
+    build = workflow["jobs"]["build"]
+    deploy = workflow["jobs"]["deploy"]
+
+    assert sorted(workflow["jobs"]) == ["build", "deploy"]
+    assert actions_used(build)[-1] == "actions/upload-pages-artifact"
+    assert actions_used(deploy) == ["actions/deploy-pages"]
+    assert deploy["needs"] == "build"
+    assert deploy["environment"]["name"] == "github-pages"
+
+
 def test_the_pages_workflow_asks_for_exactly_its_three_permissions():
     workflow = yaml.load(PAGES_WORKFLOW.read_text(encoding="utf-8"), yaml.BaseLoader)
 
