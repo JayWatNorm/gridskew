@@ -688,7 +688,7 @@
         <dt>Left out</dt>
         <dd>Nothing: every instruction in the period had a plan to compare with, a single ramp to read its level from and a flag value.</dd>
         <dt>Limits</dt>
-        <dd>Only Balancing Mechanism instructions are read: no trades, and no wind outside the Balancing Mechanism. At a battery, pumped-storage, interconnector or demand unit, turned up can mean importing less. Half-hours with wind turned down differ from the others in wind and demand, and nothing here allows for that. Gas is most of the energy NESO turns up in every band, including half-hours with no wind turned down as a system action. Where a later instruction replaces an earlier one, the whole distance from the plan carries the later instruction's flag.</dd>
+        <dd>Only Balancing Mechanism instructions are read: no trades, and no wind outside the Balancing Mechanism. At a battery, pumped-storage, interconnector or demand unit, turned up can mean importing less. Half-hours with wind turned down differ from the others in wind and demand, and nothing here allows for that. Gas is most of the energy NESO turns up in every band, including half-hours with no wind turned down as a system action. Where a later instruction replaces an earlier one, the whole distance from the plan carries the later instruction's flag, so some energy the earlier one moved is counted under the later one's flag, and a half-hour can fall in a different band.</dd>
         <dt>Data</dt>
         <dd>22 August 2025 to 31 October 2026, with data to 31 October 2026 23:30 UTC. Read 27 November 2026, 07:54 UTC.</dd>
         <dt>Method</dt>

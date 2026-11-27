@@ -771,7 +771,9 @@ before this method was written.
 - **Superseded acceptances (added 27 November 2026, after the read).**
   Where a later acceptance supersedes an earlier one for the same
   minutes, all of the energy between its level and the PN carries the
-  later acceptance's flag.
+  later acceptance's flag, so energy the earlier one moved is counted
+  under the later one's flag and a half-hour can fall in a different
+  band.
 
 ## Retired
 

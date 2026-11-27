@@ -1097,12 +1097,12 @@ Q25_EXPECTED = {
 #   to 120 for 11:00 to 11:10 only: 20 up; its PN segment from 11:20, at
 #   60, adds nothing. HYDRO-1 plans 0, in two PN segments that meet at
 #   11:15, and its ramp point climbs from 0 to 300 over the half-hour,
-#   but its stretch is 11:10 to 11:20 only: the level is 100, 150 and
-#   200 at 11:10, 11:15 and 11:20, so 125 MW then 175 MW for a twelfth
-#   of an hour each, 25 up. BIO-1 is held at 0 for 11:10 to 11:20 while
-#   its PN climbs from 0 to 300 over the half-hour: the PN is 100 at
-#   11:10 and 200 at 11:20, 150 MW on average for a sixth of an hour,
-#   25 down.
+#   but its stretch is 11:10 to 11:25 only, off the ramp's centre: the
+#   level is 100, 150 and 250 at 11:10, 11:15 and 11:25, so 125 MW for
+#   a twelfth of an hour then 200 MW for a sixth, 43.75 up. BIO-1 is
+#   held at 0 for 11:10 to 11:25 while its PN climbs from 0 to 300 over
+#   the half-hour: the PN is 100 at 11:10 and 250 at 11:25, 175 MW on
+#   average for a quarter of an hour, 43.75 down.
 # 12:00: WIND-1 flagged to 1,999 until 12:15: 0.25 down; then, not flagged,
 #   to 2,040: 10 up. A second ramp point of that acceptance, from 12:00 at
 #   2,100, also spans the later stretch; the one that starts latest is
@@ -1172,9 +1172,9 @@ insert into synthetic_intervals values
     ('PS-1', '2026-09-01 11:00+00',
         '2026-09-01 11:00+00', '2026-09-01 11:10+00', 10, true, 20),
     ('HYDRO-1', '2026-09-01 11:00+00',
-        '2026-09-01 11:10+00', '2026-09-01 11:20+00', 26, false, 25),
+        '2026-09-01 11:10+00', '2026-09-01 11:25+00', 26, false, 43.75),
     ('BIO-1', '2026-09-01 11:00+00',
-        '2026-09-01 11:10+00', '2026-09-01 11:20+00', 27, false, 0),
+        '2026-09-01 11:10+00', '2026-09-01 11:25+00', 27, false, 0),
     ('WIND-1', '2026-09-01 12:00+00',
         '2026-09-01 12:00+00', '2026-09-01 12:15+00', 11, true, 499.75),
     ('WIND-1', '2026-09-01 12:00+00',
@@ -1250,7 +1250,7 @@ insert into synthetic_boalf values
         120, 120, '2026-09-02 01:00+00'),
     ('HYDRO-1', 26, '2026-09-01 11:00+00', '2026-09-01 11:30+00',
         0, 300, '2026-09-02 01:00+00'),
-    ('BIO-1', 27, '2026-09-01 11:10+00', '2026-09-01 11:20+00',
+    ('BIO-1', 27, '2026-09-01 11:10+00', '2026-09-01 11:25+00',
         0, 0, '2026-09-02 01:00+00'),
     ('WIND-1', 11, '2026-09-01 12:00+00', '2026-09-01 12:15+00',
         1999, 1999, '2026-09-02 01:00+00'),
@@ -1503,9 +1503,9 @@ Q37_EXPECTED = dict(
         q37_band_row(
             BAND_FROM_2_GW, "pumped_storage", 1, "20.000", "20.000", "0.000", "0.000"
         ),
-        q37_band_row(BAND_FROM_2_GW, "hydro", 1, "25.000", "0.000", "0.000", "0.000"),
+        q37_band_row(BAND_FROM_2_GW, "hydro", 1, "43.750", "0.000", "0.000", "0.000"),
         q37_band_row(
-            BAND_FROM_2_GW, "bioenergy", 1, "0.000", "0.000", "25.000", "0.000"
+            BAND_FROM_2_GW, "bioenergy", 1, "0.000", "0.000", "43.750", "0.000"
         ),
         (
             (4, None, None, "wind", "left out: no complete PN capture, flagged"),
