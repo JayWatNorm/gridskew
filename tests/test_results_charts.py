@@ -8263,6 +8263,23 @@ def test_q37_gives_its_carbon_estimate_in_view_beside_what_it_is_not():
 
 
 def test_q37s_carbon_estimate_is_its_net_gas_at_nesos_combined_cycle_rate():
+    sides = turn_up_with_and_without_wind_turn_down(saved_output_rows(Q37_OUTPUT))
+    with_wind = sides["with"]
+    net_tonnes = million_tonnes_of_co2(net_gas_mwh(with_wind))
+
+    assert (
+        twh(with_wind["gas_mwh"]),
+        twh(with_wind["flagged_gas_mwh"]),
+        twh(with_wind["gas_turned_down_mwh"]),
+        twh(net_gas_mwh(with_wind)),
+        tenths(net_tonnes),
+        tenths(million_tonnes_of_co2(with_wind["gas_mwh"])),
+        whole(net_tonnes),
+        twh(net_gas_mwh(sides["without"])),
+    ) == ("16.4", "4.6", "1.9", "14.5", "5.7", "6.5", "6", "1.2")
+
+
+def test_q37s_carbon_entry_shows_its_working_from_its_saved_output():
     rows = saved_output_rows(Q37_OUTPUT)
     all_months = item_row(rows, "2", Q37_ALL_MONTHS)
     sides = turn_up_with_and_without_wind_turn_down(rows)
@@ -8272,15 +8289,6 @@ def test_q37s_carbon_estimate_is_its_net_gas_at_nesos_combined_cycle_rate():
     gross_tonnes = million_tonnes_of_co2(with_wind["gas_mwh"])
 
     assert (
-        twh(with_wind["gas_mwh"]),
-        twh(with_wind["gas_turned_down_mwh"]),
-        twh(net_gas_mwh(with_wind)),
-        tenths(net_tonnes),
-        tenths(gross_tonnes),
-        whole(net_tonnes),
-        twh(net_gas_mwh(without)),
-    ) == ("16.4", "1.9", "14.5", "5.7", "6.5", "6", "1.2")
-    assert (
         "<dt>Carbon</dt>\n        <dd>Added 27 November 2026, after the read, "
         "from the saved output; no new data was read. In the "
         f"{with_wind['half_hours']:,} half-hours with wind turned down as a "
@@ -8289,16 +8297,22 @@ def test_q37s_carbon_estimate_is_its_net_gas_at_nesos_combined_cycle_rate():
         f"{twh(with_wind['gas_turned_down_mwh'])} TWh: "
         f"{twh(net_gas_mwh(with_wind))} TWh more gas, beside the "
         f"{twh(all_months['flagged_turned_down_mwh'])} TWh of wind turned "
-        f"down. At {NESO_COMBINED_CYCLE_GRAMS_PER_KWH} g of CO2 per kWh, the "
+        f"down. Only {twh(with_wind['flagged_gas_mwh'])} TWh of the gas turned "
+        "up carries NESO's system flag, so the two figures being close does "
+        "not show one replacing the other. At "
+        f"{NESO_COMBINED_CYCLE_GRAMS_PER_KWH} g of CO2 per kWh, the "
         f'rate <a href="{NESO_CARBON_METHOD}">NESO\'s carbon intensity '
         "method</a> uses for combined-cycle gas, that is "
         f"{tenths(net_tonnes)} million tonnes of CO2, or "
         f"{tenths(gross_tonnes)} million without taking off the gas turned "
-        "down. The rate counts CO2 from generation only, averaged over Great "
-        "Britain's plants. The gas group includes open-cycle units, whose "
+        "down. The rate counts CO2 from generation only and is an average "
+        "over Great Britain's plants that rests on 2017 fuel emission "
+        "factors. The gas group includes open-cycle units, whose "
         f"rate is {NESO_OPEN_CYCLE_GRAMS_PER_KWH} g, and the output does not "
         "split them; a unit held at part load also emits more per kWh. So "
-        "the rate is more likely low than high for this gas. This is the CO2 "
+        "the rate is more likely low than high for this gas. The gas itself "
+        "is all that was turned up in those half-hours, for any reason. This "
+        "is the CO2 "
         "of the gas NESO turned up in the same half-hours, not what would "
         "have been saved had the wind run: in the "
         f"{without['half_hours']:,} half-hours with no wind turned down as a "
