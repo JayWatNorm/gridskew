@@ -664,7 +664,7 @@ EXPECTED_CHART_CSVS = {
     # half-hours, gas and the rest.
     "q37_turn_up_by_wind_turn_down_band.csv": BMRS_LINE
     + "wind_turn_down_band,half_hours,gas_mw,other_mw,label\n"
-    '0 none,1000,500.0,37.6,"No wind turned down as a system action|1,000 half-hours"\n'
+    '0 none,1000,500.0,37.6,"None as a system action|1,000 half-hours"\n'
     "1 under 100 MW,200,600.0,40.0,Under 100 MW|200 half-hours\n"
     "2 100 MW to under 500 MW,300,700.0,50.0,"
     "100 MW to under 500 MW|300 half-hours\n"
@@ -3086,6 +3086,7 @@ def test_the_findings_and_footer_take_their_figures_from_the_saved_outputs():
         strata_read_day(saved_output_rows(STRATA_RESULT)),
         status_read("Q1").partition(",")[0],
         status_read("Q10").partition(",")[0],
+        status_read("Q37").partition(",")[0],
         wind_output_held_day(),
     )
     earliest = earliest_stated_read(PAGE.read_text(encoding="utf-8"))
@@ -8415,6 +8416,19 @@ def test_q37_leaves_nothing_out_in_its_saved_output():
         "with, a single ramp to read its level from and a flag value.</dd>"
         in fold_outs(PAGE.read_text(encoding="utf-8"), "q37")
     )
+
+
+def test_q37s_band_names_are_short_enough_to_show_in_full():
+    # The interactive chart cuts an axis label wider than 180 pixels; the
+    # longest name that shows in full has 23 characters.
+    names = []
+    for row in saved_output_rows(Q37_CHART_DATA):
+        names.append(row["label"].partition("|")[0])
+
+    assert names[0] == "None as a system action"
+    assert len(names) == 6
+    for name in names:
+        assert len(name) <= 23
 
 
 def test_q25s_answer_gives_the_short_shares_from_its_chart_data():
