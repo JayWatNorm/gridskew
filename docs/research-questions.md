@@ -778,6 +778,20 @@ before this method was written.
   all of the energy between the later acceptance's level and the PN
   carries the later acceptance's flag. This can affect which band a
   half-hour falls in.
+- **CO2 estimate (added 27 November 2026, after the read).** Worked
+  from the saved output; no new data is read. The gas energy turned
+  up less the gas energy turned down, in half-hours with any flagged
+  wind turn-down, times 394 gCO2/kWh, NESO's carbon intensity
+  factor for combined-cycle gas ([methodology](https://www.neso.energy/data-portal/national-carbon-intensity-forecast/national_carbon_intensity_forecast_methodology)).
+  The factor counts CO2 from generation only and rests on the
+  output-weighted average efficiency of generation in Great Britain.
+  The gas group pools combined-cycle and open-cycle units (651 gCO2/kWh)
+  and the output does not split them, and a part-loaded unit emits
+  more per kWh, so the factor is more likely low than high. The
+  figure is the CO2 of the gas turned up in the same half-hours, not
+  a saving had the wind run: half-hours with no flagged wind
+  turn-down also have more gas turned up than down, and they differ
+  in wind and demand. Gas already in a unit's PN is not counted.
 
 ## Retired
 
