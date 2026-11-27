@@ -277,7 +277,7 @@ Q24_AXIS_TITLE = "Share of the energy instructions moved, %"
 # The bands of flagged wind turn-down in a half-hour, as the saved output
 # names them and as the chart shows them, least first.
 Q37_BAND_NAMES = {
-    "0 none": "No wind turned down as a system action",
+    "0 none": "None as a system action",
     "1 under 100 MW": "Under 100 MW",
     "2 100 MW to under 500 MW": "100 MW to under 500 MW",
     "3 500 MW to under 1 GW": "500 MW to under 1 GW",

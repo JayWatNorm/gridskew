@@ -95,7 +95,7 @@
             "paddingInner": 0.3
           },
           "sort": [
-            "No wind turned down as a system action|7,055 half-hours",
+            "None as a system action|7,055 half-hours",
             "Under 100 MW|1,293 half-hours",
             "100 MW to under 500 MW|1,738 half-hours",
             "500 MW to under 1 GW|1,520 half-hours",
@@ -148,7 +148,7 @@
   "transform": [
     {
       "as": "band_name",
-      "calculate": "datum.wind_turn_down_band == \"0 none\" ? \"No wind turned down as a system action\" : datum.wind_turn_down_band == \"1 under 100 MW\" ? \"Under 100 MW\" : datum.wind_turn_down_band == \"2 100 MW to under 500 MW\" ? \"100 MW to under 500 MW\" : datum.wind_turn_down_band == \"3 500 MW to under 1 GW\" ? \"500 MW to under 1 GW\" : datum.wind_turn_down_band == \"4 1 GW to under 2 GW\" ? \"1 GW to under 2 GW\" : datum.wind_turn_down_band == \"5 2 GW or more\" ? \"2 GW or more\" : datum.wind_turn_down_band"
+      "calculate": "datum.wind_turn_down_band == \"0 none\" ? \"None as a system action\" : datum.wind_turn_down_band == \"1 under 100 MW\" ? \"Under 100 MW\" : datum.wind_turn_down_band == \"2 100 MW to under 500 MW\" ? \"100 MW to under 500 MW\" : datum.wind_turn_down_band == \"3 500 MW to under 1 GW\" ? \"500 MW to under 1 GW\" : datum.wind_turn_down_band == \"4 1 GW to under 2 GW\" ? \"1 GW to under 2 GW\" : datum.wind_turn_down_band == \"5 2 GW or more\" ? \"2 GW or more\" : datum.wind_turn_down_band"
     }
   ],
   "width": "container"
