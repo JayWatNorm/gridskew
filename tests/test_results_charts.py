@@ -1001,12 +1001,14 @@ def page_function(name):
         PAGE.read_text(encoding="utf-8"),
         re.DOTALL | re.MULTILINE,
     )
+    assert source is not None, f"No two-space-indented function {name} in the page"
     return source.group(0)
 
 
 def page_function_results(name, arguments):
     """What one of the page's functions returns for each argument, run
     by Node."""
+    assert NODE is not None, "Node is needed to run the page's script"
     program = (
         "const given = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
         "const pageFunction = eval('(' + given.source + ')');"
@@ -1066,10 +1068,23 @@ def test_every_committed_charts_columns_are_below_its_comment_lines():
     results = REPOSITORY / "docs" / "results"
 
     assert fields_missing_from_their_csv(results) == {}
+
+
+def test_a_csvs_header_is_its_first_line_below_the_leading_comment_lines():
     assert header_of("# Attribution.\n# A note on the read.\nsection,item\n1,a\n") == [
         "section",
         "item",
     ]
+
+
+def test_every_chart_is_drawn_with_the_loader_that_drops_comment_lines():
+    # An embed without these options, or options without this loader, reads
+    # a file's first comment line as its header.
+    page = PAGE.read_text(encoding="utf-8")
+
+    assert "    loader: { ...fileLoader, load: loadBelowComments },\n" in page
+    assert page.count("vegaEmbed(") == 18
+    assert len(re.findall(r'vegaEmbed\("#[^"]+", "[^"]+", chartOptions\)', page)) == 18
 
 
 def x_domains(node, domains):
