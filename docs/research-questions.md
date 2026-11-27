@@ -29,7 +29,7 @@ method.
 | [Q28](#q28-are-half-hours-with-a-larger-error-in-the-apis-stored-carbon-forecast-associated-with-more-unexplained-shortfall-from-august-2025-to-august-2026) | Stored forecast error against unexplained shortfall, a year of history | read (26 October 2026) |
 | [Q29](#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history) | Stored forecast error by month and time of day | read (27 October 2026) |
 | [Q30](#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026) | Wind forecast miss against stored carbon forecast error | read (27 October 2026) |
-| [Q37](#q37-when-neso-turns-wind-farms-down-what-does-it-turn-up-in-the-same-half-hours) | Wind turned down, and what is turned up in the same half-hours | method written (27 November 2026) |
+| [Q37](#q37-when-neso-turns-wind-farms-down-what-does-it-turn-up-in-the-same-half-hours) | Wind turned down, and what is turned up in the same half-hours | read (27 November 2026) |
 
 Questions dropped before a method was written are under
 [Retired](#retired).
@@ -715,7 +715,8 @@ after a counts-only coverage check.
 **Analysis:**
 [q37_wind_turn_down_and_turn_up.sql](../dbt/analyses/q37_wind_turn_down_and_turn_up.sql)
 
-**Status:** method written on 27 November 2026.
+**Status:** read on 27 November 2026, 07:54 UTC, covering half-hours up to
+the one starting at 23:30 UTC on 31 October 2026.
 
 **Earlier look.** Q24 read wind's flagged share and its acceptance volume,
 both directions together, on 15 October 2026. No figure by direction, by

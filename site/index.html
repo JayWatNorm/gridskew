@@ -383,6 +383,7 @@
       <li><a href="#instructions">How does NESO steer units?</a>
         <ul>
           <li><a href="#q24">How much of the energy NESO's instructions move does it flag as system actions?</a></li>
+          <li><a href="#q37">When NESO turns wind farms down, what does it turn up?</a></li>
           <li><a href="#q25">Do batteries and pumped storage get shorter instructions than power stations?</a></li>
         </ul>
       </li>
@@ -661,6 +662,37 @@
         <dd>22 August 2025 to 30 September 2026, with data to 30 September 2026 22:30 UTC. Read 15 October 2026, 20:10 UTC.</dd>
         <dt>Method</dt>
         <dd>Recorded 12 October 2026, after an exploration had read level-energy shares, and amended the same day to the energy moved, so it does not count as written down before the data was read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q24-what-share-of-each-fuel-groups-instructed-energy-is-flagged-as-a-system-action-rather-than-energy-balancing">Full method</a> · query <code>q24_system_action_share.sql</code> · <a href="results/q24_system_action_share.csv">saved output</a> · <a href="results/q24_flagged_share_by_fuel_group.csv">chart data</a></dd>
+      </dl>
+    </details>
+  </article>
+
+  <article id="q37">
+    <h3>When NESO turns wind farms down, what does it turn up?</h3>
+    <p class="answer"><strong>Mostly gas, and more of it the more wind is turned down.</strong> NESO turned wind down as a system action in 66% of half-hours, and by 1 GW or more in 45%. Where any wind is turned down, gas is 85% of the energy turned up, 2.4 GW on average; where none is, gas is still 90% of it, but 0.8 GW.</p>
+    <figure>
+      <div class="chart" id="q37-chart">
+        <img src="results/q37_turn_up_by_wind_turn_down_band.png" alt="The more wind NESO turns down, the more gas it turns up in the same half-hours" loading="lazy">
+      </div>
+      <figcaption>Settlement months Aug 2025 – Oct 2026, every unit NESO instructed. Source: Elexon BMRS.</figcaption>
+    </figure>
+    <p>This shows what NESO did in the same half-hours, not that one instruction replaced another; no location and no price is read.</p>
+    <details class="method">
+      <summary>How I measured it</summary>
+      <dl>
+        <dt>Result</dt>
+        <dd>NESO turned down 14.9 TWh at wind farms as system actions (settlement months Aug 2025 – Oct 2026), 14% of the energy the wind farms planned; by month from 9% (August 2026) to 22% (September 2026). Of 20,928 half-hours, 13,873 have such a turn-down (66%), 12,580 one of 100 MW or more (60%) and 9,322 one of 1 GW or more (45%). In the 13,873, NESO turned up 19.4 TWh, 16.4 TWh of it at gas units (85%). In the 7,055 with none, it turned up 3.1 TWh, 2.8 TWh of it at gas units (90%).</dd>
+        <dt>Chart</dt>
+        <dd>Settlement months Aug 2025 – Oct 2026; the first is a part month, from 22 August 2025. Each half-hour is placed by the wind NESO turned down in it as a system action; a half-hour's energy in MWh times two is its average power in MW. Everything else is bioenergy, hydro, pumped storage, wind, the other group and units with no published fuel type.</dd>
+        <dt>Measure</dt>
+        <dd>For every minute an instruction is in force, I take how far its instructed level is from the plan, in MWh: turned down where it is below the plan, turned up where it is above. Wind turned down counts where the instruction carries NESO's system flag; energy turned up counts with or without it, because energy turned up to replace energy turned down behind a bottleneck need not carry the flag (28% of the gas energy turned up in these half-hours does).</dd>
+        <dt>Left out</dt>
+        <dd>Nothing: every instruction in the period had a plan to compare with, a single ramp to read its level from and a flag value.</dd>
+        <dt>Limits</dt>
+        <dd>Only Balancing Mechanism instructions are read: no trades, and no wind outside the Balancing Mechanism. At a battery, pumped-storage, interconnector or demand unit, turned up can mean importing less. Half-hours with wind turned down differ from the others in wind and demand, and nothing here allows for that. Gas is most of the energy NESO turns up in any half-hour.</dd>
+        <dt>Data</dt>
+        <dd>22 August 2025 to 31 October 2026, with data to 31 October 2026 23:30 UTC. Read 27 November 2026, 07:54 UTC.</dd>
+        <dt>Method</dt>
+        <dd>Recorded 27 November 2026, before any figure by direction or by half-hour was read; the energy NESO's instructions moved at wind farms, both directions together, had been read on 15 October 2026 for the system flags result<a class="ref" href="#q24" aria-label="Details, Q24">*</a>. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q37-when-neso-turns-wind-farms-down-what-does-it-turn-up-in-the-same-half-hours">Full method</a> · query <code>q37_wind_turn_down_and_turn_up.sql</code> · <a href="results/q37_wind_turn_down_and_turn_up.csv">saved output</a> · <a href="results/q37_turn_up_by_wind_turn_down_band.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -1239,6 +1271,7 @@
   vegaEmbed("#q12-chart", "results/q12_instructed_share_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q5-chart", "results/q5_under_delivery_by_outage_notice.vl.json", chartOptions);
   vegaEmbed("#q24-chart", "results/q24_flagged_share_by_fuel_group.vl.json", chartOptions);
+  vegaEmbed("#q37-chart", "results/q37_turn_up_by_wind_turn_down_band.vl.json", chartOptions);
   vegaEmbed("#q25-chart", "results/q25_short_instructions_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q29-time-chart", "results/q29_error_by_time_of_day.vl.json", chartOptions);
   vegaEmbed("#q29-month-chart", "results/q29_error_by_month.vl.json", chartOptions);
