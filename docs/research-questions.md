@@ -769,11 +769,10 @@ before this method was written.
   Half-hours with wind turned down differ from the others in wind and
   demand, and nothing here controls for that.
 - **Superseded acceptances (added 27 November 2026, after the read).**
-  Where a later acceptance supersedes an earlier one for the same
-  minutes, all of the energy between its level and the PN carries the
-  later acceptance's flag, so energy the earlier one moved is counted
-  under the later one's flag and a half-hour can fall in a different
-  band.
+  For the minutes where a later acceptance supersedes an earlier one,
+  all of the energy between the later acceptance's level and the PN
+  carries the later acceptance's flag. This can affect which band a
+  half-hour falls in.
 
 ## Retired
 
