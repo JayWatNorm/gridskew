@@ -727,7 +727,10 @@ before this method was written.
 - **Measure.** Q24's acceptance volume with its direction kept. For the
   minutes each acceptance is in force, the energy between the instructed
   level and the PN is turned down where the instructed level is below the
-  PN and turned up where it is above.
+  PN and turned up where it is above. Flagged means the acceptance's SO
+  flag is true; an acceptance with no flag value counts as not flagged.
+  The query returns energy and counts of half-hours; shares are worked
+  from them.
 - **Units.** Every unit with an acceptance and a complete PN capture: cohort
   units by fuel group, and units with no published fuel type as one group
   of their own.
@@ -746,12 +749,24 @@ before this method was written.
   fuel group: the energy turned up and the energy turned down, each with
   its flagged part, and the number of half-hours in the band. The result
   is each group's share of the energy turned up in half-hours with any
-  flagged wind turn-down, beside its share in half-hours with none.
+  flagged wind turn-down, and its energy turned up per half-hour, each
+  beside the same figure for half-hours with none.
+- **Left out.** A stretch of an acceptance is left out when no single ramp
+  segment of the acceptance spans it or its half-hour has no complete PN
+  capture; left-out stretches are counted by fuel group and flag. A
+  half-hour with a wind stretch left out goes in a band of its own, wind
+  turn-down not measured, and in neither side of the comparison. Energy
+  in a half-hour outside the population is counted beside the result.
 - **Turn-up is counted with or without the flag.** Energy turned up to
   replace energy turned down behind a constraint need not carry the flag.
 - **Wording.** "In the same half-hours", never "replaced by": the result
   is an association in time, not a matched pair of instructions. No
   location and no price is read.
+- **Limits.** Only Balancing Mechanism acceptances are read: no trades
+  and no wind outside the Balancing Mechanism. At a storage,
+  interconnector or demand unit, turned up can mean importing less.
+  Half-hours with wind turned down differ from the others in wind and
+  demand, and nothing here controls for that.
 
 ## Retired
 
@@ -823,4 +838,4 @@ added after a read is dated in its question.
 | Q28 | 25 October | 26 October | no figure of it read |
 | Q29 | 27 October | | no figure of it read |
 | Q30 | 27 October | 27 October | no wind data held when written; not read when changed |
-| Q37 | 27 November | | Q24's acceptance volume for wind read on 15 October; no figure by direction or by half-hour read |
+| Q37 | 27 November | 27 November | Q24's acceptance volume for wind read on 15 October; no figure by direction or by half-hour read |

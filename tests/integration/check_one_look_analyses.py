@@ -1090,31 +1090,42 @@ Q25_EXPECTED = {
 #   an hour, 10 up; the PN segment that ends at 23:10 adds nothing.
 # 10:00 on 1 September: WIND-1 flagged to 1,000: 500 down, exactly 1 GW.
 #   GAS-1 from 400 to 300, not flagged: 50 down. WIND-2 accepted at its
-#   PN, 500: no energy either way.
+#   PN, 500: no energy either way. PS-1 has a stretch (5 MWh, not
+#   flagged) and no PN: left out, and the half-hour keeps its band
+#   because the stretch is not wind's.
 # 11:00: WIND-1 flagged to 0: 1,000 down, exactly 2 GW. PS-1 flagged from 0
 #   to 120 for 11:00 to 11:10 only: 20 up; its PN segment from 11:20, at
 #   60, adds nothing.
-# 12:00: WIND-1 flagged to 1,999: 0.5 down. GAS-1 plans 100 and is ramped
+# 12:00: WIND-1 flagged to 1,999 until 12:15: 0.25 down; then, not flagged,
+#   to 2,040: 10 up. A second ramp point of that acceptance, from 12:00 at
+#   2,100, also spans the later stretch; the one that starts latest is
+#   used. GAS-1 plans 100 and is ramped
 #   from 0 to 400, not flagged: the lines cross a quarter of the way in, so
 #   0.5 x 100 x 100 / (2 x 400) = 6.25 down and 0.5 x 300 x 300 / (2 x 400)
 #   = 56.25 up.
 # 13:00: WIND-2 to 300, not flagged: 100 down, band none. GAS-1 held at 160
-#   while its PN steps from 100 to 200 at 13:15: 15 up, then 10 down.
+#   while its PN steps from 100 to 200 at 13:15: 15 up, then 10 down; its
+#   stored energy says 81 where its level gives 80.
 # 14:00: WIND-1's PN capture is incomplete and WIND-2 has none, so the
 #   half-hour is not read: WIND-1's stretch (700 MWh at its level) is left
 #   out and GAS-1's 50 up, from 100 to 200, is counted beside the result.
 # 15:00: WIND-1's ramp points run to 15:10 and from 15:20 but its stretch
-#   is 15:00 to 15:30, so the stretch (900 MWh) is left out; the half-hour
-#   is read, band none.
+#   is 15:00 to 15:20, so the stretch (900 MWh) is left out; the half-hour
+#   is read, in the band for wind turn-down not measured. Its next
+#   stretch, 15:20 to 15:30 to 1,940 and not flagged, is measured: 60 MW
+#   for a sixth of an hour, 10 down. GAS-1 from 100 to 130, not flagged:
+#   15 up.
 # 00:00 on 5 September, the cutoff: WIND-1 has a PN and no stretch; GAS-1
-#   from 100 to 140, not flagged: 20 up. 00:30: WIND-1 flagged to 0, after
+#   from 100 to 140 until 00:15, with no flag value: 10 up, counted as not
+#   flagged; then flagged to 180: 20 up. 00:30: WIND-1 flagged to 0, after
 #   the cutoff.
 #
 # August: 1 half-hour, 50 flagged of 1,000 planned, 5.00%. September: 7
 # half-hours (23:00, 10:00 to 13:00, 15:00, 00:00), 4 with a flagged
-# turn-down, 3 at 100 MW or more, 2 at 1 GW or more; 300 + 500 + 1,000 + 0.5
-# + 100 = 1,900.5 down, 1,750.5 of it flagged; 4 x 1,000 + 3 x 1,250 = 7,750
-# planned; 1,750.5 / 7,750 = 22.59%. All months: 1,800.5 / 8,750 = 20.58%.
+# turn-down, 3 at 100 MW or more, 2 at 1 GW or more, 1 not measured; 300 +
+# 500 + 1,000 + 0.25 + 100 + 10 = 1,910.25 down, 1,750.25 of it flagged; 4 x
+# 1,000 + 3 x 1,250 = 7,750 planned; 1,750.25 / 7,750 = 22.58%. All months:
+# 1,800.25 / 8,750 = 20.57%.
 Q37 = "q37_wind_turn_down_and_turn_up"
 Q37_FIXTURES = """
 create temporary table synthetic_intervals (
@@ -1139,33 +1150,43 @@ insert into synthetic_intervals values
     ('GAS-1', '2026-08-31 23:00+00',
         '2026-08-31 23:00+00', '2026-08-31 23:30+00', 5, true, 250),
     ('BATT-1', '2026-08-31 23:00+00',
-        '2026-08-31 23:20+00', '2026-08-31 23:30+00', 6, false, 1.7),
+        '2026-08-31 23:20+00', '2026-08-31 23:30+00', 6, false, 1.666667),
     ('WIND-1', '2026-09-01 10:00+00',
         '2026-09-01 10:00+00', '2026-09-01 10:30+00', 7, true, 500),
     ('GAS-1', '2026-09-01 10:00+00',
         '2026-09-01 10:00+00', '2026-09-01 10:30+00', 8, false, 150),
     ('WIND-2', '2026-09-01 10:00+00',
         '2026-09-01 10:00+00', '2026-09-01 10:30+00', 19, false, 250),
+    ('PS-1', '2026-09-01 10:00+00',
+        '2026-09-01 10:00+00', '2026-09-01 10:30+00', 23, false, 5),
     ('WIND-1', '2026-09-01 11:00+00',
         '2026-09-01 11:00+00', '2026-09-01 11:30+00', 9, true, 0),
     ('PS-1', '2026-09-01 11:00+00',
         '2026-09-01 11:00+00', '2026-09-01 11:10+00', 10, true, 20),
     ('WIND-1', '2026-09-01 12:00+00',
-        '2026-09-01 12:00+00', '2026-09-01 12:30+00', 11, true, 999.5),
+        '2026-09-01 12:00+00', '2026-09-01 12:15+00', 11, true, 499.75),
+    ('WIND-1', '2026-09-01 12:00+00',
+        '2026-09-01 12:15+00', '2026-09-01 12:30+00', 21, false, 510),
     ('GAS-1', '2026-09-01 12:00+00',
         '2026-09-01 12:00+00', '2026-09-01 12:30+00', 12, false, 100),
     ('WIND-2', '2026-09-01 13:00+00',
         '2026-09-01 13:00+00', '2026-09-01 13:30+00', 13, false, 150),
     ('GAS-1', '2026-09-01 13:00+00',
-        '2026-09-01 13:00+00', '2026-09-01 13:30+00', 14, false, 80),
+        '2026-09-01 13:00+00', '2026-09-01 13:30+00', 14, false, 81),
     ('GAS-1', '2026-09-01 14:00+00',
         '2026-09-01 14:00+00', '2026-09-01 14:30+00', 15, false, 100),
     ('WIND-1', '2026-09-01 14:00+00',
         '2026-09-01 14:00+00', '2026-09-01 14:30+00', 16, true, 700),
     ('WIND-1', '2026-09-01 15:00+00',
-        '2026-09-01 15:00+00', '2026-09-01 15:30+00', 17, true, 900),
+        '2026-09-01 15:00+00', '2026-09-01 15:20+00', 17, true, 900),
+    ('WIND-1', '2026-09-01 15:00+00',
+        '2026-09-01 15:20+00', '2026-09-01 15:30+00', 25, false, 323.333333),
+    ('GAS-1', '2026-09-01 15:00+00',
+        '2026-09-01 15:00+00', '2026-09-01 15:30+00', 22, false, 65),
     ('GAS-1', '2026-09-05 00:00+00',
-        '2026-09-05 00:00+00', '2026-09-05 00:30+00', 20, false, 70),
+        '2026-09-05 00:00+00', '2026-09-05 00:15+00', 20, null, 35),
+    ('GAS-1', '2026-09-05 00:00+00',
+        '2026-09-05 00:15+00', '2026-09-05 00:30+00', 24, true, 45),
     ('WIND-1', '2026-09-05 00:30+00',
         '2026-09-05 00:30+00', '2026-09-05 01:00+00', 18, true, 0);
 create temporary table synthetic_cohort (
@@ -1209,10 +1230,16 @@ insert into synthetic_boalf values
         0, 0, '2026-09-02 01:00+00'),
     ('WIND-2', 19, '2026-09-01 10:00+00', '2026-09-01 10:30+00',
         500, 500, '2026-09-02 01:00+00'),
+    ('PS-1', 23, '2026-09-01 10:00+00', '2026-09-01 10:30+00',
+        10, 10, '2026-09-02 01:00+00'),
     ('PS-1', 10, '2026-09-01 11:00+00', '2026-09-01 11:10+00',
         120, 120, '2026-09-02 01:00+00'),
-    ('WIND-1', 11, '2026-09-01 12:00+00', '2026-09-01 12:30+00',
+    ('WIND-1', 11, '2026-09-01 12:00+00', '2026-09-01 12:15+00',
         1999, 1999, '2026-09-02 01:00+00'),
+    ('WIND-1', 21, '2026-09-01 12:00+00', '2026-09-01 12:30+00',
+        2100, 2100, '2026-09-02 01:00+00'),
+    ('WIND-1', 21, '2026-09-01 12:15+00', '2026-09-01 12:30+00',
+        2040, 2040, '2026-09-02 01:00+00'),
     ('GAS-1', 12, '2026-09-01 12:00+00', '2026-09-01 12:30+00',
         0, 400, '2026-09-02 01:00+00'),
     ('WIND-2', 13, '2026-09-01 13:00+00', '2026-09-01 13:30+00',
@@ -1227,8 +1254,14 @@ insert into synthetic_boalf values
         1800, 1800, '2026-09-02 01:00+00'),
     ('WIND-1', 17, '2026-09-01 15:20+00', '2026-09-01 15:30+00',
         1700, 1700, '2026-09-02 01:00+00'),
-    ('GAS-1', 20, '2026-09-05 00:00+00', '2026-09-05 00:30+00',
+    ('WIND-1', 25, '2026-09-01 15:20+00', '2026-09-01 15:30+00',
+        1940, 1940, '2026-09-02 01:00+00'),
+    ('GAS-1', 22, '2026-09-01 15:00+00', '2026-09-01 15:30+00',
+        130, 130, '2026-09-02 01:00+00'),
+    ('GAS-1', 20, '2026-09-05 00:00+00', '2026-09-05 00:15+00',
         140, 140, '2026-09-06 01:00+00'),
+    ('GAS-1', 24, '2026-09-05 00:15+00', '2026-09-05 00:30+00',
+        180, 180, '2026-09-06 01:00+00'),
     ('WIND-1', 18, '2026-09-05 00:30+00', '2026-09-05 01:00+00',
         0, 0, '2026-09-06 01:00+00');
 create temporary table synthetic_commitments (
@@ -1261,6 +1294,7 @@ insert into synthetic_commitments values
     ('WIND-1', '2026-09-01', 31, '2026-09-01 14:00+00', 999, 'incomplete', '2026-09-06 00:00+00'),
     ('GAS-1', '2026-09-01', 31, '2026-09-01 14:00+00', 50, 'complete', '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-01', 33, '2026-09-01 15:00+00', 1000, 'complete', '2026-09-06 00:00+00'),
+    ('GAS-1', '2026-09-01', 33, '2026-09-01 15:00+00', 50, 'complete', '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-05', 3, '2026-09-05 00:00+00', 1000, 'complete', '2026-09-06 00:00+00'),
     ('GAS-1', '2026-09-05', 3, '2026-09-05 00:00+00', 50, 'complete', '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-05', 4, '2026-09-05 00:30+00', 1000, 'complete', '2026-09-06 00:00+00');
@@ -1321,6 +1355,8 @@ insert into synthetic_pn values
         2000, 2000, '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-01', 33, '2026-09-01 15:00+00', '2026-09-01 15:30+00',
         2000, 2000, '2026-09-06 00:00+00'),
+    ('GAS-1', '2026-09-01', 33, '2026-09-01 15:00+00', '2026-09-01 15:30+00',
+        100, 100, '2026-09-06 00:00+00'),
     ('GAS-1', '2026-09-05', 3, '2026-09-05 00:00+00', '2026-09-05 00:30+00',
         100, 100, '2026-09-06 00:00+00'),
     ('WIND-1', '2026-09-05', 4, '2026-09-05 00:30+00', '2026-09-05 01:00+00',
@@ -1344,6 +1380,7 @@ BAND_FROM_100_MW = "2 100 MW to under 500 MW"
 BAND_FROM_500_MW = "3 500 MW to under 1 GW"
 BAND_FROM_1_GW = "4 1 GW to under 2 GW"
 BAND_FROM_2_GW = "5 2 GW or more"
+BAND_NOT_MEASURED = "6 wind turn-down not measured"
 
 
 def q37_band_row(band, fuel_group, half_hours, up, flagged_up, down, flagged_down):
@@ -1366,6 +1403,7 @@ Q37_EXPECTED = dict(
                 half_hours_with_flagged_wind_turn_down=1,
                 half_hours_at_100_mw_or_more=1,
                 half_hours_at_1_gw_or_more=0,
+                half_hours_wind_not_measured=0,
                 turned_down_mwh="50.000",
                 flagged_turned_down_mwh="50.000",
                 planned_mwh="1000.000",
@@ -1381,10 +1419,11 @@ Q37_EXPECTED = dict(
                 half_hours_with_flagged_wind_turn_down=4,
                 half_hours_at_100_mw_or_more=3,
                 half_hours_at_1_gw_or_more=2,
-                turned_down_mwh="1900.500",
-                flagged_turned_down_mwh="1750.500",
+                half_hours_wind_not_measured=1,
+                turned_down_mwh="1910.250",
+                flagged_turned_down_mwh="1750.250",
                 planned_mwh="7750.000",
-                flagged_turned_down_pct_of_planned="22.59",
+                flagged_turned_down_pct_of_planned="22.58",
                 first_half_hour="2026-08-31 23:00:00+00:00",
                 last_half_hour="2026-09-05 00:00:00+00:00",
             ),
@@ -1396,17 +1435,20 @@ Q37_EXPECTED = dict(
                 half_hours_with_flagged_wind_turn_down=5,
                 half_hours_at_100_mw_or_more=4,
                 half_hours_at_1_gw_or_more=2,
-                turned_down_mwh="1950.500",
-                flagged_turned_down_mwh="1800.500",
+                half_hours_wind_not_measured=1,
+                turned_down_mwh="1960.250",
+                flagged_turned_down_mwh="1800.250",
                 planned_mwh="8750.000",
-                flagged_turned_down_pct_of_planned="20.58",
+                flagged_turned_down_pct_of_planned="20.57",
                 first_half_hour="2026-08-31 22:00:00+00:00",
                 last_half_hour="2026-09-05 00:00:00+00:00",
             ),
         ),
-        q37_band_row(BAND_NONE, "wind", 3, "0.000", "0.000", "100.000", "0.000"),
-        q37_band_row(BAND_NONE, "gas_turbine", 3, "35.000", "0.000", "10.000", "0.000"),
-        q37_band_row(BAND_UNDER_100_MW, "wind", 1, "0.000", "0.000", "0.500", "0.500"),
+        q37_band_row(BAND_NONE, "wind", 2, "0.000", "0.000", "100.000", "0.000"),
+        q37_band_row(
+            BAND_NONE, "gas_turbine", 2, "45.000", "20.000", "10.000", "0.000"
+        ),
+        q37_band_row(BAND_UNDER_100_MW, "wind", 1, "10.000", "0.000", "0.250", "0.250"),
         q37_band_row(
             BAND_UNDER_100_MW, "gas_turbine", 1, "56.250", "0.000", "6.250", "0.000"
         ),
@@ -1434,7 +1476,7 @@ Q37_EXPECTED = dict(
             BAND_FROM_2_GW, "pumped_storage", 1, "20.000", "20.000", "0.000", "0.000"
         ),
         (
-            (4, None, None, "wind", "left out: no complete PN capture"),
+            (4, None, None, "wind", "left out: no complete PN capture, flagged"),
             dict(stretches=1, level_energy_mwh="700.000"),
         ),
         (
@@ -1443,9 +1485,49 @@ Q37_EXPECTED = dict(
                 None,
                 None,
                 "wind",
-                "left out: no single ramp segment spans the stretch",
+                "left out: no single ramp segment spans the stretch, flagged",
             ),
             dict(stretches=1, level_energy_mwh="900.000"),
+        ),
+        q37_band_row(
+            BAND_NOT_MEASURED, "gas_turbine", 1, "15.000", "0.000", "0.000", "0.000"
+        ),
+        q37_band_row(BAND_NOT_MEASURED, "wind", 1, "0.000", "0.000", "10.000", "0.000"),
+        (
+            (
+                4,
+                None,
+                None,
+                "pumped_storage",
+                "left out: no complete PN capture, not flagged",
+            ),
+            dict(stretches=1, level_energy_mwh="5.000"),
+        ),
+        (
+            (
+                4,
+                None,
+                None,
+                "gas_turbine",
+                "stretches whose end levels do not reproduce the stored instructed_mwh",
+            ),
+            dict(stretches=1, level_energy_mwh="81.000"),
+        ),
+        (
+            (
+                4,
+                None,
+                None,
+                "gas_turbine",
+                "measured stretches with no flag value, counted as not flagged",
+            ),
+            dict(
+                stretches=1,
+                turned_up_mwh="10.000",
+                flagged_turned_up_mwh="0",
+                turned_down_mwh="0.000",
+                flagged_turned_down_mwh="0",
+            ),
         ),
         (
             (

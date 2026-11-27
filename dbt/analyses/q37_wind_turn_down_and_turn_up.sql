@@ -8,9 +8,12 @@
 -- every PN breakpoint; on each piece the instructed level and the PN are
 -- straight lines, so the energy between them is exact. It is turned down
 -- where the instructed level is below the PN and turned up where it is
--- above; a piece in which the lines cross gives a part to each. A stretch
--- is left out and counted in section 4 when no single ramp segment spans it
--- or its period has no complete PN capture.
+-- above; a piece in which the lines cross gives a part to each. Where more
+-- than one ramp point of the acceptance spans a stretch, the one that starts
+-- latest is used, as int_elexon__instruction_intervals does. A stretch is
+-- left out and counted in section 4 when no single ramp segment spans it or
+-- its period has no complete PN capture. Flagged means so_flag is true; a
+-- stretch with no flag value is counted as not flagged and in section 4.
 --
 -- Units: every unit with a stretch and a complete PN capture. A unit outside
 -- the cohort (no published fuel type) is in the group
@@ -26,8 +29,11 @@
 -- with 50 MWh or more (100 MW over the half-hour) and with 500 MWh or more
 -- (1 GW). Section 3 places each half-hour in a band by its flagged wind
 -- turn-down and gives, per band and fuel group, the energy turned up and
--- turned down, each with its flagged part. Run once, by hand, after the
--- rule is recorded.
+-- turned down, each with its flagged part. A half-hour with a wind stretch
+-- left out has its own band: its wind turn-down is not fully measured.
+-- Section 4 also counts stretches whose energy from the end levels differs
+-- from the stored instructed_mwh (a check that the levels were placed
+-- right). Run once, by hand, after the rule is recorded.
 
 {% set read_until = analysis_read_until() %}
 
@@ -71,12 +77,19 @@ ramp_point_captures as (
     from {{ ref('stg_elexon__boalf') }}
 ),
 
-stretch_levels as (
+spanning_ramp_points as (
     select
         stretches.national_grid_bm_unit,
         stretches.period_start_utc,
         stretches.interval_from,
         stretches.interval_to,
+        row_number() over (
+            partition by
+                stretches.national_grid_bm_unit,
+                stretches.period_start_utc,
+                stretches.interval_from
+            order by ramp_points.time_from desc
+        ) as latest_start_rank,
         {{ ramp_level_at(
             'ramp_points.level_from', 'ramp_points.level_to',
             'ramp_points.time_from', 'ramp_points.time_to',
@@ -95,6 +108,18 @@ stretch_levels as (
         and ramp_points.time_to > ramp_points.time_from
         and ramp_points.time_from <= stretches.interval_from
         and ramp_points.time_to >= stretches.interval_to
+),
+
+stretch_levels as (
+    select
+        national_grid_bm_unit,
+        period_start_utc,
+        interval_from,
+        interval_to,
+        instructed_mw_from,
+        instructed_mw_to
+    from spanning_ramp_points
+    where latest_start_rank = 1
 ),
 
 stretch_commitments as (
@@ -196,12 +221,15 @@ stretch_energy as (
 left_out as (
     select
         stretches.fuel_group,
+        stretches.period_start_utc,
         stretches.instructed_mwh,
         case
             when stretch_levels.national_grid_bm_unit is null
                 then 'left out: no single ramp segment spans the stretch'
             else 'left out: no complete PN capture'
-        end as reason
+        end
+        || case when stretches.so_flag then ', flagged' else ', not flagged' end
+            as reason
     from stretches
     left join stretch_levels
         on stretches.national_grid_bm_unit = stretch_levels.national_grid_bm_unit
@@ -212,6 +240,41 @@ left_out as (
         and stretches.period_start_utc = stretch_energy.period_start_utc
         and stretches.interval_from = stretch_energy.interval_from
     where stretch_energy.national_grid_bm_unit is null
+),
+
+wind_not_measured as (
+    select distinct period_start_utc
+    from left_out
+    where fuel_group = 'wind'
+),
+
+levels_checked as (
+    select
+        stretches.fuel_group,
+        stretches.instructed_mwh
+    from stretches
+    inner join stretch_levels
+        on stretches.national_grid_bm_unit = stretch_levels.national_grid_bm_unit
+        and stretches.period_start_utc = stretch_levels.period_start_utc
+        and stretches.interval_from = stretch_levels.interval_from
+    where abs(
+        (stretch_levels.instructed_mw_from + stretch_levels.instructed_mw_to) / 2
+        * extract(epoch from (stretches.interval_to - stretches.interval_from)) / 3600
+        - stretches.instructed_mwh
+    ) > 0.001
+),
+
+no_flag_value as (
+    select
+        stretches.fuel_group,
+        stretch_energy.turned_up_mwh,
+        stretch_energy.turned_down_mwh
+    from stretches
+    inner join stretch_energy
+        on stretches.national_grid_bm_unit = stretch_energy.national_grid_bm_unit
+        and stretches.period_start_utc = stretch_energy.period_start_utc
+        and stretches.interval_from = stretch_energy.interval_from
+    where stretches.so_flag is null
 ),
 
 group_half_hours as (
@@ -259,7 +322,10 @@ half_hours as (
         wind_plan_half_hours.planned_mwh,
         coalesce(wind.turned_down_mwh, 0) as wind_turned_down_mwh,
         coalesce(wind.flagged_turned_down_mwh, 0) as wind_flagged_turned_down_mwh,
+        wind_not_measured.period_start_utc is not null as wind_is_not_measured,
         case
+            when wind_not_measured.period_start_utc is not null
+                then '6 wind turn-down not measured'
             when coalesce(wind.flagged_turned_down_mwh, 0) <= 0 then '0 none'
             when wind.flagged_turned_down_mwh < 50 then '1 under 100 MW'
             when wind.flagged_turned_down_mwh < 250 then '2 100 MW to under 500 MW'
@@ -271,6 +337,8 @@ half_hours as (
     left join group_half_hours as wind
         on wind_plan_half_hours.period_start_utc = wind.period_start_utc
         and wind.fuel_group = 'wind'
+    left join wind_not_measured
+        on wind_plan_half_hours.period_start_utc = wind_not_measured.period_start_utc
 ),
 
 by_month as (
@@ -287,6 +355,7 @@ by_month as (
             as half_hours_at_100_mw_or_more,
         count(*) filter (where wind_flagged_turned_down_mwh >= 500)
             as half_hours_at_1_gw_or_more,
+        count(*) filter (where wind_is_not_measured) as half_hours_wind_not_measured,
         null::numeric as turned_up_mwh,
         null::numeric as flagged_turned_up_mwh,
         round(sum(wind_turned_down_mwh), 3) as turned_down_mwh,
@@ -316,6 +385,7 @@ all_months as (
             as half_hours_at_100_mw_or_more,
         count(*) filter (where wind_flagged_turned_down_mwh >= 500)
             as half_hours_at_1_gw_or_more,
+        count(*) filter (where wind_is_not_measured) as half_hours_wind_not_measured,
         null::numeric as turned_up_mwh,
         null::numeric as flagged_turned_up_mwh,
         round(sum(wind_turned_down_mwh), 3) as turned_down_mwh,
@@ -349,6 +419,7 @@ by_band as (
         null::bigint as half_hours_with_flagged_wind_turn_down,
         null::bigint as half_hours_at_100_mw_or_more,
         null::bigint as half_hours_at_1_gw_or_more,
+        null::bigint as half_hours_wind_not_measured,
         round(sum(group_half_hours.turned_up_mwh), 3) as turned_up_mwh,
         round(sum(group_half_hours.flagged_turned_up_mwh), 3) as flagged_turned_up_mwh,
         round(sum(group_half_hours.turned_down_mwh), 3) as turned_down_mwh,
@@ -381,6 +452,7 @@ coverage as (
         null::bigint as half_hours_with_flagged_wind_turn_down,
         null::bigint as half_hours_at_100_mw_or_more,
         null::bigint as half_hours_at_1_gw_or_more,
+        null::bigint as half_hours_wind_not_measured,
         null::numeric as turned_up_mwh,
         null::numeric as flagged_turned_up_mwh,
         null::numeric as turned_down_mwh,
@@ -400,9 +472,62 @@ coverage as (
         4,
         null,
         null,
+        fuel_group,
+        'stretches whose end levels do not reproduce the stored instructed_mwh',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        count(*),
+        round(sum(abs(instructed_mwh)), 3)
+    from levels_checked
+    group by fuel_group
+
+    union all
+
+    select
+        4,
+        null,
+        null,
+        fuel_group,
+        'measured stretches with no flag value, counted as not flagged',
+        null,
+        null,
+        null,
+        null,
+        null,
+        round(sum(turned_up_mwh), 3),
+        0,
+        round(sum(turned_down_mwh), 3),
+        0,
+        null,
+        null,
+        null,
+        null,
+        count(*),
+        null
+    from no_flag_value
+    group by fuel_group
+
+    union all
+
+    select
+        4,
+        null,
+        null,
         group_half_hours.fuel_group,
         'energy in half-hours with no complete wind PN capture',
         count(distinct group_half_hours.period_start_utc),
+        null,
         null,
         null,
         null,
@@ -433,6 +558,7 @@ select
     half_hours_with_flagged_wind_turn_down,
     half_hours_at_100_mw_or_more,
     half_hours_at_1_gw_or_more,
+    half_hours_wind_not_measured,
     turned_up_mwh,
     flagged_turned_up_mwh,
     turned_down_mwh,
@@ -455,6 +581,7 @@ select
     half_hours_with_flagged_wind_turn_down,
     half_hours_at_100_mw_or_more,
     half_hours_at_1_gw_or_more,
+    half_hours_wind_not_measured,
     turned_up_mwh,
     flagged_turned_up_mwh,
     turned_down_mwh,
@@ -477,6 +604,7 @@ select
     half_hours_with_flagged_wind_turn_down,
     half_hours_at_100_mw_or_more,
     half_hours_at_1_gw_or_more,
+    half_hours_wind_not_measured,
     turned_up_mwh,
     flagged_turned_up_mwh,
     turned_down_mwh,
@@ -499,6 +627,7 @@ select
     half_hours_with_flagged_wind_turn_down,
     half_hours_at_100_mw_or_more,
     half_hours_at_1_gw_or_more,
+    half_hours_wind_not_measured,
     turned_up_mwh,
     flagged_turned_up_mwh,
     turned_down_mwh,
