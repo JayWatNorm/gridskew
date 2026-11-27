@@ -12,7 +12,7 @@ it captures, which those APIs later overwrite.
 
 **Results:** <https://jaywatnorm.github.io/gridskew>
 
-**Status:** the analysis is complete (25 November 2026). The Airflow DAGs
+**Status:** the analysis is complete (27 November 2026). The Airflow DAGs
 keep collecting data, and the nightly dbt job keeps building and testing it.
 
 ## What it found
@@ -239,7 +239,7 @@ are under `tests/adhoc/`. pytest collects neither.
 Much of the code supports the results rather than the pipeline. The chart
 script renders every figure on the results page from the saved outputs, and
 its tests check each figure's values and the page's text against them. CI
-checks the arithmetic of the Q1, Q10, Q25, Q8, Q28, Q29 and Q30 analyses on
+checks the arithmetic of the Q1, Q10, Q25, Q37, Q8, Q28, Q29 and Q30 analyses on
 hand-worked rows, and every analysis compiles against the test database.
 
 ## Repository guide
@@ -280,7 +280,7 @@ repository's release runbook, which is not public.
 
 ## Status
 
-The analysis is complete (25 November 2026). The DAGs keep collecting data,
+The analysis is complete (27 November 2026). The DAGs keep collecting data,
 and the nightly dbt job keeps building and testing it.
 
 **Complete and running**
