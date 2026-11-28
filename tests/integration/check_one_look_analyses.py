@@ -1637,14 +1637,20 @@ Q37_EXPECTED = dict(
 #
 # The registry lists four of the ten units once with an Elexon ID of
 # their own (HEYM11, HEYM12, TORN-1, TORN-2); SIZB-2 has two rows, HRTL-1
-# shares its Elexon ID and HRTL-2 has none, so six are left out. From
+# shares its Elexon ID and HRTL-2 has none, so six are left out, each
+# named. HUNB-8, outside the ten, shares its Elexon ID with a gas unit
+# whose row meters 9: its energy is not given. HUNB-7 has a second row
+# at 22:30 on 31 August 2026 that is not mapped to it and is not
+# counted. From
 # 23:00 on 31 August 2025 to the cutoff there are 365 x 48 + 194 + 1 =
 # 17,715 half-hours, none with all ten units.
 #
 # HEYM11's publications: normal capacity 580, 610, 590 and 600 count (the
 # third ends a second after the first settlement date begins, the fourth
 # starts a second before the cutoff's half-hour ends), as do the four
-# above at 600 and the one with no end: nine, from 580 to 610. Six do not: Dismissed, a
+# above at 600, the one with no end and one published at exactly the
+# cutoff: ten, from 580 to 610. One published a second after the cutoff
+# (993) does not count. Six do not: Dismissed, a
 # consumption unavailability, other market information, an ambiguous
 # mapping, one ending as the first settlement date begins and one starting
 # as the cutoff's half-hour ends.
@@ -1703,6 +1709,8 @@ insert into synthetic_registry values
     ('HRTL-2', null, 'NUCLEAR', 620),
     ('HUNB-7', 'T_HUNB-7', 'NUCLEAR', 510),
     ('DNGB21', 'T_DNGB21', 'NUCLEAR', 0),
+    ('HUNB-8', 'T_SHARED2', 'NUCLEAR', 510),
+    ('GASX-3', 'T_SHARED2', 'CCGT', 400),
     ('GASX-1', 'T_GASX-1', 'CCGT', 400);
 
 insert into synthetic_generation values
@@ -1718,6 +1726,8 @@ insert into synthetic_generation values
     ('T_TORN-2', '2026-08-31', '2026-08-31 22:30+00', 7, 'SF', 'mapped'),
     ('T_HUNB-7', '2026-08-31', '2026-08-31 22:30+00', -2, 'SF', 'mapped'),
     ('T_GASX-1', '2026-08-31', '2026-08-31 22:30+00', 100, 'SF', 'mapped'),
+    ('T_SHARED2', '2026-08-31', '2026-08-31 22:30+00', 9, 'SF', 'mapped'),
+    ('T_HUNB-7', '2026-08-31', '2026-08-31 22:00+00', 11, 'SF', 'conflict'),
     ('T_SIZB-2', '2026-08-31', '2026-08-31 22:30+00', 60, 'SF', 'mapped'),
     ('T_SHARED', '2026-08-31', '2026-08-31 22:30+00', 77, 'SF', 'ambiguous'),
     ('T_HEYM11', '2026-09-01', '2026-08-31 23:00+00', 310, 'SF', 'mapped'),
@@ -1798,6 +1808,14 @@ insert into synthetic_publications values
         'Production unavailability', 'Active', 600, 300,
         '2026-08-01 00:00+00', null,
         '2026-08-31 23:30+00', '2026-09-01 12:00+00'),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 605, null,
+        '2026-09-05 00:00+00', null,
+        '2026-01-01 00:00+00', '2026-02-01 00:00+00'),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 993, null,
+        '2026-09-05 00:00:01+00', null,
+        '2026-01-01 00:00+00', '2026-02-01 00:00+00'),
     ('HEYM12', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
         'Production unavailability', 'Active', 500, 0,
         '2026-08-01 00:00+00', null,
@@ -1864,9 +1882,12 @@ Q38_KEY = (
 OUTPUT_AGAINST_CAPACITY = "output against registered capacity"
 GAP_BELOW_CAPACITY = "gap below registered capacity"
 GAP_NO_STATED_CAPACITY = (
-    "gap with notices that state no unavailable capacity above zero"
+    "gap where no notice in force states unavailable capacity above zero"
 )
 HALF_HOURS_TO_READ = "half-hours from the first settlement date to the cutoff"
+LISTED_UNIT_LEFT_OUT = (
+    "listed unit left out: no single NUCLEAR registry row with an Elexon ID of its own"
+)
 HALF_HOURS_SHORT = "half-hours without all 10 listed units measured"
 GENERATING = "generating"
 NOT_GENERATING = "not generating"
@@ -2055,7 +2076,7 @@ Q38_EXPECTED = dict(
                 highest_half_hour_mw="620",
                 notice_normal_capacity_low_mw="580",
                 notice_normal_capacity_high_mw="610",
-                notice_publications=9,
+                notice_publications=10,
                 first_half_hour=FIRST_HALF_HOUR_READ,
                 last_half_hour=CUTOFF_HALF_HOUR,
                 **q38_output_cells(4, "1200.0", "960.0", "80.00", "250.0", "250.0"),
@@ -2102,6 +2123,22 @@ Q38_EXPECTED = dict(
             "listed units left out: no single NUCLEAR registry row with an Elexon"
             " ID of its own",
             dict(units=6),
+        ),
+        q38_coverage_row(LISTED_UNIT_LEFT_OUT, dict(units=1), unit="HEYM27"),
+        q38_coverage_row(LISTED_UNIT_LEFT_OUT, dict(units=1), unit="HEYM28"),
+        q38_coverage_row(LISTED_UNIT_LEFT_OUT, dict(units=1), unit="HRTL-1"),
+        q38_coverage_row(LISTED_UNIT_LEFT_OUT, dict(units=1), unit="HRTL-2"),
+        q38_coverage_row(LISTED_UNIT_LEFT_OUT, dict(units=1), unit="SIZB-1"),
+        q38_coverage_row(LISTED_UNIT_LEFT_OUT, dict(units=1), unit="SIZB-2"),
+        q38_coverage_row(
+            "registry NUCLEAR unit outside the listed units",
+            dict(
+                unit_half_hours=0,
+                output_mwh=None,
+                drawn_mwh=None,
+                registry_capacity_mw="510",
+            ),
+            unit="HUNB-8",
         ),
         q38_coverage_row(
             "registry NUCLEAR unit outside the listed units",

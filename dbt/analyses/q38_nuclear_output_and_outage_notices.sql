@@ -24,8 +24,8 @@
 -- A half-hour has a notice when int_remit__known_outage_periods lists its
 -- unit, Q5's rule: an Active production unavailability was the notice's
 -- publication in force at the half-hour's start and its event overlaps the
--- half-hour. Any outage size counts; the gap in half-hours whose notices
--- state no unavailable capacity above zero is reported beside.
+-- half-hour. Any outage size counts; the gap in half-hours where no notice
+-- in force states an unavailable capacity above zero is reported beside.
 --
 -- Half-hours: settlement dates from 1 September 2025, the first complete
 -- month of metered values held, to the cutoff.
@@ -166,8 +166,8 @@ notices as (
     where national_grid_bm_unit in ({{ unit_list }})
 ),
 
--- Active production unavailability publications that name a listed unit and
--- whose event overlaps the months read.
+-- Active production unavailability publications that name a listed unit,
+-- made by the cutoff, whose event overlaps the months read.
 unit_publications as materialized (
     select
         national_grid_bm_unit,
@@ -190,6 +190,7 @@ unit_publications as materialized (
         )
 {% if read_until is not none %}
         and event_start_time < timestamptz '{{ read_until }}' + interval '30 minutes'
+        and valid_from <= timestamptz '{{ read_until }}'
 {% endif %}
 ),
 
@@ -414,7 +415,7 @@ gap_with_no_stated_unavailable_capacity as (
         null::text as national_grid_bm_unit,
         notice_class,
         output_state,
-        'gap with notices that state no unavailable capacity above zero' as item,
+        'gap where no notice in force states unavailable capacity above zero' as item,
         count(distinct national_grid_bm_unit) as units,
         count(*) as unit_half_hours,
         null::numeric as capacity_mwh,
@@ -705,24 +706,58 @@ coverage as (
 
     select
         6,
+        listed.national_grid_bm_unit,
+        'listed unit left out: no single NUCLEAR registry row with an Elexon ID of its own',
+        1,
+        null,
+        null,
+        null,
+        null
+    from listed
+    where listed.national_grid_bm_unit not in (
+        select national_grid_bm_unit from measurable_units
+    )
+
+    union all
+
+    -- Metered energy is given only for a unit with one NUCLEAR registry row
+    -- and an Elexon ID of its own, from rows mapped to it; otherwise null.
+    select
+        6,
         nuclear_registry.national_grid_bm_unit,
         'registry NUCLEAR unit outside the listed units',
         1,
         count(generation.bm_unit),
-        round(sum(greatest(generation.latest_quantity_mwh, 0)), 1),
-        round(sum(greatest(-generation.latest_quantity_mwh, 0)), 1),
+        case
+            when bool_and(
+                nuclear_registry.nuclear_rows_for_this_unit = 1
+                and nuclear_registry.elexon_bm_unit is not null
+                and nuclear_registry.rows_with_this_elexon_id = 1
+            ) then round(coalesce(sum(greatest(generation.latest_quantity_mwh, 0)), 0), 1)
+        end,
+        case
+            when bool_and(
+                nuclear_registry.nuclear_rows_for_this_unit = 1
+                and nuclear_registry.elexon_bm_unit is not null
+                and nuclear_registry.rows_with_this_elexon_id = 1
+            ) then round(coalesce(sum(greatest(-generation.latest_quantity_mwh, 0)), 0), 1)
+        end,
         max(nuclear_registry.generation_capacity_mw)
     from nuclear_registry
     left join {{ ref('fct_generation') }} as generation
         on nuclear_registry.elexon_bm_unit = generation.bm_unit
+        and nuclear_registry.nuclear_rows_for_this_unit = 1
+        and nuclear_registry.rows_with_this_elexon_id = 1
+        and generation.mapping_status = 'mapped'
         and generation.settlement_date >= date '{{ first_settlement_date }}'
 {% if read_until is not none %}
         and coalesce(generation.period_start_utc, generation.settlement_date::timestamp at time zone 'Europe/London')
             <= timestamptz '{{ read_until }}'
 {% endif %}
-    where nuclear_registry.national_grid_bm_unit not in (
-        select national_grid_bm_unit from listed
-    )
+    where nuclear_registry.national_grid_bm_unit is null
+        or nuclear_registry.national_grid_bm_unit not in (
+            select national_grid_bm_unit from listed
+        )
     group by nuclear_registry.national_grid_bm_unit
 ),
 

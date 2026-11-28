@@ -832,14 +832,17 @@ been read.
   their metered energy is reported beside the result. A listed unit is
   measured only when the registry holds one NUCLEAR row for it, with an
   Elexon ID no other registry row shares, so that no metered value can
-  count twice; a unit that fails this is left out and counted.
+  count twice; a unit that fails this is left out and named. Capacity
+  and output cover only the unit half-hours measured: where that is not
+  every one, the result says how many were measured of those expected.
 - **Capacity.** The latest registry's generation capacity: 6,410 MW for
   the ten units in the registry of 28 November 2026. Over a half-hour a
   unit's capacity is half that figure in MWh. It is the registered figure,
   not what a unit can deliver: EDF gives the five stations' supply to the
   grid as 5,958 MW in all, 93% of it. Each unit's highest metered
-  half-hour and the range of normal capacity its notices' publications
-  state are reported beside its registry capacity.
+  half-hour and the range of normal capacity stated by its notices'
+  publications made by the cutoff are reported beside its registry
+  capacity.
 - **Output and gap.** From the latest settlement run's metered value.
   Output is the metered energy, counted as zero where it is negative; the
   energy drawn is reported beside. The gap is capacity minus output,
@@ -850,7 +853,10 @@ been read.
   never reached, and that part of the gap can have no notice. So a second
   gap is measured below each unit's highest metered half-hour in the
   months read (or below its capacity where that is lower) and split the
-  same way.
+  same way. The highest half-hour is a comparison within these months
+  only. A unit with no output above zero in them has no second gap, and
+  its gap below registered capacity stays in the main figures; any such
+  unit is named with the result.
 - **Notice.** Q5's known outage: a REMIT production unavailability
   publication in force at the half-hour's start (the notice's current
   version at that time), with status `Active`, names the unit and its
@@ -859,12 +865,13 @@ been read.
   `none`. Any outage size counts, so a small notice puts the whole of that
   half-hour's gap in its class; the split by whether the unit was
   generating is beside it for that reason, and so is the gap in half-hours
-  whose notices state no unavailable capacity above zero.
+  in which no notice in force states an unavailable capacity above zero
+  (zero, or none given).
 - **Half-hours.** Settlement dates from 1 September 2025, the first
   complete month of metered values held, to the cutoff.
 - **Read.** With `analysis_read_until` = 2026-10-31 23:30 UTC, the cutoff
   of Q37's read; the unedited output saved.
-- **Check.** Each month's output is set beside nuclear electricity
+- **Check.** Output for the months in both sources is set beside nuclear electricity
   supplied in DESNZ's monthly table
   ([Energy Trends 5.4](https://www.gov.uk/government/statistics/electricity-section-5-energy-trends)),
   which covers the United Kingdom's major power producers, net of their
