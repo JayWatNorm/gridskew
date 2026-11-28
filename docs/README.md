@@ -9,7 +9,7 @@ section; the carbon pages open with a plain summary.
 
 **`0N0_name.md`** — what the data is, what the columns mean, and the traps.
 **`0N1_name_ingestion.md`** — how it is loaded: schedule, chunking, backfill,
-volumes, and any experiment running against it.
+volumes, any check run against it, and designs considered, not built.
 
 They change on different schedules. What `level_from` means will be true in five
 years; the chunk size will not. Ingestion pages exist **only for datasets
@@ -21,6 +21,12 @@ once in [sources/ingestion-patterns.md](sources/ingestion-patterns.md).
 [Endpoint validation](sources/endpoint-validation.md) describes shared
 validation and routing, flat Elexon and nested Carbon contracts, warning
 logs and rejected-row quarantine.
+
+The test pages: [tests/integration](../tests/integration/README.md) for the
+checks CI runs against its throwaway database,
+[tests/adhoc](../tests/adhoc/README.md) for the live-API explorations and
+fixture-capture scripts, and [tests/fixtures](../tests/fixtures/README.md)
+for the captured API responses and hand-made saved outputs the tests read.
 
 Pages are **numbered in build order**, not alphabetically. Folder READMEs stay
 unnumbered so GitHub renders them on arrival.

@@ -4,8 +4,9 @@
 
 NESO forecasts the carbon intensity of each half-hour about 48 hours ahead and
 revises that forecast every 30 minutes until the half-hour arrives. GridSkew
-keeps every revision. The models on this page line those revisions up for each
-half-hour, from the first forecast to the final one.
+stores the forecast seen at each poll, with its retrieval time. The models on
+this page line those polls up for each half-hour, from the first forecast to
+the final one.
 
 The question: does the forecast drift one way between its first and its final
 version?

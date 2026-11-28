@@ -3,7 +3,7 @@ exposures:
     type: analysis
     url: https://jaywatnorm.github.io/gridskew
     owner:
-      name: James
+      name: GridSkew
     description: >
       The results page. Its Q3 and Q12 figures come from
       agg_delivery_by_fuel_group through the analyses that read it, and its

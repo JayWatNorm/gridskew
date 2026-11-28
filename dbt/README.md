@@ -3,7 +3,7 @@
 This project transforms raw API captures and owns small, version-controlled
 reference datasets. It holds source-grain staging models, a BM-unit current
 dimension with an observed-history snapshot, incremental period tables for
-metered (B1610) and committed (PN) energy exposed as the `fct_generation` and
+metered (B1610) and planned (PN) energy exposed as the `fct_generation` and
 `fct_commitments` views, a year of national demand forecast and outturn,
 and private models that prepare the research questions.
 

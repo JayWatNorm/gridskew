@@ -67,7 +67,7 @@ it happens at all, would affect a small minority of rows — exceptional.
 | Elexon PN | 126,203 | 883,421 rows/day — **~57 GB/year** |
 
 At forty-eight rows a day nobody would separate the two jobs. At a hundred and
-twenty-six thousand, the same design is ruinous.
+twenty-six thousand, the same design would add about 57 GB a year.
 
 Both PN figures are **counted, not estimated** — 126,203 rows per run at a
 measured 177 bytes each. See
@@ -79,19 +79,22 @@ measured 177 bytes each. See
 ## Lag ladders, not rolling windows
 
 Where re-polling is needed at depth, sample at fixed lags rather than dragging a
-window behind the present.
+window behind the present. The B1610 and QAS pollers sample at fixed lags of
+14, 35 and 450 days.
 
-A rolling 90-day window on PN would be 4.15 billion rows and about 734 GB a
-year. Sampling at 1, 8, 30 and 90 days reaches the same maximum lag for about
-32.6 GB — roughly 4% of the cost, because it samples four ages instead of
-re-fetching every intervening day. It does not provide continuous coverage.
+Considered, not built: a lag ladder for PN. A rolling 90-day window on PN would
+be 4.15 billion rows and about 734 GB a year. Sampling at 1, 8, 30 and 90 days
+reaches the same maximum lag for about 32.6 GB — roughly 4% of the cost,
+because it samples four ages instead of re-fetching every intervening day. It
+does not provide continuous coverage. PN is fetched once a day.
 
 Ladders belong in configuration, not hard-coded, because the whole point is that
 they change once evidence arrives about where revisions actually land.
 
 ## Probe before an expensive fetch
 
-Where a dataset publishes its own revision marker, use it. B1610 carries
+Considered, not built: no poller probes before it fetches. Where a dataset
+publishes its own revision marker, a probe could use it. B1610 carries
 `settlementRunType` in every row, so detecting a restatement does not require
 comparing about 450,000 values — it requires seeing whether a new run type
 appeared.
@@ -101,7 +104,7 @@ appeared.
 | Blind re-fetch of a day | 449,673 |
 | Probe four BM units, then decide | 192, plus the full day only if it changed |
 
-**0.04% of the cost on the days nothing changed**, which will be most of them,
+**0.04% of the cost on the days nothing changed**, most of them,
 because settlement runs complete in waves rather than gradually.
 
 The approach assumes settlement runs advance uniformly across units, so a probe

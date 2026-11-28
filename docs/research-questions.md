@@ -896,12 +896,12 @@ been read.
 
 ## Retired
 
-Dropped questions stay listed, with the reason.
+Each question below was retired, with the reason.
 
 | ID | Question | Why retired |
 |---|---|---|
 | Q7 | Do wind shortfalls follow weather-forecast misses? | NESO expects wind units' PNs to use data near gate closure, so a day-ahead regional weather miss is a weak explanation; a limitation, not a settled exclusion. |
-| Q11 | Are system prices revised after the first calculation? | Elexon's public system-prices endpoint serves only the first calculation, so revisions cannot be observed; this is not a finding that prices are never revised. |
+| Q11 | Are system prices revised after the first calculation? | Elexon's public system-prices endpoint serves only the latest calculation; seeing revisions needs repeated polling, which was not built. This does not show that prices are never revised. |
 | Q13 | Does interconnector flow explain forecast error? | No flow forecast is held; a question on outturn flows would be new, with its own source and method. |
 | Q14 | Is the forecast worse on weekends, holidays or in high wind? | Its calendar part is answered inside Q10; Q30 reads the wind forecast's miss, not high wind. |
 | Q17 | Capture timeliness per source and day | An operations measure, not research. Retired 12 October 2026. |

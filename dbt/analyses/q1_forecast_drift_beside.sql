@@ -1,9 +1,8 @@
 {{ config(group='analysis') }}
 
 -- Beside Q1's verdict (docs/carbon-forecast-trajectory.md), described, never
--- changing or withholding it. Amended 31 October 2026, before Q1's population
--- reached 2,880 and before any drift value was read. Read in the same look as
--- q1_forecast_drift_verdict, on its population and behind its gate (at
+-- changing or withholding it. It runs with q1_forecast_drift_verdict, on its
+-- population and behind its gate (at
 -- least forecast_drift_half_hours_needed complete half-hours from
 -- forecast_drift_population_from to analysis_read_until, and three slot polls
 -- stored after the cutoff). Before the gate opens it returns counts only.
@@ -12,8 +11,8 @@
 --   population's UTC dates, numbered 1 to n in ascending order, resampled
 --   with replacement in 1,000 draws of n picks each, picked from md5 of the
 --   seed q1-2026-10-31, the draw and the pick (bootstrap_date_number); the
---   interval is the 5th and 95th percentile_cont of the draws. Not called
---   pre-registered: an exploration on 11 September 2026 computed a near
+--   interval is the 5th and 95th percentile_cont of the draws. Described,
+--   not tested: an exploration on 11 September 2026 computed a near
 --   preview.
 -- - Correlation of successive revisions. For each population half-hour, its
 --   counted polls made at or before its start, in descending horizon order
@@ -22,7 +21,7 @@
 --   drift. Pearson's r over every pair of consecutive changes within one
 --   half-hour, pooled over the population, with n pairs, n changes, the share
 --   of changes equal to 0 (zeros stay in the pairs) and the same interval.
---   Not called pre-registered: a published analysis (gridcast) reports
+--   Described, not tested: a published analysis (gridcast) reports
 --   negative values on overlapping dates. Under efficient revision it is near
 --   zero; Q1 shows the usual direction of change, not whether the forecast is
 --   efficient. A check counts the population half-hours whose changes do not

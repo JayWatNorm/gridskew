@@ -12,7 +12,7 @@ market data.
 | Docs | https://bmrs.elexon.co.uk/api-documentation/introduction |
 | Data browser | https://bmrs.elexon.co.uk/ |
 
-Ingested Elexon endpoints use the shared contracts and quarantine behavior
+Ingested Elexon endpoints use the shared contracts and quarantine behaviour
 described in [../endpoint-validation.md](../endpoint-validation.md).
 
 The developer portal publishes the **OpenAPI specification** in JSON, YAML and
@@ -37,9 +37,9 @@ API accepts a period as high as 50.
 **3. Generators declare, then deliver, and the operator fixes the difference.**
 
 - Ahead of time, each generator says what it will produce (`PN`).
-- If the operator needs more or less, it pays generators to change plan
-  (`BOALF`). Gas plants are the usual source of short-notice extra output,
-  because they can start quickly.
+- If the operator needs more or less, it accepts offers and bids to move
+  units off their plan (`BOALF`); by energy, most of what it turns up is gas
+  and most of what it turns down is wind.
 - Afterwards, meters record what actually happened (`B1610`).
 - The cost of correcting the imbalance becomes a price (system prices).
 
@@ -233,17 +233,20 @@ Neither matches Carbon Intensity's `2026-08-01T01:00Z`. Each parse needs its
 own format string, and B1610's needs a timezone attaching after parsing rather
 than a suffix stripping.
 
-## Everything has a revision axis
+## Most datasets carry a revision axis
 
-`settlementRunType` on B1610, `revisionNumber` on REMIT, `amendmentFlag` on
-BOALF, `notificationSequence` on MELS and MILS.
+`settlementRunType` on B1610, `revisionNumber` on REMIT, `notificationSequence`
+on MELS and MILS. BOALF has `amendmentFlag`, but it was `ORI` in the sampled
+data, so no usable revision marker was observed for BOALF
+([040_boalf.md](040_boalf.md)).
 
 The append-only raw layer with take-latest downstream is not a Carbon Intensity
 quirk. It is the shape of this entire domain.
 
 ## Rate limits
 
-Not documented anywhere in the spec or the developer portal.
+The spec documents an HTTP 429 (too many requests) response on the endpoints
+checked, but neither it nor the developer portal gives a number for the limit.
 
 ### Tested 2026-08-20
 
@@ -258,8 +261,10 @@ BM unit.
 | Rate achieved | Roughly **30 requests per second**, sustained |
 
 **No rate-limit headers are returned.** No `X-RateLimit-Remaining`, no
-`Retry-After`, nothing. A client cannot see how close it is to a limit, so
-backing off gracefully is impossible; you would simply be blocked.
+`Retry-After`, nothing. A client cannot see how close it is to a limit. A 429
+fails the request, and Airflow's retries run most tasks again later; see
+[Politeness](../ingestion-patterns.md#politeness) for the tasks that stop
+instead.
 
 Response headers show `Cache-Control: no-store, must-revalidate, no-cache`, so
 nothing is cacheable, and `Request-Context: appId=cid-v1:...`, indicating Azure
