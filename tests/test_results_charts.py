@@ -1172,7 +1172,7 @@ def test_the_page_gives_every_committed_chart_its_columns():
     for name, rows in zip(names, given, strict=True):
         headers[name] = rows.split("\n", 1)[0].split(",")
 
-    assert len(names) == 18
+    assert len(names) == 19
     assert fields_missing_from(headers, results) == {}
 
 
