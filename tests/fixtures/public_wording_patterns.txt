@@ -1,0 +1,8 @@
+# Wording no tracked file may hold, outside the saved outputs' row labels.
+# One pattern per line: a short name, " = ", then a case-insensitive regular
+# expression. The repository scans skip this file by its path.
+unanswered = not\s+pursued
+unanswered = still\s+to\s+come
+unanswered = not\s+answered\s+here
+fixed_in_advance = pre-registered
+on_a_register = registered\s+result

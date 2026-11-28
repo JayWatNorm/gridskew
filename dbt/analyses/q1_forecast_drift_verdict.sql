@@ -1,6 +1,6 @@
 {{ config(group='analysis') }}
 
--- The one look at the forecast drift question
+-- The forecast drift question
 -- (docs/carbon-forecast-trajectory.md): does the carbon-intensity forecast
 -- drift one way between its first and its final version? Run it once, on the
 -- first day q1_forecast_drift_population reports
@@ -10,9 +10,7 @@
 -- cutoff, so outturn has settled. Before then it returns the count and date
 -- range and no result.
 --
--- Amended 31 October 2026, before the population reached 2,880 and before
--- any drift value was read. Beside the verdict, described, never changing or
--- withholding it:
+-- Beside the verdict, described, never changing or withholding it:
 -- - the verdict with each weekday weighted to its share of the calendar,
 --   since stalls leave fewer complete half-hours on some weekdays. A
 --   half-hour's weight is its UTC weekday's share of the half-hours from the

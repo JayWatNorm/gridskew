@@ -255,7 +255,7 @@ Gate Closure constrains when a PN is submitted. It does not establish that the
 endpoint never republishes or corrects a past period. PN has no explicit
 revision marker; `retrieved_at` identifies each captured response.
 
-**A fuller design, not run.** Re-polling the same settlement days at lags of
+**Considered, not built: a fuller design.** Re-polling the same settlement days at lags of
 1, 8, 30 and 90 days for four weeks, then comparing the captures. What ran is
 the bounded two-day check above.
 
@@ -278,6 +278,6 @@ plan.
   schedule decision; a query result does not change production polling by
   itself.
 
-**The ladder is the experiment, not the permanent design.** Permanent
+**Considered, not built: permanent lag polling.** Permanent
 `1, 8, 30, 90` polling would be about four times the single-cadence storage:
 32.6 GB/year for PN and 61.9 GB/year with QPN.

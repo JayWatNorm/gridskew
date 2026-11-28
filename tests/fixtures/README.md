@@ -5,6 +5,10 @@ Real API responses, grouped by source to mirror `ingestion/` and
 not the full payload. A captured fixture records what the API returned, not
 what it was assumed to return.
 
+`results/` holds small hand-made saved outputs, in the columns of the files
+in `docs/results/`, that the chart tests in
+[test_results_charts.py](../test_results_charts.py) read.
+
 ## Validator test usage
 
 [test_validation.py](../test_validation.py) checks the Elexon and Carbon

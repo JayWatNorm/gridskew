@@ -2,17 +2,17 @@
 
 [![CI](https://github.com/JayWatNorm/gridskew/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JayWatNorm/gridskew/actions/workflows/ci.yml)
 
-Measuring GB electricity grid shortfalls and their effect on carbon intensity
-forecast error.
+Measuring GB electricity generation shortfalls and how they track carbon
+intensity forecast errors.
 
-GridSkew is a working data platform built around a real analytical question,
-not a tutorial dataset. It applies Python ingestion, PostgreSQL, dbt and Airflow
-to live public APIs and keeps every forecast version and every settlement run
-it captures, which those APIs later overwrite.
+GridSkew is a working data platform built around a real analytical question.
+It applies Python ingestion, PostgreSQL, dbt and Airflow to live public APIs
+and keeps every forecast version and every settlement run it captures, which
+those APIs later overwrite.
 
 **Results:** <https://jaywatnorm.github.io/gridskew>
 
-**Status:** the analysis is complete; the last question was read on
+**Status:** the analysis is complete; the last question was analysed on
 27 November 2026. The Airflow DAGs keep collecting data, and the nightly dbt
 job keeps building and testing it.
 
@@ -26,11 +26,17 @@ with its method, data window and saved output.
   in every whole month from September 2025 to August 2026; the median unit of
   every other type, by under 3.5% ([Q23](https://jaywatnorm.github.io/gridskew/#q23)).
 - **Most under-delivery comes with no published outage.** About a quarter
-  (24%, 22 August 2025 to 27 September 2026) came with one; for wind, about
-  a tenth ([Q5](https://jaywatnorm.github.io/gridskew/#q5)).
+  (24%, 22 August 2025 to 27 September 2026) came with one. Wind is over half
+  of all under-delivery (9.3 of 16.4 TWh), and only about a tenth of wind's
+  came with one; outside wind, 42% did ([Q5](https://jaywatnorm.github.io/gridskew/#q5)).
 - **NESO flags almost all the energy its instructions move at wind farms as
   system actions**, possibly for network reasons: 97% over the settlement
   months August 2025 to September 2026 ([Q24](https://jaywatnorm.github.io/gridskew/#q24)).
+- **In half-hours when NESO turns wind down, gas is most of what it turns
+  up.** In the 66% of half-hours with wind turned down as a system action
+  (Aug 2025 – Oct 2026), gas was 85% of the energy turned up, 2.4 GW on
+  average; in the others it was 90%, at 0.8 GW
+  ([Q37](https://jaywatnorm.github.io/gridskew/#q37)).
 - **The carbon forecast's misses only slightly track under-delivery, and
   barely track misses in NESO's demand and wind forecasts.** In the fifth
   of half-hours with the biggest carbon misses (22 August 2025 to 16 August
@@ -39,12 +45,13 @@ with its method, data window and saved output.
   demand and wind forecasts have rank correlations of only 0.04 and 0.01
   with the size of the carbon miss ([Q28](https://jaywatnorm.github.io/gridskew/#q28),
   [Q8](https://jaywatnorm.github.io/gridskew/#q8), [Q30](https://jaywatnorm.github.io/gridskew/#q30)).
-- **After 10 September 2026, up to 12 November, the carbon forecast was
-  revised upward as each half-hour approached.** Over the whole window from
-  19 August 2026 (2,910 half-hours) the middle change from first to final
-  forecast was +19 g/kWh, and a day ahead the forecast ran 21 g/kWh below
-  NESO's outturn estimate (2,864 half-hours); the accuracy figures point the
-  other way on the 365 earliest half-hours (19 August to 4 September 2026)
+- **The median carbon forecast revision was upward.**
+  Over 2,910 half-hours from 19 August to 12 November 2026 the median change
+  from first to final forecast was +19 g/kWh, and a day ahead the forecast
+  ran on average 21 g/kWh below NESO's outturn estimate (2,864 half-hours).
+  On the 365 earliest of those half-hours (19 August to 4 September) it ran
+  above the outturn instead, and on average fell between a day ahead and its
+  final version
   ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
 The carbon forecast set against under-delivery, demand and wind is the stored
@@ -52,23 +59,22 @@ forecast, not a day-ahead one.
 
 ## The question
 
-1. **Find the shortfalls.** Where did generating units commit to produce power
+1. **Find the shortfalls.** Where did generating units plan to produce power
    and then not produce it? Compare Physical Notifications (`PN`) with actual
    metered output (`B1610`) per unit and half-hour settlement period.
-2. **Measure the carbon impact.** Join those shortfalls to national carbon
-   intensity forecast error for the same periods.
-3. **Explain them.** Test planned and unplanned outages (`REMIT`), demand
-   forecast error and market stress signals as possible explanations.
+2. **Compare them with carbon forecast errors.** Join those shortfalls to
+   national carbon intensity forecast error for the same periods.
+3. **Explain them.** Test planned and unplanned outages (`REMIT`) and demand
+   forecast error as possible explanations.
 
 The [methods](docs/research-questions.md#terms) call the shortfall NESO did not
 instruct *unexplained shortfall*; the results page calls its positive part
 *under-delivery*.
 
 The analysis stays at unit level because aggregating to fuel type first can
-wash out the signal. The shortfall table covers every registered unit with a
-published fuel type, interconnectors and pumped storage included; each result
-states which units it counts. A unit without a published fuel type has no
-physical baseline.
+wash out the signal. Shortfall comparisons cover registry units with a
+published fuel type. Other units are outside this cohort. Each result states
+which units it counts.
 
 A related question runs independently: **how does a forecast for a given
 half-hour change as that half-hour approaches?** This can be answered without
@@ -76,12 +82,15 @@ waiting for Elexon settlement data.
 
 ## The mechanism behind the question
 
-If committed generation fails, gas peakers may fill the gap at short notice.
+If planned generation fails, gas peakers may fill the gap at short notice.
 Because gas is dirtier than much of what it replaces, two effects would follow:
 
 1. Actual carbon intensity should exceed the published forecast more often
    than it falls below it.
 2. Forecasts should revise upwards as the target period approaches.
+
+NESO's carbon forecast is built from its own demand, wind and solar
+forecasts, not from unit plans, so any link is indirect.
 
 No result measures the first effect, which is about how often
 the outturn is above the forecast. Two results give the average miss
@@ -96,16 +105,17 @@ was on average 21 g/kWh above the forecast made about a day ahead and
 ([Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
 The archive measures the second. Over 2,910 half-hours from
-19 August to 12 November 2026 the middle change from first to final forecast
+19 August to 12 November 2026 the median change from first to final forecast
 was +19 g/kWh, and 72.6% of the changes that were not zero were upward
 ([Q1](https://jaywatnorm.github.io/gridskew/#q1)); on the 2,530 half-hours after 10 September 2026 it was
 +23 g/kWh. Q10's bias changes sign inside the window: negative on its 365
 earliest half-hours (19 August to 4 September 2026), positive on the 2,499
-from 11 September. That points to a reversal for Q1 on the earliest
-half-hours, for which Q1's own output has no figure. The split falls across
-a week-long gap in the sample as well as a change in the archive's poll
-schedule on 10 September 2026. The window holds no winter or spring. Neither
-result shows why the forecast moves, so neither shows the mechanism.
+from 11 September. In Q10's earlier sample the forecast fell on average
+between about a day ahead and its final version. Q1's first-to-last measure
+was not calculated for that subset. The split falls across a week-long gap
+in the sample as well as a change in the archive's poll schedule on
+10 September 2026. The window holds no winter or spring. Neither result shows
+why the forecast moves, so neither shows the mechanism.
 
 ## Why archive the forecasts?
 
@@ -113,17 +123,18 @@ The NESO Carbon Intensity API recalculates its 48-hour forecast every 30
 minutes and overwrites the previous value. It cannot later show what it
 predicted 48 hours before an event.
 
-GridSkew polls the forecast every 30 minutes and stores every revision with its
-retrieval time. This creates a forecast trajectory that the source does not
-retain. The archive only extends forwards from the day collection started;
-missed revisions cannot be recovered.
+GridSkew polls the forecast every 30 minutes and stores the forecast seen at
+each poll, with its retrieval time. This creates a forecast trajectory that
+the source does not retain. The archive only extends forwards from the day
+collection started; missed revisions cannot be recovered.
 
 ## Limitations
 
 - NESO does not document when the stored forecast is made; if it is a late
   version, its error understates the miss of earlier forecasts.
 - Forecast revisions also reflect weather, demand and interconnector updates;
-  attributing them to generation shortfalls requires the per-unit Elexon join.
+  the per-unit Elexon join aligns shortfalls and forecast errors in time; it
+  does not attribute revisions to shortfalls.
 - `B1610` includes metered BM-unit imports and exports, not only physical
   generation. Shortfall and fuel comparisons need a verified generator cohort;
   units without a supported fuel label remain unknown.
@@ -281,10 +292,6 @@ repository's release runbook, which is not public.
 
 ## Status
 
-The analysis is complete; the last question was read on 27 November 2026.
-The DAGs keep collecting data, and the nightly dbt job keeps building and
-testing it.
-
 **Complete and running**
 
 - Carbon intensity forecast and outturn collection
@@ -310,7 +317,7 @@ testing it.
 **Period facts**
 
 - Two private incremental period tables, `int_elexon__b1610_period` and
-  `int_elexon__pn_period_mwh`, maintain metered and committed energy.
+  `int_elexon__pn_period_mwh`, maintain metered and planned (PN) energy.
   `fct_generation` and `fct_commitments` expose those values as views joined
   to current registry evidence.
 - Two more private incremental tables carry the shortfall question:
@@ -322,7 +329,7 @@ testing it.
   balancing services outside the mechanism. The analyses that read it are
   listed in the [dbt guide](dbt/README.md).
 
-**Read**
+**Results**
 
 - The [results page](https://jaywatnorm.github.io/gridskew) holds every
   result, with its chart, method and saved output; the headline
@@ -332,9 +339,8 @@ testing it.
   final version; see
   [Carbon forecast trajectory](docs/carbon-forecast-trajectory.md).
 - Q1 and Q10, how the carbon forecast is revised as a half-hour approaches
-  and how accurate it is at each lead time, were read on
-  22 November 2026, on 2,910 and 2,864 half-hours from 19 August to
-  12 November 2026 ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
+  and how accurate it is at each lead time, were analysed on
+  22 November 2026; their figures are under [What it found](#what-it-found).
 
 System prices and weather are not used.
 

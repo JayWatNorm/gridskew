@@ -8,7 +8,7 @@ Validation and quarantine cover PN, QPN, B1610, BOALF, REMIT, QAS, NDF,
 INDO, WINDFOR, FUELHH, both Carbon datasets and the BM-unit registry. Carbon
 forecast and outturn also have period-completeness checks.
 
-## Behavior
+## Behaviour
 
 `validate_row(row, spec)` returns error and warning lists.
 `validate_rows(rows, spec)` returns one indexed finding per source item without

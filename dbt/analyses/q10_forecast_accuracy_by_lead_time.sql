@@ -2,18 +2,18 @@
 
 -- Q10: how accurate is the carbon-intensity forecast at each lead time?
 -- Reading rule (research questions, recorded 12 October 2026): read once,
--- after Q1's one look, at the same analysis_read_until. Mean absolute error
+-- after Q1's verdict, at the same analysis_read_until. Mean absolute error
 -- and bias of the forecast about 24 hours, about 4 hours and about half an
--- hour ahead, against outturn, on one common sample: Q1's one-look
+-- hour ahead, against outturn, on one common sample: Q1's population
 -- half-hours that have all three, with each lead time's n and the
 -- half-hours dropped reported. A secondary split by settlement-date type
 -- (weekday, weekend, bank holiday in England and Wales) is described with n;
 -- nothing is tested.
 --
--- Amended 31 October 2026, before any read: the lead times are named as they
--- are, and an interval, two simple reference forecasts, the API's own final
--- forecast and the same figures on the half-hours an exploration of
--- 11 September 2026 did not see are added beside the result.
+-- The lead times are named as they are, and an interval, two simple
+-- reference forecasts, the API's own final forecast and the same figures on
+-- the half-hours an exploration of 11 September 2026 did not see are given
+-- beside the result.
 -- - Lead times. The 24-hour and 4-hour forecasts are the counted poll
 --   nearest that horizon, null when none is within half an hour of it; the
 --   half-hour forecast is Q1's final. Until 10 September 2026 10:30 UTC the
