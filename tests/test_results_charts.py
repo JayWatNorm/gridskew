@@ -3188,9 +3188,9 @@ ARTICLE_IDS = [
     "q12",
     "q5",
     "q6",
+    "q38",
     "q24",
     "q37",
-    "q38",
     "q25",
     "q29",
     "q28",
@@ -6883,9 +6883,9 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q3_gap_from_plan_by_fuel_group.vl.json",
         "results/q12_instructed_share_by_fuel_group.vl.json",
         "results/q5_under_delivery_by_outage_notice.vl.json",
+        "results/q38_output_and_gap_by_month.vl.json",
         "results/q24_flagged_share_by_fuel_group.vl.json",
         "results/q37_turn_up_by_wind_turn_down_band.vl.json",
-        "results/q38_output_and_gap_by_month.vl.json",
         "results/q25_short_instructions_by_fuel_group.vl.json",
         "results/q29_error_by_time_of_day.vl.json",
         "results/q29_error_by_month.vl.json",
@@ -7041,8 +7041,9 @@ VISIBLE_LIMITS = {
         "instruction replaced another; no location and no price is read.</p>"
     ),
     "q38": (
-        "<p>Registered capacity is more than the units reach, and a notice and a "
-        "gap going together in time is not a cause.</p>"
+        "<p>In these months nine of the ten units' highest half-hours are below "
+        "their registered capacity, and a notice and a gap going together in "
+        "time is not a cause.</p>"
     ),
     "q25": (
         "<p>This covers only units with a published fuel type and measures "
@@ -7761,7 +7762,7 @@ DATA_USES_OF_FRAMING_WORDS = [
     "unplanned notices",
     "Unplanned (",
     "registered by suppliers",
-    "43% unplanned",
+    "43.4% unplanned",
     "registered nuclear capacity",
     "registered capacity",
     "Registered capacity",
@@ -9034,17 +9035,24 @@ def nuclear_gap_by(rows, column, key):
     return totals
 
 
-def gap_shares(rows, column):
-    """Each notice class's whole-number share of the gap in the column, and
-    the share with any notice, beside the gap's total."""
+def gap_shares(rows, column, places):
+    """Each notice class's share of the gap in the column, at whole numbers
+    or one decimal, and the whole-number share with any notice, beside the
+    gap's total. At one decimal the three classes add to 100.0, as the page
+    shows them."""
     by_class = nuclear_gap_by(rows, column, "notice_class")
     total = summed(section_rows(rows, "4"), column)
     shares = {}
     for notice_class in Q38_CLASSES:
-        shares[notice_class] = percent_of(by_class[notice_class], total, 0)
+        shares[notice_class] = percent_of(by_class[notice_class], total, places)
     shares["any notice"] = percent_of(
         by_class["planned"] + by_class["unplanned"], total, 0
     )
+    if places == 1:
+        added = Decimal(0)
+        for notice_class in Q38_CLASSES:
+            added += Decimal(shares[notice_class])
+        assert added == 100
     return shares, total
 
 
@@ -9071,7 +9079,7 @@ def test_q38s_answer_takes_its_shares_from_its_saved_output():
     all_months = item_row(rows, "2", Q38_ALL_MONTHS)
     lowest, highest = lowest_and_highest_nuclear_month(rows)
     months = section_rows(rows, "1")
-    shares, _total = gap_shares(rows, "gap_mwh")
+    shares, _total = gap_shares(rows, "gap_mwh", 1)
 
     assert all_months["units"] == "10"
     assert (
@@ -9086,8 +9094,8 @@ def test_q38s_answer_takes_its_shares_from_its_saved_output():
         f"{whole(nuclear_share(highest))}% "
         f"({month_in_full(highest['settlement_month'])}) by month. Of the gap "
         f"below capacity, {shares['any notice']}% fell in half-hours when a "
-        f"notice was in force for the unit: {shares['planned']}% planned, "
-        f"{shares['unplanned']}% unplanned."
+        f"notice was in force for the unit ({shares['planned']}% planned, "
+        f"{shares['unplanned']}% unplanned)."
     )
 
 
@@ -9095,13 +9103,14 @@ def test_q38s_result_gives_the_energy_and_the_gap_by_notice_from_its_saved_outpu
     rows = saved_output_rows(Q38_OUTPUT)
     all_months = item_row(rows, "2", Q38_ALL_MONTHS)
     lowest, highest = lowest_and_highest_nuclear_month(rows)
-    shares, total = gap_shares(rows, "gap_mwh")
+    shares, total = gap_shares(rows, "gap_mwh", 1)
 
     assert (
-        f"<dd>The ten units metered {twh(all_months['output_mwh'])} TWh against "
-        f"{twh(all_months['capacity_mwh'])} TWh of registered capacity "
-        f"(settlement months {output_month_range(rows)}), "
-        f"{whole(nuclear_share(all_months))}%; by month from "
+        f"<dd>The ten units metered {twh(all_months['output_mwh'])} TWh; their "
+        "registered capacity, held for every half-hour, comes to "
+        f"{twh(all_months['capacity_mwh'])} TWh "
+        f"(settlement months {output_month_range(rows)}), so output is "
+        f"{whole(nuclear_share(all_months))}% of it; by month from "
         f"{whole(nuclear_share(lowest))}% "
         f"({month_in_full(lowest['settlement_month'])}) to "
         f"{whole(nuclear_share(highest))}% "
@@ -9118,7 +9127,7 @@ def test_q38s_gap_while_not_generating_always_had_a_notice():
     rows = saved_output_rows(Q38_OUTPUT)
     by_state = nuclear_gap_by(rows, "gap_mwh", "output_state")
     by_both = nuclear_gap_by(rows, "gap_mwh", "both")
-    shares, total = gap_shares(rows, "gap_mwh")
+    shares, total = gap_shares(rows, "gap_mwh", 1)
 
     assert ("none", "not generating") not in by_both
     assert (
@@ -9144,10 +9153,15 @@ def test_q38s_second_gap_and_the_capacities_beside_it_come_from_their_sources():
             unit["registry_capacity_mw"]
         ):
             reaching.append(unit["national_grid_bm_unit"])
-    shares, total = gap_shares(rows, "gap_below_highest_mwh")
+    shares, total = gap_shares(rows, "gap_below_highest_mwh", 1)
     method = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q38"))
 
     assert reaching == ["HEYM28"]
+    assert len(units) - len(reaching) == 9
+    assert (
+        "nine of the ten units' highest half-hours are below their registered"
+        in (VISIBLE_LIMITS["q38"])
+    )
     assert "EDF gives the five stations' supply to the grid as 5,958 MW in all" in (
         method
     )
@@ -9156,28 +9170,31 @@ def test_q38s_second_gap_and_the_capacities_beside_it_come_from_their_sources():
         "gives the five stations' supply to the grid as 5,958 MW, and only one "
         "unit's highest half-hour reaches its registered figure. Part of the gap "
         "below registered capacity can therefore have no notice, so a second gap "
-        "is measured below each unit's highest metered half-hour: "
-        f"{twh(total)} TWh, {shares['planned']}% of it with a planned notice, "
+        "is measured below each unit's highest metered half-hour, or below its "
+        f"registered capacity where that is lower: {twh(total)} TWh, {shares['planned']}% of it with a planned notice, "
         f"{shares['unplanned']}% with an unplanned notice and {shares['none']}% "
         "with none.</dd>" in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
     )
 
 
-def test_q38s_units_are_listed_by_their_output_share_lowest_first():
+def test_q38s_units_are_listed_by_station_with_their_output_shares():
     rows = saved_output_rows(Q38_OUTPUT)
-    units = sorted(section_rows(rows, "5"), key=nuclear_share)
-    named = []
-    for unit in units:
-        named.append(
-            f"{unit['national_grid_bm_unit']} ({unit['station']}) "
-            f"{whole(nuclear_share(unit))}%"
+    by_station = {}
+    for unit in section_rows(rows, "5"):
+        by_station.setdefault(unit["station"], []).append(
+            f"{unit['national_grid_bm_unit']} {whole(nuclear_share(unit))}%"
         )
+    stations = []
+    for station in sorted(by_station):
+        units = sorted(by_station[station])
+        assert len(units) == 2
+        stations.append(f"{station} {units[0]} and {units[1]}")
 
-    assert len(units) == 10
+    assert len(stations) == 5
     assert (
-        "<dd>Output as a share of registered capacity, lowest first: "
-        f"{', '.join(named[:-1])} and {named[-1]}. Sizewell B's two units are the "
-        "two turbine-generators of its one reactor.</dd>"
+        "<dd>Output as a share of registered capacity, by station: "
+        f"{'; '.join(stations)}. Sizewell B's two units are the two "
+        "turbine-generators of its one reactor.</dd>"
         in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
     )
 
@@ -9188,10 +9205,17 @@ def test_q38_gives_published_outages_nuclear_share_with_a_notice():
         q5_rows(q5, "2", "nuclear")
     )
 
+    first, last = long_date_range(q5)
+
     assert (
         f"measures under-delivery against each unit's plan; for nuclear, "
         f"{percent_of(nuclear_with_notice, nuclear_total, 0)}% of it came with a "
-        "notice." in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+        f"notice ({first} to {last}). This measures the gap below registered "
+        "capacity instead, so an outage during which a unit's plan is zero, which "
+        "that measure cannot see, is counted here. The two shares measure "
+        "different things over different dates; their closeness is not a check "
+        "of one on the other.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
     )
 
 
@@ -9206,12 +9230,14 @@ def test_the_desnz_comparison_is_the_nuclear_output_beside_desnzs_figures():
     comparison = saved_output_rows(Q38_COMPARISON)
     output_total = Decimal(0)
     desnz_total = Decimal(0)
+    differences = []
 
     assert len(desnz) == len(section_rows(comparison, "1")) == 13
     for figure, compared in zip(desnz, section_rows(comparison, "1"), strict=True):
         output_twh = output_by_month[figure["month"]] / Decimal(1_000_000)
         desnz_twh = Decimal(figure["nuclear_twh"])
         above = Decimal(100) * (output_twh - desnz_twh) / desnz_twh
+        differences.append(above)
         output_total += output_twh
         desnz_total += desnz_twh
         assert compared["month"] == figure["month"]
@@ -9230,7 +9256,8 @@ def test_the_desnz_comparison_is_the_nuclear_output_beside_desnzs_figures():
     assert is_a_context_label(COMPARISON_LABEL, "comparison")
     assert [row["month"] for row in desnz if row["provisional"] == "yes"] == ["2026-09"]
     assert (
-        "<dd>The output is within 5% of DESNZ's figure in each of the thirteen "
+        f"<dd>The output is between {tenths(-min(differences))}% below and "
+        f"{tenths(max(differences))}% above DESNZ's figure in each of the thirteen "
         f"months from {month_in_full(desnz[0]['month'] + '-01')} to "
         f"{month_in_full(desnz[-1]['month'] + '-01')}, and {tenths(above_total)}% "
         f"above it over them ({tenths(output_total)} against "
@@ -9258,6 +9285,10 @@ def test_desnzs_figures_carry_their_source_and_licence_on_every_page():
     assert source in text
     assert source in footer and licence in footer
     assert source in sources and licence in flattened(sources)
+    # Four providers are credited, so no wording for two.
+    assert "None of the providers endorses this project." in footer
+    assert "None of the providers endorses this project." in sources
+    assert "Neither provider" not in page + readme
     assert '<a href="results/context_q38_desnz_monthly_nuclear.csv">' in fold_outs(
         page, "q38"
     )
@@ -9270,8 +9301,8 @@ def test_q38s_measure_gives_the_energy_drawn_from_its_saved_output():
     assert (
         "counted as zero where it is negative "
         f"({hundredths(Decimal(all_months['drawn_mwh']) / 1_000_000)} TWh drawn in "
-        "all); the gap is capacity minus output."
-        in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+        "all); the gap is capacity minus output, counted as zero where output is "
+        "above capacity." in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
     )
 
 
@@ -9283,6 +9314,7 @@ def test_q38_leaves_nothing_out_and_names_its_settlement_runs():
     )["unit_half_hours"]
     by_run = {}
     outside = []
+    metered_rows = {}
     for row in checks:
         item = row["item"]
         if item.startswith("left out") or item.startswith("listed units left out"):
@@ -9291,6 +9323,7 @@ def test_q38_leaves_nothing_out_and_names_its_settlement_runs():
             by_run[item.rpartition(" ")[2]] = int(row["unit_half_hours"])
         if item == "registry NUCLEAR unit outside the listed units":
             outside.append(row["national_grid_bm_unit"])
+            metered_rows[row["national_grid_bm_unit"]] = row["unit_half_hours"]
             assert Decimal(row["output_mwh"]) == 0
             assert Decimal(row["drawn_mwh"]) == 0
     runs = []
@@ -9304,14 +9337,25 @@ def test_q38_leaves_nothing_out_and_names_its_settlement_runs():
     for unit in section_rows(rows, "5"):
         assert unit["unit_half_hours"] == half_hours
     assert outside == Q38_UNITS_OUTSIDE
+    # Dungeness B and Hinkley Point B: a metered row for every half-hour,
+    # none with output; Hunterston B: no metered row.
+    assert metered_rows == {
+        "DNGB21": half_hours,
+        "DNGB22": half_hours,
+        "HINB-7": half_hours,
+        "HINB-8": half_hours,
+        "HUNB-7": "0",
+        "HUNB-8": "0",
+    }
     assert sorted(by_run) == sorted(Q38_RUN_NAMES)
     assert sum(by_run.values()) == 10 * int(half_hours)
     assert (
         f"<dd>Nothing: each of the ten units has all {int(half_hours):,} "
         "half-hours from 1 September 2025 to 31 October 2026, and no output was "
-        "above registered capacity. Six more units the registry lists as "
-        "nuclear, at Dungeness B, Hinkley Point B and Hunterston B, which no "
-        "longer generate, metered nothing. Of the "
+        "above registered capacity. Of the six other nuclear units in the "
+        "registry, the four at Dungeness B and Hinkley Point B have metered rows "
+        "with no output, and the two at Hunterston B have no metered rows in "
+        "these months. Of the "
         f"{sum(by_run.values()):,} unit half-hours, {', '.join(runs[:-1])} and "
         f"{runs[-1]}.</dd>" in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
     )

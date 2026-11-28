@@ -363,13 +363,13 @@
         <ul>
           <li><a href="#q5">When units under-delivered, had an outage already been published?</a></li>
           <li><a href="#q6">How soon after the start time written in an outage notice does it appear?</a></li>
+          <li><a href="#q38">What share of registered nuclear capacity did metered output reach each month, and how much of the gap below it coincided with a published outage notice?</a></li>
         </ul>
       </li>
       <li><a href="#instructions">How does NESO steer units?</a>
         <ul>
           <li><a href="#q24">How much of the energy NESO's instructions move does it flag as system actions?</a></li>
           <li><a href="#q37">When NESO turns wind farms down, what does it turn up?</a></li>
-          <li><a href="#q38">What share of registered nuclear capacity did metered output reach each month, and how much of the gap below it coincided with a published outage notice?</a></li>
           <li><a href="#q25">Do batteries and pumped storage get shorter instructions than power stations?</a></li>
         </ul>
       </li>
@@ -622,6 +622,47 @@
       </dl>
     </details>
   </article>
+
+  <article id="q38">
+    <h3>What share of registered nuclear capacity did metered output reach each month, and how much of the gap below it coincided with a published outage notice?</h3>
+    <p class="answer"><strong>About 58% of it; nearly all of the gap came with a published outage notice.</strong> From September 2025 to October 2026 the ten nuclear units' metered output was 58% of their registered capacity, between 46% (June 2026) and 80% (April 2026) by month. Of the gap below capacity, 94% fell in half-hours when a notice was in force for the unit (50.5% planned, 43.4% unplanned).</p>
+    <figure>
+      <div class="chart" id="q38-chart">
+        <img src="results/q38_output_and_gap_by_month.png" alt="Nuclear output and the gap below Elexon registry capacity, by month" loading="lazy">
+      </div>
+      <figcaption>Settlement months Sep 2025 – Oct 2026, the ten nuclear units. Source: Elexon BMRS and REMIT.</figcaption>
+    </figure>
+    <p>In these months nine of the ten units' highest half-hours are below their registered capacity, and a notice and a gap going together in time is not a cause.</p>
+    <details class="method">
+      <summary>How I measured it</summary>
+      <dl>
+        <dt>Result</dt>
+        <dd>The ten units metered 38.1 TWh; their registered capacity, held for every half-hour, comes to 65.5 TWh (settlement months Sep 2025 – Oct 2026), so output is 58% of it; by month from 46% (June 2026) to 80% (April 2026). The gap below capacity is 27.5 TWh: 50.5% of it in half-hours with a planned notice in force for the unit, 43.4% with an unplanned notice and 6.1% with none. No half-hour had both kinds of notice.</dd>
+        <dt>Not generating</dt>
+        <dd>77% of the gap (21.3 TWh) fell in half-hours when the unit was not generating, every one of them with a notice in force. The 6.1% with no notice was all in half-hours when the unit was generating.</dd>
+        <dt>Against each unit's highest output</dt>
+        <dd>The ten units are registered at 6,410 MW; EDF gives the five stations' supply to the grid as 5,958 MW, and only one unit's highest half-hour reaches its registered figure. Part of the gap below registered capacity can therefore have no notice, so a second gap is measured below each unit's highest metered half-hour, or below its registered capacity where that is lower: 24.7 TWh, 50.6% of it with a planned notice, 46.5% with an unplanned notice and 2.9% with none.</dd>
+        <dt>By unit</dt>
+        <dd>Output as a share of registered capacity, by station: Hartlepool HRTL-1 30% and HRTL-2 38%; Heysham 1 HEYM11 61% and HEYM12 38%; Heysham 2 HEYM27 56% and HEYM28 60%; Sizewell B SIZB-1 76% and SIZB-2 78%; Torness TORN-1 74% and TORN-2 65%. Sizewell B's two units are the two turbine-generators of its one reactor.</dd>
+        <dt>Beside published outages</dt>
+        <dd>Published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a> measures under-delivery against each unit's plan; for nuclear, 93% of it came with a notice (22 August 2025 to 27 September 2026). This measures the gap below registered capacity instead, so an outage during which a unit's plan is zero, which that measure cannot see, is counted here. The two shares measure different things over different dates; their closeness is not a check of one on the other.</dd>
+        <dt>Check against DESNZ</dt>
+        <dd>The output is between 1.2% below and 5.0% above DESNZ's figure in each of the thirteen months from September 2025 to September 2026, and 1.6% above it over them (34.7 against 34.2 TWh). DESNZ's figure is nuclear electricity supplied, net, by the United Kingdom's major power producers (<a href="https://www.gov.uk/government/statistics/electricity-section-5-energy-trends">Energy Trends table 5.4</a>, September 2026 provisional); a comparison, not an adjustment. <a href="results/context_q38_desnz_monthly_nuclear.csv">Comparison by month</a></dd>
+        <dt>Chart</dt>
+        <dd>Settlement months Sep 2025 – Oct 2026, from the first complete month of metered values held. Each bar is the month's registered capacity: the output, then the gap with a planned, an unplanned or no notice, generating and not generating together.</dd>
+        <dt>Measure</dt>
+        <dd>For each unit and half-hour, capacity is half the unit's generation capacity in Elexon's latest registry, in MWh; output is the latest settlement run's metered energy, counted as zero where it is negative (0.27 TWh drawn in all); the gap is capacity minus output, counted as zero where output is above capacity. A half-hour's gap goes with a planned or an unplanned notice when an outage notice for the unit, of any size, was in force when the half-hour began and its event overlapped the half-hour, as for published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a>. A small notice puts the whole of that half-hour's gap with its class.</dd>
+        <dt>Left out</dt>
+        <dd>Nothing: each of the ten units has all 20,450 half-hours from 1 September 2025 to 31 October 2026, and no output was above registered capacity. Of the six other nuclear units in the registry, the four at Dungeness B and Hinkley Point B have metered rows with no output, and the two at Hunterston B have no metered rows in these months. Of the 204,500 unit half-hours, 3,860 come from the one-week run, 49,440 from the three-week run, 35,520 from the two-month run, 47,980 from the four-month run, 66,260 from the seven-month run and 1,440 from the 14-month run.</dd>
+        <dt>Limits</dt>
+        <dd>Fourteen months cannot show a trend: whether nuclear output is at its lowest for decades is not tested here. The capacity is the latest registry's, applied to every month, and a notice's unit is named by the latest registry. "Published" means in REMIT when the half-hour began. The latest months' metered values come from early settlement runs, which later runs revise<a class="ref" href="#q2" aria-label="Details, Q2">*</a>. Station demand units have no published fuel type and are not read; whether a unit's metered value is net of its station's own use is not established. The notice and the gap coincide in time; no cause of an outage is read.</dd>
+        <dt>Data</dt>
+        <dd>1 September 2025 to 31 October 2026, with data to 31 October 2026 23:30 UTC. Read 28 November 2026, 10:52 UTC.</dd>
+        <dt>Method</dt>
+        <dd>Recorded 28 November 2026, before any metered share of capacity or split of the gap was read; the nuclear units' planned share of capacity by month (a context count, 1 November 2026), their rows in published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a> (12 October 2026) and their metered total in more or less than planned<a class="ref" href="#q3" aria-label="Details, Q3">*</a> (11 October 2026) had been read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q38-what-share-of-registered-nuclear-capacity-did-metered-output-reach-each-month-and-how-much-of-the-gap-below-it-coincided-with-a-published-outage-notice">Full method</a> · query <code>q38_nuclear_output_and_outage_notices.sql</code> · <a href="results/q38_nuclear_output_and_outage_notices.csv">saved output</a> · <a href="results/q38_output_and_gap_by_month.csv">chart data</a></dd>
+      </dl>
+    </details>
+  </article>
 </section>
 
 <section id="instructions" aria-labelledby="instructions-title">
@@ -686,47 +727,6 @@
         <dd>22 August 2025 to 31 October 2026, with data to 31 October 2026 23:30 UTC. Read 27 November 2026, 07:54 UTC.</dd>
         <dt>Method</dt>
         <dd>Recorded 27 November 2026, before any figure by direction or by half-hour was read; the energy NESO's instructions moved at wind farms, both directions together, had been read on 15 October 2026 for the system flags result<a class="ref" href="#q24" aria-label="Details, Q24">*</a>. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q37-when-neso-turns-wind-farms-down-what-does-it-turn-up-in-the-same-half-hours">Full method</a> · query <code>q37_wind_turn_down_and_turn_up.sql</code> · <a href="results/q37_wind_turn_down_and_turn_up.csv">saved output</a> · <a href="results/q37_turn_up_by_wind_turn_down_band.csv">chart data</a></dd>
-      </dl>
-    </details>
-  </article>
-
-  <article id="q38">
-    <h3>What share of registered nuclear capacity did metered output reach each month, and how much of the gap below it coincided with a published outage notice?</h3>
-    <p class="answer"><strong>About 58% of it; nearly all of the gap came with a published outage notice.</strong> From September 2025 to October 2026 the ten nuclear units' metered output was 58% of their registered capacity, between 46% (June 2026) and 80% (April 2026) by month. Of the gap below capacity, 94% fell in half-hours when a notice was in force for the unit: 50% planned, 43% unplanned.</p>
-    <figure>
-      <div class="chart" id="q38-chart">
-        <img src="results/q38_output_and_gap_by_month.png" alt="Nuclear output and the gap below capacity, by month" loading="lazy">
-      </div>
-      <figcaption>Settlement months Sep 2025 – Oct 2026, the ten nuclear units. Source: Elexon BMRS and REMIT.</figcaption>
-    </figure>
-    <p>Registered capacity is more than the units reach, and a notice and a gap going together in time is not a cause.</p>
-    <details class="method">
-      <summary>How I measured it</summary>
-      <dl>
-        <dt>Result</dt>
-        <dd>The ten units metered 38.1 TWh against 65.5 TWh of registered capacity (settlement months Sep 2025 – Oct 2026), 58%; by month from 46% (June 2026) to 80% (April 2026). The gap below capacity is 27.5 TWh: 50% of it in half-hours with a planned notice in force for the unit, 43% with an unplanned notice and 6% with none. No half-hour had both kinds of notice.</dd>
-        <dt>Not generating</dt>
-        <dd>77% of the gap (21.3 TWh) fell in half-hours when the unit was not generating, every one of them with a notice in force. The 6% with no notice was all in half-hours when the unit was generating.</dd>
-        <dt>Against each unit's highest output</dt>
-        <dd>The ten units are registered at 6,410 MW; EDF gives the five stations' supply to the grid as 5,958 MW, and only one unit's highest half-hour reaches its registered figure. Part of the gap below registered capacity can therefore have no notice, so a second gap is measured below each unit's highest metered half-hour: 24.7 TWh, 51% of it with a planned notice, 46% with an unplanned notice and 3% with none.</dd>
-        <dt>By unit</dt>
-        <dd>Output as a share of registered capacity, lowest first: HRTL-1 (Hartlepool) 30%, HEYM12 (Heysham 1) 38%, HRTL-2 (Hartlepool) 38%, HEYM27 (Heysham 2) 56%, HEYM28 (Heysham 2) 60%, HEYM11 (Heysham 1) 61%, TORN-2 (Torness) 65%, TORN-1 (Torness) 74%, SIZB-1 (Sizewell B) 76% and SIZB-2 (Sizewell B) 78%. Sizewell B's two units are the two turbine-generators of its one reactor.</dd>
-        <dt>Beside published outages</dt>
-        <dd>Published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a> measures under-delivery against each unit's plan; for nuclear, 93% of it came with a notice. This measures the gap below registered capacity instead, so a planned outage, which a plan of zero hides from that measure, is counted here. The two are different measures.</dd>
-        <dt>Check against DESNZ</dt>
-        <dd>The output is within 5% of DESNZ's figure in each of the thirteen months from September 2025 to September 2026, and 1.6% above it over them (34.7 against 34.2 TWh). DESNZ's figure is nuclear electricity supplied, net, by the United Kingdom's major power producers (<a href="https://www.gov.uk/government/statistics/electricity-section-5-energy-trends">Energy Trends table 5.4</a>, September 2026 provisional); a comparison, not an adjustment. <a href="results/context_q38_desnz_monthly_nuclear.csv">Comparison by month</a></dd>
-        <dt>Chart</dt>
-        <dd>Settlement months Sep 2025 – Oct 2026, from the first complete month of metered values held. Each bar is the month's registered capacity: the output, then the gap with a planned, an unplanned or no notice, generating and not generating together.</dd>
-        <dt>Measure</dt>
-        <dd>For each unit and half-hour, capacity is half the unit's generation capacity in Elexon's latest registry, in MWh; output is the latest settlement run's metered energy, counted as zero where it is negative (0.27 TWh drawn in all); the gap is capacity minus output. A half-hour's gap goes with a planned or an unplanned notice when an outage notice for the unit, of any size, was in force when the half-hour began and its event overlapped the half-hour, as for published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a>. A small notice puts the whole of that half-hour's gap with its class.</dd>
-        <dt>Left out</dt>
-        <dd>Nothing: each of the ten units has all 20,450 half-hours from 1 September 2025 to 31 October 2026, and no output was above registered capacity. Six more units the registry lists as nuclear, at Dungeness B, Hinkley Point B and Hunterston B, which no longer generate, metered nothing. Of the 204,500 unit half-hours, 3,860 come from the one-week run, 49,440 from the three-week run, 35,520 from the two-month run, 47,980 from the four-month run, 66,260 from the seven-month run and 1,440 from the 14-month run.</dd>
-        <dt>Limits</dt>
-        <dd>Fourteen months cannot show a trend: whether nuclear output is at its lowest for decades is not tested here. The capacity is the latest registry's, applied to every month, and a notice's unit is named by the latest registry. "Published" means in REMIT when the half-hour began. The latest months' metered values come from early settlement runs, which later runs revise<a class="ref" href="#q2" aria-label="Details, Q2">*</a>. Station demand units have no published fuel type and are not read; whether a unit's metered value is net of its station's own use is not established. The notice and the gap coincide in time; no cause of an outage is read.</dd>
-        <dt>Data</dt>
-        <dd>1 September 2025 to 31 October 2026, with data to 31 October 2026 23:30 UTC. Read 28 November 2026, 10:52 UTC.</dd>
-        <dt>Method</dt>
-        <dd>Recorded 28 November 2026, before any metered share of capacity or split of the gap was read; the nuclear units' planned share of capacity by month (a context count, 1 November 2026), their rows in published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a> (12 October 2026) and their metered total in more or less than planned<a class="ref" href="#q3" aria-label="Details, Q3">*</a> (11 October 2026) had been read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q38-what-share-of-registered-nuclear-capacity-did-metered-output-reach-each-month-and-how-much-of-the-gap-below-it-coincided-with-a-published-outage-notice">Full method</a> · query <code>q38_nuclear_output_and_outage_notices.sql</code> · <a href="results/q38_nuclear_output_and_outage_notices.csv">saved output</a> · <a href="results/q38_output_and_gap_by_month.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -1163,7 +1163,7 @@
   <p>Carbon intensity data: <a href="https://carbonintensity.org.uk/">NESO Carbon Intensity API</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, modified: aggregated by GridSkew.</p>
   <p>Historic generation mix: <a href="https://www.neso.energy/data-portal/historic-generation-mix">NESO Data Portal</a>, Supported by National Energy SO Open Data. <a href="https://www.neso.energy/data-portal/neso-open-licence">NESO Open Data Licence v1.0</a></p>
   <p>Monthly nuclear electricity supplied: DESNZ <a href="https://www.gov.uk/government/statistics/electricity-section-5-energy-trends">Energy Trends table 5.4</a>. Contains public sector information licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.</p>
-  <p>Neither provider endorses this project.</p>
+  <p>None of the providers endorses this project.</p>
   <p><a href="https://github.com/JayWatNorm/gridskew">GridSkew on GitHub</a></p>
 </footer>
 
@@ -1319,9 +1319,9 @@
   });
   vegaEmbed("#q12-chart", "results/q12_instructed_share_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q5-chart", "results/q5_under_delivery_by_outage_notice.vl.json", chartOptions);
+  vegaEmbed("#q38-chart", "results/q38_output_and_gap_by_month.vl.json", chartOptions);
   vegaEmbed("#q24-chart", "results/q24_flagged_share_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q37-chart", "results/q37_turn_up_by_wind_turn_down_band.vl.json", chartOptions);
-  vegaEmbed("#q38-chart", "results/q38_output_and_gap_by_month.vl.json", chartOptions);
   vegaEmbed("#q25-chart", "results/q25_short_instructions_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q29-time-chart", "results/q29_error_by_time_of_day.vl.json", chartOptions);
   vegaEmbed("#q29-month-chart", "results/q29_error_by_month.vl.json", chartOptions);

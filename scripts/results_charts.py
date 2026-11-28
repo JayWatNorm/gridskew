@@ -493,7 +493,7 @@ Q37_TITLE = (
     "On average, the more wind NESO turns down in a half-hour, the more gas it "
     "turns up in it"
 )
-Q38_TITLE = "Nuclear output and the gap below capacity, by month"
+Q38_TITLE = "Nuclear output and the gap below Elexon registry capacity, by month"
 Q25_TITLE = (
     "The other group (mostly batteries) and pumped storage get far more short "
     "instructions than power stations"
