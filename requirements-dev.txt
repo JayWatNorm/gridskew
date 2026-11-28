@@ -9,5 +9,5 @@ tzdata==2026.5
 ruff==0.16.3
 dbt-core==1.11.12  # same version as the Airflow image
 dbt-postgres==1.10.2  # same version as the Airflow image
-matplotlib==3.10.9  # results chart PNGs only; exact, so a rerun writes identical PNGs
+matplotlib==3.10.9  # results chart PNGs only; exact, so a rerun writes identical PNGs: identical on Windows, where the committed PNGs were drawn; CI skips that check
 altair==6.3.0  # results page chart specs only; exact, so a rerun writes identical specs

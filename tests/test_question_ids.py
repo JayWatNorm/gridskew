@@ -24,20 +24,32 @@ QUESTION_BY_WORD = re.compile(
     r"\bquestions?(?:[ \t ]+|[ \t]*\n[ \t]*)\d", re.IGNORECASE
 )
 # Wording for a question without an answer, for a method fixed in advance
-# and for a result on a register; each is built from its parts so this file
-# does not hold it.
-UNANSWERED_WORDING = re.compile(
-    "|".join(
-        [
-            "not" + r"\s+" + "pursued",
-            "still" + r"\s+" + "to" + r"\s+" + "come",
-            "not" + r"\s+" + "answered" + r"\s+" + "here",
-        ]
-    ),
-    re.IGNORECASE,
-)
-FIXED_IN_ADVANCE_WORDING = re.compile("pre" + "-" + "registered", re.IGNORECASE)
-ON_A_REGISTER_WORDING = re.compile("registered" + r"\s+" + "result", re.IGNORECASE)
+# and for a result on a register, held in one fixture file that the scans
+# skip.
+WORDING_PATTERNS = "tests/fixtures/public_wording_patterns.txt"
+
+
+def wording_patterns():
+    """Each pattern name in the wording file, with its patterns joined into
+    one case-insensitive expression."""
+    by_name = {}
+    lines = (REPOSITORY / WORDING_PATTERNS).read_text(encoding="utf-8").splitlines()
+    for line in lines:
+        if not line or line.startswith("#"):
+            continue
+        name, pattern = line.split(" = ", 1)
+        if name not in by_name:
+            by_name[name] = []
+        by_name[name].append(pattern)
+    compiled = {}
+    for name, patterns in by_name.items():
+        compiled[name] = re.compile("|".join(patterns), re.IGNORECASE)
+    return compiled
+
+
+UNANSWERED_WORDING = wording_patterns()["unanswered"]
+FIXED_IN_ADVANCE_WORDING = wording_patterns()["fixed_in_advance"]
+ON_A_REGISTER_WORDING = wording_patterns()["on_a_register"]
 # Saved outputs and the queries as run keep the row labels they were read
 # with; one analysis writes those labels and one check expects them.
 KEEP_THEIR_ROW_LABELS = (
@@ -49,7 +61,8 @@ KEEP_THEIR_ROW_LABELS = (
 
 def tracked_text_files():
     """Each file git tracks or would add that reads as UTF-8 text, by its
-    repository path, with HTML entities decoded."""
+    repository path, with HTML entities decoded; the wording file, which
+    holds the patterns the scans look for, is left out."""
     listed = subprocess.run(
         ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cwd=REPOSITORY,
@@ -59,7 +72,7 @@ def tracked_text_files():
     texts = {}
     for name in listed.stdout.decode("utf-8").split("\0"):
         path = REPOSITORY / name
-        if not name or not path.is_file():
+        if not name or not path.is_file() or name == WORDING_PATTERNS:
             continue
         try:
             texts[name] = html.unescape(path.read_bytes().decode("utf-8"))
@@ -123,6 +136,12 @@ def test_the_tracked_files_are_read_as_text():
     assert "dbt/analyses/q8_q28_history.sql" in texts
     assert "tests/test_question_ids.py" in texts
     assert "docs/results/q29_error_by_month.png" not in texts
+    assert WORDING_PATTERNS not in texts
+    assert sorted(wording_patterns()) == [
+        "fixed_in_advance",
+        "on_a_register",
+        "unanswered",
+    ]
 
 
 def test_the_listed_ids_are_the_questions_pages_own():

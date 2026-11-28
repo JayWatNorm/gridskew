@@ -70,7 +70,7 @@ Rejected rows retain that chunk's `from` and `to` context in quarantine.
 Compatible rows are still loaded. During a backfill, validation-rejected chunks
 do not block later chunks; the run raises once after all requested windows. See
 [Chunk boundaries overlap by one period](#chunk-boundaries-overlap-by-one-period)
-for the target-key behavior.
+for the target-key behaviour.
 
 Each chunk must also contain unique, consecutive 30-minute periods covering the
 API's observed inclusive request boundaries. Bounds inside a period align to
@@ -130,4 +130,4 @@ history window with a gap (12 at most). No throttling needed.
 
 ## Findings from this table
 
-See [020_outturn.md](020_outturn.md#findings-from-this-table).
+See [020_outturn.md](020_outturn.md#results-from-this-table).

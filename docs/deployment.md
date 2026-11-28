@@ -23,7 +23,9 @@ declared as a dbt source. Then the project is built once with
 nightly job's first step tests the staged
 B1610 data and its run hook writes to `dbt_dev.dbt_node_results`, so on an
 empty database it fails before it creates anything. The production models
-live in schema `dbt_dev` for historical reasons.
+live in schema `dbt_dev`: the schema keeps the name it was created with; it
+is the production schema, and renaming a live schema was judged not worth the
+risk.
 
 The dbt jobs on the host read the platform repository's profile, mounted at
 `/opt/airflow/dbt_profiles`, and pass their connection values to dbt as

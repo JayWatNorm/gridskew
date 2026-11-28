@@ -269,18 +269,19 @@
 <header>
   <h1>GridSkew results</h1>
   <p class="lede">Do Britain's power stations deliver what they plan, and does it matter for the carbon forecast?</p>
-  <p>Each unit in the Balancing Mechanism tells NESO, the grid operator, how much it plans to produce in every half-hour. NESO balances the grid by asking units to produce more or less than they planned; its instructions are public. I compare those plans with metered output from August 2025 to September 2026, using public Elexon and NESO data. I also look at whether half-hours in which units miss their own plans are also half-hours in which NESO's carbon forecast misses by more. NESO builds its forecast from its own demand, wind and solar forecasts, not from those plans, so any link is indirect.</p>
+  <p>Each unit in the Balancing Mechanism tells NESO, the grid operator, how much it plans to produce in every half-hour. NESO balances the grid by asking units to produce more or less than they planned; its instructions are public. I compare those plans with metered output from August 2025 to September 2026, using public Elexon and NESO data; NESO's instructions are analysed to October 2026, and each answer gives its own dates. I also look at whether half-hours in which units miss their own plans are also half-hours in which NESO's carbon forecast misses by more. NESO builds its forecast from its own demand, wind and solar forecasts, not from those plans, so any link is indirect.</p>
 
   <section aria-labelledby="found-title">
     <h2 id="found-title">What I found</h2>
     <ul class="findings">
       <li><strong>Wind strays furthest from its own plan.</strong> With no NESO instruction in force, the median wind farm missed its plan by 6.3 to 8.0% of its capacity in every whole month from September 2025 to August 2026; the median unit of every other type, by under 3.5%.<a class="ref" href="#q23" aria-label="Details, Q23">*</a></li>
-      <li><strong>Most under-delivery comes with no published outage.</strong> About a quarter (24%, 22 Aug 2025 – 27 Sep 2026) came with one; for wind, about a tenth.<a class="ref" href="#q5" aria-label="Details, Q5">*</a></li>
+      <li><strong>Most under-delivery comes with no published outage.</strong> About a quarter (24%, 22 Aug 2025 – 27 Sep 2026) came with one. Wind is over half of it (9.3 of 16.4 TWh), and only about a tenth of wind's came with one; outside wind, 42% did.<a class="ref" href="#q5" aria-label="Details, Q5">*</a></li>
       <li><strong>NESO flags almost all the energy its instructions move at wind farms as system actions, possibly for network reasons:</strong> 97% (settlement months Aug 2025 – Sep 2026).<a class="ref" href="#q24" aria-label="Details, Q24">*</a></li>
+      <li><strong>In half-hours when NESO turns wind down, gas is most of what it turns up.</strong> In the 66% of half-hours with wind turned down as a system action (Aug 2025 – Oct 2026), gas was 85% of the energy turned up, 2.4 GW on average; in the others it was 90%, at 0.8 GW.<a class="ref" href="#q37" aria-label="Details, Q37">*</a></li>
       <li><strong>The carbon forecast's misses only slightly track under-delivery, and barely track misses in NESO's demand and wind forecasts.</strong> In the fifth of half-hours with the biggest carbon misses (22 Aug 2025 – 16 Aug 2026), under-delivery was only 5% larger than in the fifth with the smallest (90% range 3% to 8%).<a class="ref" href="#q28" aria-label="Details, Q28">*</a> Over the same dates, misses in NESO's demand and wind forecasts have rank correlations of only 0.04<a class="ref" href="#q8" aria-label="Details, Q8">*</a> and 0.01<a class="ref" href="#q30" aria-label="Details, Q30">*</a> with the size of the carbon miss.</li>
-      <li><strong>After 10 September 2026, up to 12 November, the carbon forecast was revised upward as each half-hour approached.</strong> Over the whole window from 19 August 2026 (2,910 half-hours) the middle change from first to final forecast was +19 g/kWh,<a class="ref" href="#q1" aria-label="Details, Q1">*</a> and a day ahead the forecast ran 21 g/kWh below NESO's outturn estimate (2,864 half-hours); the accuracy figures point the other way on the 365 earliest half-hours (19 August to 4 September 2026).<a class="ref" href="#q10" aria-label="Details, Q10">*</a></li>
+      <li><strong>The carbon forecast was revised upward as each half-hour approached.</strong> Over 2,910 half-hours from 19 August to 12 November 2026 the median change from first to final forecast was +19 g/kWh,<a class="ref" href="#q1" aria-label="Details, Q1">*</a> and a day ahead the forecast ran on average 21 g/kWh below NESO's outturn estimate (2,864 half-hours). On the 365 earliest of those half-hours (19 August to 4 September) it ran above the outturn instead.<a class="ref" href="#q10" aria-label="Details, Q10">*</a></li>
     </ul>
-    <p class="caveat">The carbon forecast set against under-delivery, demand and wind is the stored forecast (see the words below), not a day-ahead forecast. No result sets under-delivery, demand or wind against the forecasts in GridSkew's own archive, where the timing is known.</p>
+    <p class="caveat">The carbon forecast set against under-delivery, demand and wind is the stored forecast (see the words below), not a day-ahead forecast. No result sets under-delivery, demand or wind against the forecasts in GridSkew's own archive, where the timing is known. Carbon actuals and forecasts are paired at the API's labels as published.</p>
     <p>"How I measured it", under each answer, gives the measure, the numbers and the dates.</p>
   </section>
 
@@ -317,7 +318,7 @@
       </div>
       <div>
         <dt>Fuel group, and "other"</dt>
-        <dd>The registry's fuel type, grouped, as it stood at each read. The "other" group is mostly batteries: units identified as batteries by name or ID carry 92% of its instructions. Since the read of 15 October 2026 on following the plan<a class="ref" href="#q23" aria-label="Details, Q23">*</a>, the registry has given 24 more units a fuel type (15 other, 8 gas, 1 bioenergy) and changed none. Counted on 7 November 2026, that read's half-hours would include 344,950 more at 23 of those units (4.7%), and 801 more at the read's own units, whose first meter figures arrived after the read (<a href="results/context_cohort_change.csv">cohort change</a>).</dd>
+        <dd>The registry's fuel type, grouped, as it stood at each read. The "other" group is mostly batteries: units identified as batteries by name or ID carry 92% of its instructions.</dd>
       </div>
       <div>
         <dt>Carbon forecast and its miss</dt>
@@ -334,22 +335,6 @@
       <div>
         <dt>Rank correlation</dt>
         <dd>From −1 to 1; 0 means no steady rise or fall of one with the other. It ranks the values rather than using their sizes.</dd>
-      </div>
-      <div>
-        <dt>Mean</dt>
-        <dd>The total divided by the count: the everyday average.</dd>
-      </div>
-      <div>
-        <dt>Median</dt>
-        <dd>The middle value once sorted: half are above it, half below.</dd>
-      </div>
-      <div>
-        <dt>90th percentile</dt>
-        <dd>The value only 1 in 10 exceed.</dd>
-      </div>
-      <div>
-        <dt>Quartiles and interquartile range</dt>
-        <dd>The quartiles are the 25th and 75th percentiles; the interquartile range is the middle 50% of values between them.</dd>
       </div>
       <div>
         <dt>90% range</dt>
@@ -450,6 +435,8 @@
         <dd>At the read, the meter figures rest on the seven-month run (R3) from 22 August 2025 to 19 January 2026, the four-month run (R2) to 29 April, the two-month run (R1) to 5 July and for 10 to 16 August, the three-week run (SF) from 6 July to 9 August, from 17 August to 9 September and on 11 and 12 September, and the one-week run (II) on 10 September and from 13 to 30 September 2026. The three-week run for 10 September and 13 to 30 September arrived after the read. <a href="results/context_q23_runs_by_month.csv">Runs by month</a>, counted on 7 November 2026, 16:59 UTC: the unit half-hour counts are as held then, not at the read.</dd>
         <dt>One-week run</dt>
         <dd>At the read, 16 gas units read exactly zero on the one-week run in 4,764 unit half-hours that the three-week run shows as not zero (8,247 of the 345,916 unit half-hours then on the one-week run, all groups together). On the September unit half-hours that have both runs, the three-week run leaves wind's and bioenergy's medians above their whole-month ranges (8.4% and 3.1% of capacity, against 8.8% and 3.7% on the one-week run) and lowers gas's 90th percentile from 17.0% to 2.9%. Counted on 7 November 2026 on the data held at the read: <a href="results/context_ii_zero_readings.csv">zero readings</a>, <a href="results/context_q23_one_week_and_later_runs.csv">one-week and later runs</a>.</dd>
+        <dt>Cohort change</dt>
+        <dd>Since the read of 15 October 2026, the registry has given 24 more units a fuel type (15 other, 8 gas, 1 bioenergy) and changed none. Counted on 7 November 2026, that read's half-hours would include 344,950 more at 23 of those units (4.7%), and 801 more at the read's own units, whose first meter figures arrived after the read (<a href="results/context_cohort_change.csv">cohort change</a>).</dd>
         <dt>Left out</dt>
         <dd>Interconnectors; 18 units with no positive registered capacity (4 coal, 3 gas, 4 nuclear, 6 other, 1 wind); 237,653 half-hours of individual units with no instruction and no meter reading (3.0% of half-hours with no instruction).</dd>
         <dt>Wind instructions flagged as system actions</dt>
@@ -462,12 +449,12 @@
 
   <article id="q3">
     <h3>Does each fuel group usually produce more or less than it planned?</h3>
-    <p class="answer"><strong>Below plan in the typical half-hour, for most groups.</strong> Added up over the whole period, the totals can lean the other way: the energy metered at gas units came to about 19% more than planned, while wind units came to 15% less and hydro units 19% less. Nuclear and bioenergy units each came to about 3% less.</p>
+    <p class="answer"><strong>Below plan in the typical half-hour, for most groups.</strong> Added up over the whole period, the totals can lean the other way: summed metered volume at gas units, which counts power drawn as well as sent out, came to about 19% more than planned, while wind units came to 15% less and hydro units 19% less. Nuclear and bioenergy units each came to about 3% less.</p>
     <figure>
       <div class="chart" id="q3-energy-chart">
         <img src="results/q3_energy_against_plan_by_fuel_group.png" alt="Each fuel group's metered energy against the energy it planned" loading="lazy">
       </div>
-      <figcaption>6,701,932 half-hours of individual units in five fuel groups, 22 Aug 2025 – 26 Sep 2026; gas's and nuclear's figures are approximate. Source: Elexon BMRS.</figcaption>
+      <figcaption>Summed half-hourly volumes, power drawn counted as produced; 6,701,932 half-hours of individual units in five fuel groups, 22 Aug 2025 – 26 Sep 2026; gas's and nuclear's figures are approximate. Source: Elexon BMRS.</figcaption>
     </figure>
     <p>These totals include half-hours when NESO told units to change output, such as asking wind farms to cut back; instructions make up most of gas's and hydro's gaps<a class="ref" href="#q12" aria-label="Details, Q12">*</a> and none of nuclear's. So each percentage mixes NESO's instructions with units straying from their own plans.</p>
     <div class="sub" id="q22">
@@ -572,6 +559,8 @@
       <dl>
         <dt>Result</dt>
         <dd>Mostly not. About a quarter (24%) of under-delivery (22 Aug 2025 – 27 Sep 2026) came with a published outage; for wind, the largest part, only about a tenth did.</dd>
+        <dt>Wind and the rest</dt>
+        <dd>Wind is 9.3 of the 16.4 TWh of under-delivery, and 0.9 TWh of wind's (9.6%) came with a published outage. Outside wind, 42% did: the 3.9 TWh that came with a notice less wind's 0.9 TWh, 3.0 TWh, over the 16.4 TWh less wind's 9.3 TWh, 7.1 TWh. Coal and interconnectors count outside wind.</dd>
         <dt>Nuclear</dt>
         <dd>Nuclear is 39% of the under-delivery that came with a notice; without it, the share falls from 24% to 16%. Nuclear's 93% reflects standing notices of partial derating, not outages the plan missed.</dd>
         <dt>The newest 19 days</dt>
@@ -683,7 +672,7 @@
         <dt>Result</dt>
         <dd>NESO turned down 14.9 TWh at wind farms as system actions (settlement months Aug 2025 – Oct 2026), 14% of the energy the wind farms planned; by month from 9% (August 2026) to 22% (September 2026). Of 20,928 half-hours, 13,873 have such a turn-down (66%), 12,580 one of 100 MW or more (60%) and 9,322 one of 1 GW or more (45%). In the 13,873, NESO turned up 19.4 TWh, 16.4 TWh of it at gas units (85%). In the 7,055 with none, it turned up 3.1 TWh, 2.8 TWh of it at gas units (90%). By band, gas averages 0.8 GW with no wind turned down as a system action and 3.3 GW at 2 GW or more, while its share of the energy turned up falls from 90% to 84%.</dd>
         <dt>Carbon</dt>
-        <dd>Added 27 November 2026, after the read, from the saved output; no new data was read. In the 13,873 half-hours with wind turned down as a system action, NESO turned gas units up by 16.4 TWh and down by 1.9 TWh: 14.5 TWh more gas, beside the 14.9 TWh of wind turned down. The two figures being close does not show one replacing the other: no instruction here is linked to another, and the 16.4 TWh is all the gas turned up in those half-hours, for any reason. At 394 g of CO2 per kWh, the rate <a href="https://www.neso.energy/data-portal/national-carbon-intensity-forecast/national_carbon_intensity_forecast_methodology">NESO's carbon intensity method</a> uses for combined-cycle gas, that is 5.7 million tonnes of CO2, or 6.5 million without taking off the gas turned down. The rate counts CO2 from generation only and is an average over Great Britain's plants that rests on 2017 fuel emission factors. The gas group includes open-cycle units, whose rate is 651 g, and the output does not split them; a unit held at part load also emits more per kWh. So the rate is more likely low than high for this gas. This is the CO2 of the gas NESO turned up in the same half-hours, not what would have been saved had the wind run: in the 7,055 half-hours with no wind turned down as a system action, NESO still turned up 1.2 TWh more gas than it turned down. Gas a unit had already planned to burn is not counted.</dd>
+        <dd>In the 13,873 half-hours with wind turned down as a system action, NESO turned gas units up by 16.4 TWh and down by 1.9 TWh: 14.5 TWh more gas, beside the 14.9 TWh of wind turned down. The two figures being close does not show one replacing the other: no instruction here is linked to another, and the 16.4 TWh is all the gas turned up in those half-hours, for any reason. At 394 g of CO2 per kWh, the rate <a href="https://www.neso.energy/data-portal/national-carbon-intensity-forecast/national_carbon_intensity_forecast_methodology">NESO's carbon intensity method</a> uses for combined-cycle gas, that is 5.7 million tonnes of CO2, or 6.5 million without taking off the gas turned down. The rate counts CO2 from generation only and is an average over Great Britain's plants that rests on 2017 fuel emission factors. The gas group includes open-cycle units, whose rate is 651 g, and the output does not split them; a unit held at part load also emits more per kWh. So the rate is more likely low than high for this gas. This is the CO2 of the gas NESO turned up in the same half-hours, not what would have been saved had the wind run: in the 7,055 half-hours with no wind turned down as a system action, NESO still turned up 1.2 TWh more gas than it turned down. Gas a unit had already planned to burn is not counted. Added 27 November 2026, after the read, from the saved output; no new data was read.</dd>
         <dt>Chart</dt>
         <dd>Settlement months Aug 2025 – Oct 2026; the first is a part month, from 22 August 2025. Each half-hour is placed by the wind NESO turned down in it as a system action; a half-hour's energy in MWh times two is its average power in MW. Everything else is bioenergy, hydro, pumped storage, wind, the other group and units with no published fuel type.</dd>
         <dt>Measure</dt>
@@ -840,7 +829,7 @@
 
   <article id="wind-shortfall">
     <h3>When wind farms fall short of their plans, is the grid dirtier?</h3>
-    <p class="answer"><strong>It tended to be, but by how much depends on the method.</strong> Allowing for how much wind was planned, half-hours in which wind farms fell further short tended to have a dirtier grid: about 7.9 g/kWh per extra GW (90% range 4.9 to 11.2) when month and time of day are also held fixed, and from −1.0 to 5.5 on four other ways, three of which cannot be told apart from zero. The mean carbon actual was 124 g/kWh.</p>
+    <p class="answer"><strong>It tended to be, but the size depends on the method.</strong> Across five methods the estimate ranges from −1.0 to +7.9 g/kWh per extra GW of wind shortfall; two have 90% ranges wholly above zero. The largest, 7.9 (4.9 to 11.2), is the only one that also holds month and time of day fixed.</p>
     <figure>
       <div class="chart" id="wind-shortfall-chart">
         <img src="results/q28_wind_shortfall_per_gw.png" alt="A bigger wind shortfall tended to go with a dirtier grid; by how much depends on the method" loading="lazy">
@@ -853,14 +842,14 @@
       <summary>The five ways of allowing for the plan</summary>
       <dl>
         <dt>Five ways of allowing for the plan</dt>
-        <dd>Across the five ways the actual's figure runs from −1.0 to 7.9 (7.9, 5.5, 4.0, 3.0, −1.0). Only the first two have ranges wholly above zero, and the first is the largest. Only the first holds month and time of day fixed, which is why it leads; the size is less settled than "about 7.9" alone suggests. With twenty bands the forecast's figure cannot be told apart from zero (−1.5 to 9.5). On every row of the table the miss's range lies above zero and its figure lies between 0.85 and 2.96.</dd>
+        <dd>Across the five ways the actual's figure runs from −1.0 to 7.9 (7.9, 5.5, 4.0, 3.0, −1.0). Only the first two have ranges wholly above zero, and the first is the largest. Only the first holds month and time of day fixed, and the size is less settled than that figure alone suggests. With twenty bands the forecast's figure cannot be told apart from zero (−1.5 to 9.5). On every row of the table the miss's range lies above zero and its figure lies between 0.85 and 2.96.</dd>
       </dl>
       <div class="table-wrap">
         <table class="wrap">
           <caption class="note">Change in g/kWh with each extra GW of wind under-delivery, 90% ranges in brackets, the same 17,279 half-hours</caption>
           <thead><tr><th>How planned output is allowed for</th><th>Carbon actual</th><th>Stored forecast</th><th>Miss</th></tr></thead>
           <tbody>
-          <tr><td>Same month and time of day, planned output as a second variable (the answer's first figure)</td><td>+7.93 (4.93 to 11.19)</td><td>+7.08 (3.93 to 10.43)</td><td>+0.85 (0.23 to 1.51)</td></tr>
+          <tr><td>Same month and time of day, planned output as a second variable (the answer's largest figure)</td><td>+7.93 (4.93 to 11.19)</td><td>+7.08 (3.93 to 10.43)</td><td>+0.85 (0.23 to 1.51)</td></tr>
           <tr><td>Twenty bands of planned output</td><td>+5.54 (0.65 to 10.83)</td><td>+3.80 (−1.45 to 9.51)</td><td>+1.74 (0.83 to 2.73)</td></tr>
           <tr><td>Planned output as a second variable, month and time of day not held</td><td>+3.99 (−1.28 to 9.65)</td><td>+2.29 (−3.22 to 8.21)</td><td>+1.70 (0.85 to 2.51)</td></tr>
           <tr><td>Five bands of planned output, each band's own means removed</td><td>+3.04 (−1.87 to 8.60)</td><td>+1.31 (−4.00 to 7.05)</td><td>+1.73 (0.86 to 2.70)</td></tr>
@@ -937,7 +926,7 @@
         <dt>Measure</dt>
         <dd>For each half-hour I compare metered wind, with wind NESO turned down added back, against the latest wind forecast published before it (WINDFOR, issued up to eight times a day), using its hourly point without interpolation or fall-back. A wind miss is outturn minus forecast, so positive means more wind than forecast, which was expected to go with a cleaner-than-forecast carbon outcome (a negative correlation). I measure how closely the sizes and the directions of the two misses rank together; there is no test.</dd>
         <dt>Data</dt>
-        <dd>17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Forecast ages from the issue time on each forecast: up to 1 hour for 5,756 half-hours, 1 to 2 hours for 5,756, 2 to 4 hours for 5,766 and over 4 hours for 2. The carbon forecast is the stored one, set against a wind forecast up to hours old. Metered wind only, with no embedded wind; an association, not a cause. Read 27 October 2026, on data captured up to 14:03:55 UTC.</dd>
+        <dd>17,280 half-hours on 360 days, 22 August 2025 to 16 August 2026. Forecast ages from the issue time on each forecast: up to 1 hour for 5,756 half-hours, 1 to 2 hours for 5,756, 2 to 4 hours for 5,766 and over 4 hours for 2. The carbon forecast is the stored one, set against a wind forecast up to four hours old in all but two half-hours. Metered wind only, with no embedded wind; an association, not a cause. Read 27 October 2026, on data captured up to 14:03:55 UTC.</dd>
         <dt>Coverage</dt>
         <dd>21 first wind outturns were published more than 30 minutes late, 3 of them zero; those over an hour late or zero all fall on six dates (27 November 2025; 15 January, 24 February, 4 June, 7 July and 6 August 2026); they are included in the correlations. <a href="results/context_q30_outturn_lateness.csv">Lateness counts</a>, counted on 7 November 2026, 16:54 UTC; no wind outturn for these dates arrived after the read.</dd>
         <dt>Wind against its forecast</dt>
@@ -953,11 +942,11 @@
 
 <section id="archive" aria-labelledby="archive-title">
   <h2 id="archive-title">How does the carbon forecast change as a half-hour approaches?</h2>
-  <p>These two questions use GridSkew's own archive of every version of the forecast for each half-hour, not the <a href="#stored-forecast">stored forecast</a>. They cover half-hours from 19 August to 12 November 2026, late summer into autumn, with no winter or spring.</p>
+  <p>These two questions use GridSkew's own archive, not the <a href="#stored-forecast">stored forecast</a>: for each half-hour it stores the forecast seen at each poll, with its retrieval time. They cover half-hours from 19 August to 12 November 2026, late summer into autumn, with no winter or spring.</p>
 
   <article id="q1">
     <h3>Does the carbon forecast for a half-hour go up or down between its first version, two days ahead, and its last?</h3>
-    <p class="answer"><strong>Up, over the window as a whole.</strong> The middle change from first to final forecast was <strong>+19 g/kWh</strong>, and nearly three in four of the changes that were not zero (72.6%) were upward. For scale, a day ahead the forecast ran 21 g/kWh below NESO's outturn estimate.<a class="ref" href="#q10" aria-label="Details, Q10">*</a></p>
+    <p class="answer"><strong>Up, over the window as a whole.</strong> The median change from first to final forecast was <strong>+19 g/kWh</strong>, and nearly three in four of the changes that were not zero (72.6%) were upward. For scale, a day ahead the forecast ran 21 g/kWh below NESO's outturn estimate.<a class="ref" href="#q10" aria-label="Details, Q10">*</a></p>
     <figure>
       <div class="chart" id="q1-chart">
         <img src="results/q1_median_drift_by_time_and_band.png" alt="How far the carbon forecast moved between its first and final version, by time of day and by first-forecast band" loading="lazy">
@@ -968,7 +957,7 @@
     <details class="method">
       <summary>The checks and the earliest half-hours</summary>
       <p>Up, over the window as a whole: the answer is "supported: upward drift". Over 2,910 complete half-hours from 19 August to 12 November 2026, the middle change from first to final forecast was +19 g/kWh and 72.6% of non-zero changes were upward; the method needs at least +2 and at least 55%.</p>
-      <p>On the 2,530 half-hours after 10 September 2026, 05:30 UTC, the middle change was +23 g/kWh and 77.9% of non-zero changes were upward. Q10's saved output and the 11 September exploration point the other way on the earliest half-hours; Q1's own output has no figure for them. In Q10's saved output, worked by subtraction, the 365 earliest half-hours (19 August to 4 September 2026) have a bias of −7.48, −3.75 and −0.76 g/kWh at 24 hours, 4 hours and half an hour ahead, against +25.24, +9.90 and +3.03 on the 2,499 from 11 September. The forecast's mean change from about a day ahead to its final version, the 24-hour bias minus the half-hour bias, was about −6.7 g/kWh on the 365 and about +22.2 on the 2,499. That points to a reversal for Q1. The exploration of 11 September 2026, of a near-identical measure on 19 August to 10 September, found a middle change of −1.65 g/kWh (mean −0.18, 95% interval −1.60 to +1.17). No half-hour of Q10's sample lies between 4 September and 11 September 2026, 10:30 UTC, so the split falls across a week-long gap as well as the change in the archive's poll schedule on 10 September 2026, from on the half-hour to five minutes after it; the saved output cannot tell a seasonal change from a capture effect.</p>
+      <p>On the 2,530 half-hours after 10 September 2026, 05:30 UTC, the middle change was +23 g/kWh and 77.9% of non-zero changes were upward. Q10's saved output and the 11 September exploration point the other way on the earliest half-hours; Q1's own output has no figure for them. In Q10's saved output, worked by subtraction, the 365 earliest half-hours (19 August to 4 September 2026) have a bias of −7.48, −3.75 and −0.76 g/kWh at 24 hours, 4 hours and half an hour ahead, against +25.24, +9.90 and +3.03 on the 2,499 from 11 September. The forecast's mean change from about a day ahead to its final version, the 24-hour bias minus the half-hour bias, was about −6.7 g/kWh on the 365 and about +22.2 on the 2,499. In Q10's earlier sample the forecast fell on average between the two lead times. Q1's first-to-last measure was not calculated for that subset. The exploration of 11 September 2026, of a near-identical measure on 19 August to 10 September, found a middle change of −1.65 g/kWh (mean −0.18, 95% interval −1.60 to +1.17). No half-hour of Q10's sample lies between 4 September and 11 September 2026, 10:30 UTC, so the split falls across a week-long gap as well as the change in the archive's poll schedule on 10 September 2026, from on the half-hour to five minutes after it; the saved output cannot tell a seasonal change from a capture effect.</p>
       <div class="table-wrap">
         <table class="wrap">
           <caption class="note">The verdict and the checks beside it, 19 August to 12 November 2026; each gives "supported: upward drift"</caption>
@@ -1065,7 +1054,7 @@
       <summary>How I measured it</summary>
       <dl>
         <dt>Result</dt>
-        <dd>Materially: for settlement dates 10–16 Aug 2026, 3.4% of the energy was revised between the one-week and three-week runs, and 2.3% between the three-week and two-month runs, 77% of that in suppliers' customer accounts. Between the three-week and two-month runs, transmission-connected and embedded units changed in 0.7% of half-hours, but three gas units' revisions, up or down counted alike, came to about 40 GWh, 35% of their own 114 GWh in the three-week run, and 18% of the energy revised between the three-week and two-month runs.</dd>
+        <dd>Material by the method's 2% threshold: for settlement dates 10–16 Aug 2026, 3.4% of the energy was revised between the one-week and three-week runs, and 2.3% between the three-week and two-month runs, 77% of that in suppliers' customer accounts. Between the three-week and two-month runs, transmission-connected and embedded units changed in 0.7% of half-hours, but three gas units' revisions, up or down counted alike, came to about 40 GWh, 35% of their own 114 GWh in the three-week run, and 18% of the energy revised between the three-week and two-month runs.</dd>
         <dt>Chart</dt>
         <dd>Settlement dates 10 to 16 August 2026. Among transmission-connected and embedded units, three gas units account for 18% of all the energy revised: nine-tenths of this group's 20%. Other unit types are the units whose identifiers start with C, I, M or V.</dd>
         <dt>Measure</dt>

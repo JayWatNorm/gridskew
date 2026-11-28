@@ -107,7 +107,7 @@ settled periods. A null value is retained in quarantine and the run fails.
 The dbt test `warn_outturn_actual_impossible`, run by the nightly job, warns
 on every stored capture whose `actual` is zero or below. The API's own method
 is not documented as able to give one, so the test reports it; the row is
-kept. On 20 November 2026 the table held 48,861 rows over 21,951 half-hours;
+kept. At the close (20 November 2026) the table held 48,861 rows over 21,951 half-hours;
 one row, 0 g/kWh for 6 August 2026 11:00 UTC, had an actual of zero or
 below, and the results page reports it.
 

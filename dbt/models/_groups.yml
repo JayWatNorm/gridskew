@@ -1,7 +1,7 @@
 groups:
   - name: elexon_facts
     owner:
-      name: James
+      name: GridSkew
     description: >
       Period facts and the private intermediate tables that prepare them.
       A model outside this group cannot reference the private tables; it
@@ -11,7 +11,7 @@ groups:
 
   - name: analysis
     owner:
-      name: James
+      name: GridSkew
     description: >
       Private intermediate models that prepare the research questions, and the
       analyses that read them. The carbon models hold forecast drift and

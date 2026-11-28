@@ -120,14 +120,26 @@ ALIGNMENT_LINE = (
     "National Energy SO Open Data.\n"
 )
 
+
+def saved_context_label():
+    """The row label the saved context files carry, as the saved demand
+    count holds it below its attribution line."""
+    text = (REPOSITORY / "docs" / "results" / "context_demand.csv").read_text(
+        encoding="utf-8"
+    )
+    rows_below_attribution = text.split("\n", 1)[1]
+    first_row = next(csv.DictReader(io.StringIO(rows_below_attribution)))
+    return first_row["label"]
+
+
 # Hand-made saved outputs for the reads the fixture folder does not hold.
 # Q3's groups come in an order the chart keeps; coal is a closed unit the
 # chart leaves out. Q12's order differs from the
 # chart's (largest gap first); interconnectors are left out. Q2's unit types
 # sum to round figures, with E beside T and C beside V.
 # The saved context files' own row labels.
-NOT_A_RESULT = "not a registered " + "result"
-CONTEXT_LABEL = "context only: denominator, " + NOT_A_RESULT
+CONTEXT_LABEL = saved_context_label()
+NOT_A_RESULT = CONTEXT_LABEL.removeprefix("context only: denominator, ")
 DISTRIBUTION_LABEL = "context only: distribution, " + NOT_A_RESULT
 BREAKDOWN_LABEL = "context only: breakdown, " + NOT_A_RESULT
 # Q23's chart months, for the planned-output context fixture.
@@ -2361,10 +2373,10 @@ PUBLISHED_WIND_COMMENTS = (
     "20261025.\n"
     "# Row labels reworded for publication; every figure is as read.\n"
 )
-INTERNAL_LABELS = re.compile(r"James|HEADLINE|pre-regist|EXPLORATORY|Q\d|reverse cut")
+INTERNAL_LABELS = re.compile(r"HEADLINE|pre-regist|EXPLORATORY|Q\d|reverse cut")
 
 
-def test_the_published_wind_output_carries_no_name_or_internal_label():
+def test_the_published_wind_output_carries_no_internal_label():
     # The as-read output is kept out of the repository; the published form
     # leaves out its status row and says so, with that row's facts.
     text = (REPOSITORY / "docs" / "results" / WIND_OUTPUT).read_text(encoding="utf-8")
@@ -2374,9 +2386,12 @@ def test_the_published_wind_output_carries_no_name_or_internal_label():
     assert INTERNAL_LABELS.findall(text) == []
     assert section_rows(rows, "1")[0]["line"] == "2"
     assert len(rows) == 404
-    assert INTERNAL_LABELS.findall("HEADLINE; asked by James of Q28's reverse cut") == [
+    assert INTERNAL_LABELS.findall(
+        "HEADLINE; EXPLORATORY, pre-registration, of Q28's reverse cut"
+    ) == [
         "HEADLINE",
-        "James",
+        "EXPLORATORY",
+        "pre-regist",
         "Q2",
         "reverse cut",
     ]
@@ -3336,6 +3351,43 @@ def test_q5s_nuclear_figures_come_from_its_saved_output():
     assert all_total == Decimal(item_row(q5, "1", "total")["positive_shortfall_mwh"])
 
 
+def test_q5s_wind_and_outside_wind_figures_come_from_its_saved_output():
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    all_with_notice, all_total = with_notice_and_total(q5_rows(q5, "1", ""))
+    wind_with_notice, wind_total = with_notice_and_total(q5_rows(q5, "2", "wind"))
+    outside_with_notice = all_with_notice - wind_with_notice
+    outside_total = all_total - wind_total
+    outside_share = percent_of(outside_with_notice, outside_total, 0)
+    by_group = saved_output_rows("q5_under_delivery_by_outage_notice.csv")
+    wind_row = one_row(by_group, "fuel_group", "wind")
+
+    page = PAGE.read_text(encoding="utf-8")
+    readme = README.read_text(encoding="utf-8")
+
+    assert wind_total == Decimal(wind_row["total_mwh"])
+    assert wind_total * 2 > all_total
+    assert (
+        f"Wind is over half of it ({twh(wind_total)} of {twh(all_total)} TWh), and "
+        "only about a tenth of wind's came with one; outside wind, "
+        f"{outside_share}% did."
+    ) in without_asterisks(page)
+    assert (
+        f"<dd>Wind is {twh(wind_total)} of the {twh(all_total)} TWh of "
+        f"under-delivery, and {twh(wind_with_notice)} TWh of wind's "
+        f"({tenths(wind_row['with_notice_pct'])}%) came with a published outage. "
+        f"Outside wind, {outside_share}% did: the {twh(all_with_notice)} TWh that "
+        f"came with a notice less wind's {twh(wind_with_notice)} TWh, "
+        f"{twh(outside_with_notice)} TWh, over the {twh(all_total)} TWh less "
+        f"wind's {twh(wind_total)} TWh, {twh(outside_total)} TWh. Coal and "
+        "interconnectors count outside wind.</dd>"
+    ) in fold_outs(page, "q5")
+    assert (
+        f"of it ({twh(wind_total)} of {twh(all_total)} TWh), and only about a "
+        "tenth of wind's came with one;\n  outside wind, "
+        f"{outside_share}% did"
+    ) in readme
+
+
 def test_q6s_on_the_hour_share_comes_from_its_context_count():
     alignment = saved_output_rows("context_q6_start_alignment.csv")
     unplanned = one_row(
@@ -3957,7 +4009,7 @@ def gained_fuel_types(rows):
     return units, ", ".join(parts)
 
 
-def test_the_fuel_group_glossary_states_the_cohort_change_from_its_count():
+def test_q23s_fold_out_states_the_cohort_change_from_its_count():
     name = "context_cohort_change.csv"
     change = saved_output_rows(name)
     q23 = saved_output_rows("q23_pn_accuracy_proxy.csv")
@@ -3976,16 +4028,15 @@ def test_the_fuel_group_glossary_states_the_cohort_change_from_its_count():
     page = PAGE.read_text(encoding="utf-8")
 
     assert (
-        "Since the read of 15 October 2026 on following the plan"
-        f"{details_link('Q23')}, the registry has given {units} more "
-        f"units a fuel type ({gained}) and changed none. Counted on "
+        "<dd>Since the read of 15 October 2026, the registry has given "
+        f"{units} more units a fuel type ({gained}) and changed none. Counted on "
         f"{read_day(name)}, that read's half-hours would include {added:,} more at "
         f"{new_units['units']} of those units "
         f"({percent_of(added, at_read_size, 1)}%), and "
         f"{int(metered_later['unit_periods']):,} more at the read's own units, "
         "whose first meter figures arrived after the read "
         f'(<a href="results/{name}">cohort change</a>).</dd>'
-    ) in page
+    ) in fold_outs(page, "q23")
     assert unchanged["units"] == "0"
     assert at_read_size == int(own_units["unit_periods"]) == q23_population_size(q23)
     assert "Read 15 October 2026, 20:05 UTC." in article_text(page, "q23")
@@ -5072,7 +5123,7 @@ def test_q1s_answer_and_checks_come_from_its_verdict_output():
 
     assert phrases_missing_from(fold_outs(page, "q1"), expected) == []
     assert answer_of(page, "q1") == (
-        "<strong>Up, over the window as a whole.</strong> The middle change "
+        "<strong>Up, over the window as a whole.</strong> The median change "
         f"from first to final forecast was <strong>{median_drift} g/kWh</strong>, "
         "and nearly three in four of the changes that were not zero ("
         f"{share_as_percent(verdict['positive_share'])}) were upward. For scale, "
@@ -5475,32 +5526,34 @@ def test_q10_points_to_the_alignment_limitation_and_it_names_q10():
     )
 
 
+def headline_list(page):
+    """The items of the page's headline list."""
+    return GLANCED_PARTS["headline list"].search(page).group(1)
+
+
 def test_the_archive_headline_reads_the_same_on_the_page_and_in_the_readme():
     verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
     q10 = saved_output_rows(Q10_OUTPUT)
     day = q10_accuracy(q10, "about 24 hours")
-    lead = (
-        "After 10 September 2026, up to 12 November, the carbon forecast was "
-        "revised upward as each half-hour approached."
-    )
-    earliest = earliest_and_later(q10, "about 24 hours")["earliest_half_hours"]
+    lead = "The carbon forecast was revised upward as each half-hour approached."
+    earliest_day = earliest_and_later(q10, "about 24 hours")
+    earliest = earliest_day["earliest_half_hours"]
     rest = (
-        "Over the whole window from 19 August 2026 "
-        f"({int(verdict['complete_half_hours']):,} half-hours) the middle change "
-        "from first to final forecast was "
+        f"Over {int(verdict['complete_half_hours']):,} half-hours from "
+        f"{ARCHIVE_WINDOW} the median change from first to final forecast was "
         f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and a "
-        f"day ahead the forecast ran {whole(day['bias'])} g/kWh below NESO's "
-        f"outturn estimate ({int(day['half_hours']):,} half-hours); the accuracy "
-        f"figures point the other way on the {earliest} earliest half-hours "
-        "(19 August to 4 September 2026)"
+        f"day ahead the forecast ran on average {whole(day['bias'])} g/kWh below "
+        f"NESO's outturn estimate ({int(day['half_hours']):,} half-hours). On the "
+        f"{earliest} earliest of those half-hours (19 August to 4 September) it "
+        "ran above the outturn instead"
     )
     readme = flattened(README.read_text(encoding="utf-8"))
-    page = PAGE.read_text(encoding="utf-8")
-    findings = page.split('<ul class="findings">', 1)[1].split("</ul>", 1)[0]
+    headlines = headline_list(PAGE.read_text(encoding="utf-8"))
 
-    assert f"<li><strong>{lead}</strong> {rest}.</li>" in without_asterisks(findings)
-    assert f"g/kWh,{details_link('Q1')} and a day ahead the forecast ran" in findings
-    assert f"(19 August to 4 September 2026).{details_link('Q10')}</li>" in findings
+    assert earliest_day["earliest_bias"] < 0 < Decimal(day["bias"])
+    assert f"<li><strong>{lead}</strong> {rest}.</li>" in without_asterisks(headlines)
+    assert f"g/kWh,{details_link('Q1')} and a day ahead the forecast ran" in headlines
+    assert f"outturn instead.{details_link('Q10')}</li>" in headlines
     assert f"- **{lead}** {rest} ([Q1](" in readme
 
 
@@ -5520,12 +5573,12 @@ def test_the_readme_gives_q10s_bias_and_q1s_verdict_beside_its_predictions():
     )
     assert (
         f"Over {int(verdict['complete_half_hours']):,} half-hours from "
-        f"{ARCHIVE_WINDOW} the middle change from first to final forecast was "
+        f"{ARCHIVE_WINDOW} the median change from first to final forecast was "
         f"{signed_without_trailing_zeros(verdict['median_drift'])} g/kWh, and "
         f"{share_as_percent(verdict['positive_share'])} of the changes that were "
         "not zero were upward" in readme
     )
-    assert f"were read on {status_read('Q1').partition(',')[0]}" in readme
+    assert f"were analysed on {status_read('Q1').partition(',')[0]}" in readme
 
 
 READ_DAYS = {
@@ -6189,7 +6242,7 @@ def test_the_page_states_each_energy_figure_beside_its_saved_output_range():
         f"Most of it for gas, hydro and pumped storage ({q3}): 83 to 91%",
         "NESO never instructed a nuclear unit in those dates.",
         "Mean under-delivery per half-hour: 762 MWh",
-        f"Materially: for settlement dates {Q2_WEEK}, 3.4%",
+        f"Material by the method's 2% threshold: for settlement dates {Q2_WEEK}, 3.4%",
     ]
 
     assert phrases_missing_from(FOLD_OUT.sub("", page), shown) == []
@@ -7091,6 +7144,7 @@ def expected_captions(windows, counts):
             f"{no_instruction}, {windows['q23-monthly-chart']}. {elexon}"
         ),
         "q3-energy-chart": (
+            "Summed half-hourly volumes, power drawn counted as produced; "
             f"{counts['one-way unit half-hours']} half-hours of individual units "
             f"in {counts['one-way groups']} fuel groups, "
             f"{windows['q3-energy-chart']}; gas's and nuclear's figures are "
@@ -7325,7 +7379,8 @@ def test_q3s_answer_gives_the_direction_then_each_groups_energy_against_plan():
     assert answer_of(PAGE.read_text(encoding="utf-8"), "q3") == (
         "<strong>Below plan in the typical half-hour, for most groups.</strong> "
         "Added up over the whole period, the totals can lean the other way: "
-        "the energy metered at gas units came to about "
+        "summed metered volume at gas units, which counts power drawn as well "
+        "as sent out, came to about "
         f"{whole_percent(gas)}% more than planned, while wind units came to "
         f"{whole_percent(wind)}% less and hydro units {whole_percent(hydro)}% "
         "less. Nuclear and bioenergy units each came to about "
@@ -7922,7 +7977,7 @@ NUMBER_WORDS_SMALL = {1: "one", 2: "two", 3: "three", 4: "four"}
 WAYS_OF_ALLOWING_FOR_THE_PLAN = [
     (
         "Same month and time of day, planned output as a second variable (the "
-        "answer's first figure)",
+        "answer's largest figure)",
         "4",
         "4",
     ),
@@ -7960,33 +8015,28 @@ def test_the_wind_articles_answer_states_its_figures_from_the_published_output()
     # wind output; only the first also holds month and time of day fixed.
     # A way cannot be told apart from zero when its 90% range takes zero in.
     wind = saved_output_rows(WIND_OUTPUT)
-    carbon = saved_output_rows("context_carbon_intensity.csv")
     actual, actual_low, actual_high = figure_and_range(
         per_gw(wind, "4", "4", "actual"), 1
     )
-    others = []
-    ranges_taking_in_zero = 0
-    for _name, section, line in WAYS_OF_ALLOWING_FOR_THE_PLAN[1:]:
+    every_way = []
+    ranges_above_zero = 0
+    for _name, section, line in WAYS_OF_ALLOWING_FOR_THE_PLAN:
         row = per_gw(wind, section, line, "actual")
-        others.append(Decimal(row["value"]))
-        if Decimal(row["interval_low"]) <= 0 <= Decimal(row["interval_high"]):
-            ranges_taking_in_zero += 1
-    mean_actual = whole(
-        item_row(carbon, "1", "all half-hours")["mean_actual_g_per_kwh"]
-    )
+        every_way.append(Decimal(row["value"]))
+        if Decimal(row["interval_low"]) > 0:
+            ranges_above_zero += 1
     page = PAGE.read_text(encoding="utf-8")
 
     assert answer_of(page, "wind-shortfall") == (
-        "<strong>It tended to be, but by how much depends on the method.</strong> "
-        "Allowing for how much wind was planned, half-hours in which wind farms "
-        "fell further short tended to have a dirtier grid: about "
-        f"{actual} g/kWh per extra GW (90% range {actual_low} to {actual_high}) "
-        "when month and time of day are also held fixed, and from "
-        f"{page_number(min(others), 1)} to {page_number(max(others), 1)} on "
-        f"{NUMBER_WORDS[len(others)]} other ways, "
-        f"{NUMBER_WORDS_SMALL[ranges_taking_in_zero]} of which cannot be told "
-        f"apart from zero. The mean carbon actual was {mean_actual} g/kWh."
+        "<strong>It tended to be, but the size depends on the method.</strong> "
+        f"Across {NUMBER_WORDS[len(every_way)]} methods the estimate ranges from "
+        f"{page_number(min(every_way), 1)} to {signed_to(max(every_way), 1)} "
+        "g/kWh per extra GW of wind shortfall; "
+        f"{NUMBER_WORDS_SMALL[ranges_above_zero]} have 90% ranges wholly above "
+        f"zero. The largest, {actual} ({actual_low} to {actual_high}), is the "
+        "only one that also holds month and time of day fixed."
     )
+    assert max(every_way) == every_way[0]
     assert (
         "<h3>When wind farms fall short of their plans, is the grid dirtier?</h3>"
         in in_view(page, "wind-shortfall")
@@ -8072,6 +8122,10 @@ def test_the_wind_fold_out_gives_every_way_of_allowing_for_the_plan():
         "<dd>Across the five ways the actual's figure runs from "
         f"{actuals[-1]} to {actuals[0]} ({', '.join(actuals)}). Only the first "
         "two have ranges wholly above zero, and the first is the largest." in folded
+    )
+    assert (
+        "Only the first holds month and time of day fixed, and the size is less "
+        "settled than that figure alone suggests." in folded
     )
     assert wholly_above_zero == [
         WAYS_OF_ALLOWING_FOR_THE_PLAN[0][0],
@@ -8366,6 +8420,27 @@ def test_q37s_answer_takes_its_shares_and_gas_power_from_its_saved_output():
     )
 
 
+def test_q37s_headline_reads_the_same_on_the_page_and_in_the_readme():
+    rows = saved_output_rows(Q37_OUTPUT)
+    all_months = item_row(rows, "2", Q37_ALL_MONTHS)
+    any_turn_down = all_months["half_hours_with_flagged_wind_turn_down"]
+    sides = turn_up_with_and_without_wind_turn_down(rows)
+    lead = "In half-hours when NESO turns wind down, gas is most of what it turns up."
+    rest = (
+        f"In the {percent_of(any_turn_down, all_months['half_hours'], 0)}% of "
+        "half-hours with wind turned down as a system action (Aug 2025 – Oct "
+        f"2026), gas was {gas_share(sides['with'])}% of the energy turned up, "
+        f"{average_gas_gw(sides['with'])} GW on average; in the others it was "
+        f"{gas_share(sides['without'])}%, at {average_gas_gw(sides['without'])} GW"
+    )
+    headlines = headline_list(PAGE.read_text(encoding="utf-8"))
+    readme = flattened(README.read_text(encoding="utf-8"))
+
+    assert f"<li><strong>{lead}</strong> {rest}.</li>" in without_asterisks(headlines)
+    assert f"{rest}.{details_link('Q37')}</li>" in headlines
+    assert f"- **{lead}** {rest} ([Q37](" in readme
+
+
 def test_q37_gives_its_carbon_estimate_in_view_beside_what_it_is_not():
     with_wind = turn_up_with_and_without_wind_turn_down(saved_output_rows(Q37_OUTPUT))[
         "with"
@@ -8409,8 +8484,7 @@ def test_q37s_carbon_entry_shows_its_working_from_its_saved_output():
     gross_tonnes = million_tonnes_of_co2(with_wind["gas_mwh"])
 
     assert (
-        "<dt>Carbon</dt>\n        <dd>Added 27 November 2026, after the read, "
-        "from the saved output; no new data was read. In the "
+        "<dt>Carbon</dt>\n        <dd>In the "
         f"{with_wind['half_hours']:,} half-hours with wind turned down as a "
         "system action, NESO turned gas units up by "
         f"{twh(with_wind['gas_mwh'])} TWh and down by "
@@ -8437,7 +8511,8 @@ def test_q37s_carbon_entry_shows_its_working_from_its_saved_output():
         f"{without['half_hours']:,} half-hours with no wind turned down as a "
         "system action, NESO still turned up "
         f"{twh(net_gas_mwh(without))} TWh more gas than it turned down. Gas a "
-        "unit had already planned to burn is not counted.</dd>"
+        "unit had already planned to burn is not counted. Added 27 November "
+        "2026, after the read, from the saved output; no new data was read.</dd>"
         in PAGE.read_text(encoding="utf-8")
     )
 
