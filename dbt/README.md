@@ -321,7 +321,8 @@ Q23 to Q25 (`q23_pn_accuracy_proxy.sql`, `q24_system_action_share.sql`,
 `q25_instruction_fragmentation.sql`), Q29
 (`q29_final_forecast_error_by_month_and_block.sql`), Q30
 (`q30_wind_vs_carbon_error.sql`), Q37
-(`q37_wind_turn_down_and_turn_up.sql`)
+(`q37_wind_turn_down_and_turn_up.sql`), Q38
+(`q38_nuclear_output_and_outage_notices.sql`)
 and Q8 with Q28 (`q8_q28_history.sql`, on one shared population of
 settlement dates 22 August 2025 to 16 August 2026: whether demand
 forecast error or unexplained shortfall lines up more with the API's

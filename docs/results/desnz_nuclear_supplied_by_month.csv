@@ -1,0 +1,16 @@
+# Contains public sector information licensed under the Open Government Licence v3.0.
+# Department for Energy Security and Net Zero, Energy Trends table 5.4, sheet "Month", "Electricity supplied (net) by Major Power Producers, by fuel", Nuclear, TWh, United Kingdom; file ET_5.4_NOV_26.xlsx, published 26 November 2026, https://www.gov.uk/government/statistics/electricity-section-5-energy-trends. Values copied from that file; September 2026 is provisional.
+month,nuclear_twh,provisional
+2025-09,2.0525,no
+2025-10,2.4300,no
+2025-11,2.5758,no
+2025-12,2.6594,no
+2026-01,2.7647,no
+2026-02,2.6145,no
+2026-03,2.8254,no
+2026-04,3.7247,no
+2026-05,2.4755,no
+2026-06,2.1284,no
+2026-07,2.2308,no
+2026-08,3.0049,no
+2026-09,2.6659,yes

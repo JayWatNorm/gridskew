@@ -30,7 +30,7 @@ method.
 | [Q29](#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history) | Stored forecast error by month and time of day | read (27 October 2026) |
 | [Q30](#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026) | Wind forecast miss against stored carbon forecast error | read (27 October 2026) |
 | [Q37](#q37-when-neso-turns-wind-farms-down-what-does-it-turn-up-in-the-same-half-hours) | Wind turned down, and what is turned up in the same half-hours | read (27 November 2026) |
-| [Q38](#q38-what-share-of-registered-nuclear-capacity-did-metered-output-reach-each-month-and-how-much-of-the-gap-below-it-coincided-with-a-published-outage-notice) | Nuclear output against registered capacity, and the gap with an outage notice | method written (28 November 2026) |
+| [Q38](#q38-what-share-of-registered-nuclear-capacity-did-metered-output-reach-each-month-and-how-much-of-the-gap-below-it-coincided-with-a-published-outage-notice) | Nuclear output against registered capacity, and the gap with an outage notice | read (28 November 2026) |
 
 Questions dropped before a method was written are under
 [Retired](#retired).
@@ -805,7 +805,8 @@ REMIT publications.
 **Analysis:**
 [q38_nuclear_output_and_outage_notices.sql](../dbt/analyses/q38_nuclear_output_and_outage_notices.sql)
 
-**Status:** method written on 28 November 2026.
+**Status:** read on 28 November 2026, 10:52 UTC, covering half-hours up to
+the one starting at 23:30 UTC on 31 October 2026.
 
 **Earlier look.** Three related figures had been read before this method
 was written: the nuclear units' planned output as a share of registry
