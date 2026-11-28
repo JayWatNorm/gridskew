@@ -29,8 +29,8 @@ model's and test's result in `dbt_dev.dbt_node_results`.
 ## Nightly warnings
 
 Six tests in `dbt/tests`, named `warn_*`, report rows without failing the
-nightly job; each test's header says what a row means. At the close
-(22 November 2026) two of them returned one row:
+nightly job; each test's header says what a row means. On 22 November
+2026 two of them returned one row:
 
 - `warn_outturn_actual_impossible`: one stored carbon actual of 0 g/kWh, for
   6 August 2026 11:00 UTC. The warning stays while the row does.

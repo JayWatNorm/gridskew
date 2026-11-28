@@ -3367,8 +3367,9 @@ def test_q5s_wind_and_outside_wind_figures_come_from_its_saved_output():
     assert wind_total == Decimal(wind_row["total_mwh"])
     assert wind_total * 2 > all_total
     assert (
-        f"Wind is over half of it ({twh(wind_total)} of {twh(all_total)} TWh), and "
-        "only about a tenth of wind's came with one; outside wind, "
+        f"Wind is over half of all under-delivery ({twh(wind_total)} of "
+        f"{twh(all_total)} TWh), and only about a tenth of wind's came with one; "
+        "outside wind, "
         f"{outside_share}% did."
     ) in without_asterisks(page)
     assert (
@@ -3382,10 +3383,10 @@ def test_q5s_wind_and_outside_wind_figures_come_from_its_saved_output():
         "interconnectors count outside wind.</dd>"
     ) in fold_outs(page, "q5")
     assert (
-        f"of it ({twh(wind_total)} of {twh(all_total)} TWh), and only about a "
-        "tenth of wind's came with one;\n  outside wind, "
-        f"{outside_share}% did"
-    ) in readme
+        f"Wind is over half of all under-delivery ({twh(wind_total)} of "
+        f"{twh(all_total)} TWh), and only about a tenth of wind's came with one; "
+        f"outside wind, {outside_share}% did"
+    ) in flattened(readme)
 
 
 def test_q6s_on_the_hour_share_comes_from_its_context_count():
@@ -5355,16 +5356,17 @@ def test_q1s_later_half_hours_come_from_its_verdict_and_its_earliest_have_none()
         "10 September 2026, 05:30 UTC, the middle change was "
         f"{signed_without_trailing_zeros(verdict['part_not_seen_median_drift'])} "
         f"g/kWh and {share_as_percent(verdict['part_not_seen_positive_share'])} "
-        "of non-zero changes were upward. Q10's saved output and the 11 September "
-        "exploration point the other way on the earliest half-hours; Q1's own "
-        "output has no figure for them."
+        "of non-zero changes were upward. Q10's mean change from about a day ahead "
+        "to its final version is negative on the earliest half-hours; Q1's "
+        "first-to-last measure is not calculated for them."
     )
     page = PAGE.read_text(encoding="utf-8")
 
     assert later in fold_outs(page, "q1")
     assert (
-        "<p>This covers one window, and its earliest half-hours point the other "
-        f"way{details_link('Q10')} across a change in when the archive polls.</p>"
+        "<p>This covers one window. On its earliest half-hours the forecast fell "
+        "on average between a day ahead and its final version"
+        f"{details_link('Q10')}, across a change in when the archive polls.</p>"
         in in_view(page, "q1")
     )
     assert (
@@ -5535,8 +5537,9 @@ def test_the_archive_headline_reads_the_same_on_the_page_and_in_the_readme():
     verdict = one_row(saved_output_rows(Q1_VERDICT), "population_is_reached", "True")
     q10 = saved_output_rows(Q10_OUTPUT)
     day = q10_accuracy(q10, "about 24 hours")
-    lead = "The carbon forecast was revised upward as each half-hour approached."
+    lead = "The median carbon forecast revision was upward."
     earliest_day = earliest_and_later(q10, "about 24 hours")
+    earliest_final = earliest_and_later(q10, "about half an hour")
     earliest = earliest_day["earliest_half_hours"]
     rest = (
         f"Over {int(verdict['complete_half_hours']):,} half-hours from "
@@ -5545,15 +5548,19 @@ def test_the_archive_headline_reads_the_same_on_the_page_and_in_the_readme():
         f"day ahead the forecast ran on average {whole(day['bias'])} g/kWh below "
         f"NESO's outturn estimate ({int(day['half_hours']):,} half-hours). On the "
         f"{earliest} earliest of those half-hours (19 August to 4 September) it "
-        "ran above the outturn instead"
+        "ran above the outturn instead, and on average fell between a day ahead "
+        "and its final version"
     )
     readme = flattened(README.read_text(encoding="utf-8"))
     headlines = headline_list(PAGE.read_text(encoding="utf-8"))
 
     assert earliest_day["earliest_bias"] < 0 < Decimal(day["bias"])
+    # Error is outturn minus forecast, so a rise in the error from the day
+    # ahead to the final forecast is a fall in the forecast.
+    assert earliest_day["earliest_bias"] < earliest_final["earliest_bias"]
     assert f"<li><strong>{lead}</strong> {rest}.</li>" in without_asterisks(headlines)
     assert f"g/kWh,{details_link('Q1')} and a day ahead the forecast ran" in headlines
-    assert f"outturn instead.{details_link('Q10')}</li>" in headlines
+    assert f"its final version.{details_link('Q10')}</li>" in headlines
     assert f"- **{lead}** {rest} ([Q1](" in readme
 
 
@@ -6066,7 +6073,30 @@ def test_each_scale_figure_links_the_context_count_it_divides_by():
     )
 
 
+WORDING_PATTERNS = REPOSITORY / "tests" / "fixtures" / "public_wording_patterns.txt"
+
+
+def on_a_register_pattern():
+    """The on-a-register wording, as the wording file holds it."""
+    for line in WORDING_PATTERNS.read_text(encoding="utf-8").splitlines():
+        name, _separator, pattern = line.partition(" = ")
+        if name == "on_a_register":
+            return pattern
+    raise AssertionError("the wording file holds no on_a_register pattern")
+
+
+def is_a_context_label(label, kind):
+    """Whether a label reads 'context only: <kind>, not a ' and then the
+    on-a-register wording, and nothing else."""
+    shape = f"context only: {kind}, not a (?:{on_a_register_pattern()})"
+    return re.fullmatch(shape, label, re.IGNORECASE) is not None
+
+
 def test_each_context_row_is_labelled_a_denominator_not_a_result():
+    assert is_a_context_label(CONTEXT_LABEL, "denominator")
+    assert is_a_context_label(DISTRIBUTION_LABEL, "distribution")
+    assert is_a_context_label(BREAKDOWN_LABEL, "breakdown")
+    assert not is_a_context_label(CONTEXT_LABEL, "breakdown")
     for name in [
         "context_carbon_intensity.csv",
         "context_demand.csv",
@@ -6855,8 +6885,9 @@ VISIBLE_LIMITS = {
         "what goes together, not why.</p>"
     ),
     "q1": (
-        "<p>This covers one window, and its earliest half-hours point the other "
-        'way<a class="ref" href="#q10" aria-label="Details, Q10">*</a> across a '
+        "<p>This covers one window. On its earliest half-hours the forecast fell "
+        "on average between a day ahead and its final version"
+        '<a class="ref" href="#q10" aria-label="Details, Q10">*</a>, across a '
         "change in when the archive polls.</p>"
     ),
     "q10": (
@@ -7144,7 +7175,6 @@ def expected_captions(windows, counts):
             f"{no_instruction}, {windows['q23-monthly-chart']}. {elexon}"
         ),
         "q3-energy-chart": (
-            "Summed half-hourly volumes, power drawn counted as produced; "
             f"{counts['one-way unit half-hours']} half-hours of individual units "
             f"in {counts['one-way groups']} fuel groups, "
             f"{windows['q3-energy-chart']}; gas's and nuclear's figures are "
@@ -7379,8 +7409,7 @@ def test_q3s_answer_gives_the_direction_then_each_groups_energy_against_plan():
     assert answer_of(PAGE.read_text(encoding="utf-8"), "q3") == (
         "<strong>Below plan in the typical half-hour, for most groups.</strong> "
         "Added up over the whole period, the totals can lean the other way: "
-        "summed metered volume at gas units, which counts power drawn as well "
-        "as sent out, came to about "
+        "the energy metered at gas units came to about "
         f"{whole_percent(gas)}% more than planned, while wind units came to "
         f"{whole_percent(wind)}% less and hydro units {whole_percent(hydro)}% "
         "less. Nuclear and bioenergy units each came to about "
@@ -8029,7 +8058,8 @@ def test_the_wind_articles_answer_states_its_figures_from_the_published_output()
 
     assert answer_of(page, "wind-shortfall") == (
         "<strong>It tended to be, but the size depends on the method.</strong> "
-        f"Across {NUMBER_WORDS[len(every_way)]} methods the estimate ranges from "
+        f"Across {NUMBER_WORDS[len(every_way)]} ways of allowing for planned wind, "
+        "the estimate ranges from "
         f"{page_number(min(every_way), 1)} to {signed_to(max(every_way), 1)} "
         "g/kWh per extra GW of wind shortfall; "
         f"{NUMBER_WORDS_SMALL[ranges_above_zero]} have 90% ranges wholly above "

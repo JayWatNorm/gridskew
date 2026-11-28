@@ -27,8 +27,8 @@ with its method, data window and saved output.
   every other type, by under 3.5% ([Q23](https://jaywatnorm.github.io/gridskew/#q23)).
 - **Most under-delivery comes with no published outage.** About a quarter
   (24%, 22 August 2025 to 27 September 2026) came with one. Wind is over half
-  of it (9.3 of 16.4 TWh), and only about a tenth of wind's came with one;
-  outside wind, 42% did ([Q5](https://jaywatnorm.github.io/gridskew/#q5)).
+  of all under-delivery (9.3 of 16.4 TWh), and only about a tenth of wind's
+  came with one; outside wind, 42% did ([Q5](https://jaywatnorm.github.io/gridskew/#q5)).
 - **NESO flags almost all the energy its instructions move at wind farms as
   system actions**, possibly for network reasons: 97% over the settlement
   months August 2025 to September 2026 ([Q24](https://jaywatnorm.github.io/gridskew/#q24)).
@@ -45,12 +45,13 @@ with its method, data window and saved output.
   demand and wind forecasts have rank correlations of only 0.04 and 0.01
   with the size of the carbon miss ([Q28](https://jaywatnorm.github.io/gridskew/#q28),
   [Q8](https://jaywatnorm.github.io/gridskew/#q8), [Q30](https://jaywatnorm.github.io/gridskew/#q30)).
-- **The carbon forecast was revised upward as each half-hour approached.**
+- **The median carbon forecast revision was upward.**
   Over 2,910 half-hours from 19 August to 12 November 2026 the median change
   from first to final forecast was +19 g/kWh, and a day ahead the forecast
   ran on average 21 g/kWh below NESO's outturn estimate (2,864 half-hours).
   On the 365 earliest of those half-hours (19 August to 4 September) it ran
-  above the outturn instead
+  above the outturn instead, and on average fell between a day ahead and its
+  final version
   ([Q1](https://jaywatnorm.github.io/gridskew/#q1), [Q10](https://jaywatnorm.github.io/gridskew/#q10)).
 
 The carbon forecast set against under-delivery, demand and wind is the stored
@@ -110,7 +111,7 @@ was +19 g/kWh, and 72.6% of the changes that were not zero were upward
 +23 g/kWh. Q10's bias changes sign inside the window: negative on its 365
 earliest half-hours (19 August to 4 September 2026), positive on the 2,499
 from 11 September. In Q10's earlier sample the forecast fell on average
-between about a day ahead and half an hour ahead. Q1's first-to-last measure
+between about a day ahead and its final version. Q1's first-to-last measure
 was not calculated for that subset. The split falls across a week-long gap
 in the sample as well as a change in the archive's poll schedule on
 10 September 2026. The window holds no winter or spring. Neither result shows
