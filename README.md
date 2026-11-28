@@ -13,7 +13,7 @@ those APIs later overwrite.
 **Results:** <https://jaywatnorm.github.io/gridskew>
 
 **Status:** the analysis is complete; the last question was analysed on
-27 November 2026. The Airflow DAGs keep collecting data, and the nightly dbt
+28 November 2026. The Airflow DAGs keep collecting data, and the nightly dbt
 job keeps building and testing it.
 
 ## What it found
@@ -203,8 +203,12 @@ time behaviour differs. See
   [NESO Data Portal](https://www.neso.energy/data-portal/historic-generation-mix),
   Supported by National Energy SO Open Data, under the
   [NESO Open Data Licence v1.0](https://www.neso.energy/data-portal/neso-open-licence).
+- Monthly nuclear electricity supplied from DESNZ's
+  [Energy Trends table 5.4](https://www.gov.uk/government/statistics/electricity-section-5-energy-trends).
+  Contains public sector information licensed under the
+  [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
 
-Neither provider endorses this project.
+None of the providers endorses this project.
 
 ## Licence
 
@@ -251,7 +255,7 @@ are under `tests/adhoc/`. pytest collects neither.
 Much of the code supports the results rather than the pipeline. The chart
 script renders every figure on the results page from the saved outputs, and
 its tests check each figure's values and the page's text against them. CI
-checks the arithmetic of the Q1, Q10, Q25, Q37, Q8, Q28, Q29 and Q30 analyses on
+checks the arithmetic of the Q1, Q10, Q25, Q37, Q38, Q8, Q28, Q29 and Q30 analyses on
 hand-worked rows, and every analysis compiles against the test database.
 
 ## Repository guide

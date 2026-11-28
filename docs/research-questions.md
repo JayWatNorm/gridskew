@@ -30,6 +30,7 @@ method.
 | [Q29](#q29-how-does-the-error-of-the-apis-stored-carbon-forecast-vary-by-month-and-by-time-of-day-over-a-year-of-history) | Stored forecast error by month and time of day | read (27 October 2026) |
 | [Q30](#q30-is-the-size-of-the-miss-between-wind-outturn-and-nesos-latest-wind-forecast-associated-with-the-size-of-the-error-in-the-apis-stored-carbon-forecast-from-august-2025-to-august-2026) | Wind forecast miss against stored carbon forecast error | read (27 October 2026) |
 | [Q37](#q37-when-neso-turns-wind-farms-down-what-does-it-turn-up-in-the-same-half-hours) | Wind turned down, and what is turned up in the same half-hours | read (27 November 2026) |
+| [Q38](#q38-what-share-of-registered-nuclear-capacity-did-metered-output-reach-each-month-and-how-much-of-the-gap-below-it-coincided-with-a-published-outage-notice) | Nuclear output against registered capacity, and the gap with an outage notice | read (28 November 2026) |
 
 Questions dropped before a method was written are under
 [Retired](#retired).
@@ -797,6 +798,103 @@ before this method was written.
   turn-down also have more gas turned up than down, and they differ
   in wind and demand. Gas already in a unit's PN is not counted.
 
+### Q38. What share of registered nuclear capacity did metered output reach each month, and how much of the gap below it coincided with a published outage notice?
+
+**Data:** B1610 metered output; the BM unit registry's generation capacity;
+REMIT publications.
+**Analysis:**
+[q38_nuclear_output_and_outage_notices.sql](../dbt/analyses/q38_nuclear_output_and_outage_notices.sql)
+
+**Status:** read on 28 November 2026, 10:52 UTC, covering half-hours up to
+the one starting at 23:30 UTC on 31 October 2026.
+
+**Earlier look.** Three related figures had been read before this method
+was written: the nuclear units' planned output as a share of registry
+capacity, by month (a context count, 1 November 2026); Q5's split of
+nuclear under-delivery against plan by outage notice (12 October 2026);
+and Q3's nuclear metered total (11 October 2026). Metered output as a
+share of capacity, and the gap below capacity split by notice, had not
+been read.
+
+**Method:**
+
+- **Measure.** Per calendar month of settlement date and over all months:
+  the units' metered output as a share of their registered capacity, and
+  the gap below capacity split by the outage notice in force and by
+  whether the unit was generating. Measured shares, no answer. The same
+  figures are kept per unit.
+- **Units.** The ten generating units at the five stations on EDF's
+  [daily status page](https://www.edfenergy.com/energy/power-station/daily-statuses):
+  two each at Heysham 1, Heysham 2, Hartlepool and Torness, one to a
+  reactor, and the two turbine-generators of Sizewell B's one reactor.
+  The registry also lists six units with fuel type NUCLEAR at three
+  stations that no longer generate (Dungeness B, Hinkley Point B and
+  Hunterston B), two of them still with a capacity. They are in no figure;
+  their metered energy is reported beside the result. A listed unit is
+  measured only when the registry holds one NUCLEAR row for it, with an
+  Elexon ID no other registry row shares, so that no metered value can
+  count twice; a unit that fails this is left out and named. Capacity
+  and output cover only the unit half-hours measured: where that is not
+  every one, the result says how many were measured of those expected.
+- **Capacity.** The latest registry's generation capacity: 6,410 MW for
+  the ten units in the registry of 28 November 2026. Over a half-hour a
+  unit's capacity is half that figure in MWh. It is the registered figure,
+  not what a unit can deliver: EDF gives the five stations' supply to the
+  grid as 5,958 MW in all, 93% of it. Each unit's highest metered
+  half-hour and the range of normal capacity stated by its notices'
+  publications made by the cutoff are reported beside its registry
+  capacity.
+- **Output and gap.** From the latest settlement run's metered value.
+  Output is the metered energy, counted as zero where it is negative; the
+  energy drawn is reported beside. The gap is capacity minus output,
+  counted as zero where output is above capacity; the energy above
+  capacity is reported beside. A unit is generating in a half-hour when
+  its metered value is above zero.
+- **Gap below the highest output.** Part of the registered capacity is
+  never reached, and that part of the gap can have no notice. So a second
+  gap is measured below each unit's highest metered half-hour in the
+  months read (or below its capacity where that is lower) and split the
+  same way. The highest half-hour is a comparison within these months
+  only. A unit with no output above zero in them has no second gap, and
+  its gap below registered capacity stays in the main figures; any such
+  unit is named with the result.
+- **Notice.** Q5's known outage: a REMIT production unavailability
+  publication in force at the half-hour's start (the notice's current
+  version at that time), with status `Active`, names the unit and its
+  event overlaps any part of the half-hour. Classes `planned`,
+  `unplanned`, `both`, `unclassified` (a notice with neither type) and
+  `none`. Any outage size counts, so a small notice puts the whole of that
+  half-hour's gap in its class; the split by whether the unit was
+  generating is beside it for that reason, and so is the gap in half-hours
+  in which no notice in force states an unavailable capacity above zero
+  (zero, or none given).
+- **Half-hours.** Settlement dates from 1 September 2025, the first
+  complete month of metered values held, to the cutoff.
+- **Read.** With `analysis_read_until` = 2026-10-31 23:30 UTC, the cutoff
+  of Q37's read; the unedited output saved.
+- **Check.** Output for the months in both sources is set beside nuclear electricity
+  supplied in DESNZ's monthly table
+  ([Energy Trends 5.4](https://www.gov.uk/government/statistics/electricity-section-5-energy-trends)),
+  which covers the United Kingdom's major power producers, net of their
+  own use, and runs to September 2026. A comparison reported with the
+  result, not an adjustment.
+- **Left out.** A unit's half-hour with no period start, no metered
+  value, a registry mapping other than `mapped` or no positive registry
+  capacity is left out and counted. Every half-hour from the first
+  settlement date to the cutoff in which fewer than ten units are
+  measured is counted, one with no unit measured included.
+- **Wording.** "Had a published notice", never "explained by" or "caused
+  by": the notice and the gap coincide in time. No cause of an outage is
+  read, and no unit or station is called reliable or unreliable.
+- **Limits.** Fourteen months cannot show a trend: whether nuclear output
+  is at its lowest for decades is not tested here. The capacity is the
+  latest registry's, applied to every month. A notice's unit is named by
+  the latest registry. "Published" means in REMIT at the half-hour's
+  start. The latest months' metered values come from early settlement
+  runs, which later runs revise (Q2). Station demand units have no
+  published fuel type and are not read; whether a generating unit's
+  metered value is net of its station's own use is not established.
+
 ## Retired
 
 Each question below was retired, with the reason.
@@ -848,6 +946,10 @@ Where a method was not wholly written before its data was seen:
   before the method was written; no figure by direction or by half-hour
   had been read. Its CO2 estimate was worked from the saved output
   after the read.
+- Q38: the nuclear units' planned share of capacity by month, Q5's
+  nuclear rows and Q3's nuclear total had been read before the method
+  was written; no metered share of capacity and no split of the gap had
+  been read.
 
 ### When each method was written
 
@@ -872,3 +974,4 @@ added after a read is dated in its question.
 | Q29 | 27 October | | no figure of it read |
 | Q30 | 27 October | 27 October | no wind data held when written; not read when changed |
 | Q37 | 27 November | 27 November | Q24's acceptance volume for wind read on 15 October; no figure by direction or by half-hour read |
+| Q38 | 28 November | 28 November | planned share of capacity by month read on 1 November, Q5's nuclear rows on 12 October and Q3's nuclear total on 11 October; no metered share of capacity or gap split read |

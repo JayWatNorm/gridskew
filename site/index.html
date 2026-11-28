@@ -363,6 +363,7 @@
         <ul>
           <li><a href="#q5">When units under-delivered, had an outage already been published?</a></li>
           <li><a href="#q6">How soon after the start time written in an outage notice does it appear?</a></li>
+          <li><a href="#q38">What share of registered nuclear capacity did metered output reach each month, and how much of the gap below it coincided with a published outage notice?</a></li>
         </ul>
       </li>
       <li><a href="#instructions">How does NESO steer units?</a>
@@ -618,6 +619,47 @@
         <dd>The duty to publish "without delay" under REMIT is not judged here: the data cannot show when the participant knew. In Great Britain REMIT is enforced by Ofgem; the EU energy regulator ACER's one-hour guidance is EU guidance, given as context, not a test. "Dismissed" means dismissed as of the read, so the result cannot be regenerated exactly later.</dd>
         <dt>Method</dt>
         <dd>Population recorded 11 October 2026, before any lag was read; read 12 October 2026. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q6-how-long-after-its-written-start-is-an-outage-notice-first-published">Full method</a> · query <code>q6_publication_lag.sql</code> · <a href="results/q6_publication_lag.csv">saved output</a> · <a href="results/context_q6_start_alignment.csv">context data</a> · <a href="results/context_q6_lag_quartiles.csv">lag quartiles</a> · <a href="results/context_q6_publication_timing.csv">publication timing</a></dd>
+      </dl>
+    </details>
+  </article>
+
+  <article id="q38">
+    <h3>What share of registered nuclear capacity did metered output reach each month, and how much of the gap below it coincided with a published outage notice?</h3>
+    <p class="answer"><strong>About 58% of it; nearly all of the gap came with a published outage notice.</strong> From September 2025 to October 2026 the ten nuclear units' metered output was 58% of their registered capacity, between 46% (June 2026) and 80% (April 2026) by month. Of the gap below capacity, 94% fell in half-hours when a notice was in force for the unit (50.5% planned, 43.4% unplanned).</p>
+    <figure>
+      <div class="chart" id="q38-chart">
+        <img src="results/q38_output_and_gap_by_month.png" alt="Nuclear output and the gap below Elexon registry capacity, by month" loading="lazy">
+      </div>
+      <figcaption>Settlement months Sep 2025 – Oct 2026, the ten nuclear units. Source: Elexon BMRS and REMIT.</figcaption>
+    </figure>
+    <p>In these months nine of the ten units' highest half-hours are below their registered capacity, and a notice and a gap going together in time is not a cause.</p>
+    <details class="method">
+      <summary>How I measured it</summary>
+      <dl>
+        <dt>Result</dt>
+        <dd>The ten units metered 38.1 TWh; their registered capacity, held for every half-hour, comes to 65.5 TWh (settlement months Sep 2025 – Oct 2026), so output is 58% of it; by month from 46% (June 2026) to 80% (April 2026). The gap below capacity is 27.5 TWh: 50.5% of it in half-hours with a planned notice in force for the unit, 43.4% with an unplanned notice and 6.1% with none. No half-hour had both kinds of notice.</dd>
+        <dt>Not generating</dt>
+        <dd>77% of the gap (21.3 TWh) fell in half-hours when the unit was not generating, every one of them with a notice in force. The 6.1% with no notice was all in half-hours when the unit was generating.</dd>
+        <dt>Against each unit's highest output</dt>
+        <dd>The ten units are registered at 6,410 MW; EDF gives the five stations' supply to the grid as 5,958 MW, and only one unit's highest half-hour reaches its registered figure. Part of the gap below registered capacity can therefore have no notice, so a second gap is measured below each unit's highest metered half-hour, or below its registered capacity where that is lower: 24.7 TWh, 50.6% of it with a planned notice, 46.5% with an unplanned notice and 2.9% with none.</dd>
+        <dt>By unit</dt>
+        <dd>Output as a share of registered capacity, by station: Hartlepool HRTL-1 30% and HRTL-2 38%; Heysham 1 HEYM11 61% and HEYM12 38%; Heysham 2 HEYM27 56% and HEYM28 60%; Sizewell B SIZB-1 76% and SIZB-2 78%; Torness TORN-1 74% and TORN-2 65%. Sizewell B's two units are the two turbine-generators of its one reactor.</dd>
+        <dt>Beside published outages</dt>
+        <dd>Published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a> measures under-delivery against each unit's plan; for nuclear, 93% of it came with a notice (22 August 2025 to 27 September 2026). This measures the gap below registered capacity instead, so an outage during which a unit's plan is zero, which that measure cannot see, is counted here. The two shares measure different things over different dates; their closeness is not a check of one on the other.</dd>
+        <dt>Check against DESNZ</dt>
+        <dd>The output is between 1.2% below and 5.0% above DESNZ's figure in each of the thirteen months from September 2025 to September 2026, and 1.6% above it over them (34.7 against 34.2 TWh). DESNZ's figure is nuclear electricity supplied, net, by the United Kingdom's major power producers (<a href="https://www.gov.uk/government/statistics/electricity-section-5-energy-trends">Energy Trends table 5.4</a>, September 2026 provisional); a comparison, not an adjustment. <a href="results/context_q38_desnz_monthly_nuclear.csv">Comparison by month</a></dd>
+        <dt>Chart</dt>
+        <dd>Settlement months Sep 2025 – Oct 2026, from the first complete month of metered values held. Each bar is the month's registered capacity: the output, then the gap with a planned, an unplanned or no notice, generating and not generating together.</dd>
+        <dt>Measure</dt>
+        <dd>For each unit and half-hour, capacity is half the unit's generation capacity in Elexon's latest registry, in MWh; output is the latest settlement run's metered energy, counted as zero where it is negative (0.27 TWh drawn in all); the gap is capacity minus output, counted as zero where output is above capacity. A half-hour's gap goes with a planned or an unplanned notice when an outage notice for the unit, of any size, was in force when the half-hour began and its event overlapped the half-hour, as for published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a>. A small notice puts the whole of that half-hour's gap with its class.</dd>
+        <dt>Left out</dt>
+        <dd>Nothing: each of the ten units has all 20,450 half-hours from 1 September 2025 to 31 October 2026, and no output was above registered capacity. Of the six other nuclear units in the registry, the four at Dungeness B and Hinkley Point B have metered rows with no output, and the two at Hunterston B have no metered rows in these months. Of the 204,500 unit half-hours, 3,860 come from the one-week run, 49,440 from the three-week run, 35,520 from the two-month run, 47,980 from the four-month run, 66,260 from the seven-month run and 1,440 from the 14-month run.</dd>
+        <dt>Limits</dt>
+        <dd>Fourteen months cannot show a trend: whether nuclear output is at its lowest for decades is not tested here. The capacity is the latest registry's, applied to every month, and a notice's unit is named by the latest registry. "Published" means in REMIT when the half-hour began. The latest months' metered values come from early settlement runs, which later runs revise<a class="ref" href="#q2" aria-label="Details, Q2">*</a>. Station demand units have no published fuel type and are not read; whether a unit's metered value is net of its station's own use is not established. The notice and the gap coincide in time; no cause of an outage is read.</dd>
+        <dt>Data</dt>
+        <dd>1 September 2025 to 31 October 2026, with data to 31 October 2026 23:30 UTC. Read 28 November 2026, 10:52 UTC.</dd>
+        <dt>Method</dt>
+        <dd>Recorded 28 November 2026, before any metered share of capacity or split of the gap was read; the nuclear units' planned share of capacity by month (a context count, 1 November 2026), their rows in published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a> (12 October 2026) and their metered total in more or less than planned<a class="ref" href="#q3" aria-label="Details, Q3">*</a> (11 October 2026) had been read. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md#q38-what-share-of-registered-nuclear-capacity-did-metered-output-reach-each-month-and-how-much-of-the-gap-below-it-coincided-with-a-published-outage-notice">Full method</a> · query <code>q38_nuclear_output_and_outage_notices.sql</code> · <a href="results/q38_nuclear_output_and_outage_notices.csv">saved output</a> · <a href="results/q38_output_and_gap_by_month.csv">chart data</a></dd>
       </dl>
     </details>
   </article>
@@ -1087,7 +1129,7 @@
     <li>The plan (PN) is the latest published Final Physical Notification captured after gate closure.</li>
     <li>Services NESO buys outside the balancing mechanism are not in the instructions (BOALF).</li>
     <li>The units studied are not the whole grid: wind and solar on local networks outside the Balancing Mechanism are not in them, and batteries with no published fuel type are counted only in settlement revisions<a class="ref" href="#q2" aria-label="Details, Q2">*</a> and what is turned up with wind turned down<a class="ref" href="#q37" aria-label="Details, Q37">*</a>.</li>
-    <li>Results that set one measure against another (published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a>, demand or under-delivery<a class="ref" href="#q8" aria-label="Details, Q8">*</a>, carbon misses and under-delivery<a class="ref" href="#q28" aria-label="Details, Q28">*</a>, wind's shortfall<a class="ref" href="#wind-shortfall" aria-label="Details, wind's shortfall">*</a>, wind and carbon misses<a class="ref" href="#q30" aria-label="Details, Q30">*</a> and what is turned up with wind turned down<a class="ref" href="#q37" aria-label="Details, Q37">*</a>) are associations, not causes. Each result covers the period given beside it and may not hold in another.</li>
+    <li>Results that set one measure against another (published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a>, demand or under-delivery<a class="ref" href="#q8" aria-label="Details, Q8">*</a>, carbon misses and under-delivery<a class="ref" href="#q28" aria-label="Details, Q28">*</a>, wind's shortfall<a class="ref" href="#wind-shortfall" aria-label="Details, wind's shortfall">*</a>, wind and carbon misses<a class="ref" href="#q30" aria-label="Details, Q30">*</a>, what is turned up with wind turned down<a class="ref" href="#q37" aria-label="Details, Q37">*</a> and nuclear output against capacity<a class="ref" href="#q38" aria-label="Details, Q38">*</a>) are associations, not causes. Each result covers the period given beside it and may not hold in another.</li>
     <li>The forecast's drift<a class="ref" href="#q1" aria-label="Details, Q1">*</a> and accuracy by lead time<a class="ref" href="#q10" aria-label="Details, Q10">*</a> cover one window, 19 August to 12 November 2026, with no winter or spring. Inside it the accuracy result's bias changes sign: negative on its 365 earliest half-hours (19 August to 4 September 2026), positive on the 2,499 from 11 September. The drift's upward direction also holds on the 2,530 half-hours after 10 September 2026, 05:30 UTC; on the earliest half-hours the forecast fell on average between about a day ahead and its final version in the accuracy sample; the drift's own measure was not calculated for them. The split falls across a week-long gap in the sample as well as the change in the archive's poll schedule on 10 September 2026, and the saved outputs cannot tell a seasonal change from a capture effect.</li>
     <li>The results cannot be rebuilt from public data: the archived forecast versions behind them cannot be fetched again from the public APIs, so only GridSkew's own copies hold them; superseded settlement runs cannot be fetched again either and are not copied.</li>
     <li id="carbon-label-alignment">The carbon API's half-hours may not line up with Elexon's. Four results (demand or under-delivery<a class="ref" href="#q8" aria-label="Details, Q8">*</a>, carbon misses and under-delivery<a class="ref" href="#q28" aria-label="Details, Q28">*</a>, wind's shortfall<a class="ref" href="#wind-shortfall" aria-label="Details, wind's shortfall">*</a> and wind and carbon misses<a class="ref" href="#q30" aria-label="Details, Q30">*</a>) pair each carbon value with the Elexon half-hour of the same label, and misses by month and time of day<a class="ref" href="#q29" aria-label="Details, Q29">*</a> sets the API's actual against its forecast at the same label, as the API publishes them; accuracy by lead time<a class="ref" href="#q10" aria-label="Details, Q10">*</a> sets it against the archive's forecasts at the same label. Compared with the carbon intensity in NESO's <a href="https://www.neso.energy/data-portal/historic-generation-mix">historic generation mix</a>, whose wind figures equal Elexon's at the same half-hour in 99.1% of the 17,280 half-hours from 22 August 2025 to 16 August 2026, the API's actual agrees most closely one half-hour after its own label: within 5 g/kWh in 45.8% of half-hours, against 35.8% at the same label; exactly equal in 5.9%, against 3.6%; a mean absolute difference of 15.3 g/kWh, against 16.8; and a correlation of half-hour changes of 0.61, against 0.43 (0.81 against 0.58 in GMT, 0.52 against 0.37 in BST). The share within 5 g/kWh and the mean absolute difference are best one half-hour after the label in all 13 months. This is a measured alignment, not a documented convention: the API labels each value with a half-hour but does not document whether its estimate is made for that half-hour or another, and how its forecast lines up is not settled. The results above stand as read; I make no claim about how the alignment bears on them. <a href="results/context_carbon_label_alignment.csv">Alignment counts</a></li>
@@ -1107,6 +1149,7 @@
         <li>Carbon misses and under-delivery<a class="ref" href="#q28" aria-label="Details, Q28">*</a>: the overall error of its forecast had already been seen in a September 2026 exploration.</li>
         <li>The later, unplanned looks at carbon misses and under-delivery<a class="ref" href="#q28-reverse-title" aria-label="Details, Q28's later look">*</a>: asked after that result was read; the look at wind on its own had its method written down before its data was read, on a year already seen.</li>
         <li>What is turned up with wind turned down<a class="ref" href="#q37" aria-label="Details, Q37">*</a>: the energy NESO's instructions moved at wind farms, both directions together, had been read for the system flags result<a class="ref" href="#q24" aria-label="Details, Q24">*</a> before the method was recorded; no figure by direction or by half-hour had been read. Its CO2 estimate was worked from the saved output after the read.</li>
+        <li>Nuclear output against capacity<a class="ref" href="#q38" aria-label="Details, Q38">*</a>: the nuclear units' planned share of capacity by month, their rows in published outages<a class="ref" href="#q5" aria-label="Details, Q5">*</a> and their metered total in more or less than planned<a class="ref" href="#q3" aria-label="Details, Q3">*</a> had been read before the method was recorded; no metered share of capacity and no split of the gap had been read.</li>
       </ul>
     </li>
     </ul>
@@ -1115,11 +1158,12 @@
 </main>
 
 <footer>
-  <p class="stamp">Results read between 11 October and 27 November 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it (two, run by hand, are kept beside their saved outputs), read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every method</a></p>
+  <p class="stamp">Results read between 11 October and 28 November 2026, from GridSkew <code>@GRIDSKEW_COMMIT@</code>. Each result comes from the query named beside it (two, run by hand, are kept beside their saved outputs), read on the date given, with its saved output linked; a few supporting counts come from counts-only checks or unit-level outputs that are not published. Figures are rounded for reading; the CSV files hold full precision. <a href="https://github.com/JayWatNorm/gridskew/blob/main/docs/research-questions.md">Every method</a></p>
   <p>Contains BMRS data © Elexon Limited copyright and database right 2026. <a href="https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/">BMRS licence</a></p>
   <p>Carbon intensity data: <a href="https://carbonintensity.org.uk/">NESO Carbon Intensity API</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, modified: aggregated by GridSkew.</p>
   <p>Historic generation mix: <a href="https://www.neso.energy/data-portal/historic-generation-mix">NESO Data Portal</a>, Supported by National Energy SO Open Data. <a href="https://www.neso.energy/data-portal/neso-open-licence">NESO Open Data Licence v1.0</a></p>
-  <p>Neither provider endorses this project.</p>
+  <p>Monthly nuclear electricity supplied: DESNZ <a href="https://www.gov.uk/government/statistics/electricity-section-5-energy-trends">Energy Trends table 5.4</a>. Contains public sector information licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.</p>
+  <p>None of the providers endorses this project.</p>
   <p><a href="https://github.com/JayWatNorm/gridskew">GridSkew on GitHub</a></p>
 </footer>
 
@@ -1248,6 +1292,10 @@
 
   vega.scheme("gridskew-split-two", splitScheme(["strong", "soft"]));
   vega.scheme("gridskew-split-three", splitScheme(["strong", "mid", "soft"]));
+  // Nuclear output in nuclear's colour, then the gap below capacity in the
+  // split greys: planned, unplanned, no notice.
+  const nuclearColour = fuelGroupScheme()[3];
+  vega.scheme("gridskew-nuclear-output-and-gap", [nuclearColour, ...splitScheme(["strong", "mid", "soft"])]);
 
   const chartOptions = {
     actions: false,
@@ -1271,6 +1319,7 @@
   });
   vegaEmbed("#q12-chart", "results/q12_instructed_share_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q5-chart", "results/q5_under_delivery_by_outage_notice.vl.json", chartOptions);
+  vegaEmbed("#q38-chart", "results/q38_output_and_gap_by_month.vl.json", chartOptions);
   vegaEmbed("#q24-chart", "results/q24_flagged_share_by_fuel_group.vl.json", chartOptions);
   vegaEmbed("#q37-chart", "results/q37_turn_up_by_wind_turn_down_band.vl.json", chartOptions);
   vegaEmbed("#q25-chart", "results/q25_short_instructions_by_fuel_group.vl.json", chartOptions);

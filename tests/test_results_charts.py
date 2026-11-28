@@ -31,6 +31,7 @@ from scripts.results_charts import (
     PALE_KEY_COLOUR,
     Q2_WEEK,
     Q28_REVERSE_FIFTH_ITEM,
+    Q38_SCHEME,
     SPLIT_GREYS,
     SPLIT_THREE_SCHEME,
     SPLIT_TWO_SCHEME,
@@ -119,6 +120,15 @@ ALIGNMENT_LINE = (
     "modified: aggregated by GridSkew. Historic generation mix: Supported by "
     "National Energy SO Open Data.\n"
 )
+OGL_LINE = (
+    "# Contains public sector information licensed under the Open Government "
+    "Licence v3.0.\n"
+)
+BMRS_AND_OGL_LINE = (
+    "# Contains BMRS data © Elexon Limited copyright and database right 2026. "
+    "Contains public sector information licensed under the Open Government "
+    "Licence v3.0.\n"
+)
 
 
 def saved_context_label():
@@ -142,6 +152,7 @@ CONTEXT_LABEL = saved_context_label()
 NOT_A_RESULT = CONTEXT_LABEL.removeprefix("context only: denominator, ")
 DISTRIBUTION_LABEL = "context only: distribution, " + NOT_A_RESULT
 BREAKDOWN_LABEL = "context only: breakdown, " + NOT_A_RESULT
+COMPARISON_LABEL = "context only: comparison, " + NOT_A_RESULT
 # Q23's chart months, for the planned-output context fixture.
 Q23_FIXTURE_MONTHS = [
     "2025-09-01",
@@ -197,7 +208,77 @@ def turn_up_fixture_line(band, fuel_group, half_hours, turned_up_mwh):
     )
 
 
+Q38_FIXTURE_HEADER = (
+    "section,settlement_month,station,national_grid_bm_unit,notice_class,"
+    "output_state,item,units,unit_half_hours,capacity_mwh,output_mwh,"
+    "output_pct_of_capacity,gap_mwh,share_of_gap_pct,gap_below_highest_mwh,"
+    "share_of_gap_below_highest_pct,above_capacity_mwh,drawn_mwh,"
+    "registry_capacity_mw,highest_half_hour_mw,notice_normal_capacity_low_mw,"
+    "notice_normal_capacity_high_mw,notice_publications,first_half_hour,"
+    "last_half_hour"
+)
+
+
+def nuclear_month_fixture_line(month, capacity_mwh, output_mwh, gap_mwh):
+    """One month's totals in Q38's saved output; its saved percentage is
+    unlike the one the chart works out, so the chart cannot copy it."""
+    return (
+        f"1,{month},,,,,output against registered capacity,10,1440,{capacity_mwh},"
+        f"{output_mwh},99.99,{gap_mwh},,5.0,,0.0,0.0,,,,,,"
+        f"{month} 00:00:00+00:00,{month} 23:30:00+00:00"
+    )
+
+
+def nuclear_gap_fixture_line(month, notice_class, output_state, gap_mwh):
+    """One notice class and generating state's gap in one month of Q38's
+    saved output."""
+    return (
+        f"3,{month},,,{notice_class},{output_state},gap below registered capacity,"
+        f"1,10,,,,{gap_mwh},1.00,2.0,3.00" + "," * 9
+    )
+
+
 NEW_SAVED_OUTPUTS = {
+    # Q38, unlike the real output: three months. September's output is
+    # 45.625% of its capacity and its gap with no notice 4.375%, halves
+    # rounded up; its unplanned gap is split between generating and not
+    # generating, and October's planned gap too, so the chart must add the
+    # two.
+    "q38_nuclear_output_and_outage_notices.csv": [
+        Q38_FIXTURE_HEADER,
+        nuclear_month_fixture_line("2025-09-01", "1000000.0", "456250.0", "543750.0"),
+        nuclear_month_fixture_line("2025-10-01", "2000000.0", "1000000.0", "1000000.0"),
+        nuclear_month_fixture_line("2025-11-01", "1000000.0", "800000.0", "200000.0"),
+        "2,,,,,,output against registered capacity,10,4320,4000000.0,2256250.0,"
+        "56.41,1743750.0,,1.0,,0.0,0.0,,,,,,2025-09-01 00:00:00+00:00,"
+        "2025-11-01 23:30:00+00:00",
+        nuclear_gap_fixture_line("2025-09-01", "planned", "not generating", "300000.0"),
+        nuclear_gap_fixture_line("2025-09-01", "unplanned", "generating", "50000.0"),
+        nuclear_gap_fixture_line(
+            "2025-09-01", "unplanned", "not generating", "150000.0"
+        ),
+        nuclear_gap_fixture_line("2025-09-01", "none", "generating", "43750.0"),
+        nuclear_gap_fixture_line("2025-10-01", "none", "generating", "100000.0"),
+        nuclear_gap_fixture_line("2025-10-01", "planned", "generating", "200000.0"),
+        nuclear_gap_fixture_line("2025-10-01", "planned", "not generating", "300000.0"),
+        nuclear_gap_fixture_line(
+            "2025-10-01", "unplanned", "not generating", "400000.0"
+        ),
+        nuclear_gap_fixture_line("2025-11-01", "none", "generating", "40000.0"),
+        nuclear_gap_fixture_line("2025-11-01", "planned", "generating", "100000.0"),
+        nuclear_gap_fixture_line("2025-11-01", "unplanned", "generating", "60000.0"),
+        # Not read by the chart: the all-months split.
+        "4,,,,planned,generating,gap below registered capacity,1,10,,,,1.0,,,,,,,,,,,,",
+    ],
+    # DESNZ's monthly figures, unlike the real ones: two of the output's
+    # three months, the second provisional. 0.45625 TWh is 14.0625% above
+    # 0.4, and 1.45625 over the two is 21.354...% above 1.2.
+    "desnz_nuclear_supplied_by_month.csv": [
+        "# Source line, as the saved file gives it.",
+        "month,nuclear_twh,provisional",
+        "2025-09,0.4000,no",
+        "2025-10,0.8000,yes",
+    ],
     # Q37, unlike the real output: two months, so its range is a span the
     # chart works out, and six bands. A half-hour's MWh times two is its
     # average MW: with no wind turned down, gas's 250,000 MWh over 1,000
@@ -247,10 +328,10 @@ NEW_SAVED_OUTPUTS = {
     "context_demand.csv": [
         "section,item,half_hours_in_window,half_hours_with_demand,mean_demand_mw,"
         "mean_demand_mwh_per_half_hour,demand_twh,label",
-        f"1,all half-hours,1920,1920,23064,11532,22.15,{CONTEXT_LABEL}",
+        f'1,all half-hours,1920,1920,23064,11532,22.15,"{CONTEXT_LABEL}"',
         "2,settlement month 2025-08 (partial: 22 to 31),480,480,21350,10675,5.12,"
-        f"{CONTEXT_LABEL}",
-        f"2,settlement month 2025-09,1440,1440,23635,11817,17.02,{CONTEXT_LABEL}",
+        f'"{CONTEXT_LABEL}"',
+        f'2,settlement month 2025-09,1440,1440,23635,11817,17.02,"{CONTEXT_LABEL}"',
     ],
     "context_plan_per_unit_half_hour.csv": [
         "fuel_group,q3_unit_periods,q3_abs_pn_mwh,q3_mean_plan_mwh,"
@@ -686,6 +767,21 @@ EXPECTED_CHART_CSVS = {
     "3 500 MW to under 1 GW,250,800.0,60.0,500 MW to under 1 GW|250 half-hours\n"
     "4 1 GW to under 2 GW,400,900.0,70.0,1 GW to under 2 GW|400 half-hours\n"
     '5 2 GW or more,1250,2000.0,150.0,"2 GW or more|1,250 half-hours"\n',
+    # Worked above NEW_SAVED_OUTPUTS: each month's output and gap per notice
+    # class over its capacity, generating and not generating added.
+    "q38_output_and_gap_by_month.csv": BMRS_LINE
+    + "settlement_month,label,capacity_mwh,output_pct,planned_gap_pct,"
+    "unplanned_gap_pct,no_notice_gap_pct\n"
+    "2025-09-01,Sep 2025,1000000.0,45.63,30.00,20.00,4.38\n"
+    "2025-10-01,Oct 2025,2000000.0,50.00,25.00,20.00,5.00\n"
+    "2025-11-01,Nov 2025,1000000.0,80.00,10.00,6.00,4.00\n",
+    # The months both give; November is not in DESNZ's fixture.
+    "context_q38_desnz_monthly_nuclear.csv": BMRS_AND_OGL_LINE
+    + "section,month,output_twh,desnz_twh,output_above_desnz_pct,"
+    "desnz_provisional,label\n"
+    f'1,2025-09,0.45625,0.4000,14.06,no,"{COMPARISON_LABEL}"\n'
+    f'1,2025-10,1.0,0.8000,25.00,yes,"{COMPARISON_LABEL}"\n'
+    f'2,,1.45625,1.2000,21.35,,"{COMPARISON_LABEL}"\n',
     "q25_short_instructions_by_fuel_group.csv": BMRS_LINE
     + "fuel_group,instructions,short_joined_pct,short_on_its_own_pct,"
     "short_joined_as_first_read_pct\n"
@@ -787,10 +883,12 @@ WRITTEN_FILES = [
     "context_q28_wind_level.csv",
     "context_q30_outturn_lateness.csv",
     "context_q30_wind_miss_sign.csv",
+    "context_q38_desnz_monthly_nuclear.csv",
     "context_q5_drawing_power.csv",
     "context_q6_lag_quartiles.csv",
     "context_q6_publication_timing.csv",
     "context_q6_start_alignment.csv",
+    "desnz_nuclear_supplied_by_month.csv",
     "q10_forecast_accuracy_by_lead_time.csv",
     "q12_instructed_share_by_fuel_group.csv",
     "q12_instructed_share_by_fuel_group.png",
@@ -853,6 +951,10 @@ WRITTEN_FILES = [
     "q37_turn_up_by_wind_turn_down_band.png",
     "q37_turn_up_by_wind_turn_down_band.vl.json",
     "q37_wind_turn_down_and_turn_up.csv",
+    "q38_nuclear_output_and_outage_notices.csv",
+    "q38_output_and_gap_by_month.csv",
+    "q38_output_and_gap_by_month.png",
+    "q38_output_and_gap_by_month.vl.json",
     "q3_coverage.csv",
     "q3_energy_against_plan_by_fuel_group.csv",
     "q3_energy_against_plan_by_fuel_group.png",
@@ -1070,7 +1172,7 @@ def test_the_page_gives_every_committed_chart_its_columns():
     for name, rows in zip(names, given, strict=True):
         headers[name] = rows.split("\n", 1)[0].split(",")
 
-    assert len(names) == 18
+    assert len(names) == 19
     assert fields_missing_from(headers, results) == {}
 
 
@@ -1095,8 +1197,8 @@ def test_every_chart_is_drawn_with_the_loader_that_drops_comment_lines():
     page = PAGE.read_text(encoding="utf-8")
 
     assert "    loader: { ...fileLoader, load: loadBelowComments },\n" in page
-    assert page.count("vegaEmbed(") == 18
-    assert len(re.findall(r'vegaEmbed\("#[^"]+", "[^"]+", chartOptions\)', page)) == 18
+    assert page.count("vegaEmbed(") == 19
+    assert len(re.findall(r'vegaEmbed\("#[^"]+", "[^"]+", chartOptions\)', page)) == 19
 
 
 def x_domains(node, domains):
@@ -1823,10 +1925,12 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "context_q28_wind_level.csv": BMRS_AND_CARBON_LINE,
         "context_q30_outturn_lateness.csv": BMRS_LINE,
         "context_q30_wind_miss_sign.csv": BMRS_LINE,
+        "context_q38_desnz_monthly_nuclear.csv": BMRS_AND_OGL_LINE,
         "context_q5_drawing_power.csv": BMRS_LINE,
         "context_q6_lag_quartiles.csv": BMRS_LINE,
         "context_q6_publication_timing.csv": BMRS_LINE,
         "context_q6_start_alignment.csv": BMRS_LINE,
+        "desnz_nuclear_supplied_by_month.csv": OGL_LINE,
         "q10_forecast_accuracy_by_lead_time.csv": CARBON_LINE,
         "q12_instructed_share_by_fuel_group.csv": BMRS_LINE,
         "q12_instructed_vs_residual.csv": BMRS_LINE,
@@ -1859,6 +1963,8 @@ def test_every_written_csv_starts_with_its_attribution(written):
         "q30_wind_vs_carbon_error.csv": BMRS_AND_CARBON_LINE,
         "q37_turn_up_by_wind_turn_down_band.csv": BMRS_LINE,
         "q37_wind_turn_down_and_turn_up.csv": BMRS_LINE,
+        "q38_nuclear_output_and_outage_notices.csv": BMRS_LINE,
+        "q38_output_and_gap_by_month.csv": BMRS_LINE,
         "q3_coverage.csv": BMRS_LINE,
         "q3_energy_against_plan_by_fuel_group.csv": BMRS_LINE,
         "q3_gap_from_plan_by_fuel_group.csv": BMRS_LINE,
@@ -2017,6 +2123,9 @@ def test_every_spec_reads_a_written_csv_that_holds_every_field_it_uses(written):
         "q37_turn_up_by_wind_turn_down_band.vl.json": (
             "results/q37_turn_up_by_wind_turn_down_band.csv"
         ),
+        "q38_output_and_gap_by_month.vl.json": (
+            "results/q38_output_and_gap_by_month.csv"
+        ),
         "q3_energy_against_plan_by_fuel_group.vl.json": (
             "results/q3_energy_against_plan_by_fuel_group.csv"
         ),
@@ -2043,6 +2152,7 @@ def test_every_fixed_axis_spans_its_whole_scale(written):
         "q28_wind_shortfall_per_gw.vl.json": [[-8, 16]],
         "q2_moved_energy_by_unit_type.vl.json": [[0, 100]],
         "q30_rank_correlations.vl.json": [[-0.3, 0.3]],
+        "q38_output_and_gap_by_month.vl.json": [[0, 100]],
     }
 
 
@@ -2050,7 +2160,7 @@ def test_no_chart_reads_right_to_left(written):
     # Each chart's axis says which side is which ("left: below plan"); a
     # reversed scale would put every bar on the wrong side of those words.
     assert specs_reading_right_to_left(written) == []
-    assert len(written_specs(written)) == 18
+    assert len(written_specs(written)) == 19
 
 
 def test_reference_lines_sit_where_the_rules_put_them(written):
@@ -2128,8 +2238,23 @@ def test_bars_split_into_parts_take_the_page_split_greys(written):
         "q12_instructed_share_by_fuel_group.vl.json": SPLIT_TWO_SCHEME,
         "q24_flagged_share_by_fuel_group.vl.json": SPLIT_TWO_SCHEME,
         "q37_turn_up_by_wind_turn_down_band.vl.json": SPLIT_TWO_SCHEME,
+        "q38_output_and_gap_by_month.vl.json": Q38_SCHEME,
         "q5_under_delivery_by_outage_notice.vl.json": SPLIT_THREE_SCHEME,
     }
+
+
+def test_the_nuclear_chart_takes_nuclears_colour_then_the_three_split_greys():
+    # The output part is nuclear's output, so it wears nuclear's colour; the
+    # gap's three parts take the split greys as published outages' do,
+    # planned strongest. The page registers the four for each mode.
+    page = PAGE.read_text(encoding="utf-8")
+    nuclear_position = list(FUEL_GROUP_COLOURS).index("nuclear")
+
+    assert f"const nuclearColour = fuelGroupScheme()[{nuclear_position}];" in page
+    assert (
+        f'vega.scheme("{Q38_SCHEME}", [nuclearColour, '
+        '...splitScheme(["strong", "mid", "soft"])]);' in page
+    )
 
 
 def test_both_q29_charts_share_one_diverging_pair_no_fuel_group_wears(written):
@@ -2145,7 +2270,8 @@ def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
     # Q3's fixture covers 22 August 2025 to 26 September 2026, and Q12 reads
     # Q3's half-hours; Q5's rows run 22 August 2025 to 27 September 2026;
     # Q24's fixture holds August 2025 and September 2026, as settlement
-    # months, and so does Q37's; Q2's week is its rule's.
+    # months, and so does Q37's; Q38's runs September to November 2025; Q2's
+    # week is its rule's.
     q3 = "22 Aug 2025 – 26 Sep 2026"
     assert q3 in x_axis_titles(written, "q3_gap_from_plan_by_fuel_group.vl.json")
     assert q3 in x_axis_titles(written, Q3_ENERGY_CHART)
@@ -2158,6 +2284,9 @@ def test_each_energy_axis_and_title_carries_its_saved_output_range(written):
     )
     assert "half-hours, settlement months Aug 2025 – Sep 2026." in reading_line(
         written, "q37_turn_up_by_wind_turn_down_band.vl.json"
+    )
+    assert "half-hour. Settlement months Sep 2025 – Nov 2025." in reading_line(
+        written, "q38_output_and_gap_by_month.vl.json"
     )
     assert (
         f"for {Q2_WEEK} came from"
@@ -2457,6 +2586,56 @@ def test_a_turn_up_output_without_one_of_its_bands_is_refused(tmp_path):
     without_lines_containing(saved / Q37_OUTPUT, ",5 2 GW or more,")
 
     with pytest.raises(ValueError, match="no row for band '5 2 GW or more'"):
+        write_charts(saved, tmp_path / "out")
+
+
+Q38_OUTPUT = "q38_nuclear_output_and_outage_notices.csv"
+
+
+def test_a_nuclear_output_without_a_middle_month_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    without_lines_containing(saved / Q38_OUTPUT, "1,2025-10-01,")
+
+    with pytest.raises(ValueError, match="no month between 2025-09-01 and 2025-11-01"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_nuclear_month_without_one_of_its_notice_classes_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    without_lines_containing(saved / Q38_OUTPUT, "3,2025-11-01,,,none,")
+
+    with pytest.raises(ValueError, match="no 'none' gap for 2025-11-01"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_nuclear_notice_class_the_chart_has_no_part_for_is_refused(tmp_path):
+    # A half-hour under both kinds of notice would fall in no part of a bar.
+    saved = saved_outputs_folder(tmp_path / "saved")
+    add_lines(
+        saved / Q38_OUTPUT,
+        [nuclear_gap_fixture_line("2025-11-01", "both", "generating", "1.0")],
+    )
+
+    with pytest.raises(ValueError, match="notice class with no part: 'both'"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_nuclear_gap_in_a_month_with_no_totals_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    add_lines(
+        saved / Q38_OUTPUT,
+        [nuclear_gap_fixture_line("2025-12-01", "none", "generating", "1.0")],
+    )
+
+    with pytest.raises(ValueError, match="a month it does not total: 2025-12-01"):
+        write_charts(saved, tmp_path / "out")
+
+
+def test_a_desnz_month_the_nuclear_output_does_not_hold_is_refused(tmp_path):
+    saved = saved_outputs_folder(tmp_path / "saved")
+    add_lines(saved / "desnz_nuclear_supplied_by_month.csv", ["2025-12,0.9000,yes"])
+
+    with pytest.raises(ValueError, match="no month 2025-12 to compare"):
         write_charts(saved, tmp_path / "out")
 
 
@@ -3009,6 +3188,7 @@ ARTICLE_IDS = [
     "q12",
     "q5",
     "q6",
+    "q38",
     "q24",
     "q37",
     "q25",
@@ -3036,6 +3216,7 @@ RESULT_NAMES = {
     "Q29": "misses by month and time of day",
     "Q30": "wind and carbon misses",
     "Q37": "what is turned up with wind turned down",
+    "Q38": "nuclear output against capacity",
 }
 
 
@@ -4815,10 +4996,11 @@ def test_no_instruction_reached_a_nuclear_unit_as_the_fuel_group_limit_says():
 def test_the_limitations_name_the_results_that_set_one_measure_against_another():
     # Q5 sets under-delivery against outage notices, Q8 and Q28 against the
     # carbon miss, Q30 the wind miss against it, Q37 the energy turned up
-    # against the wind turned down; each is an article on the
-    # page; Q28's further results stand inside its article.
+    # against the wind turned down, Q38 the nuclear gap against outage
+    # notices; each is an article on the page; Q28's further results stand
+    # inside its article.
     page = PAGE.read_text(encoding="utf-8")
-    named = ["Q5", "Q8", "Q28", "Q30", "Q37"]
+    named = ["Q5", "Q8", "Q28", "Q30", "Q37", "Q38"]
     names = [named_result(question_id) for question_id in named]
     names.insert(3, WIND_RESULT)
     limitation = (
@@ -4842,6 +5024,7 @@ SET_UP_EXCEPTIONS = [
     "Q28:",
     "Q28's reverse cut",
     "Q37",
+    "Q38",
 ]
 
 
@@ -4865,6 +5048,7 @@ def page_exception_openings():
         capitalised(named_result("Q28")),
         later_look,
         capitalised(named_result("Q37")),
+        capitalised(named_result("Q38")),
     ]
 
 
@@ -4961,7 +5145,7 @@ def test_both_pages_qualify_the_written_first_claim_with_the_same_exceptions():
 def test_the_results_page_links_each_method_by_that_name():
     page = PAGE.read_text(encoding="utf-8")
 
-    assert page.count(">Full method</a>") == 16
+    assert page.count(">Full method</a>") == 17
     assert page.count(">Every method</a>") == 1
     assert re.findall(r">(?:Full|Every) rule<", page) == []
 
@@ -5605,6 +5789,7 @@ READ_DAYS = {
     "Q29": "27 October 2026",
     "Q30": "27 October 2026",
     "Q37": "27 November 2026",
+    "Q38": "28 November 2026",
 }
 Q25_RERUN = "re-run 25 October 2026 over the same period"
 STATUS_ROW = re.compile(
@@ -6223,7 +6408,7 @@ def test_the_page_and_rules_speak_as_i_or_neutrally():
 
     assert voice.findall(page) == []
     assert voice.findall(QUESTIONS.read_text(encoding="utf-8")) == []
-    assert page.count("<summary>How I measured it</summary>") == 16
+    assert page.count("<summary>How I measured it</summary>") == 17
     assert '<h2 id="found-title">What I found</h2>' in page
 
 
@@ -6698,6 +6883,7 @@ def test_every_local_link_and_chart_on_the_page_is_a_shipped_file():
         "results/q3_gap_from_plan_by_fuel_group.vl.json",
         "results/q12_instructed_share_by_fuel_group.vl.json",
         "results/q5_under_delivery_by_outage_notice.vl.json",
+        "results/q38_output_and_gap_by_month.vl.json",
         "results/q24_flagged_share_by_fuel_group.vl.json",
         "results/q37_turn_up_by_wind_turn_down_band.vl.json",
         "results/q25_short_instructions_by_fuel_group.vl.json",
@@ -6776,7 +6962,7 @@ def test_the_script_writes_each_committed_chart_png_at_its_size(tmp_path):
     committed_sizes = {}
     for path in sorted(results.glob("*.png")):
         committed_sizes[path.name] = png_width_and_height(path)
-    assert len(committed_sizes) == 18
+    assert len(committed_sizes) == 19
     assert written_sizes == committed_sizes
 
 
@@ -6793,7 +6979,7 @@ def test_the_committed_chart_pngs_are_what_the_script_writes(tmp_path):
     for path in sorted(written.glob("*.png")):
         if path.read_bytes() != (results / path.name).read_bytes():
             stale.append(path.name)
-    assert len(sorted(written.glob("*.png"))) == 18
+    assert len(sorted(written.glob("*.png"))) == 19
     assert stale == []
 
 
@@ -6853,6 +7039,11 @@ VISIBLE_LIMITS = {
     "q37": (
         "<p>This shows what NESO did in the same half-hours, not that one "
         "instruction replaced another; no location and no price is read.</p>"
+    ),
+    "q38": (
+        "<p>In these months nine of the ten units' highest half-hours are below "
+        "their registered capacity, and a notice and a gap going together in "
+        "time is not a cause.</p>"
     ),
     "q25": (
         "<p>This covers only units with a published fuel type and measures "
@@ -7100,6 +7291,7 @@ def caption_windows(page):
     q5 = output_date_range(saved_output_rows("q5_shortfall_with_known_outage.csv"))
     q24 = output_month_range(saved_output_rows("q24_system_action_share.csv"))
     q37 = output_month_range(saved_output_rows(Q37_OUTPUT))
+    q38 = output_month_range(saved_output_rows(Q38_OUTPUT))
     stored_year = output_date_range(saved_output_rows("q8_q28_history.csv"))
     q30 = output_date_range(saved_output_rows("q30_wind_vs_carbon_error.csv"))
     q25_first, q25_last = data_entry_range(page, "q25")
@@ -7114,6 +7306,7 @@ def caption_windows(page):
         "q5-chart": q5,
         "q24-chart": f"Settlement months {q24}",
         "q37-chart": f"Settlement months {q37}",
+        "q38-chart": f"Settlement months {q38}",
         "q25-chart": f"{short_date(q25_first)} – {short_date(q25_last)}",
         "q29-time-chart": stored_year,
         "q29-month-chart": stored_year,
@@ -7190,6 +7383,10 @@ def expected_captions(windows, counts):
             f"{windows['q24-chart']}, units with a published fuel type. {elexon}"
         ),
         "q37-chart": f"{windows['q37-chart']}, every unit NESO instructed. {elexon}",
+        "q38-chart": (
+            f"{windows['q38-chart']}, the ten nuclear units. Source: Elexon BMRS "
+            "and REMIT."
+        ),
         "q25-chart": (
             "Instructions to units with a published fuel type, "
             f"{windows['q25-chart']}. {elexon}"
@@ -7559,11 +7756,16 @@ FRAMING_WORDS = re.compile(
     re.IGNORECASE,
 )
 # The same words used of the data itself, not of a question's set-up: an
-# outage notice's class, and who registered a unit.
+# outage notice's class, who registered a unit, and the capacity a unit is
+# registered at.
 DATA_USES_OF_FRAMING_WORDS = [
     "unplanned notices",
     "Unplanned (",
     "registered by suppliers",
+    "43.4% unplanned",
+    "registered nuclear capacity",
+    "registered capacity",
+    "Registered capacity",
 ]
 # Bars a result once had to clear; each stays in its fold-out's measure.
 THRESHOLDS_OUT_OF_VIEW = [
@@ -7667,13 +7869,20 @@ METHOD_PAGE_FRAMING_WORDS = re.compile(
     re.IGNORECASE,
 )
 # The same words used of the data itself: an outage notice's class, a
-# unit's place in the Balancing Mechanism, and the name of the saved
-# output's columns, which Q1 gives once on each page.
+# unit's place in the Balancing Mechanism, the name of the saved output's
+# columns, which Q1 gives once on each page, the capacity a unit is
+# registered at, and a claim about nuclear output that Q38 says it does not
+# test.
 METHOD_PAGE_DATA_USES = [
     "planned and unplanned",
     "`unplanned`",
     "registered in the Balancing Mechanism",
     "`no directional drift`, in columns named verdict.",
+    "registered-nuclear-capacity",
+    "registered nuclear capacity",
+    "registered capacity",
+    "the registered figure",
+    "lowest for decades is not tested here",
 ]
 
 
@@ -7731,6 +7940,15 @@ EARLIER_LOOKS = {
         "direction, by half-hour or by what else was instructed in the same "
         "half-hour was read before this method was written."
     ),
+    "Q38": (
+        "**Earlier look.** Three related figures had been read before this "
+        "method was written: the nuclear units' planned output as a share of "
+        "registry capacity, by month (a context count, 1 November 2026); Q5's "
+        "split of nuclear under-delivery against plan by outage notice "
+        "(12 October 2026); and Q3's nuclear metered total (11 October 2026). "
+        "Metered output as a share of capacity, and the gap below capacity "
+        "split by notice, had not been read."
+    ),
 }
 
 
@@ -7779,6 +7997,9 @@ WRITTEN_DATES_ROWS = [
     "when changed |",
     "| Q37 | 27 November | 27 November | Q24's acceptance volume for wind "
     "read on 15 October; no figure by direction or by half-hour read |",
+    "| Q38 | 28 November | 28 November | planned share of capacity by month read "
+    "on 1 November, Q5's nuclear rows on 12 October and Q3's nuclear total on "
+    "11 October; no metered share of capacity or gap split read |",
 ]
 
 
@@ -8772,7 +8993,419 @@ def test_q37s_band_names_are_short_enough_to_show_in_full():
         assert len(name) <= 23
 
 
-def test_q25s_answer_gives_the_short_shares_from_its_chart_data():
+Q38_ALL_MONTHS = "output against registered capacity"
+Q38_CHART_DATA = "q38_output_and_gap_by_month.csv"
+Q38_COMPARISON = "context_q38_desnz_monthly_nuclear.csv"
+DESNZ_INPUT = "desnz_nuclear_supplied_by_month.csv"
+Q38_CLASSES = ("planned", "unplanned", "none")
+Q38_UNITS_OUTSIDE = ["DNGB21", "DNGB22", "HINB-7", "HINB-8", "HUNB-7", "HUNB-8"]
+# The settlement runs as the page names them, earliest first.
+Q38_RUN_NAMES = {
+    "II": "one-week",
+    "SF": "three-week",
+    "R1": "two-month",
+    "R2": "four-month",
+    "R3": "seven-month",
+    "RF": "14-month",
+}
+
+
+def nuclear_share(row):
+    """A row's metered output as an exact percentage of its capacity."""
+    return Decimal(100) * Decimal(row["output_mwh"]) / Decimal(row["capacity_mwh"])
+
+
+def lowest_and_highest_nuclear_month(rows):
+    months = section_rows(rows, "1")
+    lowest = min(months, key=nuclear_share)
+    highest = max(months, key=nuclear_share)
+    return lowest, highest
+
+
+def nuclear_gap_by(rows, column, key):
+    """Q38's gap over all months (section 4), in MWh, summed by the column
+    named by key: the notice class, the generating state or both."""
+    totals = {}
+    for row in section_rows(rows, "4"):
+        if key == "both":
+            group = (row["notice_class"], row["output_state"])
+        else:
+            group = row[key]
+        totals[group] = totals.get(group, Decimal(0)) + Decimal(row[column])
+    return totals
+
+
+def gap_shares(rows, column, places):
+    """Each notice class's share of the gap in the column, at whole numbers
+    or one decimal, and the whole-number share with any notice, beside the
+    gap's total. At one decimal the three classes add to 100.0, as the page
+    shows them."""
+    by_class = nuclear_gap_by(rows, column, "notice_class")
+    total = summed(section_rows(rows, "4"), column)
+    shares = {}
+    for notice_class in Q38_CLASSES:
+        shares[notice_class] = percent_of(by_class[notice_class], total, places)
+    shares["any notice"] = percent_of(
+        by_class["planned"] + by_class["unplanned"], total, 0
+    )
+    if places == 1:
+        added = Decimal(0)
+        for notice_class in Q38_CLASSES:
+            added += Decimal(shares[notice_class])
+        assert added == 100
+    return shares, total
+
+
+def test_q38s_gap_split_adds_up_to_its_months_and_holds_no_other_class():
+    # Section 4 splits the gap over all months by notice class and
+    # generating state; it must add up to section 2's gap and to section
+    # 3's months, and hold only the three classes the page names.
+    rows = saved_output_rows(Q38_OUTPUT)
+    all_months = item_row(rows, "2", Q38_ALL_MONTHS)
+    classes = set()
+    for row in section_rows(rows, "3") + section_rows(rows, "4"):
+        classes.add(row["notice_class"])
+
+    assert classes == set(Q38_CLASSES)
+    for column in ("gap_mwh", "gap_below_highest_mwh"):
+        assert summed(section_rows(rows, "4"), column) == Decimal(all_months[column])
+        assert abs(
+            summed(section_rows(rows, "3"), column) - Decimal(all_months[column])
+        ) <= Decimal("0.5")
+
+
+def test_q38s_answer_takes_its_shares_from_its_saved_output():
+    rows = saved_output_rows(Q38_OUTPUT)
+    all_months = item_row(rows, "2", Q38_ALL_MONTHS)
+    lowest, highest = lowest_and_highest_nuclear_month(rows)
+    months = section_rows(rows, "1")
+    shares, _total = gap_shares(rows, "gap_mwh", 1)
+
+    assert all_months["units"] == "10"
+    assert (
+        answer_of(PAGE.read_text(encoding="utf-8"), "q38") == "<strong>About "
+        f"{whole(nuclear_share(all_months))}% of it; nearly all of the gap came "
+        "with a published outage notice.</strong> From "
+        f"{month_in_full(months[0]['settlement_month'])} to "
+        f"{month_in_full(months[-1]['settlement_month'])} the ten nuclear units' "
+        f"metered output was {whole(nuclear_share(all_months))}% of their "
+        f"registered capacity, between {whole(nuclear_share(lowest))}% "
+        f"({month_in_full(lowest['settlement_month'])}) and "
+        f"{whole(nuclear_share(highest))}% "
+        f"({month_in_full(highest['settlement_month'])}) by month. Of the gap "
+        f"below capacity, {shares['any notice']}% fell in half-hours when a "
+        f"notice was in force for the unit ({shares['planned']}% planned, "
+        f"{shares['unplanned']}% unplanned)."
+    )
+
+
+def test_q38s_result_gives_the_energy_and_the_gap_by_notice_from_its_saved_output():
+    rows = saved_output_rows(Q38_OUTPUT)
+    all_months = item_row(rows, "2", Q38_ALL_MONTHS)
+    lowest, highest = lowest_and_highest_nuclear_month(rows)
+    shares, total = gap_shares(rows, "gap_mwh", 1)
+
+    assert (
+        f"<dd>The ten units metered {twh(all_months['output_mwh'])} TWh; their "
+        "registered capacity, held for every half-hour, comes to "
+        f"{twh(all_months['capacity_mwh'])} TWh "
+        f"(settlement months {output_month_range(rows)}), so output is "
+        f"{whole(nuclear_share(all_months))}% of it; by month from "
+        f"{whole(nuclear_share(lowest))}% "
+        f"({month_in_full(lowest['settlement_month'])}) to "
+        f"{whole(nuclear_share(highest))}% "
+        f"({month_in_full(highest['settlement_month'])}). The gap below "
+        f"capacity is {twh(total)} TWh: {shares['planned']}% of it in "
+        "half-hours with a planned notice in force for the unit, "
+        f"{shares['unplanned']}% with an unplanned notice and {shares['none']}% "
+        "with none. No half-hour had both kinds of notice.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_q38s_gap_while_not_generating_always_had_a_notice():
+    rows = saved_output_rows(Q38_OUTPUT)
+    by_state = nuclear_gap_by(rows, "gap_mwh", "output_state")
+    by_both = nuclear_gap_by(rows, "gap_mwh", "both")
+    shares, total = gap_shares(rows, "gap_mwh", 1)
+
+    assert ("none", "not generating") not in by_both
+    assert (
+        by_both[("none", "generating")]
+        == nuclear_gap_by(rows, "gap_mwh", "notice_class")["none"]
+    )
+    assert (
+        f"<dd>{percent_of(by_state['not generating'], total, 0)}% of the gap "
+        f"({twh(by_state['not generating'])} TWh) fell in half-hours when the "
+        "unit was not generating, every one of them with a notice in force. The "
+        f"{shares['none']}% with no notice was all in half-hours when the unit "
+        "was generating.</dd>" in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_q38s_second_gap_and_the_capacities_beside_it_come_from_their_sources():
+    rows = saved_output_rows(Q38_OUTPUT)
+    units = section_rows(rows, "5")
+    registered_mw = summed(units, "registry_capacity_mw")
+    reaching = []
+    for unit in units:
+        if Decimal(unit["highest_half_hour_mw"]) >= Decimal(
+            unit["registry_capacity_mw"]
+        ):
+            reaching.append(unit["national_grid_bm_unit"])
+    shares, total = gap_shares(rows, "gap_below_highest_mwh", 1)
+    method = flattened(register_section(QUESTIONS.read_text(encoding="utf-8"), "Q38"))
+
+    assert reaching == ["HEYM28"]
+    assert len(units) - len(reaching) == 9
+    assert (
+        "nine of the ten units' highest half-hours are below their registered"
+        in (VISIBLE_LIMITS["q38"])
+    )
+    assert "EDF gives the five stations' supply to the grid as 5,958 MW in all" in (
+        method
+    )
+    assert (
+        f"<dd>The ten units are registered at {int(whole(registered_mw)):,} MW; EDF "
+        "gives the five stations' supply to the grid as 5,958 MW, and only one "
+        "unit's highest half-hour reaches its registered figure. Part of the gap "
+        "below registered capacity can therefore have no notice, so a second gap "
+        "is measured below each unit's highest metered half-hour, or below its "
+        f"registered capacity where that is lower: {twh(total)} TWh, {shares['planned']}% of it with a planned notice, "
+        f"{shares['unplanned']}% with an unplanned notice and {shares['none']}% "
+        "with none.</dd>" in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_q38s_units_are_listed_by_station_with_their_output_shares():
+    rows = saved_output_rows(Q38_OUTPUT)
+    by_station = {}
+    for unit in section_rows(rows, "5"):
+        by_station.setdefault(unit["station"], []).append(
+            f"{unit['national_grid_bm_unit']} {whole(nuclear_share(unit))}%"
+        )
+    stations = []
+    for station in sorted(by_station):
+        units = sorted(by_station[station])
+        assert len(units) == 2
+        stations.append(f"{station} {units[0]} and {units[1]}")
+
+    assert len(stations) == 5
+    assert (
+        "<dd>Output as a share of registered capacity, by station: "
+        f"{'; '.join(stations)}. Sizewell B's two units are the two "
+        "turbine-generators of its one reactor.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_q38_gives_published_outages_nuclear_share_with_a_notice():
+    q5 = saved_output_rows("q5_shortfall_with_known_outage.csv")
+    nuclear_with_notice, nuclear_total = with_notice_and_total(
+        q5_rows(q5, "2", "nuclear")
+    )
+
+    first, last = long_date_range(q5)
+
+    assert (
+        f"measures under-delivery against each unit's plan; for nuclear, "
+        f"{percent_of(nuclear_with_notice, nuclear_total, 0)}% of it came with a "
+        f"notice ({first} to {last}). This measures the gap below registered "
+        "capacity instead, so an outage during which a unit's plan is zero, which "
+        "that measure cannot see, is counted here. The two shares measure "
+        "different things over different dates; their closeness is not a check "
+        "of one on the other.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_the_desnz_comparison_is_the_nuclear_output_beside_desnzs_figures():
+    # Recomputed from its two inputs: the saved output's months and DESNZ's
+    # thirteen figures as copied from Energy Trends table 5.4.
+    rows = saved_output_rows(Q38_OUTPUT)
+    output_by_month = {}
+    for row in section_rows(rows, "1"):
+        output_by_month[row["settlement_month"][:7]] = Decimal(row["output_mwh"])
+    desnz = saved_output_rows(DESNZ_INPUT)
+    comparison = saved_output_rows(Q38_COMPARISON)
+    output_total = Decimal(0)
+    desnz_total = Decimal(0)
+    differences = []
+
+    assert len(desnz) == len(section_rows(comparison, "1")) == 13
+    for figure, compared in zip(desnz, section_rows(comparison, "1"), strict=True):
+        output_twh = output_by_month[figure["month"]] / Decimal(1_000_000)
+        desnz_twh = Decimal(figure["nuclear_twh"])
+        above = Decimal(100) * (output_twh - desnz_twh) / desnz_twh
+        differences.append(above)
+        output_total += output_twh
+        desnz_total += desnz_twh
+        assert compared["month"] == figure["month"]
+        assert Decimal(compared["output_twh"]) == output_twh
+        assert compared["desnz_twh"] == figure["nuclear_twh"]
+        assert compared["output_above_desnz_pct"] == hundredths(above)
+        assert compared["desnz_provisional"] == figure["provisional"]
+        assert abs(above) < 5
+    total = one_row(comparison, "section", "2")
+    above_total = Decimal(100) * (output_total - desnz_total) / desnz_total
+    assert Decimal(total["output_twh"]) == output_total
+    assert Decimal(total["desnz_twh"]) == desnz_total
+    assert total["output_above_desnz_pct"] == hundredths(above_total)
+    for row in comparison:
+        assert row["label"] == COMPARISON_LABEL
+    assert is_a_context_label(COMPARISON_LABEL, "comparison")
+    assert [row["month"] for row in desnz if row["provisional"] == "yes"] == ["2026-09"]
+    assert (
+        f"<dd>The output is between {tenths(-min(differences))}% below and "
+        f"{tenths(max(differences))}% above DESNZ's figure in each of the thirteen "
+        f"months from {month_in_full(desnz[0]['month'] + '-01')} to "
+        f"{month_in_full(desnz[-1]['month'] + '-01')}, and {tenths(above_total)}% "
+        f"above it over them ({tenths(output_total)} against "
+        f"{tenths(desnz_total)} TWh)."
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+    assert "Energy Trends table 5.4</a>, September 2026 provisional);" in (
+        fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_desnzs_figures_carry_their_source_and_licence_on_every_page():
+    text = (REPOSITORY / "docs" / "results" / DESNZ_INPUT).read_text(encoding="utf-8")
+    source = (
+        "https://www.gov.uk/government/statistics/electricity-section-5-energy-trends"
+    )
+    licence = "Contains public sector information licensed under the"
+    page = PAGE.read_text(encoding="utf-8")
+    footer = page.split("<footer>", 1)[1].split("</footer>", 1)[0]
+    readme = README.read_text(encoding="utf-8")
+    sources = readme.split("## Data sources and licences", 1)[1].split("\n## ", 1)[0]
+
+    assert text.startswith(OGL_LINE + "# Department for Energy Security and Net Zero")
+    assert "file ET_5.4_NOV_26.xlsx, published 26 November 2026" in text
+    assert source in text
+    assert source in footer and licence in footer
+    assert source in sources and licence in flattened(sources)
+    # Four providers are credited, so no wording for two.
+    assert "None of the providers endorses this project." in footer
+    assert "None of the providers endorses this project." in sources
+    assert "Neither provider" not in page + readme
+    assert '<a href="results/context_q38_desnz_monthly_nuclear.csv">' in fold_outs(
+        page, "q38"
+    )
+
+
+def test_q38s_measure_gives_the_energy_drawn_from_its_saved_output():
+    all_months = item_row(saved_output_rows(Q38_OUTPUT), "2", Q38_ALL_MONTHS)
+
+    assert Decimal(all_months["above_capacity_mwh"]) == 0
+    assert (
+        "counted as zero where it is negative "
+        f"({hundredths(Decimal(all_months['drawn_mwh']) / 1_000_000)} TWh drawn in "
+        "all); the gap is capacity minus output, counted as zero where output is "
+        "above capacity." in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_q38_leaves_nothing_out_and_names_its_settlement_runs():
+    rows = saved_output_rows(Q38_OUTPUT)
+    checks = section_rows(rows, "6")
+    half_hours = item_row(
+        rows, "6", "half-hours from the first settlement date to the cutoff"
+    )["unit_half_hours"]
+    by_run = {}
+    outside = []
+    metered_rows = {}
+    for row in checks:
+        item = row["item"]
+        if item.startswith("left out") or item.startswith("listed units left out"):
+            assert row["units"] == "0"
+        if item.startswith("unit half-hours by metered run: "):
+            by_run[item.rpartition(" ")[2]] = int(row["unit_half_hours"])
+        if item == "registry NUCLEAR unit outside the listed units":
+            outside.append(row["national_grid_bm_unit"])
+            metered_rows[row["national_grid_bm_unit"]] = row["unit_half_hours"]
+            assert Decimal(row["output_mwh"]) == 0
+            assert Decimal(row["drawn_mwh"]) == 0
+    runs = []
+    for run, name in Q38_RUN_NAMES.items():
+        runs.append(f"{by_run[run]:,} from the {name} run")
+    runs[0] = runs[0].replace(" from ", " come from ", 1)
+
+    assert item_row(rows, "6", "half-hours without all 10 listed units measured")[
+        "unit_half_hours"
+    ] == ("0")
+    for unit in section_rows(rows, "5"):
+        assert unit["unit_half_hours"] == half_hours
+    assert outside == Q38_UNITS_OUTSIDE
+    # Dungeness B and Hinkley Point B: a metered row for every half-hour,
+    # none with output; Hunterston B: no metered row.
+    assert metered_rows == {
+        "DNGB21": half_hours,
+        "DNGB22": half_hours,
+        "HINB-7": half_hours,
+        "HINB-8": half_hours,
+        "HUNB-7": "0",
+        "HUNB-8": "0",
+    }
+    assert sorted(by_run) == sorted(Q38_RUN_NAMES)
+    assert sum(by_run.values()) == 10 * int(half_hours)
+    assert (
+        f"<dd>Nothing: each of the ten units has all {int(half_hours):,} "
+        "half-hours from 1 September 2025 to 31 October 2026, and no output was "
+        "above registered capacity. Of the six other nuclear units in the "
+        "registry, the four at Dungeness B and Hinkley Point B have metered rows "
+        "with no output, and the two at Hunterston B have no metered rows in "
+        "these months. Of the "
+        f"{sum(by_run.values()):,} unit half-hours, {', '.join(runs[:-1])} and "
+        f"{runs[-1]}.</dd>" in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_q38s_days_are_its_saved_outputs_first_month_and_last_half_hour():
+    rows = saved_output_rows(Q38_OUTPUT)
+    all_months = item_row(rows, "2", Q38_ALL_MONTHS)
+    first_day = long_date(section_rows(rows, "1")[0]["settlement_month"])
+    last_day = half_hour_long_date(all_months["last_half_hour"])
+    last_time = all_months["last_half_hour"].partition(" ")[2][:5]
+
+    assert first_day == "1 September 2025"
+    assert (
+        f"<dd>{first_day} to {last_day}, with data to {last_day} {last_time} UTC. "
+        f"Read {status_read('Q38')}.</dd>"
+        in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+
+
+def test_q38s_chart_data_fills_each_months_capacity_from_its_saved_output():
+    rows = saved_output_rows(Q38_OUTPUT)
+    saved_months = section_rows(rows, "1")
+    chart_rows = saved_output_rows(Q38_CHART_DATA)
+    parts = ["output_pct", "planned_gap_pct", "unplanned_gap_pct", "no_notice_gap_pct"]
+
+    assert len(chart_rows) == 14
+    for saved, drawn in zip(saved_months, chart_rows, strict=True):
+        assert drawn["settlement_month"] == saved["settlement_month"]
+        assert drawn["output_pct"] == saved["output_pct_of_capacity"]
+        filled = summed([drawn], parts[0])
+        for part in parts[1:]:
+            filled += Decimal(drawn[part])
+        assert abs(filled - 100) <= Decimal("0.02")
+
+
+def test_q38s_method_entry_states_what_had_been_read_and_links_its_files():
+    assert (
+        "<dd>Recorded 28 November 2026, before any metered share of capacity or "
+        "split of the gap was read; the nuclear units' planned share of capacity "
+        "by month (a context count, 1 November 2026), their rows in published "
+        f"outages{details_link('Q5')} (12 October 2026) and their metered total "
+        f"in more or less than planned{details_link('Q3')} (11 October 2026) had "
+        "been read. " in fold_outs(PAGE.read_text(encoding="utf-8"), "q38")
+    )
+    for file_name in (Q38_OUTPUT, Q38_CHART_DATA):
+        assert f'<a href="results/{file_name}">' in fold_outs(
+            PAGE.read_text(encoding="utf-8"), "q38"
+        )
+
     short = {}
     for row in saved_output_rows("q25_short_instructions_by_fuel_group.csv"):
         short[row["fuel_group"]] = Decimal(row["short_joined_pct"])

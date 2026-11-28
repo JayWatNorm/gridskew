@@ -57,8 +57,19 @@ ALIGNMENT_ATTRIBUTION = (
     f"{BMRS_AND_CARBON_ATTRIBUTION} Historic generation mix: Supported by "
     "National Energy SO Open Data."
 )
+# Open Government Licence v3.0 attribution, for DESNZ's monthly figures, and
+# for the comparison built from them and BMRS data.
+OGL_ATTRIBUTION = (
+    "Contains public sector information licensed under the Open Government "
+    "Licence v3.0."
+)
+BMRS_AND_OGL_ATTRIBUTION = f"{BMRS_ATTRIBUTION} {OGL_ATTRIBUTION}"
 # How every attribution line starts, whatever its year or wording.
-ATTRIBUTION_OPENINGS = ("# Contains BMRS data", "# Carbon intensity data")
+ATTRIBUTION_OPENINGS = (
+    "# Contains BMRS data",
+    "# Carbon intensity data",
+    "# Contains public sector information",
+)
 
 Q2_RESULT = "q2_settlement_run_changes.csv"
 Q2_BY_PREFIX_RESULT = "q2_changes_by_unit_prefix.csv"
@@ -75,6 +86,14 @@ Q25_RESULT = "q25_instruction_fragmentation.csv"
 # Read 27 November 2026: wind turned down by month, and what is turned up
 # and down in the same half-hours.
 Q37_RESULT = "q37_wind_turn_down_and_turn_up.csv"
+# Read 28 November 2026: the ten nuclear units' metered output against their
+# registry capacity, and the gap below it by outage notice.
+Q38_RESULT = "q38_nuclear_output_and_outage_notices.csv"
+# DESNZ's monthly nuclear electricity supplied (Energy Trends table 5.4),
+# copied from its published workbook, and the comparison of the nuclear
+# output with it, month by month.
+DESNZ_NUCLEAR_RESULT = "desnz_nuclear_supplied_by_month.csv"
+Q38_DESNZ_COMPARISON = "context_q38_desnz_monthly_nuclear"
 Q25_CORRECTED_RESULT = "q25_instruction_fragmentation_corrected.csv"
 Q8_Q28_RESULT = "q8_q28_history.csv"
 Q28_REVERSE_RESULT = "q28_reverse_exploratory.csv"
@@ -286,6 +305,28 @@ Q37_BAND_NAMES = {
 }
 Q37_PARTS = {"gas_mw": "Gas", "other_mw": "Everything else"}
 Q37_AXIS_TITLE = "Average power turned up, MW"
+# Each month's capacity as 100%: the nuclear output, then the gap below
+# capacity by the outage notice in force, as the saved output names the
+# notice classes.
+Q38_PARTS = {
+    "output_pct": "Output",
+    "planned_gap_pct": "Gap with a planned notice",
+    "unplanned_gap_pct": "Gap with an unplanned notice",
+    "no_notice_gap_pct": "Gap with no notice",
+}
+Q38_GAP_PARTS = {
+    "planned": "planned_gap_pct",
+    "unplanned": "unplanned_gap_pct",
+    "none": "no_notice_gap_pct",
+}
+Q38_AXIS_TITLE = "Share of capacity, %"
+# The output takes nuclear's colour and the gap the split greys, planned
+# strongest; the page registers the four for its colour mode as this scheme.
+Q38_SCHEME = "gridskew-nuclear-output-and-gap"
+# The comparison's rows are context, labelled as the saved context files
+# label theirs, with this kind in place of theirs.
+CONTEXT_LABEL_KIND = "context only: denominator, "
+Q38_COMPARISON_KIND = "context only: comparison, "
 
 Q25_KEY_JOINED = "Joined with follow-ons (Elexon's test)"
 Q25_KEY_ON_ITS_OWN = "Each instruction on its own"
@@ -452,6 +493,7 @@ Q37_TITLE = (
     "On average, the more wind NESO turns down in a half-hour, the more gas it "
     "turns up in it"
 )
+Q38_TITLE = "Nuclear output and the gap below Elexon registry capacity, by month"
 Q25_TITLE = (
     "The other group (mostly batteries) and pumped storage get far more short "
     "instructions than power stations"
@@ -521,6 +563,12 @@ Q37_READING = (
     "turned down that much wind as a system action, split into gas and "
     "everything else. Under each name is the number of half-hours, "
     "settlement months {months}."
+)
+Q38_READING = (
+    "Each bar is one month of the ten nuclear units, with their capacity in "
+    "Elexon's registry as 100%: the share metered as output, then the gap "
+    "below capacity, split by the outage notice in force for the unit in each "
+    "half-hour. Settlement months {months}."
 )
 Q25_READING = (
     "Each row is a fuel group. The dot is the share of its instructions "
@@ -2666,6 +2714,195 @@ def write_q37_chart(rows, output):
     write_spec(chart, output / f"{name}.vl.json")
 
 
+# Q38: nuclear output against capacity, and the gap by outage notice
+
+
+def month_after(month):
+    """'2025-12-01' as '2026-01-01'."""
+    year, number, _day = month.split("-")
+    if number == "12":
+        return f"{int(year) + 1}-01-01"
+    return f"{year}-{int(number) + 1:02d}-01"
+
+
+def months_without_a_gap(month_rows):
+    """The months of the rows, first to last; a month missing between them
+    is refused, so the chart cannot skip one."""
+    months = []
+    for row in month_rows:
+        month = row["settlement_month"]
+        if months and month != month_after(months[-1]):
+            raise ValueError(
+                f"The saved output has no month between {months[-1]} and {month}"
+            )
+        months.append(month)
+    return months
+
+
+def gap_by_month_and_notice(rows, months):
+    """Each month's gap below capacity per notice class, in MWh, generating
+    and not generating together. A class the chart has no part for, a month
+    the output totals do not hold or a class missing from a month is
+    refused."""
+    gaps = {}
+    for month in months:
+        gaps[month] = {}
+    for row in matching_rows(rows, "section", "3"):
+        month = row["settlement_month"]
+        notice_class = row["notice_class"]
+        if notice_class not in Q38_GAP_PARTS:
+            raise ValueError(
+                f"The saved output has a notice class with no part: {notice_class!r}"
+            )
+        if month not in gaps:
+            raise ValueError(
+                f"The saved output has a gap for a month it does not total: {month}"
+            )
+        by_class = gaps[month]
+        by_class[notice_class] = by_class.get(notice_class, Decimal(0)) + Decimal(
+            row["gap_mwh"]
+        )
+    for month, by_class in gaps.items():
+        for notice_class in Q38_GAP_PARTS:
+            if notice_class not in by_class:
+                raise ValueError(
+                    f"The saved output has no {notice_class!r} gap for {month}"
+                )
+    return gaps
+
+
+def output_and_gap_rows(rows):
+    """One row per settlement month: the output and each part of the gap as
+    a percentage of the month's capacity."""
+    month_rows = matching_rows(rows, "section", "1")
+    months = months_without_a_gap(month_rows)
+    gaps = gap_by_month_and_notice(rows, months)
+    chart_rows = []
+    for row in month_rows:
+        month = row["settlement_month"]
+        capacity = Decimal(row["capacity_mwh"])
+        chart_row = {
+            "settlement_month": month,
+            "label": month_name(month),
+            "capacity_mwh": row["capacity_mwh"],
+            "output_pct": fixed(percentage(Decimal(row["output_mwh"]), capacity), 2),
+        }
+        for notice_class, column in Q38_GAP_PARTS.items():
+            gap = gaps[month][notice_class]
+            chart_row[column] = fixed(percentage(gap, capacity), 2)
+        chart_rows.append(chart_row)
+    return chart_rows
+
+
+def write_q38_chart(rows, output):
+    name = "q38_output_and_gap_by_month"
+    chart_rows = output_and_gap_rows(rows)
+    months = output_month_range(rows)
+    columns = list(chart_rows[0])
+    csv_name = write_chart_csv(output, name, BMRS_ATTRIBUTION, columns, chart_rows)
+    nuclear_light = light_colour("nuclear")
+
+    figure, axes = new_figure(len(chart_rows))
+    colours = [nuclear_light, *split_greys_light(SPLIT_THREE)]
+    stacked_bars(axes, chart_rows, Q38_PARTS, colours, 1)
+    row_labels(axes, column_of(chart_rows, "label"))
+    axes.set_xlim(0, 100)
+    axes.set_xticks(SHARE_TICKS)
+    x_label(axes, Q38_AXIS_TITLE)
+    png_title(axes, Q38_TITLE, [f"Settlement months {months}"])
+    save_figure(figure, output / f"{name}.png", legend_handles(axes))
+
+    data = csv_data(csv_name, list(Q38_PARTS))
+    tooltip = [
+        altair.Tooltip("label:N", title="Month"),
+        altair.Tooltip("part_name:N", title="Part"),
+        altair.Tooltip("scaled:Q", title="Share of capacity, %", format=".1f"),
+    ]
+    rows_axis = row_axis("label", column_of(chart_rows, "label"))
+    bars = stacked_parts(
+        rows_axis, Q38_PARTS, Q38_SCHEME, [Q38_AXIS_TITLE], tooltip, 1
+    ).encode(
+        x=altair.X(
+            "scaled:Q",
+            stack="zero",
+            scale=altair.Scale(domain=[0, 100]),
+            axis=altair.Axis(values=SHARE_TICKS, title=[Q38_AXIS_TITLE]),
+        )
+    )
+    chart = altair.layer(bars, data=data).properties(
+        **page_layout(
+            Q38_TITLE,
+            Q38_READING.format(months=months),
+            len(chart_rows) * ROW_STEP_PIXELS,
+        )
+    )
+    write_spec(chart, output / f"{name}.vl.json")
+
+
+def comparison_label(context_rows):
+    """The label the saved context files give their rows, with the
+    comparison's kind in place of theirs."""
+    label = context_rows[0]["label"]
+    if not label.startswith(CONTEXT_LABEL_KIND):
+        raise ValueError(f"Unexpected context label {label!r}")
+    return Q38_COMPARISON_KIND + label.removeprefix(CONTEXT_LABEL_KIND)
+
+
+def desnz_comparison_rows(rows, desnz_rows, label):
+    """Per month DESNZ gives, the nuclear output in TWh beside DESNZ's figure
+    and how far above it the output is, in %; then the same over those
+    months together. A DESNZ month the output does not hold is refused."""
+    output_by_month = {}
+    for row in matching_rows(rows, "section", "1"):
+        output_by_month[row["settlement_month"][:7]] = Decimal(row["output_mwh"])
+    comparison = []
+    output_total = Decimal(0)
+    desnz_total = Decimal(0)
+    for desnz in desnz_rows:
+        month = desnz["month"]
+        if month not in output_by_month:
+            raise ValueError(f"The saved output has no month {month} to compare")
+        output_twh = output_by_month[month] / Decimal(1_000_000)
+        desnz_twh = Decimal(desnz["nuclear_twh"])
+        output_total += output_twh
+        desnz_total += desnz_twh
+        comparison.append(
+            {
+                "section": "1",
+                "month": month,
+                "output_twh": str(output_twh),
+                "desnz_twh": desnz["nuclear_twh"],
+                "output_above_desnz_pct": fixed(
+                    percentage(output_twh - desnz_twh, desnz_twh), 2
+                ),
+                "desnz_provisional": desnz["provisional"],
+                "label": label,
+            }
+        )
+    comparison.append(
+        {
+            "section": "2",
+            "month": "",
+            "output_twh": str(output_total),
+            "desnz_twh": str(desnz_total),
+            "output_above_desnz_pct": fixed(
+                percentage(output_total - desnz_total, desnz_total), 2
+            ),
+            "desnz_provisional": "",
+            "label": label,
+        }
+    )
+    return comparison
+
+
+def write_q38_desnz_comparison(rows, desnz_rows, context_rows, output):
+    comparison = desnz_comparison_rows(rows, desnz_rows, comparison_label(context_rows))
+    columns = list(comparison[0])
+    write_chart_csv(
+        output, Q38_DESNZ_COMPARISON, BMRS_AND_OGL_ATTRIBUTION, columns, comparison
+    )
+
+
 # Q25: how many instructions are short
 
 
@@ -3970,6 +4207,10 @@ def write_charts(result_folder, output_folder):
     write_q24_chart(q24, output)
     q37 = copy_saved_output(results, output, Q37_RESULT, BMRS_ATTRIBUTION)
     write_q37_chart(q37, output)
+    q38 = copy_saved_output(results, output, Q38_RESULT, BMRS_ATTRIBUTION)
+    write_q38_chart(q38, output)
+    desnz = copy_saved_output(results, output, DESNZ_NUCLEAR_RESULT, OGL_ATTRIBUTION)
+    write_q38_desnz_comparison(q38, desnz, demand, output)
     q25 = copy_saved_output(results, output, Q25_RESULT, BMRS_ATTRIBUTION)
     q25_corrected = copy_saved_output(
         results, output, Q25_CORRECTED_RESULT, BMRS_ATTRIBUTION

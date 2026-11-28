@@ -1,0 +1,16 @@
+# Contains BMRS data © Elexon Limited copyright and database right 2026. Contains public sector information licensed under the Open Government Licence v3.0.
+section,month,output_twh,desnz_twh,output_above_desnz_pct,desnz_provisional,label
+1,2025-09,2.1154878,2.0525,3.07,no,"context only: comparison, not a registered result"
+1,2025-10,2.5127765,2.4300,3.41,no,"context only: comparison, not a registered result"
+1,2025-11,2.6325067,2.5758,2.20,no,"context only: comparison, not a registered result"
+1,2025-12,2.7418781,2.6594,3.10,no,"context only: comparison, not a registered result"
+1,2026-01,2.8308573,2.7647,2.39,no,"context only: comparison, not a registered result"
+1,2026-02,2.667122,2.6145,2.01,no,"context only: comparison, not a registered result"
+1,2026-03,2.7984462,2.8254,-0.95,no,"context only: comparison, not a registered result"
+1,2026-04,3.6996918,3.7247,-0.67,no,"context only: comparison, not a registered result"
+1,2026-05,2.445829,2.4755,-1.20,no,"context only: comparison, not a registered result"
+1,2026-06,2.1051176,2.1284,-1.09,no,"context only: comparison, not a registered result"
+1,2026-07,2.3417081,2.2308,4.97,no,"context only: comparison, not a registered result"
+1,2026-08,3.0773752,3.0049,2.41,no,"context only: comparison, not a registered result"
+1,2026-09,2.738212,2.6659,2.71,yes,"context only: comparison, not a registered result"
+2,,34.7070083,34.1525,1.62,,"context only: comparison, not a registered result"
