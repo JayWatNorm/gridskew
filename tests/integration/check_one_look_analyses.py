@@ -1,4 +1,4 @@
-"""Check the Q1, Q10, Q25, Q37, Q8, Q28, Q29 and Q30 analyses on worked rows.
+"""Check the Q1, Q10, Q25, Q37, Q38, Q8, Q28, Q29 and Q30 analyses on worked rows.
 
 CI only runs analyses with limit 0, so their arithmetic is never exercised.
 This compiles them with small populations, points each at temporary tables
@@ -1581,6 +1581,404 @@ Q37_EXPECTED = dict(
 )
 
 
+# Q38: HEYM11 is registered at 600 MW (300 MWh a half-hour) and HEYM12 at
+# 500 MW (250 MWh). Times are UTC; London is an hour ahead, so 23:00 on
+# 31 August is settlement date 1 September.
+#
+# 22:30 on 31 August 2025 (settlement date 31 August, before the first
+#   date): HEYM11 meters 300 and HUNB-7 50; neither is read.
+# 23:00 on 31 August 2025 (September 2025): HEYM11 meters 300, its capacity:
+#   no gap. HEYM12 meters exactly 0: not generating, gap 250. No notice.
+# 22:00 on 31 August 2026: HEYM12 has no metered value: left out, though a
+#   notice names it then.
+# 22:30 on 31 August 2026 (August 2026): HEYM11 meters 150 with a planned
+#   notice: gap 150. HEYM12 meters -10 with an unplanned notice: output 0,
+#   10 drawn, gap 250, not generating. TORN-1 (capacity 0) and TORN-2 (no
+#   capacity) meter 5 and 7: left out. HUNB-7, a NUCLEAR registry unit
+#   outside the listed ten, meters -2; GASX-1, a gas unit with a notice,
+#   meters 100 and is nowhere.
+# 23:00 on 31 August 2026 (September 2026): HEYM11 meters 310 with planned
+#   and unplanned notices both in force: 10 above capacity, no gap. HEYM12
+#   meters 0.001: generating, gap 249.999, no notice. HUNB-7 meters 3.
+# 00:00 on 5 September 2026, the cutoff: HEYM11 meters 200 from run II on
+#   a row whose mapping status is conflict: gap 100, no notice. 00:30:
+#   HEYM11 meters 0, after the cutoff.
+# HEYM11 also has a row with no period start (29 March 2026): left out.
+# DNGB21, the other NUCLEAR registry unit outside the ten, has no metered
+# row: 0 half-hours and 0 MWh.
+#
+# September 2025: 300 of 550, 54.55%, gap 250. August 2026: 150 of 550,
+# 27.27%, gap 400. September 2026: 510.001 of 850, 60.00%, gap 349.999.
+# All months: 960.001 of 1,950, 49.23%; gap 999.999, 10 above capacity, and
+# 960.001 + 999.999 - 10 = 1,950.
+#
+# The registry lists four of the ten units once (HEYM11, HEYM12, TORN-1,
+# TORN-2) and SIZB-2 twice, so six are without exactly one row. No
+# half-hour holds all ten, so all four half-hours read are counted as
+# short of them.
+#
+# HEYM11's notices: normal capacity 580, 610, 590 and 600 count (the third
+# ends a second after the first settlement date begins, the fourth starts a
+# second before the cutoff's half-hour ends). Six do not: Dismissed, a
+# consumption unavailability, other market information, an ambiguous
+# mapping, one ending as the first settlement date begins and one starting
+# as the cutoff's half-hour ends.
+Q38 = "q38_nuclear_output_and_outage_notices"
+Q38_FIXTURES = """
+create temporary table synthetic_registry (
+    national_grid_bm_unit text,
+    elexon_bm_unit text,
+    fuel_type text,
+    generation_capacity_mw numeric
+) on commit drop;
+insert into synthetic_registry values
+    ('HEYM11', 'T_HEYM11', 'NUCLEAR', 600),
+    ('HEYM12', 'T_HEYM12', 'NUCLEAR', 500),
+    ('TORN-1', 'T_TORN-1', 'NUCLEAR', 0),
+    ('TORN-2', 'T_TORN-2', 'NUCLEAR', null),
+    ('SIZB-2', 'T_SIZB-2', 'NUCLEAR', 630),
+    ('SIZB-2', 'T_SIZB-2B', 'NUCLEAR', 630),
+    ('HUNB-7', 'T_HUNB-7', 'NUCLEAR', 510),
+    ('DNGB21', 'T_DNGB21', 'NUCLEAR', 0),
+    ('GASX-1', 'T_GASX-1', 'CCGT', 400);
+
+create temporary table synthetic_generation (
+    bm_unit text,
+    settlement_date date,
+    period_start_utc timestamptz,
+    latest_quantity_mwh numeric,
+    latest_run_code text,
+    mapping_status text
+) on commit drop;
+insert into synthetic_generation values
+    ('T_HEYM11', '2025-08-31', '2025-08-31 22:30+00', 300, 'SF', 'mapped'),
+    ('T_HUNB-7', '2025-08-31', '2025-08-31 22:30+00', 50, 'SF', 'mapped'),
+    ('T_HEYM11', '2025-09-01', '2025-08-31 23:00+00', 300, 'SF', 'mapped'),
+    ('T_HEYM12', '2025-09-01', '2025-08-31 23:00+00', 0, 'SF', 'mapped'),
+    ('T_HEYM11', '2026-03-29', null, 5, 'SF', 'mapped'),
+    ('T_HEYM12', '2026-08-31', '2026-08-31 22:00+00', null, 'SF', 'mapped'),
+    ('T_HEYM11', '2026-08-31', '2026-08-31 22:30+00', 150, 'SF', 'mapped'),
+    ('T_HEYM12', '2026-08-31', '2026-08-31 22:30+00', -10, 'SF', 'mapped'),
+    ('T_TORN-1', '2026-08-31', '2026-08-31 22:30+00', 5, 'SF', 'mapped'),
+    ('T_TORN-2', '2026-08-31', '2026-08-31 22:30+00', 7, 'SF', 'mapped'),
+    ('T_HUNB-7', '2026-08-31', '2026-08-31 22:30+00', -2, 'SF', 'mapped'),
+    ('T_GASX-1', '2026-08-31', '2026-08-31 22:30+00', 100, 'SF', 'mapped'),
+    ('T_HEYM11', '2026-09-01', '2026-08-31 23:00+00', 310, 'SF', 'mapped'),
+    ('T_HEYM12', '2026-09-01', '2026-08-31 23:00+00', 0.001, 'SF', 'mapped'),
+    ('T_HUNB-7', '2026-09-01', '2026-08-31 23:00+00', 3, 'SF', 'mapped'),
+    ('T_HEYM11', '2026-09-05', '2026-09-05 00:00+00', 200, 'II', 'conflict'),
+    ('T_HEYM11', '2026-09-05', '2026-09-05 00:30+00', 0, 'II', 'mapped');
+
+create temporary table synthetic_known_outages (
+    national_grid_bm_unit text,
+    period_start_utc timestamptz,
+    known_class text
+) on commit drop;
+insert into synthetic_known_outages values
+    ('HEYM12', '2026-08-31 22:00+00', 'planned'),
+    ('HEYM11', '2026-08-31 22:30+00', 'planned'),
+    ('HEYM12', '2026-08-31 22:30+00', 'unplanned'),
+    ('GASX-1', '2026-08-31 22:30+00', 'planned'),
+    ('HEYM11', '2026-08-31 23:00+00', 'both');
+
+create temporary table synthetic_publications (
+    national_grid_bm_unit text,
+    mapping_rule text,
+    message_type text,
+    event_type text,
+    event_status text,
+    normal_capacity numeric,
+    event_start_time timestamptz,
+    event_end_time timestamptz
+) on commit drop;
+insert into synthetic_publications values
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 580,
+        '2026-01-01 00:00+00', '2026-02-01 00:00+00'),
+    ('HEYM11', 'affected_unit', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 610,
+        '2025-07-01 00:00+00', null),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 590,
+        '2025-08-01 00:00+00', '2025-08-31 23:00:01+00'),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 600,
+        '2026-09-05 00:29:59+00', '2026-10-01 00:00+00'),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Dismissed', 999,
+        '2026-01-01 00:00+00', '2026-02-01 00:00+00'),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Consumption unavailability', 'Active', 998,
+        '2026-01-01 00:00+00', '2026-02-01 00:00+00'),
+    ('HEYM11', 'asset_id', 'OtherMarketInformation',
+        'Production unavailability', 'Active', 997,
+        '2026-01-01 00:00+00', '2026-02-01 00:00+00'),
+    ('HEYM11', 'ambiguous', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 996,
+        '2026-01-01 00:00+00', '2026-02-01 00:00+00'),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 995,
+        '2025-08-01 00:00+00', '2025-08-31 23:00+00'),
+    ('HEYM11', 'asset_id', 'UnavailabilitiesOfElectricityFacilities',
+        'Production unavailability', 'Active', 994,
+        '2026-09-05 00:30+00', '2026-10-01 00:00+00');
+"""
+
+Q38_TABLES = {
+    "int_elexon__bm_units_current": "pg_temp.synthetic_registry",
+    "fct_generation": "pg_temp.synthetic_generation",
+    "int_remit__known_outage_periods": "pg_temp.synthetic_known_outages",
+    "int_remit__revisions": "pg_temp.synthetic_publications",
+}
+Q38_KEY = (
+    "section",
+    "settlement_month",
+    "national_grid_bm_unit",
+    "notice_class",
+    "output_state",
+    "item",
+)
+OUTPUT_AGAINST_CAPACITY = "output against registered capacity"
+GAP_BELOW_CAPACITY = "gap below registered capacity"
+GENERATING = "generating"
+NOT_GENERATING = "not generating"
+FIRST_HALF_HOUR_READ = "2025-08-31 23:00:00+00:00"
+AUGUST_HALF_HOUR = "2026-08-31 22:30:00+00:00"
+SEPTEMBER_HALF_HOUR = "2026-08-31 23:00:00+00:00"
+CUTOFF_HALF_HOUR = "2026-09-05 00:00:00+00:00"
+
+
+def q38_output_row(section, month, cells):
+    return (section, month, None, None, None, OUTPUT_AGAINST_CAPACITY), cells
+
+
+def q38_gap_row(section, month, notice_class, output_state, cells):
+    key = (section, month, None, notice_class, output_state, GAP_BELOW_CAPACITY)
+    return key, cells
+
+
+def q38_gap_cells(units, unit_half_hours, gap, share):
+    return dict(
+        units=units,
+        unit_half_hours=unit_half_hours,
+        gap_mwh=gap,
+        share_of_gap_pct=share,
+    )
+
+
+def q38_coverage_row(item, cells, unit=None):
+    return (6, None, unit, None, None, item), cells
+
+
+Q38_EXPECTED = dict(
+    [
+        q38_output_row(
+            1,
+            "2025-09-01",
+            dict(
+                units=2,
+                unit_half_hours=2,
+                capacity_mwh="550.0",
+                output_mwh="300.0",
+                output_pct_of_capacity="54.55",
+                gap_mwh="250.0",
+                above_capacity_mwh="0.0",
+                drawn_mwh="0.0",
+                first_half_hour=FIRST_HALF_HOUR_READ,
+                last_half_hour=FIRST_HALF_HOUR_READ,
+            ),
+        ),
+        q38_output_row(
+            1,
+            "2026-08-01",
+            dict(
+                units=2,
+                unit_half_hours=2,
+                capacity_mwh="550.0",
+                output_mwh="150.0",
+                output_pct_of_capacity="27.27",
+                gap_mwh="400.0",
+                above_capacity_mwh="0.0",
+                drawn_mwh="10.0",
+                first_half_hour=AUGUST_HALF_HOUR,
+                last_half_hour=AUGUST_HALF_HOUR,
+            ),
+        ),
+        q38_output_row(
+            1,
+            "2026-09-01",
+            dict(
+                units=2,
+                unit_half_hours=3,
+                capacity_mwh="850.0",
+                output_mwh="510.0",
+                output_pct_of_capacity="60.00",
+                gap_mwh="350.0",
+                above_capacity_mwh="10.0",
+                drawn_mwh="0.0",
+                first_half_hour=SEPTEMBER_HALF_HOUR,
+                last_half_hour=CUTOFF_HALF_HOUR,
+            ),
+        ),
+        q38_output_row(
+            2,
+            None,
+            dict(
+                units=2,
+                unit_half_hours=7,
+                capacity_mwh="1950.0",
+                output_mwh="960.0",
+                output_pct_of_capacity="49.23",
+                gap_mwh="1000.0",
+                above_capacity_mwh="10.0",
+                drawn_mwh="10.0",
+                first_half_hour=FIRST_HALF_HOUR_READ,
+                last_half_hour=CUTOFF_HALF_HOUR,
+            ),
+        ),
+        q38_gap_row(
+            3, "2025-09-01", "none", GENERATING, q38_gap_cells(1, 1, "0.0", "0.00")
+        ),
+        q38_gap_row(
+            3,
+            "2025-09-01",
+            "none",
+            NOT_GENERATING,
+            q38_gap_cells(1, 1, "250.0", "100.00"),
+        ),
+        q38_gap_row(
+            3,
+            "2026-08-01",
+            "planned",
+            GENERATING,
+            q38_gap_cells(1, 1, "150.0", "37.50"),
+        ),
+        q38_gap_row(
+            3,
+            "2026-08-01",
+            "unplanned",
+            NOT_GENERATING,
+            q38_gap_cells(1, 1, "250.0", "62.50"),
+        ),
+        q38_gap_row(
+            3, "2026-09-01", "both", GENERATING, q38_gap_cells(1, 1, "0.0", "0.00")
+        ),
+        q38_gap_row(
+            3,
+            "2026-09-01",
+            "none",
+            GENERATING,
+            q38_gap_cells(2, 2, "350.0", "100.00"),
+        ),
+        q38_gap_row(4, None, "both", GENERATING, q38_gap_cells(1, 1, "0.0", "0.00")),
+        q38_gap_row(4, None, "none", GENERATING, q38_gap_cells(2, 3, "350.0", "35.00")),
+        q38_gap_row(
+            4, None, "none", NOT_GENERATING, q38_gap_cells(1, 1, "250.0", "25.00")
+        ),
+        q38_gap_row(
+            4, None, "planned", GENERATING, q38_gap_cells(1, 1, "150.0", "15.00")
+        ),
+        q38_gap_row(
+            4,
+            None,
+            "unplanned",
+            NOT_GENERATING,
+            q38_gap_cells(1, 1, "250.0", "25.00"),
+        ),
+        (
+            (5, None, "HEYM11", None, None, "unit, all months"),
+            dict(
+                station="Heysham 1",
+                unit_half_hours=4,
+                capacity_mwh="1200.0",
+                output_mwh="960.0",
+                output_pct_of_capacity="80.00",
+                gap_mwh="250.0",
+                above_capacity_mwh="10.0",
+                drawn_mwh="0.0",
+                registry_capacity_mw="600",
+                highest_half_hour_mw="620",
+                notice_normal_capacity_low_mw="580",
+                notice_normal_capacity_high_mw="610",
+                notice_publications=4,
+                first_half_hour=FIRST_HALF_HOUR_READ,
+                last_half_hour=CUTOFF_HALF_HOUR,
+            ),
+        ),
+        (
+            (5, None, "HEYM12", None, None, "unit, all months"),
+            dict(
+                station="Heysham 1",
+                unit_half_hours=3,
+                capacity_mwh="750.0",
+                output_mwh="0.0",
+                output_pct_of_capacity="0.00",
+                gap_mwh="750.0",
+                above_capacity_mwh="0.0",
+                drawn_mwh="10.0",
+                registry_capacity_mw="500",
+                highest_half_hour_mw="0.002",
+                notice_normal_capacity_low_mw=None,
+                notice_normal_capacity_high_mw=None,
+                notice_publications=None,
+                first_half_hour=FIRST_HALF_HOUR_READ,
+                last_half_hour=SEPTEMBER_HALF_HOUR,
+            ),
+        ),
+        q38_coverage_row(
+            "unit half-hours by metered run: SF",
+            dict(units=2, unit_half_hours=6, output_mwh="760.0", drawn_mwh="10.0"),
+        ),
+        q38_coverage_row(
+            "unit half-hours by metered run: II",
+            dict(units=1, unit_half_hours=1, output_mwh="200.0", drawn_mwh="0.0"),
+        ),
+        q38_coverage_row(
+            "unit half-hours by mapping status: mapped",
+            dict(units=2, unit_half_hours=6, output_mwh="760.0", drawn_mwh="10.0"),
+        ),
+        q38_coverage_row(
+            "unit half-hours by mapping status: conflict",
+            dict(units=1, unit_half_hours=1, output_mwh="200.0", drawn_mwh="0.0"),
+        ),
+        q38_coverage_row("left out: no period start", dict(units=1, unit_half_hours=1)),
+        q38_coverage_row(
+            "left out: no metered value", dict(units=1, unit_half_hours=1)
+        ),
+        q38_coverage_row(
+            "left out: no positive registry capacity",
+            dict(units=2, unit_half_hours=2),
+        ),
+        q38_coverage_row(
+            "half-hours without all 10 listed units", dict(unit_half_hours=4)
+        ),
+        q38_coverage_row(
+            "listed units without exactly one NUCLEAR registry row", dict(units=6)
+        ),
+        q38_coverage_row(
+            "registry NUCLEAR unit outside the listed units",
+            dict(
+                unit_half_hours=2,
+                output_mwh="3.0",
+                drawn_mwh="2.0",
+                registry_capacity_mw="510",
+            ),
+            unit="HUNB-7",
+        ),
+        q38_coverage_row(
+            "registry NUCLEAR unit outside the listed units",
+            dict(
+                unit_half_hours=0,
+                output_mwh="0.0",
+                drawn_mwh="0.0",
+                registry_capacity_mw="0",
+            ),
+            unit="DNGB21",
+        ),
+    ]
+)
+
+
 # Q8 and Q28 read the fixed window, settlement dates 22 August 2025 to 16
 # August 2026 (360 dates, 17,280 half-hours: the 50-period and 46-period days
 # cancel out), all in summer time here. A (22 August 2025, the first date)
@@ -2956,6 +3354,15 @@ def q37_mismatches(conn, reached, time_zone):
     return found
 
 
+def q38_mismatches(conn, reached, time_zone):
+    title = f"[{time_zone}] Q38"
+    query = on_fixtures(reached, Q38, Q38_TABLES)
+    run = run_on_fixtures(conn, Q38_FIXTURES, query, time_zone, Q38_KEY)
+    found = mismatches(title, run, Q38_EXPECTED)
+    found += unexpected_rows(title, run, Q38_EXPECTED)
+    return found
+
+
 def q8_q28_mismatches(conn, reached, boundary, time_zone):
     title = f"[{time_zone}] Q8 and Q28"
     main_run = run_analysis(
@@ -3159,6 +3566,7 @@ def check_all(reached, not_reached, boundary, project_values):
             found += q10_project_values_mismatches(conn, project_values, time_zone)
             found += q25_mismatches(conn, reached, time_zone)
             found += q37_mismatches(conn, reached, time_zone)
+            found += q38_mismatches(conn, reached, time_zone)
             found += q8_q28_mismatches(conn, reached, boundary, time_zone)
             found += q29_mismatches(conn, reached, time_zone)
             found += q30_mismatches(conn, reached, boundary, time_zone)
@@ -3196,7 +3604,9 @@ def main():
         print(mismatch)
     if found:
         raise SystemExit(f"{len(found)} analysis cells differ from the worked values")
-    print("Analyses: Q1, Q10, Q25, Q37, Q8, Q28, Q29 and Q30 match every worked value")
+    print(
+        "Analyses: Q1, Q10, Q25, Q37, Q38, Q8, Q28, Q29 and Q30 match every worked value"
+    )
 
 
 if __name__ == "__main__":

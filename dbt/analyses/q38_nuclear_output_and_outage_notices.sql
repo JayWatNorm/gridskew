@@ -1,0 +1,632 @@
+{{ config(group='analysis') }}
+
+-- Q38: how much of the registered capacity of Britain's nuclear units was
+-- generating each month, and how much of the gap had a published outage
+-- notice? Reading rule: research questions, Q38.
+--
+-- Units: the ten generating units listed below, at the five stations that
+-- generated in the months read. Any other registry unit with fuel type
+-- NUCLEAR is reported in section 6 and is in no figure.
+--
+-- Per unit and half-hour, from the latest settlement run's metered value:
+-- output is the metered energy, zero where it is negative (the negative part
+-- is drawn energy, reported beside); capacity is the latest registry's
+-- generation capacity over the half-hour; the gap is capacity minus output,
+-- zero where output is above capacity (that part is reported as above
+-- capacity). So capacity = output + gap - above capacity. A unit is
+-- generating in a half-hour when its metered value is above zero.
+--
+-- A half-hour has a notice when int_remit__known_outage_periods lists its
+-- unit, Q5's rule: an Active production unavailability was the notice's
+-- publication in force at the half-hour's start and its event overlaps the
+-- half-hour. Any outage size counts.
+--
+-- Half-hours: settlement dates from 1 September 2025, the first complete
+-- month of metered values held, to the cutoff.
+--
+-- Section 1 is output against capacity per calendar month of settlement
+-- date, section 2 all months together. Sections 3 (per month) and 4 (all
+-- months) split the gap by notice class and by whether the unit was
+-- generating. Section 5 is per unit, with its highest metered half-hour and
+-- the range of normal capacity in its notices beside the registry capacity.
+-- Section 6 is coverage. Run once, by hand, after the rule is recorded.
+
+{% set read_until = analysis_read_until() %}
+{% set first_settlement_date = '2025-09-01' %}
+{% set generating_units = [
+    ('HEYM11', 'Heysham 1'),
+    ('HEYM12', 'Heysham 1'),
+    ('HEYM27', 'Heysham 2'),
+    ('HEYM28', 'Heysham 2'),
+    ('HRTL-1', 'Hartlepool'),
+    ('HRTL-2', 'Hartlepool'),
+    ('SIZB-1', 'Sizewell B'),
+    ('SIZB-2', 'Sizewell B'),
+    ('TORN-1', 'Torness'),
+    ('TORN-2', 'Torness'),
+] %}
+
+with listed as (
+    select
+        national_grid_bm_unit,
+        station
+    from (
+        values
+        {% for unit, station in generating_units -%}
+            ('{{ unit }}', '{{ station }}'){{ "," if not loop.last }}
+        {% endfor -%}
+    ) as generating_units (national_grid_bm_unit, station)
+),
+
+nuclear_registry as (
+    select
+        national_grid_bm_unit,
+        elexon_bm_unit,
+        generation_capacity_mw
+    from {{ ref('int_elexon__bm_units_current') }}
+    where fuel_type = 'NUCLEAR'
+),
+
+metered as (
+    select
+        nuclear_registry.national_grid_bm_unit,
+        nuclear_registry.generation_capacity_mw,
+        generation.settlement_date,
+        generation.period_start_utc,
+        generation.latest_quantity_mwh,
+        generation.latest_run_code,
+        generation.mapping_status
+    from {{ ref('fct_generation') }} as generation
+    inner join nuclear_registry
+        on generation.bm_unit = nuclear_registry.elexon_bm_unit
+    where generation.settlement_date >= date '{{ first_settlement_date }}'
+{% if read_until is not none %}
+        and coalesce(generation.period_start_utc, generation.settlement_date::timestamp at time zone 'Europe/London')
+            <= timestamptz '{{ read_until }}'
+{% endif %}
+),
+
+-- The unit list is written out so the filter reaches the view's own rows.
+notices as (
+    select
+        national_grid_bm_unit,
+        period_start_utc,
+        known_class
+    from {{ ref('int_remit__known_outage_periods') }}
+    where national_grid_bm_unit in (
+        {%- for unit, station in generating_units -%}
+            '{{ unit }}'{{ ", " if not loop.last }}
+        {%- endfor -%}
+    )
+),
+
+listed_metered as (
+    select
+        listed.station,
+        metered.national_grid_bm_unit,
+        metered.generation_capacity_mw,
+        metered.settlement_date,
+        metered.period_start_utc,
+        metered.latest_quantity_mwh,
+        metered.latest_run_code,
+        metered.mapping_status
+    from metered
+    inner join listed
+        on metered.national_grid_bm_unit = listed.national_grid_bm_unit
+),
+
+unit_half_hours as (
+    select
+        listed_metered.station,
+        listed_metered.national_grid_bm_unit,
+        date_trunc('month', listed_metered.settlement_date)::date as settlement_month,
+        listed_metered.period_start_utc,
+        listed_metered.latest_run_code,
+        listed_metered.mapping_status,
+        listed_metered.generation_capacity_mw,
+        listed_metered.latest_quantity_mwh,
+        listed_metered.generation_capacity_mw * 0.5 as capacity_mwh,
+        greatest(listed_metered.latest_quantity_mwh, 0) as output_mwh,
+        greatest(-listed_metered.latest_quantity_mwh, 0) as drawn_mwh,
+        case
+            when listed_metered.latest_quantity_mwh > 0 then 'generating'
+            else 'not generating'
+        end as output_state,
+        coalesce(notices.known_class, 'none') as notice_class
+    from listed_metered
+    left join notices
+        on listed_metered.national_grid_bm_unit = notices.national_grid_bm_unit
+        and listed_metered.period_start_utc = notices.period_start_utc
+    where listed_metered.period_start_utc is not null
+        and listed_metered.latest_quantity_mwh is not null
+        and listed_metered.generation_capacity_mw > 0
+),
+
+measured as (
+    select
+        station,
+        national_grid_bm_unit,
+        settlement_month,
+        period_start_utc,
+        latest_run_code,
+        mapping_status,
+        generation_capacity_mw,
+        latest_quantity_mwh,
+        capacity_mwh,
+        output_mwh,
+        drawn_mwh,
+        output_state,
+        notice_class,
+        greatest(capacity_mwh - output_mwh, 0) as gap_mwh,
+        greatest(output_mwh - capacity_mwh, 0) as above_capacity_mwh
+    from unit_half_hours
+),
+
+output_by_month as (
+    select
+        1 as section,
+        settlement_month,
+        null::text as station,
+        null::text as national_grid_bm_unit,
+        null::text as notice_class,
+        null::text as output_state,
+        'output against registered capacity' as item,
+        count(distinct national_grid_bm_unit) as units,
+        count(*) as unit_half_hours,
+        round(sum(capacity_mwh), 1) as capacity_mwh,
+        round(sum(output_mwh), 1) as output_mwh,
+        round(100 * sum(output_mwh) / sum(capacity_mwh), 2) as output_pct_of_capacity,
+        round(sum(gap_mwh), 1) as gap_mwh,
+        null::numeric as share_of_gap_pct,
+        round(sum(above_capacity_mwh), 1) as above_capacity_mwh,
+        round(sum(drawn_mwh), 1) as drawn_mwh,
+        null::numeric as registry_capacity_mw,
+        null::numeric as highest_half_hour_mw,
+        null::numeric as notice_normal_capacity_low_mw,
+        null::numeric as notice_normal_capacity_high_mw,
+        null::bigint as notice_publications,
+        min(period_start_utc) as first_half_hour,
+        max(period_start_utc) as last_half_hour
+    from measured
+    group by settlement_month
+),
+
+output_all_months as (
+    select
+        2 as section,
+        null::date as settlement_month,
+        null::text as station,
+        null::text as national_grid_bm_unit,
+        null::text as notice_class,
+        null::text as output_state,
+        'output against registered capacity' as item,
+        count(distinct national_grid_bm_unit) as units,
+        count(*) as unit_half_hours,
+        round(sum(capacity_mwh), 1) as capacity_mwh,
+        round(sum(output_mwh), 1) as output_mwh,
+        round(100 * sum(output_mwh) / sum(capacity_mwh), 2) as output_pct_of_capacity,
+        round(sum(gap_mwh), 1) as gap_mwh,
+        null::numeric as share_of_gap_pct,
+        round(sum(above_capacity_mwh), 1) as above_capacity_mwh,
+        round(sum(drawn_mwh), 1) as drawn_mwh,
+        null::numeric as registry_capacity_mw,
+        null::numeric as highest_half_hour_mw,
+        null::numeric as notice_normal_capacity_low_mw,
+        null::numeric as notice_normal_capacity_high_mw,
+        null::bigint as notice_publications,
+        min(period_start_utc) as first_half_hour,
+        max(period_start_utc) as last_half_hour
+    from measured
+    having count(*) > 0
+),
+
+gap_by_month as (
+    select
+        3 as section,
+        settlement_month,
+        null::text as station,
+        null::text as national_grid_bm_unit,
+        notice_class,
+        output_state,
+        'gap below registered capacity' as item,
+        count(distinct national_grid_bm_unit) as units,
+        count(*) as unit_half_hours,
+        null::numeric as capacity_mwh,
+        null::numeric as output_mwh,
+        null::numeric as output_pct_of_capacity,
+        round(sum(gap_mwh), 1) as gap_mwh,
+        round(
+            100 * sum(gap_mwh)
+            / nullif(sum(sum(gap_mwh)) over (partition by settlement_month), 0),
+            2
+        ) as share_of_gap_pct,
+        null::numeric as above_capacity_mwh,
+        null::numeric as drawn_mwh,
+        null::numeric as registry_capacity_mw,
+        null::numeric as highest_half_hour_mw,
+        null::numeric as notice_normal_capacity_low_mw,
+        null::numeric as notice_normal_capacity_high_mw,
+        null::bigint as notice_publications,
+        null::timestamptz as first_half_hour,
+        null::timestamptz as last_half_hour
+    from measured
+    group by settlement_month, notice_class, output_state
+),
+
+gap_all_months as (
+    select
+        4 as section,
+        null::date as settlement_month,
+        null::text as station,
+        null::text as national_grid_bm_unit,
+        notice_class,
+        output_state,
+        'gap below registered capacity' as item,
+        count(distinct national_grid_bm_unit) as units,
+        count(*) as unit_half_hours,
+        null::numeric as capacity_mwh,
+        null::numeric as output_mwh,
+        null::numeric as output_pct_of_capacity,
+        round(sum(gap_mwh), 1) as gap_mwh,
+        round(100 * sum(gap_mwh) / nullif(sum(sum(gap_mwh)) over (), 0), 2)
+            as share_of_gap_pct,
+        null::numeric as above_capacity_mwh,
+        null::numeric as drawn_mwh,
+        null::numeric as registry_capacity_mw,
+        null::numeric as highest_half_hour_mw,
+        null::numeric as notice_normal_capacity_low_mw,
+        null::numeric as notice_normal_capacity_high_mw,
+        null::bigint as notice_publications,
+        null::timestamptz as first_half_hour,
+        null::timestamptz as last_half_hour
+    from measured
+    group by notice_class, output_state
+),
+
+-- Active production unavailability publications that name a listed unit and
+-- whose event overlaps the months read, for the range of normal capacity
+-- they state.
+notice_capacities as (
+    select
+        national_grid_bm_unit,
+        min(normal_capacity) as normal_capacity_low_mw,
+        max(normal_capacity) as normal_capacity_high_mw,
+        count(*) as publications
+    from {{ ref('int_remit__revisions') }}
+    where mapping_rule in ('asset_id', 'affected_unit')
+        and message_type = 'UnavailabilitiesOfElectricityFacilities'
+        and event_type = 'Production unavailability'
+        and event_status = 'Active'
+        and (
+            event_end_time is null
+            or event_end_time
+            > date '{{ first_settlement_date }}'::timestamp at time zone 'Europe/London'
+        )
+{% if read_until is not none %}
+        and event_start_time < timestamptz '{{ read_until }}' + interval '30 minutes'
+{% endif %}
+    group by national_grid_bm_unit
+),
+
+by_unit as (
+    select
+        5 as section,
+        null::date as settlement_month,
+        measured.station,
+        measured.national_grid_bm_unit,
+        null::text as notice_class,
+        null::text as output_state,
+        'unit, all months' as item,
+        1::bigint as units,
+        count(*) as unit_half_hours,
+        round(sum(measured.capacity_mwh), 1) as capacity_mwh,
+        round(sum(measured.output_mwh), 1) as output_mwh,
+        round(100 * sum(measured.output_mwh) / sum(measured.capacity_mwh), 2)
+            as output_pct_of_capacity,
+        round(sum(measured.gap_mwh), 1) as gap_mwh,
+        null::numeric as share_of_gap_pct,
+        round(sum(measured.above_capacity_mwh), 1) as above_capacity_mwh,
+        round(sum(measured.drawn_mwh), 1) as drawn_mwh,
+        max(measured.generation_capacity_mw) as registry_capacity_mw,
+        max(measured.latest_quantity_mwh) * 2 as highest_half_hour_mw,
+        max(notice_capacities.normal_capacity_low_mw) as notice_normal_capacity_low_mw,
+        max(notice_capacities.normal_capacity_high_mw) as notice_normal_capacity_high_mw,
+        max(notice_capacities.publications) as notice_publications,
+        min(measured.period_start_utc) as first_half_hour,
+        max(measured.period_start_utc) as last_half_hour
+    from measured
+    left join notice_capacities
+        on measured.national_grid_bm_unit = notice_capacities.national_grid_bm_unit
+    group by measured.station, measured.national_grid_bm_unit
+),
+
+half_hour_units as (
+    select
+        period_start_utc,
+        count(distinct national_grid_bm_unit) as units_measured
+    from measured
+    group by period_start_utc
+),
+
+coverage as (
+    select
+        6 as section,
+        null::text as national_grid_bm_unit,
+        'unit half-hours by metered run: ' || latest_run_code as item,
+        count(distinct national_grid_bm_unit) as units,
+        count(*) as unit_half_hours,
+        round(sum(output_mwh), 1) as output_mwh,
+        round(sum(drawn_mwh), 1) as drawn_mwh,
+        null::numeric as registry_capacity_mw
+    from measured
+    group by latest_run_code
+
+    union all
+
+    select
+        6,
+        null,
+        'unit half-hours by mapping status: ' || mapping_status,
+        count(distinct national_grid_bm_unit),
+        count(*),
+        round(sum(output_mwh), 1),
+        round(sum(drawn_mwh), 1),
+        null
+    from measured
+    group by mapping_status
+
+    union all
+
+    select
+        6,
+        null,
+        'left out: no period start',
+        count(distinct national_grid_bm_unit),
+        count(*),
+        null,
+        null,
+        null
+    from listed_metered
+    where period_start_utc is null
+
+    union all
+
+    select
+        6,
+        null,
+        'left out: no metered value',
+        count(distinct national_grid_bm_unit),
+        count(*),
+        null,
+        null,
+        null
+    from listed_metered
+    where period_start_utc is not null
+        and latest_quantity_mwh is null
+
+    union all
+
+    select
+        6,
+        null,
+        'left out: no positive registry capacity',
+        count(distinct national_grid_bm_unit),
+        count(*),
+        null,
+        null,
+        null
+    from listed_metered
+    where period_start_utc is not null
+        and latest_quantity_mwh is not null
+        and (generation_capacity_mw is null or generation_capacity_mw <= 0)
+
+    union all
+
+    select
+        6,
+        null,
+        'half-hours without all {{ generating_units | length }} listed units',
+        null,
+        count(*),
+        null,
+        null,
+        null
+    from half_hour_units
+    where units_measured < {{ generating_units | length }}
+
+    union all
+
+    select
+        6,
+        null,
+        'listed units without exactly one NUCLEAR registry row',
+        count(*),
+        null,
+        null,
+        null,
+        null
+    from (
+        select listed.national_grid_bm_unit
+        from listed
+        left join nuclear_registry
+            on listed.national_grid_bm_unit = nuclear_registry.national_grid_bm_unit
+        group by listed.national_grid_bm_unit
+        having count(nuclear_registry.national_grid_bm_unit) <> 1
+    ) as unmatched
+
+    union all
+
+    select
+        6,
+        nuclear_registry.national_grid_bm_unit,
+        'registry NUCLEAR unit outside the listed units',
+        1,
+        count(metered.national_grid_bm_unit),
+        round(sum(greatest(metered.latest_quantity_mwh, 0)), 1),
+        round(sum(greatest(-metered.latest_quantity_mwh, 0)), 1),
+        max(nuclear_registry.generation_capacity_mw)
+    from nuclear_registry
+    left join metered
+        on nuclear_registry.national_grid_bm_unit = metered.national_grid_bm_unit
+    where nuclear_registry.national_grid_bm_unit not in (
+        select national_grid_bm_unit from listed
+    )
+    group by nuclear_registry.national_grid_bm_unit
+)
+
+select
+    section,
+    settlement_month,
+    station,
+    national_grid_bm_unit,
+    notice_class,
+    output_state,
+    item,
+    units,
+    unit_half_hours,
+    capacity_mwh,
+    output_mwh,
+    output_pct_of_capacity,
+    gap_mwh,
+    share_of_gap_pct,
+    above_capacity_mwh,
+    drawn_mwh,
+    registry_capacity_mw,
+    highest_half_hour_mw,
+    notice_normal_capacity_low_mw,
+    notice_normal_capacity_high_mw,
+    notice_publications,
+    first_half_hour,
+    last_half_hour
+from output_by_month
+union all
+select
+    section,
+    settlement_month,
+    station,
+    national_grid_bm_unit,
+    notice_class,
+    output_state,
+    item,
+    units,
+    unit_half_hours,
+    capacity_mwh,
+    output_mwh,
+    output_pct_of_capacity,
+    gap_mwh,
+    share_of_gap_pct,
+    above_capacity_mwh,
+    drawn_mwh,
+    registry_capacity_mw,
+    highest_half_hour_mw,
+    notice_normal_capacity_low_mw,
+    notice_normal_capacity_high_mw,
+    notice_publications,
+    first_half_hour,
+    last_half_hour
+from output_all_months
+union all
+select
+    section,
+    settlement_month,
+    station,
+    national_grid_bm_unit,
+    notice_class,
+    output_state,
+    item,
+    units,
+    unit_half_hours,
+    capacity_mwh,
+    output_mwh,
+    output_pct_of_capacity,
+    gap_mwh,
+    share_of_gap_pct,
+    above_capacity_mwh,
+    drawn_mwh,
+    registry_capacity_mw,
+    highest_half_hour_mw,
+    notice_normal_capacity_low_mw,
+    notice_normal_capacity_high_mw,
+    notice_publications,
+    first_half_hour,
+    last_half_hour
+from gap_by_month
+union all
+select
+    section,
+    settlement_month,
+    station,
+    national_grid_bm_unit,
+    notice_class,
+    output_state,
+    item,
+    units,
+    unit_half_hours,
+    capacity_mwh,
+    output_mwh,
+    output_pct_of_capacity,
+    gap_mwh,
+    share_of_gap_pct,
+    above_capacity_mwh,
+    drawn_mwh,
+    registry_capacity_mw,
+    highest_half_hour_mw,
+    notice_normal_capacity_low_mw,
+    notice_normal_capacity_high_mw,
+    notice_publications,
+    first_half_hour,
+    last_half_hour
+from gap_all_months
+union all
+select
+    section,
+    settlement_month,
+    station,
+    national_grid_bm_unit,
+    notice_class,
+    output_state,
+    item,
+    units,
+    unit_half_hours,
+    capacity_mwh,
+    output_mwh,
+    output_pct_of_capacity,
+    gap_mwh,
+    share_of_gap_pct,
+    above_capacity_mwh,
+    drawn_mwh,
+    registry_capacity_mw,
+    highest_half_hour_mw,
+    notice_normal_capacity_low_mw,
+    notice_normal_capacity_high_mw,
+    notice_publications,
+    first_half_hour,
+    last_half_hour
+from by_unit
+union all
+select
+    section,
+    null::date,
+    null::text,
+    national_grid_bm_unit,
+    null::text,
+    null::text,
+    item,
+    units,
+    unit_half_hours,
+    null::numeric,
+    output_mwh,
+    null::numeric,
+    null::numeric,
+    null::numeric,
+    null::numeric,
+    drawn_mwh,
+    registry_capacity_mw,
+    null::numeric,
+    null::numeric,
+    null::numeric,
+    null::bigint,
+    null::timestamptz,
+    null::timestamptz
+from coverage
+order by 1, 2, 3, 4, 5, 6, 7
